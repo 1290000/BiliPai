@@ -139,7 +139,6 @@ internal fun AudioNowPlayingBar(
                 }
             }
             .then(if (videoDetailMorphEnabled) nativeBarSnapshot.modifier else Modifier)
-            .then(if (videoDetailMorphEnabled) nativeBarSnapshot.coverOverlayModifier else Modifier)
             .semantics { contentDescription = "当前视频：${state.title}，打开$expandDestinationLabel" }
             .clickable {
                 if (videoDetailMorphEnabled) {
@@ -158,6 +157,7 @@ internal fun AudioNowPlayingBar(
                             sourceLayout = VideoCardSourceLayout.COVER_ONLY,
                         )
                         nativeBarSnapshot.capture()
+                        nativeBarSnapshot.freezeToBitmap()
                     }
                 }
                 onExpand()

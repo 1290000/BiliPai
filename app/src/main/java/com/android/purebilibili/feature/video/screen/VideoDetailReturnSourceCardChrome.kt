@@ -467,6 +467,27 @@ internal fun VideoDetailReturnCoverChrome(
     },
     inverseScaleYProvider: () -> Float = inverseScaleXProvider,
 ) {
+    val nativeBarBitmap = CardPositionManager.lastClickedNativeCardBitmap
+    if (
+        nativeBarBitmap != null &&
+        shouldDrawNativeCoverOverlay(
+            overlayWidthPx = nativeBarBitmap.width.toFloat(),
+            overlayHeightPx = nativeBarBitmap.height.toFloat(),
+        )
+    ) {
+        Box(
+            modifier = modifier.drawWithContent {
+                scale(
+                    scaleX = inverseScaleXProvider(),
+                    scaleY = inverseScaleYProvider(),
+                    pivot = Offset.Zero,
+                ) {
+                    drawImage(nativeBarBitmap)
+                }
+            },
+        )
+        return
+    }
     val overlayLayer = CardPositionManager.lastClickedNativeCoverOverlayLayer
     if (
         overlayLayer != null &&

@@ -26,6 +26,8 @@ class AudioNowPlayingBarStructureTest {
         assertTrue(source.contains("basicMarquee(iterations = Int.MAX_VALUE)"))
         assertTrue(source.contains("nativeSnapshotController: NativeVideoCardSnapshotController"))
         assertTrue(source.contains("nativeBarSnapshot.capture()"))
+        assertTrue(source.contains("nativeBarSnapshot.freezeToBitmap()"))
+        assertFalse(source.contains("nativeBarSnapshot.coverOverlayModifier"))
         assertTrue(source.contains("sourceRoute = \"audio_now_playing\""))
         assertTrue(source.contains("sourceLayout = VideoCardSourceLayout.COVER_ONLY"))
         assertTrue(source.contains("modifier = if (state.isPlaying)"))
