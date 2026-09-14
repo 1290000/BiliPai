@@ -2764,14 +2764,11 @@ private fun SpaceSecondarySwitchRow(
             viewportWidthDp = maxWidth.value.roundToInt(),
             containerHorizontalPaddingDp = containerHorizontalPaddingDp
         )
-        // When scrollable, never clamp below preferred width so long category
-        // titles (e.g. "合集·点评视频") are fully readable without truncation.
-        val effectiveItemWidthDp = if (useScrollableRail) {
-            maxOf(itemWidthDp, preferredItemWidthDp)
-        } else {
-            itemWidthDp
-        }
-        val itemWidth = effectiveItemWidthDp.dp
+        // Keep the viewport-derived cap even when the rail scrolls. The preferred
+        // width is estimated from the longest title, so restoring it here would
+        // make every category as wide as that one outlier and needlessly lengthen
+        // the whole rail. Individual long labels already ellipsize inside the slot.
+        val itemWidth = itemWidthDp.dp
         val viewportWidthPx = with(density) { maxWidth.toPx() }
         val itemWidthPx = with(density) { itemWidth.toPx() }
         val containerHorizontalPaddingPx = with(density) { AppSpacingTokens.ExtraSmall.toPx() }
@@ -2830,9 +2827,9 @@ private fun SpaceSecondarySwitchRow(
                 onSelectionChange = onSelect,
                 modifier = Modifier.fillMaxWidth(),
                 scrollable = useScrollableRail,
-                minTabWidth = 64.dp,
+                minTabWidth = itemWidth,
                 compactMiuixWhenTwoOptions = false,
-                allowLabelOverflow = true,
+                allowLabelOverflow = false,
             )
         }
     }

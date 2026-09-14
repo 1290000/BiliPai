@@ -177,6 +177,8 @@ class SpaceScreenStructureTest {
         assertTrue(secondaryRow.contains("shouldScrollSpaceSecondarySwitch("))
         assertTrue(secondaryRow.contains("resolveSpaceSecondarySwitchAdaptiveItemWidthDp("))
         assertTrue(secondaryRow.contains("itemWidthDp = preferredItemWidthDp"))
+        assertTrue(secondaryRow.contains("val itemWidth = itemWidthDp.dp"))
+        assertFalse(secondaryRow.contains("maxOf(itemWidthDp, preferredItemWidthDp)"))
         assertTrue(secondaryRow.contains(".liquidDockViewport()"))
         assertTrue(secondaryRow.contains(".horizontalScroll(scrollState)"))
         assertTrue(secondaryRow.contains("dragSelectionEnabled = spec.dragSelectionEnabled || useScrollableRail"))
@@ -185,6 +187,8 @@ class SpaceScreenStructureTest {
         assertTrue(secondaryRow.contains("onIndicatorPositionChanged = { position ->"))
         assertFalse(secondaryRow.contains("AppFilterChip("))
         assertTrue(secondaryRow.contains("AppNativeTabRow("))
+        assertTrue(secondaryRow.contains("minTabWidth = itemWidth"))
+        assertTrue(secondaryRow.contains("allowLabelOverflow = false"))
         assertTrue(secondaryRow.contains("homeSettings.androidNativeLiquidGlassEnabled"))
         assertFalse(source.contains("rememberTextMeasurer()"))
     }
