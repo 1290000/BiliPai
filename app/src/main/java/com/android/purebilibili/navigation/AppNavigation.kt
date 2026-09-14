@@ -4013,7 +4013,6 @@ fun AppNavigation(
                                     val playbackManager = miniPlayerManager ?: MiniPlayerManager.getInstance(context)
                                     AudioNowPlayingBar(
                                         state = AudioNowPlayingBarState(
-                                            bvid = audioNowPlayingItem.bvid,
                                             title = audioNowPlayingItem.title,
                                             artist = audioNowPlayingItem.owner,
                                             artistAvatarUrl = audioNowPlayingItem.ownerFace,
@@ -4067,7 +4066,6 @@ fun AppNavigation(
                                         liftAboveBottomBar = false,
                                         consumeNavigationBarsPadding = false,
                                         dockHosted = isBottomBarFloating,
-                                        videoDetailMorphEnabled = !audioNowPlayingBarOpensAudioMode,
                                         onBoundsChanged = { audioNowPlayingBarBounds = it },
                                         dockMergeProgress = dockMergeProgress,
                                         surfaceMergeProgress = surfaceMergeProgress,
@@ -4182,7 +4180,6 @@ fun AppNavigation(
                 val playbackManager = miniPlayerManager ?: MiniPlayerManager.getInstance(context)
                 AudioNowPlayingBar(
                     state = AudioNowPlayingBarState(
-                        bvid = audioNowPlayingItem.bvid,
                         title = audioNowPlayingItem.title,
                         artist = audioNowPlayingItem.owner,
                         artistAvatarUrl = audioNowPlayingItem.ownerFace,
@@ -4235,7 +4232,6 @@ fun AppNavigation(
                     liquidGlassTuning = liquidGlassRenderConfig.tuning,
                     liftAboveBottomBar = false,
                     consumeNavigationBarsPadding = true,
-                    videoDetailMorphEnabled = !audioNowPlayingBarOpensAudioMode,
                     onBoundsChanged = { audioNowPlayingBarBounds = it },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
