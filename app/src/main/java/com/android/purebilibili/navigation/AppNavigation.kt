@@ -199,7 +199,6 @@ import com.android.purebilibili.navigation3.BiliPaiProgrammaticBackDispatcher
 import com.android.purebilibili.navigation3.BiliPaiNavCardSourceDirection
 import com.android.purebilibili.navigation3.BiliPaiNavEntryContentRole
 import com.android.purebilibili.navigation3.BiliPaiNavKey
-import com.android.purebilibili.navigation3.VideoDetailEntrySource
 import com.android.purebilibili.navigation3.BiliPaiReturnSessionState
 import com.android.purebilibili.navigation3.BiliPaiVideoSource
 import com.android.purebilibili.navigation3.VideoCardTransitionSession
@@ -1006,8 +1005,7 @@ fun AppNavigation(
         fun navigateToVideoRouteInNavigation3(
             route: String,
             sourceRoute: String?,
-            skipPortraitStoryResolution: Boolean = false,
-            entrySource: VideoDetailEntrySource = VideoDetailEntrySource.DEFAULT,
+            skipPortraitStoryResolution: Boolean = false
         ) {
             val parsedKey = legacyRouteToBiliPaiNavKey(route)
             val videoKey = parsedKey as? BiliPaiNavKey.VideoDetail
@@ -1045,7 +1043,6 @@ fun AppNavigation(
                                     ).toLegacyRoute(),
                                     sourceRoute = sourceRoute,
                                     skipPortraitStoryResolution = true,
-                                    entrySource = entrySource,
                                 )
                             } else {
                                 navigateToPortraitStoryInNavigation3(
@@ -1061,8 +1058,7 @@ fun AppNavigation(
                             navigateToVideoRouteInNavigation3(
                                 route = route,
                                 sourceRoute = sourceRoute,
-                                skipPortraitStoryResolution = true,
-                                entrySource = entrySource,
+                                skipPortraitStoryResolution = true
                             )
                         }
                     }
@@ -1111,7 +1107,6 @@ fun AppNavigation(
                     ) || parsedKey.directPortraitEntry
                     parsedKey.copy(
                         sourceRoute = source.route,
-                        entrySource = entrySource,
                         autoPortrait = parsedKey.autoPortrait || morphDirectPortrait,
                         initialVertical = parsedKey.initialVertical || morphDirectPortrait,
                         directPortraitEntry = morphDirectPortrait,
@@ -1132,7 +1127,6 @@ fun AppNavigation(
             directPortraitEntry: Boolean = false,
             sourceRoute: String? = null,
             skipPortraitStoryResolution: Boolean = false,
-            entrySource: VideoDetailEntrySource = VideoDetailEntrySource.DEFAULT,
         ) {
             val morphDirectPortrait = resolveDirectPortraitDetailMorphEntry(
                 directPortraitStoryEntry = playerInteractionSettings.directPortraitStoryEntry,
@@ -1204,7 +1198,6 @@ fun AppNavigation(
                                 directPortraitEntry = true,
                                 sourceRoute = sourceRoute,
                                 skipPortraitStoryResolution = true,
-                                entrySource = entrySource,
                             )
                         } else {
                             navigateToPortraitStoryInNavigation3(
@@ -1220,8 +1213,7 @@ fun AppNavigation(
                         navigateToVideoRouteInNavigation3(
                             route = videoRoute,
                             sourceRoute = sourceRoute,
-                            skipPortraitStoryResolution = true,
-                            entrySource = entrySource,
+                            skipPortraitStoryResolution = true
                         )
                     }
                 }
@@ -1230,8 +1222,7 @@ fun AppNavigation(
             navigateToVideoRouteInNavigation3(
                 route = videoRoute,
                 sourceRoute = sourceRoute,
-                skipPortraitStoryResolution = true,
-                entrySource = entrySource,
+                skipPortraitStoryResolution = true
             )
         }
         fun navigateToHomeVideoInNavigation3(request: HomeVideoClickRequest) {
@@ -4009,21 +4000,14 @@ fun AppNavigation(
                                             playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                                         ),
                                         onExpand = {
-                                            if (audioNowPlayingBarOpensAudioMode) {
-                                                pushNavigation3Route(
-                                                    ScreenRoutes.AudioMode.createRoute(
-                                                        bvid = audioNowPlayingItem.bvid,
-                                                        cid = audioNowPlayingItem.cid,
-                                                    )
-                                                )
-                                            } else {
-                                                navigateToVideoInNavigation3(
+                                            pushNavigation3Route(
+                                                resolveAudioNowPlayingBarExpandRoute(
+                                                    opensAudioMode = audioNowPlayingBarOpensAudioMode,
                                                     bvid = audioNowPlayingItem.bvid,
                                                     cid = audioNowPlayingItem.cid,
                                                     coverUrl = audioNowPlayingItem.cover,
-                                                    entrySource = VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR,
                                                 )
-                                            }
+                                            )
                                         },
                                         onPlayPause = {
                                             if (!playbackManager.togglePlayPause()) {
@@ -4175,21 +4159,14 @@ fun AppNavigation(
                         playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                     ),
                     onExpand = {
-                        if (audioNowPlayingBarOpensAudioMode) {
-                            pushNavigation3Route(
-                                ScreenRoutes.AudioMode.createRoute(
-                                    bvid = audioNowPlayingItem.bvid,
-                                    cid = audioNowPlayingItem.cid,
-                                )
-                            )
-                        } else {
-                            navigateToVideoInNavigation3(
+                        pushNavigation3Route(
+                            resolveAudioNowPlayingBarExpandRoute(
+                                opensAudioMode = audioNowPlayingBarOpensAudioMode,
                                 bvid = audioNowPlayingItem.bvid,
                                 cid = audioNowPlayingItem.cid,
                                 coverUrl = audioNowPlayingItem.cover,
-                                entrySource = VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR,
                             )
-                        }
+                        )
                     },
                     onPlayPause = {
                         if (!playbackManager.togglePlayPause()) {
