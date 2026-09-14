@@ -164,6 +164,7 @@ import com.android.purebilibili.core.ui.performance.TrackJankStateValue
 import com.android.purebilibili.core.util.resolveScrollToTopPlan
 import coil3.imageLoader
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged  //  性能优化：防止重复触发
@@ -448,7 +449,10 @@ fun HomeScreen(
     val latestHomePagerPage by rememberUpdatedState(pagerState.currentPage)
     val latestHomeTopTabEntries by rememberUpdatedState(topTabEntries)
     LaunchedEffect(scrollChannel) {
-        scrollChannel?.receiveAsFlow()?.collectLatest { request ->
+        // A double tap first emits the normal Home reselect, then the stronger refresh request.
+        // Process them sequentially so the second event cannot cancel and restart an active
+        // animateScrollToItem, which otherwise produces a visible stepped return-to-top.
+        scrollChannel?.receiveAsFlow()?.collect { request ->
             withHomeScrollToTopLock {
                 val entry = resolveHomeTopTabEntryOrNull(
                     latestHomeTopTabEntries,
