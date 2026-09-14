@@ -3895,7 +3895,7 @@ fun AppNavigation(
                         if ((navigation3BackStack.lastOrNull() as? BiliPaiNavKey.VideoDetail)
                                 ?.entrySource == VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR
                         ) {
-                            sharedVideoCardTransitionEnabled
+                            false
                         } else {
                             com.android.purebilibili.navigation3.resolveVideoCardTransitionEnabledForSource(
                                 cardTransitionEnabled = sharedVideoCardTransitionEnabled,
@@ -4082,7 +4082,7 @@ fun AppNavigation(
                                         liftAboveBottomBar = false,
                                         consumeNavigationBarsPadding = false,
                                         dockHosted = isBottomBarFloating,
-                                        videoDetailMorphEnabled = !audioNowPlayingBarOpensAudioMode,
+                                        videoDetailMorphEnabled = false,
                                         onBoundsChanged = { audioNowPlayingBarBounds = it },
                                         dockMergeProgress = dockMergeProgress,
                                         surfaceMergeProgress = surfaceMergeProgress,
@@ -4251,7 +4251,7 @@ fun AppNavigation(
                     liquidGlassTuning = liquidGlassRenderConfig.tuning,
                     liftAboveBottomBar = false,
                     consumeNavigationBarsPadding = true,
-                    videoDetailMorphEnabled = !audioNowPlayingBarOpensAudioMode,
+                    videoDetailMorphEnabled = false,
                     onBoundsChanged = { audioNowPlayingBarBounds = it },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
