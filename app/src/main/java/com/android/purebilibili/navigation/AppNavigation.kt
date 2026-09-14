@@ -3909,16 +3909,7 @@ fun AppNavigation(
                     videoSharedTransitionDurationMillis =
                         effectiveVideoCardTransitionDurationMillis,
                     videoCardClock = videoCardTransitionClock,
-                    // The now-playing-bar detail handoff currently uses the committed return
-                    // path only; keep predictive back scoped to ordinary video-card entries.
-                    predictiveBackAnimationStyle = if (
-                        (navigation3BackStack.lastOrNull() as? BiliPaiNavKey.VideoDetail)
-                            ?.entrySource == VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR
-                    ) {
-                        BiliPaiPredictiveBackAnimationStyle.NONE
-                    } else {
-                        predictiveBackAnimationStyle
-                    },
+                    predictiveBackAnimationStyle = predictiveBackAnimationStyle,
                     predictiveBackExitDirection = predictiveBackExitDirection,
                     miuixTransitionBlurEnabled =
                         appNavigationSettings.miuixTransitionBlurEnabled,
