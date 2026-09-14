@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.video.screen
 
 import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
+import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.util.AppFoldPosture
 import androidx.compose.ui.graphics.Color
 
@@ -95,6 +96,15 @@ fun resolveTabletVideoLayoutPolicy(
 }
 
 internal fun resolveTabletSecondaryDefaultTab(): Int = 0
+
+internal fun shouldUseFixedTabletSecondaryTabItemWidth(
+    tabCount: Int,
+    uiStyle: AppUiStyle,
+    liquidGlassEnabled: Boolean,
+): Boolean {
+    return tabCount in 1..2 ||
+        (uiStyle == AppUiStyle.MIUIX && !liquidGlassEnabled)
+}
 
 /** Always-visible 发弹幕 / toggle next to 评论, matching the phone content tab bar. */
 internal fun shouldShowTabletSecondaryDanmakuActions(): Boolean = true
