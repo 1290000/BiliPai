@@ -199,7 +199,10 @@ internal fun BiliPaiNavDisplayHost(
     val latestRelatedReturn by rememberUpdatedState(onRelatedVideoDetailReturned)
     val latestPreferWholeCardReturn by rememberUpdatedState(preferWholeCardReturn)
     val cardMorphMode = resolveBiliPaiVideoCardMorphMode(
-        cardTransitionEnabled = cardTransitionEnabled || isAudioNowPlayingVideoEntry,
+        // The audio now-playing bar uses the ordinary destination transition. Do not
+        // implicitly re-enable the shared card morph just because its source metadata
+        // is available; callers explicitly opt into card transitions.
+        cardTransitionEnabled = cardTransitionEnabled,
         reduceMotion = reduceMotion,
         sourceRoute = transitionSourceRoute,
         hasUsableSourceBounds = transitionSourceBounds
