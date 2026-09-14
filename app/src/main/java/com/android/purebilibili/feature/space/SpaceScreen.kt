@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.space
 
-import com.android.purebilibili.core.ui.components.resolveVideoListColumns
 import com.android.purebilibili.core.ui.components.videoListItemModifier
 import com.android.purebilibili.core.ui.components.AnimatedVideoListItem
 import coil3.request.crossfade
@@ -1004,6 +1003,17 @@ private fun SpaceContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
+    val windowWidthDp = windowSizeClass.widthDp.value.roundToInt().coerceAtLeast(0)
+    val adaptiveLayoutSpec = remember(windowWidthDp, windowSizeClass.widthSizeClass) {
+        resolveSpaceAdaptiveLayoutSpec(
+            widthDp = windowWidthDp,
+            widthSizeClass = windowSizeClass.widthSizeClass,
+        )
+    }
+    val boundedListModifier = Modifier.responsiveContentWidth(
+        maxWidth = adaptiveLayoutSpec.listContentMaxWidthDp.dp,
+    )
     // 投稿网格跟随首页信息流设置（固定列数 / 卡宽预设 / 卡片风格），保证排版与首页 feed 一致。
     val homeSettings by com.android.purebilibili.core.store.SettingsManager
         .getHomeSettings(context)
@@ -1177,7 +1187,7 @@ private fun SpaceContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .responsiveContentWidth(maxWidth = SPACE_CONTENT_MAX_WIDTH_DP.dp)
+            .responsiveContentWidth(maxWidth = adaptiveLayoutSpec.contentMaxWidthDp.dp)
             .then(modifier)
     ) {
         val density = LocalDensity.current
@@ -1195,27 +1205,24 @@ private fun SpaceContent(
             }
         }
 
-        // 投稿视频使用独立单双列选择；其他空间网格继续跟随首页的自适应列数。
-        // 间距与封面比例仍沿用首页卡片风格。
+        // 视频类内容继续跟随首页的卡宽/固定列数设置；动态卡片
+        // 使用 360dp 的可读宽度，避免在展开屏上被媒体卡片的紧密列数压窄。
         val preferredGridColumns = resolveSpaceContentGridColumnCount(
-            widthDp = LocalConfiguration.current.screenWidthDp,
+            widthDp = windowWidthDp,
             fixedColumnCount = homeSettings.gridColumnCount,
             cardWidthPreset = homeSettings.homeFeedCardWidthPreset,
-            widthSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current.widthSizeClass,
+            contentMaxWidthDp = adaptiveLayoutSpec.contentMaxWidthDp,
+            widthSizeClass = windowSizeClass.widthSizeClass,
         )
-        val gridColumns = if (
-            state.tabShellState.selectedTab == SpaceMainTab.CONTRIBUTION &&
-            state.selectedSubTab in setOf(SpaceSubTab.VIDEO, SpaceSubTab.CHARGING_VIDEO)
-        ) {
-            resolveVideoListColumns(
-                singleColumn = false,
-                availableWidthDp = LocalConfiguration.current.screenWidthDp.toFloat(),
-            )
-        } else preferredGridColumns
+        val gridColumns = if (selectedMainTab == SpaceMainTab.DYNAMIC) {
+            adaptiveLayoutSpec.dynamicColumns
+        } else {
+            preferredGridColumns
+        }
         val spaceFeedCardLayout = resolveHomeFeedCardLayout(
             style = homeSettings.homeFeedCardStyle,
             gridColumns = gridColumns,
-            widthSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current.widthSizeClass,
+            widthSizeClass = windowSizeClass.widthSizeClass,
         )
         val spaceFeedCoverAspectRatio = spaceFeedCardLayout.coverAspectRatio
         val outerPaddingDp = maxOf(16, spaceFeedCardLayout.outerPaddingDp).dp
@@ -1248,7 +1255,8 @@ private fun SpaceContent(
                     sharedTransitionScope = lazyGridSharedTransitionScope,
                     animatedVisibilityScope = lazyGridAnimatedVisibilityScope,
                     chromeTopInset = chromeTopInset,
-                    outerPadding = outerPaddingDp
+                    outerPadding = outerPaddingDp,
+                    useExpandedLayout = adaptiveLayoutSpec.useExpandedHeader,
                 )
             }
 
@@ -1354,6 +1362,7 @@ private fun SpaceContent(
                     ) { folder ->
                         SpaceFavoriteFolderRow(
                             folder = folder,
+                            modifier = boundedListModifier,
                             onClick = {
                                 onViewAllClick(
                                     "favorite",
@@ -1451,6 +1460,7 @@ private fun SpaceContent(
                     ) { article ->
                         SpaceArticleListItem(
                             article = article,
+                            modifier = boundedListModifier,
                             onClick = {
                                 dispatchSpaceArticleClick(
                                     article = article,
@@ -1482,6 +1492,7 @@ private fun SpaceContent(
                     ) { audio ->
                         SpaceAudioListItem(
                             audio = audio,
+                            modifier = boundedListModifier,
                             onClick = { onAudioClick(audio.id) }
                         )
                     }
@@ -1602,7 +1613,7 @@ private fun SpaceContent(
                     items(
                         items = dynamicCardItems,
                         key = { "space_dynamic_${it.id_str}" },
-                        span = { GridItemSpan(maxLineSpan) }
+                        span = { GridItemSpan(1) }
                     ) { dynamic ->
                         DynamicCardV2(
                             item = dynamic,
@@ -1812,6 +1823,7 @@ private fun SpaceContent(
                                             badgeLabel = resolveSpaceVideoChargeBadgeLabel(video),
                                             isLocateHighlight = highlightedLocateBvid == video.bvid &&
                                                 isLocateHighlightVisible,
+                                            modifier = boundedListModifier,
                                             onClick = { playVideoFromSpace(video.bvid) },
                                             sharedTransitionKey = resolveSpaceArchiveSharedTransitionKey(video.bvid),
                                             sharedTransitionScope = lazyGridSharedTransitionScope,
@@ -1846,6 +1858,7 @@ private fun SpaceContent(
                         ) { audio ->
                             SpaceAudioListItem(
                                 audio = audio,
+                                modifier = boundedListModifier,
                                 onClick = { onAudioClick(audio.id) }
                             )
                         }
@@ -1879,6 +1892,7 @@ private fun SpaceContent(
                         ) { article ->
                             SpaceArticleListItem(
                                 article = article,
+                                modifier = boundedListModifier,
                                 onClick = {
                                     dispatchSpaceArticleClick(
                                         article = article,
@@ -1910,6 +1924,7 @@ private fun SpaceContent(
                                 subtitle = season?.meta?.description.orEmpty(),
                                 cover = season?.meta?.cover.orEmpty(),
                                 total = season?.meta?.total ?: archives.size,
+                                modifier = boundedListModifier,
                                 onClick = {
                                     onViewAllClick(
                                         "season",
@@ -1941,6 +1956,7 @@ private fun SpaceContent(
                                 publishTime = FormatUtils.formatPublishTime(archive.pubdate),
                                 play = archive.stat.view,
                                 secondaryCount = archive.stat.danmaku,
+                                modifier = boundedListModifier,
                                 onClick = { playVideoFromSpace(archive.bvid) },
                                 sharedTransitionKey = resolveSpaceArchiveSharedTransitionKey(archive.bvid),
                                 sharedTransitionScope = lazyGridSharedTransitionScope,
@@ -1958,6 +1974,7 @@ private fun SpaceContent(
                                 subtitle = series?.meta?.description.orEmpty(),
                                 cover = series?.meta?.cover.orEmpty(),
                                 total = series?.meta?.total ?: archives.size,
+                                modifier = boundedListModifier,
                                 onClick = {
                                     onViewAllClick(
                                         "series",
@@ -1989,6 +2006,7 @@ private fun SpaceContent(
                                 publishTime = FormatUtils.formatPublishTime(archive.pubdate),
                                 play = archive.stat.view,
                                 secondaryCount = archive.stat.danmaku,
+                                modifier = boundedListModifier,
                                 onClick = { playVideoFromSpace(archive.bvid) },
                                 sharedTransitionKey = resolveSpaceArchiveSharedTransitionKey(archive.bvid),
                                 sharedTransitionScope = lazyGridSharedTransitionScope,
@@ -2033,6 +2051,7 @@ private fun SpaceContent(
                     ) { folder ->
                         SpaceFavoriteFolderRow(
                             folder = folder,
+                            modifier = boundedListModifier,
                             onClick = {
                                 onViewAllClick(
                                     "favorite",
@@ -2061,6 +2080,7 @@ private fun SpaceContent(
                     ) { folder ->
                         SpaceFavoriteFolderRow(
                             folder = folder,
+                            modifier = boundedListModifier,
                             onClick = {
                                 onViewAllClick(
                                     "favorite",
@@ -2202,6 +2222,7 @@ private fun SpaceContent(
                     ) { folder ->
                         SpaceFavoriteFolderRow(
                             folder = folder,
+                            modifier = boundedListModifier,
                             onClick = {
                                 onViewAllClick(
                                     "favorite",
@@ -2230,6 +2251,7 @@ private fun SpaceContent(
                     ) { folder ->
                         SpaceFavoriteFolderRow(
                             folder = folder,
+                            modifier = boundedListModifier,
                             onClick = {
                                 onViewAllClick(
                                     "favorite",
@@ -2265,7 +2287,8 @@ private fun SpaceHeader(
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     chromeTopInset: Dp = 0.dp,
-    outerPadding: Dp = 16.dp
+    outerPadding: Dp = 16.dp,
+    useExpandedLayout: Boolean = false,
 ) {
     val context = LocalContext.current
     val topPhotoUrl = normalizeSpaceTopPhotoUrl(userInfo.topPhoto)
@@ -2296,21 +2319,27 @@ private fun SpaceHeader(
     // - hero 背景全宽沉浸延伸至状态栏，按标准 1125:396 (约 2.84:1) 比例完整展示，横向不裁切
     // - 头像 80dp（顶部 24dp 压在背景图上，底部 56dp 伸出背景，带 2dp 边框与认证标）
     // - 头像右侧独立区域：上层 3 项数据统计（粉丝/关注/获赞），下层私信与关注操作按钮
-    // - 名字 + 等级 + VIP 独占整行，位于头像与操作区下方
-    val configuration = LocalConfiguration.current
+    // - 窄屏信息区位于头像下方；宽屏放入头像与操作区之间
     val bannerAspectRatio = 1125f / 396f
-    val bannerTotalHeightDp = configuration.screenWidthDp.coerceAtLeast(0).dp / bannerAspectRatio
-    val heroHeight = (bannerTotalHeightDp - chromeTopInset.coerceAtLeast(0.dp)).coerceAtLeast(0.dp)
     val avatarSize = 80.dp
     val avatarBannerOverlap = 24.dp
-    val avatarTopPadding = (heroHeight - avatarBannerOverlap).coerceAtLeast(0.dp)
     val actionsTopMargin = 8.dp
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        // The hero is rendered beyond the grid's content padding. Use that exact rendered
+        // width for both the banner height and avatar anchor so a wide window cannot create
+        // phantom vertical space between them.
+        val renderedBannerWidth = maxWidth + outerPadding.coerceAtLeast(0.dp) * 2
+        val bannerTotalHeightDp = renderedBannerWidth / bannerAspectRatio
+        val heroHeight = (bannerTotalHeightDp - chromeTopInset.coerceAtLeast(0.dp))
+            .coerceAtLeast(0.dp)
+        val avatarTopPadding = (heroHeight - avatarBannerOverlap).coerceAtLeast(0.dp)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -2461,10 +2490,23 @@ private fun SpaceHeader(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
+                if (useExpandedLayout) {
+                    SpaceHeaderIdentityInfo(
+                        userInfo = userInfo,
+                        officialBadge = officialBadge,
+                        onLiveClick = onLiveClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(top = avatarBannerOverlap),
+                    )
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
+
                 // 右侧操作区：上层数据统计，下层关注/私信按钮
                 Column(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(if (useExpandedLayout) 0.8f else 1f, fill = !useExpandedLayout)
+                        .widthIn(max = 480.dp)
                         .padding(top = (avatarBannerOverlap + actionsTopMargin).coerceAtLeast(0.dp)),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -2503,12 +2545,29 @@ private fun SpaceHeader(
             }
         }
 
-        // 信息区：名字 + 等级 + VIP 标识（独占整行）
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, end = 0.dp, top = 10.dp, bottom = 8.dp)
-        ) {
+        if (!useExpandedLayout) {
+            SpaceHeaderIdentityInfo(
+                userInfo = userInfo,
+                officialBadge = officialBadge,
+                onLiveClick = onLiveClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 0.dp, top = 10.dp, bottom = 8.dp),
+            )
+        }
+        }
+    }
+}
+
+@Composable
+private fun SpaceHeaderIdentityInfo(
+    userInfo: SpaceUserInfo,
+    officialBadge: OfficialVerifyBadgeSpec?,
+    onLiveClick: (Long, String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 信息区：名字 + 等级 + VIP 标识。
+    Column(modifier = modifier) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2615,7 +2674,6 @@ private fun SpaceHeader(
                     }
                 }
             }
-        }
     }
 }
 
@@ -3793,10 +3851,11 @@ private fun SpaceArchiveListItemRow(
 @Composable
 private fun SpaceAudioListItem(
     audio: SpaceAudioItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(AppShapes.container(ContainerLevel.Card))
@@ -3860,10 +3919,11 @@ private fun dispatchSpaceArticleClick(
 @Composable
 private fun SpaceArticleListItem(
     article: SpaceArticleItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(AppShapes.container(ContainerLevel.Card))
@@ -3920,10 +3980,11 @@ private fun SpaceArticleListItem(
 @Composable
 private fun SpaceFavoriteFolderRow(
     folder: FavFolder,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     AppSurface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = AppShapes.container(ContainerLevel.Card),
@@ -4020,10 +4081,11 @@ private fun SpaceCollectionSummaryCard(
     subtitle: String,
     cover: String,
     total: Int,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     AppSurface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = AppShapes.container(ContainerLevel.Card),
