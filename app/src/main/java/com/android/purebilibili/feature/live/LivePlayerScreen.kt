@@ -303,6 +303,9 @@ fun LivePlayerScreen(
         .getDanmakuSettings(context, liveDanmakuSettingsScope)
         .collectAsStateWithLifecycle(initialValue = DanmakuSettings())
     val liveDanmakuDisplayArea = liveDanmakuSettings.displayArea
+    val liveSuperChatFlashEnabled by SettingsManager
+        .getLiveSuperChatFlashEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = true)
     val portraitOverlayMetrics = remember(configuration.screenHeightDp) {
         resolveLivePortraitOverlayMetrics(configuration.screenHeightDp)
     }
@@ -1378,7 +1381,13 @@ fun LivePlayerScreen(
     }
 
     // SC 左下角非侵入式悬浮卡片（不遮挡中央视频画面，仅响应实时新 SC，带倒计时与独立关闭）
-    if (portraitPresentation.showMediaOverlays) {
+    // 跟随弹幕开关显示，并可在弹幕设置中独立关闭
+    if (shouldShowLiveSuperChatFlash(
+            showMediaOverlays = portraitPresentation.showMediaOverlays,
+            isDanmakuEnabled = successState?.isDanmakuEnabled == true,
+            flashEnabled = liveSuperChatFlashEnabled
+        )
+    ) {
         LiveSuperChatFlashOverlay(
             flashFlow = viewModel.superChatFlashFlow,
             onUserClick = onUserClick,
@@ -1484,6 +1493,7 @@ fun LivePlayerScreen(
             allowTop = liveDanmakuSettings.allowTop,
             allowBottom = liveDanmakuSettings.allowBottom,
             allowColorful = liveDanmakuSettings.allowColorful,
+            superChatFlashEnabled = liveSuperChatFlashEnabled,
             onToggleDanmaku = { viewModel.toggleDanmaku() },
             onToggleChat = {
                 if (portraitPresentation.usePortraitControls) isPortraitChatVisible = !isPortraitChatVisible
@@ -1542,6 +1552,14 @@ fun LivePlayerScreen(
                         context,
                         !liveDanmakuSettings.allowColorful,
                         liveDanmakuSettingsScope
+                    )
+                }
+            },
+            onToggleSuperChatFlash = {
+                coroutineScope.launch {
+                    SettingsManager.setLiveSuperChatFlashEnabled(
+                        context,
+                        !liveSuperChatFlashEnabled
                     )
                 }
             },
@@ -2215,6 +2233,7 @@ private fun LiveDanmakuSettingsDialog(
     allowTop: Boolean,
     allowBottom: Boolean,
     allowColorful: Boolean,
+    superChatFlashEnabled: Boolean,
     onToggleDanmaku: () -> Unit,
     onToggleChat: () -> Unit,
     onDisplayAreaSelected: (Float) -> Unit,
@@ -2225,6 +2244,7 @@ private fun LiveDanmakuSettingsDialog(
     onToggleAllowTop: () -> Unit,
     onToggleAllowBottom: () -> Unit,
     onToggleAllowColorful: () -> Unit,
+    onToggleSuperChatFlash: () -> Unit,
     onOpenBlock: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -2293,6 +2313,11 @@ private fun LiveDanmakuSettingsDialog(
                     title = "彩色弹幕",
                     checked = allowColorful,
                     onCheckedChange = { onToggleAllowColorful() }
+                )
+                LiveSettingSwitchRow(
+                    title = "醒目留言弹窗",
+                    checked = superChatFlashEnabled,
+                    onCheckedChange = { onToggleSuperChatFlash() }
                 )
                 AppSurface(
                     onClick = onOpenBlock,
