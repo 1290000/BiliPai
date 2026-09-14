@@ -116,6 +116,29 @@ fun resolveReadableNativeTabMinWidth(
     return maxOf(requestedMinWidth, boundedEstimatedWidthDp.dp)
 }
 
+enum class MiuixNonGlassTabItemWidthMode {
+    CONTENT,
+    EQUAL_TO_LONGEST_LABEL,
+}
+
+internal fun shouldEqualizeMiuixNonGlassTabItems(
+    widthMode: MiuixNonGlassTabItemWidthMode,
+    isMiuixNonGlass: Boolean,
+    optionCount: Int,
+): Boolean = widthMode == MiuixNonGlassTabItemWidthMode.EQUAL_TO_LONGEST_LABEL &&
+    isMiuixNonGlass &&
+    optionCount > 1
+
+internal fun resolveEqualMiuixNonGlassTabItemWidth(
+    longestLabelWidth: Dp,
+    minTabWidth: Dp,
+    horizontalContentPadding: Dp = AppSpacingTokens.Small,
+): Dp = maxOf(
+    AppChromeSizeTokens.MinimumTouchTarget,
+    minTabWidth,
+    longestLabelWidth + horizontalContentPadding * 2,
+)
+
 fun resolveAppLiquidSegmentedControlSpec(
     itemCount: Int,
     hasExternalBackdrop: Boolean,
@@ -261,6 +284,8 @@ fun <T> AppNativeTabRow(
     allowLabelOverflow: Boolean = false,
     forceMaterial3: Boolean = false,
     indicatorPositionProvider: (() -> Float)? = null,
+    miuixNonGlassItemWidthMode: MiuixNonGlassTabItemWidthMode =
+        MiuixNonGlassTabItemWidthMode.CONTENT,
     onSelectionChange: (T) -> Unit,
 ) {
     if (options.isEmpty()) return
@@ -269,8 +294,14 @@ fun <T> AppNativeTabRow(
         labels = options.map { it.label },
         allowLabelOverflow = allowLabelOverflow,
     )
+    val equalizeMiuixNonGlassItems = shouldEqualizeMiuixNonGlassTabItems(
+        widthMode = miuixNonGlassItemWidthMode,
+        isMiuixNonGlass = com.android.purebilibili.core.ui.isMiuixNonGlassEnabled(),
+        optionCount = options.size,
+    )
     val effectiveScrollable = !forceEqualWidth &&
-        (scrollable || options.size > 3 || (readableMinTabWidth > minTabWidth && (!compactMiuixWhenTwoOptions || options.size > 2)))
+        (equalizeMiuixNonGlassItems || scrollable || options.size > 3 ||
+            (readableMinTabWidth > minTabWidth && (!compactMiuixWhenTwoOptions || options.size > 2)))
     val viewportBoundedModifier = modifier.widthIn(
         max = LocalConfiguration.current.screenWidthDp.dp,
     )
@@ -320,6 +351,7 @@ fun <T> AppNativeTabRow(
                 viewportBoundedModifier
             },
             indicatorPositionProvider = indicatorPositionProvider,
+            equalizeScrollableItemWidths = equalizeMiuixNonGlassItems,
             onSelectionChange = onSelectionChange,
         )
     }

@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.video.screen
 
-import com.android.purebilibili.core.theme.AppUiStyle
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,35 +15,16 @@ class TabletVideoLayoutPolicyTest {
     }
 
     @Test
-    fun miuixNonGlassSecondaryTabsKeepEqualItemWidths() {
-        assertTrue(
-            shouldUseFixedTabletSecondaryTabItemWidth(
-                tabCount = 5,
-                uiStyle = AppUiStyle.MIUIX,
-                liquidGlassEnabled = false,
-            )
-        )
-        assertFalse(
-            shouldUseFixedTabletSecondaryTabItemWidth(
-                tabCount = 5,
-                uiStyle = AppUiStyle.MIUIX,
-                liquidGlassEnabled = true,
-            )
-        )
-        assertFalse(
-            shouldUseFixedTabletSecondaryTabItemWidth(
-                tabCount = 5,
-                uiStyle = AppUiStyle.MATERIAL3,
-                liquidGlassEnabled = false,
-            )
-        )
-        assertTrue(
-            shouldUseFixedTabletSecondaryTabItemWidth(
-                tabCount = 2,
-                uiStyle = AppUiStyle.MATERIAL3,
-                liquidGlassEnabled = false,
-            )
-        )
+    fun tabletSecondaryTabsOptIntoMiuixNonGlassEqualLabelWidths() {
+        val source = File(
+            "src/main/java/com/android/purebilibili/feature/video/screen/TabletVideoLayout.kt"
+        ).readText()
+        val tabRow = source
+            .substringAfter("internal fun TabletSecondaryLiquidTabRow(")
+            .substringBefore("/**\n * 🖥️ 平板端视频详情页布局")
+
+        assertTrue(tabRow.contains("equalizeMiuixNonGlassItemWidths = true"))
+        assertFalse(tabRow.contains("108.dp"))
     }
 
     @Test

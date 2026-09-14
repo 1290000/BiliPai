@@ -61,7 +61,6 @@ import com.android.purebilibili.feature.video.ui.section.resolveNavigationLiveSu
 import com.android.purebilibili.core.store.DanmakuSettings
 import com.android.purebilibili.core.store.DanmakuSettingsScope
 import com.android.purebilibili.core.store.SettingsManager
-import com.android.purebilibili.core.theme.LocalAppUiStyle
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.feature.video.danmaku.rememberDanmakuManager
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
@@ -187,21 +186,16 @@ internal fun TabletSecondaryLiquidTabRow(
     modifier: Modifier = Modifier,
 ) {
     val liquidGlassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled
-    val useFixedItemWidth = shouldUseFixedTabletSecondaryTabItemWidth(
-        tabCount = labels.size,
-        uiStyle = LocalAppUiStyle.current,
-        liquidGlassEnabled = liquidGlassEnabled,
-    )
     BottomBarLiquidSegmentedControl(
         items = labels,
         selectedIndex = selectedIndex,
         onSelected = onSelected,
         modifier = modifier,
-        itemWidth = if (useFixedItemWidth) 108.dp else null,
         height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
         indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
         labelFontSize = 15.sp,
         liquidGlassEffectsEnabled = liquidGlassEnabled,
+        equalizeMiuixNonGlassItemWidths = true,
         dragSelectionEnabled = true,
         tapPressRefractionEnabled = true,
         indicatorPositionProvider = indicatorPositionProvider,
