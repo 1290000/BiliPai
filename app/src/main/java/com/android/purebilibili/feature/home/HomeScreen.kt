@@ -161,7 +161,7 @@ import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackJankStateValue
-import com.android.purebilibili.core.util.resolveScrollToTopPlan
+import com.android.purebilibili.core.util.animateScrollToTop
 import coil3.imageLoader
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
@@ -474,14 +474,7 @@ fun HomeScreen(
 
                         if (!isAtTop) {
                             val listState = requireNotNull(gridState)
-                            val currentIndex = listState.firstVisibleItemIndex
-                            val plan = resolveScrollToTopPlan(currentIndex)
-                            plan.preJumpIndex?.let { preJump ->
-                                if (currentIndex > preJump) {
-                                    listState.scrollToItem(preJump)
-                                }
-                            }
-                            listState.animateScrollToItem(plan.animateTargetIndex)
+                            listState.animateScrollToTop()
                         }
                         val shouldRefresh = request == HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH ||
                             (request == HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH && isAtTop)
@@ -1295,14 +1288,7 @@ fun HomeScreen(
                             viewModel.refresh()
                         } else {
                             val listState = requireNotNull(gridState)
-                            val currentIndex = listState.firstVisibleItemIndex
-                            val plan = resolveScrollToTopPlan(currentIndex)
-                            plan.preJumpIndex?.let { preJump ->
-                                if (currentIndex > preJump) {
-                                    listState.scrollToItem(preJump)
-                                }
-                            }
-                            listState.animateScrollToItem(plan.animateTargetIndex)
+                            listState.animateScrollToTop()
                         }
                     }
                 }
@@ -2401,7 +2387,7 @@ fun HomeScreen(
             },
             onStatusBarDoubleTap = {
                 coroutineScope.launch {
-                    activeGridState?.animateScrollToItem(0)
+                    activeGridState?.animateScrollToTop()
                     revealHomeHeaderNow()
                     globalScrollOffset.floatValue = 0f
                 }
