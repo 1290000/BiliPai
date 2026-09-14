@@ -1450,6 +1450,11 @@ fun AppNavigation(
         val audioPlaylist by PlaylistManager.playlist.collectAsStateWithLifecycle()
         val audioPlaylistIndex by PlaylistManager.currentIndex.collectAsStateWithLifecycle()
         val audioNowPlayingItem = audioPlaylist.getOrNull(audioPlaylistIndex)
+        // The bar itself is removed on player destinations. Own its frozen GraphicsLayers here so
+        // they survive that removal and remain drawable by the returning VideoDetail entry.
+        val audioNowPlayingMorphSnapshotController =
+            com.android.purebilibili.core.ui.transition
+                .rememberNativeVideoCardSnapshotController(audioNowPlayingItem?.bvid.orEmpty())
         var audioNowPlayingBarBounds by remember {
             mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
         }
@@ -4021,6 +4026,7 @@ fun AppNavigation(
                                             isPlaying = playbackManager.isPlaying,
                                             playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                                         ),
+                                        nativeSnapshotController = audioNowPlayingMorphSnapshotController,
                                         onExpand = {
                                             if (audioNowPlayingBarOpensAudioMode) {
                                                 pushNavigation3Route(
@@ -4190,6 +4196,7 @@ fun AppNavigation(
                         isPlaying = playbackManager.isPlaying,
                         playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                     ),
+                    nativeSnapshotController = audioNowPlayingMorphSnapshotController,
                     onExpand = {
                         if (audioNowPlayingBarOpensAudioMode) {
                             pushNavigation3Route(
