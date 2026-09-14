@@ -1712,7 +1712,7 @@ object SettingsManager {
             homeFeedCardStyle = HomeFeedCardStyle.fromValue(
                 preferences[KEY_HOME_FEED_CARD_STYLE] ?: HomeFeedCardStyle.BILIPAI.value
             ),
-            homeHeroCarouselEnabled = preferences[KEY_HOME_HERO_CAROUSEL_ENABLED] ?: true,
+            homeHeroCarouselEnabled = preferences[KEY_HOME_HERO_CAROUSEL_ENABLED] ?: false,
             homeHeroCarouselAutoplayEnabled =
                 preferences[KEY_HOME_HERO_CAROUSEL_AUTOPLAY_ENABLED] ?: false,
             cardAnimationEnabled = preferences[KEY_CARD_ANIMATION_ENABLED] ?: false,
@@ -2983,7 +2983,7 @@ object SettingsManager {
 
     fun getHomeHeroCarouselEnabled(context: Context): Flow<Boolean> =
         context.settingsDataStore.data.map { preferences ->
-            preferences[KEY_HOME_HERO_CAROUSEL_ENABLED] ?: true
+            preferences[KEY_HOME_HERO_CAROUSEL_ENABLED] ?: false
         }
 
     suspend fun setHomeHeroCarouselEnabled(context: Context, value: Boolean) {
