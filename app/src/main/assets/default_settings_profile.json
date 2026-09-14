@@ -52,7 +52,7 @@
       "ui_entrance_animation_enabled": false,
       "card_transition_enabled": true,
       "live_surface_card_transition_enabled": true,
-      "video_transition_realtime_blur_enabled": true,
+      "video_transition_realtime_blur_enabled": false,
       "miuix_transition_blur_enabled": false,
       "miuix_predictive_back_max_progress_percent": 100,
       "video_shared_return_gesture_follow_enabled": false,
