@@ -67,6 +67,7 @@ import com.android.purebilibili.navigation3.predictiveback.BiliPaiPredictiveBack
 import com.android.purebilibili.navigation3.predictiveback.MIUIX_PREDICTIVE_BACK_DEFAULT_MAX_PROGRESS_PERCENT
 import com.android.purebilibili.navigation3.predictiveback.biliPaiMiuixNavTransition
 import com.android.purebilibili.navigation3.predictiveback.miuixVideoCardNavTransition
+import com.android.purebilibili.navigation3.predictiveback.AudioNowPlayingNavTransition
 import com.android.purebilibili.navigation3.predictiveback.MiuixVideoCardContentScale
 import com.android.purebilibili.navigation3.predictiveback.resolveMiuixVideoCardContentScaleForSourceLayout
 import com.android.purebilibili.navigation3.predictiveback.MiuixVideoCardTransitionProgress
@@ -152,7 +153,11 @@ internal fun BiliPaiNavDisplayHost(
         hasUsableSourceBounds = sourceMetadata.sourceBounds
             ?.let { it.width > 1f && it.height > 1f } == true,
     )
-    val cardMorphAvailable = cardMorphMode != BiliPaiVideoCardMorphMode.NONE
+    val isAudioNowPlayingVideoEntry =
+        (currentKey as? BiliPaiNavKey.VideoDetail)?.entrySource ==
+            VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR
+    val cardMorphAvailable = cardMorphMode != BiliPaiVideoCardMorphMode.NONE &&
+        !isAudioNowPlayingVideoEntry
     var relatedReturnRestorePending by remember { mutableStateOf(false) }
     var relatedReturnTransitionObserved by remember { mutableStateOf(false) }
     val style = if (reduceMotion) {
@@ -652,6 +657,8 @@ internal fun BiliPaiNavDisplayHost(
                 predictiveBackExcludedTransition = predictiveBackExcludedTransition,
                 videoCardTransition = videoCardTransition,
                 fullscreenVideoCardTransition = fullscreenVideoCardTransition,
+                audioNowPlayingTransition = AudioNowPlayingNavTransition,
+                useAudioNowPlayingTransition = isAudioNowPlayingVideoEntry,
             ) { key ->
                 // Freeze this per entry so popping the key cannot remove its backing during exit.
                 val opaqueVideoChild = remember(key) {

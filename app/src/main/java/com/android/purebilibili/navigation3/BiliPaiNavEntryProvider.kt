@@ -10,6 +10,8 @@ internal fun NavEntryBuilder.biliPaiNavEntries(
     predictiveBackExcludedTransition: NavTransition,
     videoCardTransition: NavTransition,
     fullscreenVideoCardTransition: NavTransition,
+    audioNowPlayingTransition: NavTransition,
+    useAudioNowPlayingTransition: Boolean,
     content: @Composable (BiliPaiNavKey) -> Unit,
 ) {
     entry<BiliPaiNavKey.MainHost>(swipeDismiss = NavSwipeDirection.None, content = content)
@@ -109,7 +111,11 @@ internal fun NavEntryBuilder.biliPaiNavEntries(
         content = content,
     )
     entry<BiliPaiNavKey.VideoDetail>(
-        transition = videoCardTransition,
+        transition = if (useAudioNowPlayingTransition) {
+            audioNowPlayingTransition
+        } else {
+            videoCardTransition
+        },
         swipeDismiss = NavSwipeDirection.None,
         content = content,
     )
