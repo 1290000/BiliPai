@@ -137,11 +137,14 @@ internal fun BiliPaiNavDisplayHost(
     val stackSnapshot = backStack.toList()
     val currentKey = stackSnapshot.lastOrNull()
     var audioNowPlayingReturnActive by remember { mutableStateOf(false) }
+    var audioNowPlayingTransitionBvid by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(currentKey) {
         when (val key = currentKey) {
             is BiliPaiNavKey.VideoDetail -> {
-                audioNowPlayingReturnActive =
+                val enteredFromAudioNowPlaying =
                     key.entrySource == VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR
+                audioNowPlayingReturnActive = enteredFromAudioNowPlaying
+                audioNowPlayingTransitionBvid = key.bvid.takeIf { enteredFromAudioNowPlaying }
             }
             else -> Unit
         }
@@ -151,11 +154,15 @@ internal fun BiliPaiNavDisplayHost(
             videoCardClock.phase == VideoCardTransitionBackgroundPhase.IDLE
         ) {
             audioNowPlayingReturnActive = false
+            audioNowPlayingTransitionBvid = null
+            CardPositionManager.clearNativeVideoCardLayers()
         }
     }
-    val isAudioNowPlayingVideoEntry =
-        (currentKey as? BiliPaiNavKey.VideoDetail)?.entrySource ==
-            VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR || audioNowPlayingReturnActive
+    val currentAudioNowPlayingVideo = (currentKey as? BiliPaiNavKey.VideoDetail)
+        ?.takeIf { it.entrySource == VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR }
+    val isAudioNowPlayingVideoEntry = currentAudioNowPlayingVideo != null || audioNowPlayingReturnActive
+    val audioNowPlayingTransitionSourceBvid =
+        currentAudioNowPlayingVideo?.bvid ?: audioNowPlayingTransitionBvid
     val transitionSourceBounds = if (isAudioNowPlayingVideoEntry) {
         audioNowPlayingBounds
     } else {
@@ -172,11 +179,15 @@ internal fun BiliPaiNavDisplayHost(
         sourceMetadata.sourceRoute
     }
     val transitionSourceKey = if (isAudioNowPlayingVideoEntry) {
-        "audio_now_playing:${(currentKey as? BiliPaiNavKey.VideoDetail)?.bvid.orEmpty()}"
+        audioNowPlayingTransitionSourceBvid?.let { "audio_now_playing:$it" }
     } else {
         sourceMetadata.sourceKey
     }
-    val transitionSourceCornerDp = if (isAudioNowPlayingVideoEntry) 16 else sourceMetadata.sourceCornerDp
+    val transitionSourceCornerDp = if (isAudioNowPlayingVideoEntry) {
+        sourceMetadata.sourceCornerDp ?: 28
+    } else {
+        sourceMetadata.sourceCornerDp
+    }
     // Resolve geometry once in host-local px. Never independently retime individual layers.
     val heroMotion = remember(transitionSourceBounds, hostBounds, density,
         videoSharedTransitionDurationMillis, reduceMotion) {
@@ -387,7 +398,13 @@ internal fun BiliPaiNavDisplayHost(
             }
         }
     }
-    LaunchedEffect(cardMorphAvailable, videoCardTransitionProgress, heroMotion, transitionSourceKey) {
+    LaunchedEffect(
+        cardMorphAvailable,
+        videoCardTransitionProgress,
+        heroMotion,
+        transitionSourceKey,
+        isAudioNowPlayingVideoEntry,
+    ) {
         if (!cardMorphAvailable) return@LaunchedEffect
         // Coarse states only: no frame-rate composition reads or competing fallback jobs.
         snapshotFlow { videoCardTransitionProgress.settleStateOrNull() }.collect { state ->
@@ -397,7 +414,9 @@ internal fun BiliPaiNavDisplayHost(
                     // LiveNavTransitionScope reads the shared navigation presentation even after
                     // its video entry leaves. Release it before another route reuses that driver.
                     videoCardTransitionProgress.clear()
-                    CardPositionManager.clearNativeVideoCardLayers()
+                    if (!isAudioNowPlayingVideoEntry) {
+                        CardPositionManager.clearNativeVideoCardLayers()
+                    }
                 }
                 VideoCardTransitionDiagnostics.onMotionPhase(
                     state, heroMotion, sourceMetadata.sourceLayout, diagnosticConfiguration,

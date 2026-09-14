@@ -29,8 +29,12 @@ import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
+import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
+import com.android.purebilibili.core.ui.transition.rememberNativeVideoCardSnapshotController
+import com.android.purebilibili.core.util.CardPositionManager
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +45,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +61,7 @@ import kotlin.math.abs
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
 
 internal data class AudioNowPlayingBarState(
+    val bvid: String,
     val title: String,
     val artist: String,
     val artistAvatarUrl: String = "",
@@ -78,6 +85,7 @@ internal fun AudioNowPlayingBar(
     liftAboveBottomBar: Boolean = true,
     consumeNavigationBarsPadding: Boolean = true,
     dockHosted: Boolean = false,
+    videoDetailMorphEnabled: Boolean = false,
     onBoundsChanged: (Rect) -> Unit = {},
     dockMergeProgress: Float = 0f,
     iconOnlyProgress: Float = 0f,
@@ -96,6 +104,10 @@ internal fun AudioNowPlayingBar(
     val containerColor = AppSurfaceTokens.surfaceContainer()
     val glassActive = glassEnabled && miuixBackdrop != null
     val reduceMotion = rememberSystemReduceMotion()
+    val density = LocalDensity.current
+    val rootView = LocalView.current
+    val barBounds = remember { object { var value: Rect? = null } }
+    val nativeBarSnapshot = rememberNativeVideoCardSnapshotController(state.bvid)
     val coverRotationDegrees = rememberMusicArtworkRotationDegrees(
         active = shouldRotateMusicArtwork(
             isPlaying = state.isPlaying,
@@ -107,7 +119,6 @@ internal fun AudioNowPlayingBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .onGloballyPositioned { onBoundsChanged(it.boundsInRoot()) }
             .then(if (consumeNavigationBarsPadding) Modifier.navigationBarsPadding() else Modifier)
             .padding(
                 start = if (dockHosted) 0.dp else chrome.horizontalPaddingDp.dp,
@@ -120,8 +131,36 @@ internal fun AudioNowPlayingBar(
                 }
             )
             .clip(shape)
+            .onGloballyPositioned { coordinates ->
+                coordinates.boundsInRoot().let { bounds ->
+                    barBounds.value = bounds
+                    onBoundsChanged(bounds)
+                }
+            }
+            .then(if (videoDetailMorphEnabled) nativeBarSnapshot.modifier else Modifier)
+            .then(if (videoDetailMorphEnabled) nativeBarSnapshot.coverOverlayModifier else Modifier)
             .semantics { contentDescription = "当前视频：${state.title}，打开$expandDestinationLabel" }
-            .clickable(onClick = onExpand)
+            .clickable {
+                if (videoDetailMorphEnabled) {
+                    barBounds.value?.let { bounds ->
+                        CardPositionManager.recordVideoCardPosition(
+                            bvid = state.bvid,
+                            sourceRoute = "audio_now_playing",
+                            bounds = bounds,
+                            screenWidth = rootView.width.toFloat().coerceAtLeast(1f),
+                            screenHeight = rootView.height.toFloat().coerceAtLeast(1f),
+                            isSingleColumn = true,
+                            density = density.density,
+                            bottomBarHeightDp = 0f,
+                            sourceCornerDp = if (dockHosted) 28 else 32,
+                            coverBounds = bounds,
+                            sourceLayout = VideoCardSourceLayout.COVER_ONLY,
+                        )
+                        nativeBarSnapshot.capture()
+                    }
+                }
+                onExpand()
+            }
             .audioNowPlayingSkipGesture(
                 onSkipNext = onSkipNext,
                 onSkipPrevious = onSkipPrevious
