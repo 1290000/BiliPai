@@ -42,6 +42,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.runtime.mutableFloatStateOf
@@ -243,6 +244,7 @@ import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 import com.android.purebilibili.core.ui.blur.shouldAllowRuntimeShaderBackedHazeEffect
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.util.CardPositionManager
+import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import coil3.compose.AsyncImage
@@ -4274,6 +4276,17 @@ internal fun VideoDetailScreenStateHolder(
                                 sourceLayout = miuixLandingState.sourceLayout,
                             ).takeIf { it.canRender }
                         }
+                        // The now-playing bar is a COVER_ONLY source, but its frozen bitmap still
+                        // has a real target rect. Keep that rect in the media handoff instead of
+                        // letting the generic COVER_ONLY branch pin the detail-sized shell.
+                        val nativeSnapshotTargetBoundsProvider: (() -> Rect?)? =
+                            if (CardPositionManager.lastClickedNativeCardBitmap != null &&
+                                miuixLandingState.sourceLayout == VideoCardSourceLayout.COVER_ONLY
+                            ) {
+                                { miuixLandingState.sourceBoundsProvider() }
+                            } else {
+                                null
+                            }
                         // Only the source-card endpoint is rounded; the detail player fills its viewport.
                         val returnMediaClipCornerDp = AppShapes.mediaCoverCornerDp()
                         val returnMediaInverseScaleProvider: () ->
@@ -4306,18 +4319,25 @@ internal fun VideoDetailScreenStateHolder(
                             if (!entryOwnsMiuixCardTransition) {
                                 0f
                             } else {
-                                com.android.purebilibili.core.ui.transition
-                                    .resolveVideoDetailReturnMediaLayoutHandoffProgress(
-                                        morphDepthProgress = miuixLandingState.progressProvider(),
-                                        phase = videoCardDepthBackgroundState.phaseProvider(),
-                                        isReturnGestureInProgress =
-                                            videoCardDepthBackgroundState
-                                                .isReturnGestureInProgressProvider() ||
+                                if (nativeSnapshotTargetBoundsProvider != null) {
+                                    com.android.purebilibili.core.ui.transition
+                                        .resolveVideoCardReturnSettleFromMorphDepth(
+                                            miuixLandingState.progressProvider(),
+                                        )
+                                } else {
+                                    com.android.purebilibili.core.ui.transition
+                                        .resolveVideoDetailReturnMediaLayoutHandoffProgress(
+                                            morphDepthProgress = miuixLandingState.progressProvider(),
+                                            phase = videoCardDepthBackgroundState.phaseProvider(),
+                                            isReturnGestureInProgress =
                                                 videoCardDepthBackgroundState
-                                                    .isGestureRestoreInProgressProvider(),
-                                        sourceLayout = landingLayoutForMedia?.layout
-                                            ?: miuixLandingState.sourceLayout,
-                                    )
+                                                    .isReturnGestureInProgressProvider() ||
+                                                    videoCardDepthBackgroundState
+                                                        .isGestureRestoreInProgressProvider(),
+                                            sourceLayout = landingLayoutForMedia?.layout
+                                                ?: miuixLandingState.sourceLayout,
+                                        )
+                                }
                             }
                         }
                         val returnMediaFrameProvider: () -> VideoDetailReturnMediaFrame = {
@@ -4574,6 +4594,8 @@ internal fun VideoDetailScreenStateHolder(
                                             inverseScaleYProvider = {
                                                 returnMediaInverseScaleProvider().scaleY
                                             },
+                                            nativeSnapshotBoundsProvider =
+                                                nativeSnapshotTargetBoundsProvider,
                                         )
                                         .zIndex(1.5f)
                                         .graphicsLayer {

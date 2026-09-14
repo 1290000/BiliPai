@@ -482,7 +482,15 @@ internal fun VideoDetailReturnCoverChrome(
                     scaleY = inverseScaleYProvider(),
                     pivot = Offset.Zero,
                 ) {
-                    drawImage(nativeBarBitmap)
+                    val bitmapScaleX = size.width / nativeBarBitmap.width.toFloat()
+                    val bitmapScaleY = size.height / nativeBarBitmap.height.toFloat()
+                    scale(
+                        scaleX = bitmapScaleX,
+                        scaleY = bitmapScaleY,
+                        pivot = Offset.Zero,
+                    ) {
+                        drawImage(nativeBarBitmap)
+                    }
                 }
             },
         )
