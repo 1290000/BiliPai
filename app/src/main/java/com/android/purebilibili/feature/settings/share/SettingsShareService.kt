@@ -21,6 +21,7 @@ internal const val LIQUID_GLASS_SETTINGS_SHARE_PROFILE_NAME = "BiliPai 液态玻
 private const val DEFAULT_PROFILE_ASSET = "default_settings_profile.json"
 private const val DEFAULT_PROFILE_PREFS = "settings_profile_defaults"
 private const val DEFAULT_PROFILE_APPLIED_KEY = "bundled_default_applied_v1"
+private val PRIVATE_DEFAULT_PROFILE_KEYS = setOf("home_wallpaper_uri")
 
 interface SettingsShareServiceContract {
     suspend fun exportToUri(
@@ -72,7 +73,8 @@ class SettingsShareService(private val context: Context) : SettingsShareServiceC
             }
             SettingsManager.applyShareableSettingsSnapshot(
                 context = context,
-                settings = flattenSettingsShareSections(profile.sections),
+                settings = flattenSettingsShareSections(profile.sections)
+                    .filterKeys { it !in PRIVATE_DEFAULT_PROFILE_KEYS },
             )
             SettingsManager.markHomeVisualDefaultsCurrent(context)
             marker.edit().putBoolean(DEFAULT_PROFILE_APPLIED_KEY, true).apply()
