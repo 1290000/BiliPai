@@ -1450,9 +1450,6 @@ fun AppNavigation(
         val audioPlaylist by PlaylistManager.playlist.collectAsStateWithLifecycle()
         val audioPlaylistIndex by PlaylistManager.currentIndex.collectAsStateWithLifecycle()
         val audioNowPlayingItem = audioPlaylist.getOrNull(audioPlaylistIndex)
-        var audioNowPlayingBarBounds by remember {
-            mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
-        }
         // Shared scroll position is also used by non-home destinations to drive the
         // linked playback dock without forcing the bottom bar itself to disappear.
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -3887,17 +3884,11 @@ fun AppNavigation(
                 BiliPaiNavDisplayHost(
                     backStack = navigation3BackStack,
                     cardTransitionEnabled =
-                        if ((navigation3BackStack.lastOrNull() as? BiliPaiNavKey.VideoDetail)
-                                ?.entrySource == VideoDetailEntrySource.AUDIO_NOW_PLAYING_BAR
-                        ) {
-                            sharedVideoCardTransitionEnabled
-                        } else {
-                            com.android.purebilibili.navigation3.resolveVideoCardTransitionEnabledForSource(
-                                cardTransitionEnabled = sharedVideoCardTransitionEnabled,
-                                relatedVideoTransitionEnabled = relatedVideoTransitionEnabled,
-                                sourceRoute = navigation3SourceMetadata.sourceRoute,
-                            )
-                        },
+                        com.android.purebilibili.navigation3.resolveVideoCardTransitionEnabledForSource(
+                            cardTransitionEnabled = sharedVideoCardTransitionEnabled,
+                            relatedVideoTransitionEnabled = relatedVideoTransitionEnabled,
+                            sourceRoute = navigation3SourceMetadata.sourceRoute,
+                        ),
                     videoTransitionRealtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
                     isLightBackground = isLightBackground,
                     reduceMotion = systemReduceMotion,
@@ -3913,9 +3904,6 @@ fun AppNavigation(
                     videoSharedReturnGestureFollowEnabled =
                         appNavigationSettings.videoSharedReturnGestureFollowEnabled,
                     sourceMetadata = navigation3SourceMetadata,
-                    audioNowPlayingBounds = audioNowPlayingBarBounds?.translate(
-                        -navigationHostOriginInRoot
-                    ),
                     programmaticBackDispatcher = navigation3ProgrammaticBackDispatcher,
                     // List cover waits for the live handoff window; list info is native throughout return.
                     preferWholeCardReturn = false,
@@ -4066,7 +4054,6 @@ fun AppNavigation(
                                         liftAboveBottomBar = false,
                                         consumeNavigationBarsPadding = false,
                                         dockHosted = isBottomBarFloating,
-                                        onBoundsChanged = { audioNowPlayingBarBounds = it },
                                         dockMergeProgress = dockMergeProgress,
                                         surfaceMergeProgress = surfaceMergeProgress,
                                         iconOnlyProgress = iconOnlyProgress,
@@ -4232,7 +4219,6 @@ fun AppNavigation(
                     liquidGlassTuning = liquidGlassRenderConfig.tuning,
                     liftAboveBottomBar = false,
                     consumeNavigationBarsPadding = true,
-                    onBoundsChanged = { audioNowPlayingBarBounds = it },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .zIndex(2f)

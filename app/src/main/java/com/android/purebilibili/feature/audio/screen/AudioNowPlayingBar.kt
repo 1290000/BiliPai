@@ -38,9 +38,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -78,7 +75,6 @@ internal fun AudioNowPlayingBar(
     liftAboveBottomBar: Boolean = true,
     consumeNavigationBarsPadding: Boolean = true,
     dockHosted: Boolean = false,
-    onBoundsChanged: (Rect) -> Unit = {},
     dockMergeProgress: Float = 0f,
     iconOnlyProgress: Float = 0f,
     surfaceMergeProgress: Float = dockMergeProgress,
@@ -107,7 +103,6 @@ internal fun AudioNowPlayingBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .onGloballyPositioned { onBoundsChanged(it.boundsInRoot()) }
             .then(if (consumeNavigationBarsPadding) Modifier.navigationBarsPadding() else Modifier)
             .padding(
                 start = if (dockHosted) 0.dp else chrome.horizontalPaddingDp.dp,
