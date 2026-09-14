@@ -318,9 +318,8 @@ fun ProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val headerBlurEnabled by SettingsManager
-        .getHeaderBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = true)
+    val headerBlurEnabled =
+        com.android.purebilibili.core.ui.LocalAppThemeConfig.current.headerBlurEnabled
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val activeAccountMid by viewModel.activeAccountMid.collectAsStateWithLifecycle()
     val playbackAccountMid by viewModel.playbackAccountMid.collectAsStateWithLifecycle()
@@ -3712,14 +3711,9 @@ private fun ProfileWallpaperActionCard(
             columnCount = columnCount
         )
     }
-    val headerBlurEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getHeaderBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = true
-        )
-    val bottomBarBlurEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getBottomBarBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = false
-        )
+    val appThemeConfig = com.android.purebilibili.core.ui.LocalAppThemeConfig.current
+    val headerBlurEnabled = appThemeConfig.headerBlurEnabled
+    val bottomBarBlurEnabled = appThemeConfig.bottomBarBlurEnabled
     val blurEnabled = remember(headerBlurEnabled, bottomBarBlurEnabled) {
         resolveProfileWallpaperActionBlurEnabled(
             headerBlurEnabled = headerBlurEnabled,

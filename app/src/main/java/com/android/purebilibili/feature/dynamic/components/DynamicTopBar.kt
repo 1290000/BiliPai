@@ -141,12 +141,9 @@ fun DynamicTopBarWithTabs(
     }
     val dockColor = AppSurfaceTokens.surfaceContainerHigh()
 
-    val headerBlurEnabled by SettingsManager
-        .getHeaderBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = false)
-    val progressiveTopBlurEnabled by SettingsManager
-        .getProgressiveTopBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = true)
+    val appThemeConfig = com.android.purebilibili.core.ui.LocalAppThemeConfig.current
+    val headerBlurEnabled = appThemeConfig.headerBlurEnabled
+    val progressiveTopBlurEnabled = appThemeConfig.progressiveTopBlurEnabled
     val isProgressiveBlurActive = progressiveTopBlurEnabled
 
     BiliPaiImmersiveTopBar(

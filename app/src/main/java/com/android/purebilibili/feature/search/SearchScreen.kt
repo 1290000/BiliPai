@@ -751,14 +751,14 @@ fun SearchScreen(
         .collectAsStateWithLifecycle(initialValue = false)
     val hotSearchEnabled by SettingsManager.getSearchHotSectionEnabled(context).collectAsStateWithLifecycle(initialValue = true)
     val discoverSectionEnabled by SettingsManager.getSearchDiscoverSectionEnabled(context).collectAsStateWithLifecycle(initialValue = true)
-    val androidNativeLiquidGlassEnabled =
-        com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
+    val appThemeConfig = com.android.purebilibili.core.ui.LocalAppThemeConfig.current
+    val androidNativeLiquidGlassEnabled = appThemeConfig.liquidGlassEnabled
     val effectiveLiquidGlassEnabled = rememberAppChromeLiquidGlassEnabled(
         androidNativeEnabled = androidNativeLiquidGlassEnabled,
     )
-    val headerBlurEnabled by SettingsManager.getHeaderBlurEnabled(context).collectAsStateWithLifecycle(initialValue = false)
-    val progressiveTopBlurEnabled by SettingsManager.getProgressiveTopBlurEnabled(context).collectAsStateWithLifecycle(initialValue = true)
-    val bottomBarBlurEnabled by SettingsManager.getBottomBarBlurEnabled(context).collectAsStateWithLifecycle(initialValue = false)
+    val headerBlurEnabled = appThemeConfig.headerBlurEnabled
+    val progressiveTopBlurEnabled = appThemeConfig.progressiveTopBlurEnabled
+    val bottomBarBlurEnabled = appThemeConfig.bottomBarBlurEnabled
     val cardMotionTier = resolveEffectiveMotionTier(
         baseTier = deviceUiProfile.motionTier,
         animationEnabled = cardAnimationEnabled

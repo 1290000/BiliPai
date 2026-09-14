@@ -1,5 +1,6 @@
 // 文件路径: feature/partition/PartitionScreen.kt
 package com.android.purebilibili.feature.partition
+
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.theme.LocalAppUiStyle
@@ -419,10 +420,8 @@ fun PartitionScreen(
     onVideoClick: (String, Long, String) -> Unit = { _, _, _ -> },
     onBangumiClick: (Int) -> Unit = {}
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val headerBlurEnabled by com.android.purebilibili.core.store.SettingsManager
-        .getHeaderBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = false)
+    val headerBlurEnabled =
+        com.android.purebilibili.core.ui.LocalAppThemeConfig.current.headerBlurEnabled
     val hazeState = if (headerBlurEnabled) com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState() else null
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 

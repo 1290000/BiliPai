@@ -814,9 +814,8 @@ fun CommonListScreen(
             homeSettings = homeSettings,
         )
     }
-    val isProgressiveTopBlurEnabled by SettingsManager
-        .getProgressiveTopBlurEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = true)
+    val isProgressiveTopBlurEnabled =
+        com.android.purebilibili.core.ui.LocalAppThemeConfig.current.progressiveTopBlurEnabled
     // 实色列表不创建背景采样；玻璃和普通顶栏模糊分别按需保留各自 source。
     val localHazeState = if (isHeaderBlurEnabled && !isProgressiveTopBlurEnabled) {
         com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState()
