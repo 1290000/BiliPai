@@ -152,6 +152,8 @@ import com.android.purebilibili.feature.home.components.BottomBarMatchedDockVisi
 import com.android.purebilibili.core.ui.animation.DissolvableVideoCard  //  粒子消散动画
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve      // 📳 iOS 风格抖动效果
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
+import com.android.purebilibili.core.ui.blur.recoverableBlurEnabled
+import com.android.purebilibili.core.ui.blur.shouldAllowRenderEffectBackedHazeEffect
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
@@ -973,11 +975,14 @@ fun HomeScreen(
         isHeaderBlurEnabled || isBottomBarBlurEnabled
     // 首页使用独立 HazeState，避免命中外层全局 source 的祖先过滤规则导致无模糊。
     // 实色路径不创建 source；普通模糊或玻璃路径才承担背景采样成本。
-    val hazeState = if (shouldCaptureHomeHaze) {
+    val hazeState = if (shouldCaptureHomeHaze &&
+        shouldAllowRenderEffectBackedHazeEffect(Build.VERSION.SDK_INT) &&
+        !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
+    ) {
         rememberRecoverableHazeState(initialBlurEnabled = true)
     } else {
         null
-    }
+    }?.takeIf { recoverableBlurEnabled(it) }
     val appThemeConfig = com.android.purebilibili.core.ui.LocalAppThemeConfig.current
     val chromeCategoryStateFlow = remember(viewModel, currentCategory, popularSubCategory) {
         if (currentCategory == HomeCategory.POPULAR) {

@@ -185,6 +185,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
+import com.android.purebilibili.core.ui.blur.recoverableBlurEnabled
+import com.android.purebilibili.core.ui.blur.shouldAllowRenderEffectBackedHazeEffect
 import com.android.purebilibili.core.ui.blur.hazeSourceCompat
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.motion.AppMotionEasing
@@ -875,7 +877,10 @@ fun SearchScreen(
         ),
         label = "searchExitContentAlpha",
     )
-    val searchHazeEnabled = shouldEnableSearchHazeSource(
+    val searchHazeAvailable = shouldAllowRenderEffectBackedHazeEffect(android.os.Build.VERSION.SDK_INT) &&
+        recoverableBlurEnabled(hazeState) &&
+        !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
+    val searchHazeEnabled = searchHazeAvailable && shouldEnableSearchHazeSource(
         isSearching = state.isSearching,
         startupSettled = startupSettled
     )
@@ -905,9 +910,14 @@ fun SearchScreen(
         hazeSourceEnabled = searchHazeEnabled,
         globalWallpaperVisible = globalWallpaperVisible
     )
+    val searchUsesSolidChrome = !headerBlurEnabled &&
+        !progressiveTopBlurEnabled &&
+        !effectiveLiquidGlassEnabled
     val searchTopBarHeaderColor = resolveSearchTopBarHeaderColor(
-        surfaceColor = MaterialTheme.colorScheme.surface,
-        backgroundAlpha = 0.96f,
+        // Keep the top chrome on the same semantic plane as the Miuix list scaffold.
+        // Using Material surface here made the header black while the list stayed gray.
+        surfaceColor = AppSurfaceTokens.groupedListContainer(),
+        backgroundAlpha = if (searchUsesSolidChrome) 1f else 0.96f,
         globalWallpaperVisible = globalWallpaperVisible,
         useHeaderBlur = shouldUseSearchTopBarBlur
     )
@@ -1025,6 +1035,13 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .globalWallpaperAwareBackground()
+                .then(
+                    if (searchUsesSolidChrome) {
+                        Modifier.background(AppSurfaceTokens.groupedListContainer())
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(padding)
         ) {
             val searchChromeSource = if (
@@ -1039,7 +1056,7 @@ fun SearchScreen(
             }
             val searchChromeBackdrop = searchChromeSource?.takeIf { it.isReady }?.backdrop
             val immersiveSearchChrome = shouldUseBiliPaiProgressiveTopBlur(
-                enabled = progressiveTopBlurEnabled,
+                enabled = progressiveTopBlurEnabled && !headerBlurEnabled,
                 hasBackdrop = searchChromeBackdrop != null,
             ) && !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
             // --- 列表内容层 ---
@@ -1055,8 +1072,22 @@ fun SearchScreen(
                         BiliPaiImmersiveTopBar(
                             backdrop = searchChromeBackdrop,
                             enabled = immersiveSearchChrome,
+                            headerBlurActive = shouldUseSearchTopBarBlur && !immersiveSearchChrome,
                             modifier = Modifier.background(
-                                if (immersiveSearchChrome) Color.Transparent else searchTopBarHeaderColor
+                                if (immersiveSearchChrome || shouldUseSearchTopBarBlur) {
+                                    Color.Transparent
+                                } else {
+                                    searchTopBarHeaderColor
+                                }
+                            ).then(
+                                if (shouldUseSearchTopBarBlur && !immersiveSearchChrome) {
+                                    Modifier.unifiedBlur(
+                                        hazeState = hazeState,
+                                        surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
+                                    )
+                                } else {
+                                    Modifier
+                                }
                             ),
                         ) {
                             Column {
@@ -2083,6 +2114,7 @@ fun SearchScreen(
             BiliPaiImmersiveTopBar(
                 backdrop = searchChromeBackdrop,
                 enabled = immersiveSearchChrome,
+                headerBlurActive = shouldUseSearchTopBarBlur && !immersiveSearchChrome,
                 modifier = Modifier.align(Alignment.TopCenter),
             ) {
             SearchTopBar(
@@ -2137,7 +2169,13 @@ fun SearchScreen(
                             Modifier
                         }
                     )
-                    .background(if (immersiveSearchChrome) Color.Transparent else searchTopBarHeaderColor)
+                    .background(
+                        if (immersiveSearchChrome || shouldUseSearchTopBarBlur) {
+                            Color.Transparent
+                        } else {
+                            searchTopBarHeaderColor
+                        }
+                    )
             )
 
             }

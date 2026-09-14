@@ -1,5 +1,6 @@
 package com.android.purebilibili.feature.space
 
+import android.os.Build
 import com.android.purebilibili.core.ui.components.videoListItemModifier
 import com.android.purebilibili.core.ui.components.AnimatedVideoListItem
 import coil3.request.crossfade
@@ -131,6 +132,8 @@ import com.android.purebilibili.core.ui.OfficialVerifyBadgeSpec
 import com.android.purebilibili.core.ui.OfficialVerifyBadgeTone
 import com.android.purebilibili.core.ui.blur.BlurSurfaceType
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
+import com.android.purebilibili.core.ui.blur.recoverableBlurEnabled
+import com.android.purebilibili.core.ui.blur.shouldAllowRenderEffectBackedHazeEffect
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.resolveOfficialVerifyBadge
 import com.android.purebilibili.core.ui.components.AppLiquidAwareSearchField
@@ -254,7 +257,12 @@ fun SpaceScreen(
     var showTopPhotoPreview by remember(mid) { mutableStateOf(false) }
     var showAvatarPreview by remember(mid) { mutableStateOf(false) }
     var repostDynamicId by remember { mutableStateOf<String?>(null) }
-    val hazeState = rememberRecoverableHazeState()
+    val spaceThemeConfig = LocalAppThemeConfig.current
+    val hazeState = if (
+        spaceThemeConfig.headerBlurEnabled &&
+            shouldAllowRenderEffectBackedHazeEffect(Build.VERSION.SDK_INT) &&
+            !isLowBlurBudgetForced()
+    ) rememberRecoverableHazeState() else null
     val gridState = rememberLazyGridState()
     val isSpaceScrolling by remember {
         derivedStateOf { gridState.isScrollInProgress }
@@ -347,7 +355,6 @@ fun SpaceScreen(
     val blockUserLabel = stringResource(R.string.space_block_user)
     val unblockUserLabel = stringResource(R.string.space_unblock_user)
 
-    val spaceThemeConfig = LocalAppThemeConfig.current
     val spaceProgressiveBlur = shouldUseBiliPaiProgressiveTopBlur(
         enabled = spaceThemeConfig.progressiveTopBlurEnabled && !spaceThemeConfig.headerBlurEnabled,
         hasBackdrop = true,
@@ -360,13 +367,17 @@ fun SpaceScreen(
     val spaceChromeBackdrop = spaceChromeSource?.takeIf {
         uiState is SpaceUiState.Success && it.isReady
     }?.backdrop
+    val spaceHeaderBlurActive = spaceThemeConfig.headerBlurEnabled &&
+        hazeState?.let { recoverableBlurEnabled(it) } == true &&
+        !spaceProgressiveBlur
     AppScaffold(
         topBar = {
             BiliPaiImmersiveTopBar(
                 backdrop = spaceChromeBackdrop,
                 enabled = spaceProgressiveBlur,
+                headerBlurActive = spaceHeaderBlurActive,
                 modifier = Modifier.background(
-                    if (spaceChromeBackdrop != null) Color.Transparent
+                    if (spaceProgressiveBlur || spaceHeaderBlurActive) Color.Transparent
                     else com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.surface)
                         .copy(alpha = pinnedTopChromeScrim)
                 ),
@@ -378,12 +389,14 @@ fun SpaceScreen(
                         if (spaceProgressiveBlur) {
                             Modifier
                         } else {
-                            Modifier.unifiedBlur(
-                                hazeState = hazeState,
-                                surfaceType = BlurSurfaceType.HEADER,
-                                isScrolling = isSpaceScrolling,
-                                enabled = pinnedTopChromeScrim > 0f
-                            )
+                            hazeState?.let {
+                                Modifier.unifiedBlur(
+                                    hazeState = it,
+                                    surfaceType = BlurSurfaceType.HEADER,
+                                    isScrolling = isSpaceScrolling,
+                                    enabled = pinnedTopChromeScrim > 0f
+                                )
+                            } ?: Modifier
                         }
                     )
             ) {
@@ -603,7 +616,7 @@ fun SpaceScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(spaceChromeSource?.modifier ?: Modifier)
-                                .hazeSourceCompat(state = hazeState)
+                                .then(if (hazeState != null) Modifier.hazeSourceCompat(state = hazeState) else Modifier)
                                 .globalWallpaperAwareBackground(MaterialTheme.colorScheme.surface),
                         ) {
                         SpaceContent(
