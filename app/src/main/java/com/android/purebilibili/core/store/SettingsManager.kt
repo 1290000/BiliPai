@@ -5173,6 +5173,13 @@ object SettingsManager {
         }
     }
 
+    /** Marks the bundled first-install profile as having supplied the current visual defaults. */
+    suspend fun markHomeVisualDefaultsCurrent(context: Context) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_VISUAL_DEFAULTS_VERSION] = HOME_VISUAL_DEFAULTS_VERSION
+        }
+    }
+
     // ==========  推荐流 API 类型 ==========
     
     private val KEY_FEED_API_TYPE = intPreferencesKey("feed_api_type")
