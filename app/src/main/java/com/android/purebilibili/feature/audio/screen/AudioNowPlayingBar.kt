@@ -29,8 +29,8 @@ import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
-import com.android.purebilibili.core.ui.transition.NativeVideoCardSnapshotController
 import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
+import com.android.purebilibili.core.ui.transition.rememberNativeVideoCardSnapshotController
 import com.android.purebilibili.core.util.CardPositionManager
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -73,7 +73,6 @@ internal data class AudioNowPlayingBarState(
 @Composable
 internal fun AudioNowPlayingBar(
     state: AudioNowPlayingBarState,
-    nativeSnapshotController: NativeVideoCardSnapshotController,
     onExpand: () -> Unit,
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
@@ -108,7 +107,7 @@ internal fun AudioNowPlayingBar(
     val density = LocalDensity.current
     val rootView = LocalView.current
     val barBounds = remember { object { var value: Rect? = null } }
-    val nativeBarSnapshot = nativeSnapshotController
+    val nativeBarSnapshot = rememberNativeVideoCardSnapshotController(state.bvid)
     val coverRotationDegrees = rememberMusicArtworkRotationDegrees(
         active = shouldRotateMusicArtwork(
             isPlaying = state.isPlaying,

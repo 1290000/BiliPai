@@ -24,7 +24,7 @@ class AudioNowPlayingBarStructureTest {
         assertTrue(source.contains("artistAvatarUrl"))
         assertTrue(source.contains("state.artistAvatarUrl"))
         assertTrue(source.contains("basicMarquee(iterations = Int.MAX_VALUE)"))
-        assertTrue(source.contains("nativeSnapshotController: NativeVideoCardSnapshotController"))
+        assertTrue(source.contains("rememberNativeVideoCardSnapshotController(state.bvid)"))
         assertTrue(source.contains("nativeBarSnapshot.capture()"))
         assertTrue(source.contains("nativeBarSnapshot.freezeToBitmap()"))
         assertFalse(source.contains("nativeBarSnapshot.coverOverlayModifier"))
@@ -50,8 +50,6 @@ class AudioNowPlayingBarStructureTest {
             .substringBefore("MainHostTabBackHandler(")
 
         assertTrue(overlay.contains("AudioNowPlayingBar("))
-        assertTrue(overlay.contains("rememberNativeVideoCardSnapshotController(audioNowPlayingItem?.bvid.orEmpty())"))
-        assertTrue(overlay.contains("nativeSnapshotController = audioNowPlayingMorphSnapshotController"))
         assertTrue(overlay.contains("miuixBackdrop = bottomBarBackdrop"))
         assertTrue(overlay.contains("glassEnabled = effectiveHomeSettings.androidNativeLiquidGlassEnabled"))
         assertTrue(source.contains("getAudioNowPlayingBarEnabled(context)"))
