@@ -180,6 +180,7 @@ internal fun <T> AppMiuixTabRow(
     indicatorPositionProvider: (() -> Float)? = null,
     equalizeScrollableItemWidths: Boolean = false,
     contentSizedNonGlassItems: Boolean = false,
+    drawNonGlassTrack: Boolean = true,
     onSelectionChange: (T) -> Unit,
 ) {
     if (isMiuixNonGlassEnabled()) {
@@ -195,6 +196,7 @@ internal fun <T> AppMiuixTabRow(
             modifier = modifier,
             equalizeScrollableItemWidths = equalizeScrollableItemWidths,
             contentSizedItems = contentSizedNonGlassItems,
+            drawTrack = drawNonGlassTrack,
             onSelectionChange = onSelectionChange,
         )
         return
@@ -248,6 +250,7 @@ private fun <T> AppMiuixNonGlassTabs(
     modifier: Modifier,
     equalizeScrollableItemWidths: Boolean = false,
     contentSizedItems: Boolean = false,
+    drawTrack: Boolean = true,
     onSelectionChange: (T) -> Unit,
 ) {
     val labels = options.map { it.label }
@@ -277,6 +280,7 @@ private fun <T> AppMiuixNonGlassTabs(
             colors = colors,
             height = height ?: geometry.height,
             modifier = modifier,
+            drawTrack = drawTrack,
             onSelectionChange = onSelectionChange,
         )
         return
@@ -304,7 +308,7 @@ private fun <T> AppMiuixNonGlassTabs(
         modifier = modifier
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
         colors = TabRowDefaults.tabRowColors(
-            backgroundColor = tabColors.backgroundColor,
+            backgroundColor = if (drawTrack) tabColors.backgroundColor else Color.Transparent,
             contentColor = tabColors.contentColor,
             selectedBackgroundColor = tabColors.selectedBackgroundColor,
             selectedContentColor = tabColors.selectedContentColor,
@@ -328,6 +332,7 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
     colors: AppSegmentedControlColors,
     height: Dp,
     modifier: Modifier,
+    drawTrack: Boolean,
     onSelectionChange: (T) -> Unit,
 ) {
     val tabColors = resolveAppMiuixSegmentedColors(colors)
@@ -340,7 +345,7 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(tabColors.backgroundColor)
+            .background(if (drawTrack) tabColors.backgroundColor else Color.Transparent)
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
     ) {
         LazyRow(

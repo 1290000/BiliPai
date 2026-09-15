@@ -307,6 +307,7 @@ fun <T> AppNativeTabRow(
     miuixNonGlassItemWidthMode: MiuixNonGlassTabItemWidthMode =
         MiuixNonGlassTabItemWidthMode.CONTENT,
     contentSizedMiuixNonGlassItems: Boolean = false,
+    drawMiuixNonGlassTrack: Boolean = true,
     onSelectionChange: (T) -> Unit,
 ) {
     if (options.isEmpty()) return
@@ -382,6 +383,7 @@ fun <T> AppNativeTabRow(
             indicatorPositionProvider = indicatorPositionProvider,
             equalizeScrollableItemWidths = equalizeMiuixNonGlassItems,
             contentSizedNonGlassItems = useContentSizedMiuixItems,
+            drawNonGlassTrack = drawMiuixNonGlassTrack,
             onSelectionChange = onSelectionChange,
         )
     }

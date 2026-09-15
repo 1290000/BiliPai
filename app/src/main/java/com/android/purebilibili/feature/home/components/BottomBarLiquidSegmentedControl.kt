@@ -406,6 +406,7 @@ fun BottomBarLiquidSegmentedControl(
     forceEqualWidth: Boolean = false,
     equalizeMiuixNonGlassItemWidths: Boolean = false,
     contentSizedMiuixNonGlassItems: Boolean = false,
+    drawMiuixNonGlassTrack: Boolean = true,
     miuixBackdrop: MiuixBackdrop? = null,
     tapPressRefractionEnabled: Boolean = true,
     containerColorOverride: Color? = null,
@@ -470,6 +471,7 @@ fun BottomBarLiquidSegmentedControl(
                 MiuixNonGlassTabItemWidthMode.CONTENT
             },
             contentSizedMiuixNonGlassItems = contentSizedMiuixNonGlassItems,
+            drawMiuixNonGlassTrack = drawMiuixNonGlassTrack,
         )
         return
     }

@@ -205,6 +205,8 @@ fun DynamicTopBarWithTabs(
                     miuixBackdrop = dockBackdrop.takeIf { liquidGlassEnabled },
                     containerColorOverride = dockColor,
                     liquidGlassTuningOverride = liquidGlassTuning,
+                    drawMiuixNonGlassTrack = liquidGlassEnabled ||
+                        LocalAppUiStyle.current != AppUiStyle.MIUIX,
                 )
             }
 

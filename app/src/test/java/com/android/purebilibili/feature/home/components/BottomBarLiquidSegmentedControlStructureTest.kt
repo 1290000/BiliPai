@@ -442,6 +442,7 @@ class BottomBarLiquidSegmentedControlStructureTest {
         assertTrue(source.contains("!homeSettings.androidNativeLiquidGlassEnabled"))
         assertTrue(source.contains("AppNativeTabRow("))
         assertTrue(source.contains("allowLabelOverflow = allowNativeLabelOverflow"))
+        assertTrue(source.contains("drawMiuixNonGlassTrack = drawMiuixNonGlassTrack"))
         assertTrue(source.contains("indicatorPositionProvider = indicatorPositionProvider"))
         assertTrue(source.contains("BottomBarFloatingSegmentedControl("))
         assertTrue(floating.contains("FloatingBottomBar("))
