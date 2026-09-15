@@ -50,6 +50,12 @@ import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
 import com.android.purebilibili.feature.video.viewmodel.VideoEngagementUiState
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState
 
+private enum class LargeScreenPaneVisibility {
+    BOTH,
+    PRIMARY_COLLAPSED,
+    SECONDARY_COLLAPSED,
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 internal fun LargeScreenVideoLayout(
@@ -121,20 +127,42 @@ internal fun LargeScreenVideoLayout(
         val includeRelatedTab = true
         val success = uiState as? VideoPlaybackUiState.Success
         var sidePaneCollapsedRequested by rememberSaveable(bvid) { mutableStateOf(false) }
-        val canCollapseSidePane = metrics.mode != LargeScreenVideoLayoutMode.VerticalThreePane &&
-            metrics.mode != LargeScreenVideoLayoutMode.Phone
-        val sidePaneCollapsed = sidePaneCollapsedRequested && canCollapseSidePane
-        val sidePaneTransition = updateTransition(
-            targetState = sidePaneCollapsed,
+        var primaryPaneCollapsedRequested by rememberSaveable(bvid) { mutableStateOf(false) }
+        val canCollapseSidePane = metrics.mode == LargeScreenVideoLayoutMode.Split ||
+            metrics.mode == LargeScreenVideoLayoutMode.Landscape
+        val paneVisibility = when {
+            canCollapseSidePane && primaryPaneCollapsedRequested ->
+                LargeScreenPaneVisibility.PRIMARY_COLLAPSED
+            canCollapseSidePane && sidePaneCollapsedRequested ->
+                LargeScreenPaneVisibility.SECONDARY_COLLAPSED
+            else -> LargeScreenPaneVisibility.BOTH
+        }
+        val paneTransition = updateTransition(
+            targetState = paneVisibility,
             label = "large-screen-secondary-pane",
         )
-        val animatedSidePaneWidth by sidePaneTransition.animateDp(
+        val animatedPrimaryPaneWidth by paneTransition.animateDp(
+            transitionSpec = { tween(durationMillis = 320) },
+            label = "primary-pane-width",
+        ) { visibility ->
+            when (visibility) {
+                LargeScreenPaneVisibility.PRIMARY_COLLAPSED -> 0.dp
+                LargeScreenPaneVisibility.BOTH -> metrics.playerWidthDp.dp
+                LargeScreenPaneVisibility.SECONDARY_COLLAPSED -> maxWidth
+            }
+        }
+        val animatedSidePaneWidth by paneTransition.animateDp(
             transitionSpec = { tween(durationMillis = 320) },
             label = "secondary-pane-width",
-        ) { collapsed ->
-            if (collapsed) 0.dp else metrics.sidePaneWidthDp.dp
+        ) { visibility ->
+            when (visibility) {
+                LargeScreenPaneVisibility.PRIMARY_COLLAPSED -> maxWidth
+                LargeScreenPaneVisibility.BOTH -> metrics.sidePaneWidthDp.dp
+                LargeScreenPaneVisibility.SECONDARY_COLLAPSED -> 0.dp
+            }
         }
-        val animatedPlayerWidth = (maxWidth - animatedSidePaneWidth).coerceAtLeast(0.dp)
+        val sidePaneCollapsed = paneVisibility == LargeScreenPaneVisibility.SECONDARY_COLLAPSED
+        val primaryPaneCollapsed = paneVisibility == LargeScreenPaneVisibility.PRIMARY_COLLAPSED
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
                 modifier = modifier,
@@ -253,22 +281,56 @@ internal fun LargeScreenVideoLayout(
             LargeScreenVideoLayoutMode.Split -> {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                        player(
-                            Modifier
-                                .width(animatedPlayerWidth)
-                                .height(metrics.playerHeightDp.dp)
-                                .background(Color.Black),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .width(animatedPrimaryPaneWidth)
+                                .fillMaxHeight(),
+                        ) {
+                            player(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(metrics.playerHeightDp.dp)
+                                    .background(Color.Black),
+                            )
+                        }
                         Box(
                             modifier = Modifier
                                 .width(animatedSidePaneWidth)
                                 .fillMaxHeight(),
                         ) {
                             side(true)
-                            if (!sidePaneCollapsed) {
+                        }
+                    }
+                    if (paneVisibility == LargeScreenPaneVisibility.BOTH) {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .width(animatedPrimaryPaneWidth)
+                                    .fillMaxHeight(),
+                            ) {
+                                TabletSecondaryPaneToggleButton(
+                                    isSecondaryPaneVisible = false,
+                                    onClick = {
+                                        primaryPaneCollapsedRequested = true
+                                        sidePaneCollapsedRequested = false
+                                    },
+                                    contentDescription = "收起左侧内容",
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .offset(x = 20.dp),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .width(animatedSidePaneWidth)
+                                    .fillMaxHeight(),
+                            ) {
                                 TabletSecondaryPaneToggleButton(
                                     isSecondaryPaneVisible = true,
-                                    onClick = { sidePaneCollapsedRequested = true },
+                                    onClick = {
+                                        sidePaneCollapsedRequested = true
+                                        primaryPaneCollapsedRequested = false
+                                    },
                                     modifier = Modifier
                                         .align(Alignment.CenterStart)
                                         .offset(x = (-20).dp),
@@ -276,13 +338,22 @@ internal fun LargeScreenVideoLayout(
                             }
                         }
                     }
-                    if (sidePaneCollapsed) {
+                    if (primaryPaneCollapsed) {
+                        TabletSecondaryPaneToggleButton(
+                            isSecondaryPaneVisible = true,
+                            onClick = { primaryPaneCollapsedRequested = false },
+                            contentDescription = "展开左侧内容",
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 4.dp),
+                        )
+                    } else if (sidePaneCollapsed) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = false,
                             onClick = { sidePaneCollapsedRequested = false },
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
-                                .padding(end = 4.dp),
+                                .padding(end = 0.dp),
                         )
                     }
                 }
@@ -305,7 +376,7 @@ internal fun LargeScreenVideoLayout(
                                 onClick = { sidePaneCollapsedRequested = false },
                                 modifier = Modifier
                                     .align(Alignment.CenterVertically)
-                                    .padding(end = 4.dp),
+                                    .padding(end = 0.dp),
                             )
                         } else {
                             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -325,23 +396,25 @@ internal fun LargeScreenVideoLayout(
             LargeScreenVideoLayoutMode.Landscape -> {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                        Column(
+                        Box(
                             modifier = Modifier
-                                .width(animatedPlayerWidth)
+                                .width(animatedPrimaryPaneWidth)
                                 .fillMaxHeight(),
                         ) {
-                            player(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(LARGE_SCREEN_VIDEO_ASPECT_16_9)
-                                    .background(Color.Black),
-                            )
-                            if (metrics.introBelowPlayer) {
-                                intro(
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                player(
                                     Modifier
                                         .fillMaxWidth()
-                                        .weight(1f),
+                                        .aspectRatio(LARGE_SCREEN_VIDEO_ASPECT_16_9)
+                                        .background(Color.Black),
                                 )
+                                if (metrics.introBelowPlayer) {
+                                    intro(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f),
+                                    )
+                                }
                             }
                         }
                         Box(
@@ -350,10 +423,38 @@ internal fun LargeScreenVideoLayout(
                                 .fillMaxHeight(),
                         ) {
                             side(!metrics.introBelowPlayer)
-                            if (!sidePaneCollapsed) {
+                        }
+                    }
+                    if (paneVisibility == LargeScreenPaneVisibility.BOTH) {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .width(animatedPrimaryPaneWidth)
+                                    .fillMaxHeight(),
+                            ) {
+                                TabletSecondaryPaneToggleButton(
+                                    isSecondaryPaneVisible = false,
+                                    onClick = {
+                                        primaryPaneCollapsedRequested = true
+                                        sidePaneCollapsedRequested = false
+                                    },
+                                    contentDescription = "收起左侧内容",
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .offset(x = 20.dp),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .width(animatedSidePaneWidth)
+                                    .fillMaxHeight(),
+                            ) {
                                 TabletSecondaryPaneToggleButton(
                                     isSecondaryPaneVisible = true,
-                                    onClick = { sidePaneCollapsedRequested = true },
+                                    onClick = {
+                                        sidePaneCollapsedRequested = true
+                                        primaryPaneCollapsedRequested = false
+                                    },
                                     modifier = Modifier
                                         .align(Alignment.CenterStart)
                                         .offset(x = (-20).dp),
@@ -361,13 +462,22 @@ internal fun LargeScreenVideoLayout(
                             }
                         }
                     }
-                    if (sidePaneCollapsed) {
+                    if (primaryPaneCollapsed) {
+                        TabletSecondaryPaneToggleButton(
+                            isSecondaryPaneVisible = true,
+                            onClick = { primaryPaneCollapsedRequested = false },
+                            contentDescription = "展开左侧内容",
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 4.dp),
+                        )
+                    } else if (sidePaneCollapsed) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = false,
                             onClick = { sidePaneCollapsedRequested = false },
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
-                                .padding(end = 4.dp),
+                                .padding(end = 0.dp),
                         )
                     }
                 }

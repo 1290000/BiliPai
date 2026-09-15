@@ -184,6 +184,7 @@ internal fun TabletSecondaryPaneToggleButton(
     isSecondaryPaneVisible: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
 ) {
     AppIconButton(
         onClick = onClick,
@@ -195,7 +196,7 @@ internal fun TabletSecondaryPaneToggleButton(
             } else {
                 Icons.Outlined.KeyboardArrowRight
             },
-            contentDescription = if (isSecondaryPaneVisible) {
+            contentDescription = contentDescription ?: if (isSecondaryPaneVisible) {
                 "收起右侧内容"
             } else {
                 "展开右侧内容"
@@ -479,7 +480,7 @@ internal fun TabletVideoLayout(
                         },
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(end = 4.dp),
+                            .padding(end = 0.dp),
                     )
                 }
             }
