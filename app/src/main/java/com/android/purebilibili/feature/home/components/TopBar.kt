@@ -8,7 +8,10 @@ import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.AppChromeSizeTokens
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.components.AppIconButton
+import com.android.purebilibili.core.ui.components.AppNativeTabRow
+import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppSurface
+import com.android.purebilibili.core.ui.components.MiuixNonGlassTabItemWidthMode
 import com.android.purebilibili.core.ui.components.resolveScrollableTabIndicatorFollowDeltaPx
 import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.theme.LocalAppUiStyle
@@ -1225,7 +1228,35 @@ private fun LightweightHomeTopTabs(
         } else {
             effectiveMaxDockWidth
         }
-        if (useFloatingBottomBarDock) {
+        if (
+            shouldUseOfficialMiuixHomeTopTabs(
+                uiStyle = LocalAppUiStyle.current,
+                liquidGlassEnabled = isLiquidGlassEnabled,
+            )
+        ) {
+            val selectedCategoryIndex = selectedIndex.coerceIn(0, (categories.size - 1).coerceAtLeast(0))
+            AppNativeTabRow(
+                options = categories.mapIndexed { index, label ->
+                    AppSegmentOption(value = index, label = label)
+                },
+                selectedValue = selectedCategoryIndex,
+                onSelectionChange = { index ->
+                    if (index == selectedCategoryIndex) {
+                        scrollChannel?.trySend(
+                            com.android.purebilibili.feature.home.HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH
+                        )
+                    } else {
+                        onCategorySelected(index)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                scrollable = true,
+                minTabWidth = AppChromeSizeTokens.MinimumTouchTarget,
+                compactMiuixWhenTwoOptions = false,
+                allowLabelOverflow = false,
+                miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
+            )
+        } else if (useFloatingBottomBarDock) {
             val floatingDockHeight = resolveBiliPaiBottomBarDockHeight(searchExpanded = false)
             val floatingDockWidth = resolveHomeTopTabFloatingDockWidth(
                 containerWidth = effectiveMaxDockWidth.dp,
