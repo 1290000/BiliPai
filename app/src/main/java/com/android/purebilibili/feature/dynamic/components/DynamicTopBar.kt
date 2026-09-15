@@ -210,6 +210,8 @@ fun DynamicTopBarWithTabs(
                 )
             }
 
+            Spacer(modifier = Modifier.weight(1f))
+
             val localActionDockBackdrop = if (liquidGlassEnabled && dockBackdrop == null) {
                 rememberLayerBackdrop()
             } else {
