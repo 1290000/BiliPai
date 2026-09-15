@@ -820,7 +820,10 @@ fun LivePlayerScreen(
             LiveRequestedOrientationMode.Portrait ->
                 ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
-        activity?.applyPlayerRequestedOrientation(requestedOrientation)
+        activity?.applyPlayerRequestedOrientation(
+            requestedOrientation = requestedOrientation,
+            isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
+        )
     }
 
     // 布局结构

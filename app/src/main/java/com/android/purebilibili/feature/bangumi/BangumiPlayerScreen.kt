@@ -9,7 +9,9 @@ import android.content.res.Configuration
 import android.widget.Toast
 import android.annotation.SuppressLint
 import com.android.purebilibili.core.player.HiResCompatibleRenderersFactory
+import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
+import com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy
 import com.android.purebilibili.core.ui.LocalNavigationBackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -98,8 +100,29 @@ fun BangumiPlayerScreen(
     
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val isTablet = configuration.smallestScreenWidthDp >= 600
-    var tabletFullscreen by rememberSaveable(seasonId) { mutableStateOf(false) }
-    val isFullscreen = if (isTablet) tabletFullscreen else isLandscape
+    val windowSizeClass = LocalWindowSizeClass.current
+    val hostActivity = remember(context) { context.findActivity() }
+    val playerWindowOrientationPolicy = remember(
+        hostActivity,
+        configuration.orientation,
+        configuration.smallestScreenWidthDp,
+        configuration.screenWidthDp,
+        configuration.screenHeightDp,
+        windowSizeClass.isFoldableCoverScreen,
+    ) {
+        hostActivity?.resolvePlayerWindowOrientationPolicy(
+            isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
+        )
+    }
+    val usesInWindowFullscreen =
+        playerWindowOrientationPolicy?.usesInWindowFullscreen == true
+    var userRequestedFullscreen by rememberSaveable(seasonId) { mutableStateOf(false) }
+    val isFullscreen = resolveBangumiFullscreen(
+        isLandscape = isLandscape,
+        isTablet = isTablet,
+        usesInWindowFullscreen = usesInWindowFullscreen,
+        userRequestedFullscreen = userRequestedFullscreen,
+    )
     var isPlayerScreenLocked by rememberSaveable(seasonId) { mutableStateOf(false) }
     val latestIsLandscape by rememberUpdatedState(isLandscape)
     val statusBarsInsetTop = WindowInsets.statusBars
@@ -389,8 +412,8 @@ fun BangumiPlayerScreen(
     
     // 辅助函数：切换屏幕方向
     fun toggleOrientation() {
-        if (isTablet) {
-            tabletFullscreen = !tabletFullscreen
+        if (isTablet || usesInWindowFullscreen) {
+            userRequestedFullscreen = !isFullscreen
             return
         }
         val activity = context.findActivity() ?: return
@@ -399,6 +422,27 @@ fun BangumiPlayerScreen(
         } else {
             activity.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
         }
+    }
+
+    LaunchedEffect(usesInWindowFullscreen) {
+        if (usesInWindowFullscreen) {
+            hostActivity?.applyPlayerRequestedOrientation(
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            )
+        }
+    }
+
+    LaunchedEffect(playerWindowOrientationPolicy, isFullscreen) {
+        val policy = playerWindowOrientationPolicy ?: return@LaunchedEffect
+        com.android.purebilibili.core.util.Logger.d(
+            "BangumiPlayerScreen",
+            "Player window policy: current=${policy.currentWindowWidthDp}x${policy.currentWindowHeightDp}dp, " +
+                "maximum=${policy.maximumWindowWidthDp}x${policy.maximumWindowHeightDp}dp, " +
+                "mode=${policy.displayModeWidthPx}x${policy.displayModeHeightPx}px, " +
+                "rotation=${policy.displayRotation}, cover=${policy.isFoldableCoverWindow}, " +
+                "naturalLandscape=${policy.isLandscapeNaturalDisplay}, " +
+                "inWindowFullscreen=${policy.usesInWindowFullscreen}, fullscreen=$isFullscreen"
+        )
     }
 
     DisposableEffect(context, isFullscreen, isPlayerScreenLocked, isTablet) {
@@ -419,7 +463,7 @@ fun BangumiPlayerScreen(
     }
     
     // 自动检测设备方向变化；播放器锁定时不再响应传感器。
-    DisposableEffect(context, isTablet, isPlayerScreenLocked) {
+    DisposableEffect(context, isTablet, usesInWindowFullscreen, isPlayerScreenLocked) {
         if (isPlayerScreenLocked) return@DisposableEffect onDispose {}
         val activity = context.findActivity()
         val orientationEventListener = object : android.view.OrientationEventListener(context) {
@@ -453,7 +497,11 @@ fun BangumiPlayerScreen(
             }
         }
         
-        if (!isTablet && orientationEventListener.canDetectOrientation()) {
+        if (
+            !isTablet &&
+            !usesInWindowFullscreen &&
+            orientationEventListener.canDetectOrientation()
+        ) {
             orientationEventListener.enable()
         }
         
