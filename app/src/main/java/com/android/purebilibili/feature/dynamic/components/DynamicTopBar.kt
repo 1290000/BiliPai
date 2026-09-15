@@ -51,6 +51,7 @@ import com.android.purebilibili.core.ui.rememberAppChevronUpIcon
 import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarHorizontalPadding
 import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarLiquidTabSpec
+import com.android.purebilibili.feature.dynamic.resolveDynamicTopBarTabItemWidthDp
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.home.components.DynamicPublishSkinDecoration
 import coil3.compose.AsyncImage
@@ -181,26 +182,33 @@ fun DynamicTopBarWithTabs(
             horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BottomBarLiquidSegmentedControl(
-                items = tabs,
-                selectedIndex = selectedTab,
-                onSelected = onTabSelected,
-                modifier = Modifier.weight(1f),
-                height = liquidTabSpec.heightDp.dp,
-                geometryMode = com.android.purebilibili.feature.home.components.FloatingBottomBarGeometryMode.TopNavigation,
-                indicatorHeight = liquidTabSpec.indicatorHeightDp.dp,
-                labelFontSize = liquidTabSpec.labelFontSizeSp.sp,
-                allowNativeLabelOverflow = true,
-                indicatorPositionProvider = indicatorPositionProvider,
-                isScrollInProgressProvider = isScrollInProgressProvider,
-                liquidGlassEffectsEnabled = liquidGlassEnabled,
-                dragSelectionEnabled = tabs.size > 1,
-                tapPressRefractionEnabled = true,
-                externalPagerMotionEffectsEnabled = true,
-                miuixBackdrop = dockBackdrop.takeIf { liquidGlassEnabled },
-                containerColorOverride = dockColor,
-                liquidGlassTuningOverride = liquidGlassTuning,
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center,
+            ) {
+                BottomBarLiquidSegmentedControl(
+                    items = tabs,
+                    selectedIndex = selectedTab,
+                    onSelected = onTabSelected,
+                    itemWidth = resolveDynamicTopBarTabItemWidthDp().dp,
+                    height = liquidTabSpec.heightDp.dp,
+                    geometryMode = com.android.purebilibili.feature.home.components.FloatingBottomBarGeometryMode.TopNavigation,
+                    indicatorHeight = liquidTabSpec.indicatorHeightDp.dp,
+                    labelFontSize = liquidTabSpec.labelFontSizeSp.sp,
+                    allowNativeLabelOverflow = true,
+                    indicatorPositionProvider = indicatorPositionProvider,
+                    isScrollInProgressProvider = isScrollInProgressProvider,
+                    liquidGlassEffectsEnabled = liquidGlassEnabled,
+                    dragSelectionEnabled = tabs.size > 1,
+                    tapPressRefractionEnabled = true,
+                    externalPagerMotionEffectsEnabled = true,
+                    miuixBackdrop = dockBackdrop.takeIf { liquidGlassEnabled },
+                    containerColorOverride = dockColor,
+                    liquidGlassTuningOverride = liquidGlassTuning,
+                )
+            }
 
             val localActionDockBackdrop = if (liquidGlassEnabled && dockBackdrop == null) {
                 rememberLayerBackdrop()

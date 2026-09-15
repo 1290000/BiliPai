@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -281,7 +282,7 @@ private fun <T> AppMiuixNonGlassTabs(
         modifier = modifier
             .heightIn(min = AppChromeSizeTokens.MinimumTouchTarget)
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
-        contentAlignment = Alignment.CenterStart,
+        contentAlignment = Alignment.Center,
     ) {
         if (stretchToTrack) {
             Row(
@@ -314,7 +315,9 @@ private fun <T> AppMiuixNonGlassTabs(
         } else {
             LazyRow(
                 state = scrollState,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth(Alignment.Center),
                 horizontalArrangement = Arrangement.spacedBy(
                     MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP.dp,
                 ),

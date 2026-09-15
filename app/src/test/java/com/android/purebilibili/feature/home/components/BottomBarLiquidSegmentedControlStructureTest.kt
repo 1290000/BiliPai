@@ -498,6 +498,8 @@ class BottomBarLiquidSegmentedControlStructureTest {
         )
 
         assertTrue(dynamicTopBar.contains("BottomBarLiquidSegmentedControl("))
+        assertTrue(dynamicTopBar.contains("contentAlignment = Alignment.Center"))
+        assertTrue(dynamicTopBar.contains("itemWidth = resolveDynamicTopBarTabItemWidthDp().dp"))
         assertFalse(dynamicTopBar.contains("AppNativeTabRow("))
         assertFalse(dynamicTopBar.contains("forceLiquidChrome"))
         assertTrue(dynamicTopBar.contains("allowNativeLabelOverflow = true"))

@@ -169,6 +169,7 @@ class AppSegmentedControlPolicyTest {
         val nonGlassTabs = miuixSource.substringAfter("private fun <T> AppMiuixNonGlassTabs(")
         assertTrue(nonGlassTabs.contains("shouldStretchMiuixNonGlassTabRowToTrack("))
         assertTrue(nonGlassTabs.contains("MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP.dp"))
+        assertTrue(nonGlassTabs.contains("wrapContentWidth(Alignment.Center)"))
         assertTrue(nonGlassTabs.contains("Modifier.weight(1f)"))
     }
 

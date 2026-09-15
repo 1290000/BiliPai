@@ -51,6 +51,8 @@ internal data class DynamicTopBarLiquidTabSpec(
     val labelFontSizeSp: Int
 )
 
+internal fun resolveDynamicTopBarTabItemWidthDp(): Int = 64
+
 internal fun resolveDynamicTopBarLiquidTabSpec(): DynamicTopBarLiquidTabSpec {
     val heightDp = resolveDynamicTopBarHeightDp()
     return DynamicTopBarLiquidTabSpec(
