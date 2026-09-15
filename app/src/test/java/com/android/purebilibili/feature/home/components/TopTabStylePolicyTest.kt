@@ -67,8 +67,10 @@ class TopTabStylePolicyTest {
         assertTrue(topDock.contains("FilledTonalIconButton("))
         val topBar = sourceText("app/src/main/java/com/android/purebilibili/feature/home/components/TopBar.kt")
         assertTrue(topBar.contains("shouldUseOfficialMiuixHomeTopTabs("))
-        assertTrue(topBar.contains("AppNativeTabRow("))
-        assertTrue(topBar.contains("MiuixNonGlassTabItemWidthMode.CONTENT"))
+        assertFalse(topBar.contains("AppNativeTabRow("))
+        assertTrue(topBar.contains("showIcon = showIcon"))
+        assertTrue(topBar.contains("showText = showText"))
+        assertTrue(topBar.contains(".align(Alignment.Center)"))
     }
 
     @Test
