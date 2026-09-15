@@ -368,17 +368,13 @@ internal fun LargeScreenVideoLayout(
                             isSecondaryPaneVisible = true,
                             onClick = { primaryPaneCollapsedRequested = false },
                             contentDescription = "展开左侧内容",
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 4.dp),
+                            modifier = Modifier.align(Alignment.Center),
                         )
                     } else if (paneControlsVisible && sidePaneCollapsed) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = false,
                             onClick = { sidePaneCollapsedRequested = false },
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 0.dp),
+                            modifier = Modifier.align(Alignment.Center),
                         )
                     }
                 }
@@ -420,31 +416,39 @@ internal fun LargeScreenVideoLayout(
                                 .padding(top = metrics.playerHeightDp.dp),
                         ) {
                             if (paneVisibility == LargeScreenPaneVisibility.BOTH) {
-                                LargeScreenPaneToggleRail(
-                                    onCollapsePrimary = {
-                                        primaryPaneCollapsedRequested = true
-                                        sidePaneCollapsedRequested = false
-                                    },
-                                    onCollapseSecondary = {
-                                        sidePaneCollapsedRequested = true
-                                        primaryPaneCollapsedRequested = false
-                                    },
-                                    modifier = Modifier
-                                        .align(Alignment.CenterEnd)
-                                        .offset(x = 20.dp),
-                                )
+                                Row(modifier = Modifier.fillMaxSize()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(animatedPrimaryPaneWidth)
+                                            .fillMaxHeight(),
+                                    ) {
+                                        LargeScreenPaneToggleRail(
+                                            onCollapsePrimary = {
+                                                primaryPaneCollapsedRequested = true
+                                                sidePaneCollapsedRequested = false
+                                            },
+                                            onCollapseSecondary = {
+                                                sidePaneCollapsedRequested = true
+                                                primaryPaneCollapsedRequested = false
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.CenterEnd)
+                                                .offset(x = 20.dp),
+                                        )
+                                    }
+                                }
                             } else if (primaryPaneCollapsed) {
                                 TabletSecondaryPaneToggleButton(
                                     isSecondaryPaneVisible = true,
                                     onClick = { primaryPaneCollapsedRequested = false },
                                     contentDescription = "展开左侧内容",
-                                    modifier = Modifier.align(Alignment.CenterStart),
+                                    modifier = Modifier.align(Alignment.Center),
                                 )
                             } else if (sidePaneCollapsed) {
                                 TabletSecondaryPaneToggleButton(
                                     isSecondaryPaneVisible = false,
                                     onClick = { sidePaneCollapsedRequested = false },
-                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                    modifier = Modifier.align(Alignment.Center),
                                 )
                             }
                         }
@@ -511,17 +515,13 @@ internal fun LargeScreenVideoLayout(
                             isSecondaryPaneVisible = true,
                             onClick = { primaryPaneCollapsedRequested = false },
                             contentDescription = "展开左侧内容",
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 4.dp),
+                            modifier = Modifier.align(Alignment.Center),
                         )
                     } else if (paneControlsVisible && sidePaneCollapsed) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = false,
                             onClick = { sidePaneCollapsedRequested = false },
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 0.dp),
+                            modifier = Modifier.align(Alignment.Center),
                         )
                     }
                 }
