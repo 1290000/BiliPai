@@ -658,19 +658,23 @@ private fun DynamicCommentSortControl(
     val spec = remember(items.size) {
         resolveDynamicCommentSortControlSpec(itemCount = items.size)
     }
-    DynamicAdaptiveSegmentedControl(
-        items = items,
-        selectedIndex = selectedIndex,
-        onSelected = onSelected,
-        itemWidth = spec.itemWidthDp.dp,
-        height = spec.heightDp.dp,
-        indicatorHeight = spec.indicatorHeightDp.dp,
-        labelFontSize = 13.sp,
-        // Upstream Miuix TabRow may fill its parent; requiredWidth preserves the
-        // beta.36 compact geometry without changing the current tab border style.
+    Box(
         modifier = modifier.requiredWidth((spec.itemWidthDp * items.size).dp),
-        backdrop = miuixBackdrop,
-    )
+    ) {
+        DynamicAdaptiveSegmentedControl(
+            items = items,
+            selectedIndex = selectedIndex,
+            onSelected = onSelected,
+            itemWidth = spec.itemWidthDp.dp,
+            height = spec.heightDp.dp,
+            indicatorHeight = spec.indicatorHeightDp.dp,
+            labelFontSize = 13.sp,
+            // Keep the renderer's fillMaxWidth() inside the fixed-width outer box so
+            // the whole latest/hottest control remains aligned to the header's end.
+            modifier = Modifier.fillMaxWidth(),
+            backdrop = miuixBackdrop,
+        )
+    }
 }
 
 internal data class DynamicCommentSortControlSpec(
