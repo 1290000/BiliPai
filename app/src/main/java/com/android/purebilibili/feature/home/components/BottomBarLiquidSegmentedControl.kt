@@ -406,7 +406,9 @@ fun BottomBarLiquidSegmentedControl(
     forceEqualWidth: Boolean = false,
     equalizeMiuixNonGlassItemWidths: Boolean = false,
     contentSizedMiuixNonGlassItems: Boolean = false,
-    drawMiuixNonGlassTrack: Boolean = true,
+    // Keep non-glass Miuix tabs as two independent items instead of adding a
+    // redundant middle dock behind them.
+    drawMiuixNonGlassTrack: Boolean = false,
     miuixBackdrop: MiuixBackdrop? = null,
     tapPressRefractionEnabled: Boolean = true,
     containerColorOverride: Color? = null,

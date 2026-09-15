@@ -307,7 +307,10 @@ fun <T> AppNativeTabRow(
     miuixNonGlassItemWidthMode: MiuixNonGlassTabItemWidthMode =
         MiuixNonGlassTabItemWidthMode.CONTENT,
     contentSizedMiuixNonGlassItems: Boolean = false,
-    drawMiuixNonGlassTrack: Boolean = true,
+    // Miuix non-glass tabs keep their individual item surfaces, without adding
+    // an extra full-width dock behind the items. Callers that intentionally own
+    // a track (for example a liquid-glass rail) can still opt in explicitly.
+    drawMiuixNonGlassTrack: Boolean = false,
     onSelectionChange: (T) -> Unit,
 ) {
     if (options.isEmpty()) return

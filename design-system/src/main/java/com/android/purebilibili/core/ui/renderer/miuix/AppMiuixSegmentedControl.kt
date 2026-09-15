@@ -180,7 +180,7 @@ internal fun <T> AppMiuixTabRow(
     indicatorPositionProvider: (() -> Float)? = null,
     equalizeScrollableItemWidths: Boolean = false,
     contentSizedNonGlassItems: Boolean = false,
-    drawNonGlassTrack: Boolean = true,
+    drawNonGlassTrack: Boolean = false,
     onSelectionChange: (T) -> Unit,
 ) {
     if (isMiuixNonGlassEnabled()) {
