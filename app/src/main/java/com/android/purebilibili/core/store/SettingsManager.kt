@@ -63,6 +63,7 @@ import com.android.purebilibili.feature.video.ui.gesture.applyHorizontalTwoFinge
 import com.android.purebilibili.feature.video.ui.gesture.applyVerticalTwoFingerSpeedToggle
 import com.android.purebilibili.core.util.ENHANCED_DIAGNOSTIC_LOG_PREF_KEY
 import com.android.purebilibili.core.util.ENHANCED_DIAGNOSTIC_LOG_PREFS_NAME
+import com.android.purebilibili.core.util.isLargeScreenOrFoldableConfiguration
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import kotlinx.coroutines.Dispatchers
@@ -6582,8 +6583,8 @@ object SettingsManager {
         return FULLSCREEN_SWIPE_SEEK_OPTIONS.minByOrNull { option -> abs(option - seconds) } ?: 15
     }
 
-    private fun isTabletConfiguration(context: Context): Boolean {
-        return context.resources.configuration.smallestScreenWidthDp >= 600
+    private fun isLargeScreenOrFoldableConfiguration(context: Context): Boolean {
+        return context.isLargeScreenOrFoldableConfiguration()
     }
 
     fun getFullscreenGestureReverse(context: Context): Flow<Boolean> = context.settingsDataStore.data
@@ -6944,7 +6945,7 @@ object SettingsManager {
 
     fun getHorizontalAdaptationEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences ->
-            preferences[KEY_HORIZONTAL_ADAPTATION] ?: isTabletConfiguration(context)
+            preferences[KEY_HORIZONTAL_ADAPTATION] ?: isLargeScreenOrFoldableConfiguration(context)
         }
 
     suspend fun setHorizontalAdaptationEnabled(context: Context, enabled: Boolean) {
@@ -7010,7 +7011,7 @@ object SettingsManager {
     fun getTabletUseSidebar(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences ->
             preferences[KEY_TABLET_NAVIGATION_MODE]
-                ?: defaultTabletUseSidebar(isTabletConfiguration(context))
+                ?: defaultTabletUseSidebar(isLargeScreenOrFoldableConfiguration(context))
         }
 
     fun getSidebarAccountSwitcherEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
