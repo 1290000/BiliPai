@@ -1,12 +1,17 @@
 package com.android.purebilibili.core.ui.renderer.miuix
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -33,6 +38,7 @@ import com.android.purebilibili.core.ui.resolveMiuixNonGlassControlGeometry
 import com.android.purebilibili.core.ui.isMiuixNonGlassEnabled
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.TabRowDefaults
+import top.yukonga.miuix.kmp.squircle.squircleBorder
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -49,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.resolveAppSegmentedLabelFontSizeSp
+import com.android.purebilibili.core.ui.components.resolveMiuixNonGlassContentTabItemWidths
 
 @Composable
 internal fun <T> AppMiuixSegmentedControl(
@@ -172,6 +179,7 @@ internal fun <T> AppMiuixTabRow(
     modifier: Modifier,
     indicatorPositionProvider: (() -> Float)? = null,
     equalizeScrollableItemWidths: Boolean = false,
+    contentSizedNonGlassItems: Boolean = false,
     onSelectionChange: (T) -> Unit,
 ) {
     if (isMiuixNonGlassEnabled()) {
@@ -186,6 +194,7 @@ internal fun <T> AppMiuixTabRow(
             height = height,
             modifier = modifier,
             equalizeScrollableItemWidths = equalizeScrollableItemWidths,
+            contentSizedItems = contentSizedNonGlassItems,
             onSelectionChange = onSelectionChange,
         )
         return
@@ -238,6 +247,7 @@ private fun <T> AppMiuixNonGlassTabs(
     height: Dp? = null,
     modifier: Modifier,
     equalizeScrollableItemWidths: Boolean = false,
+    contentSizedItems: Boolean = false,
     onSelectionChange: (T) -> Unit,
 ) {
     val labels = options.map { it.label }
@@ -254,6 +264,23 @@ private fun <T> AppMiuixNonGlassTabs(
     }
     val textHeight = with(density) { (labelSizes.maxOfOrNull { it.height } ?: 0).toDp() }
     val geometry = resolveMiuixNonGlassControlGeometry(compact, textHeight)
+    if (contentSizedItems && scrollable) {
+        AppMiuixContentSizedNonGlassTabs(
+            options = options,
+            selectedValue = selectedValue,
+            selectedIndex = selectedIndex,
+            enabled = enabled,
+            itemWidths = resolveMiuixNonGlassContentTabItemWidths(
+                labelWidths = labelSizes.map { with(density) { it.width.toDp() } },
+                minTabWidth = minTabWidth,
+            ),
+            colors = colors,
+            height = height ?: geometry.height,
+            modifier = modifier,
+            onSelectionChange = onSelectionChange,
+        )
+        return
+    }
     val listState = if (scrollable) rememberLazyListState() else null
     // Keep the upstream TabRow defaults for a scrollable rail. The app-level 48dp
     // accessibility minimum is too narrow once upstream's 12dp item padding is
@@ -289,4 +316,71 @@ private fun <T> AppMiuixNonGlassTabs(
         itemSpacing = AppSpacingTokens.Small,
         listState = listState,
     )
+}
+
+@Composable
+private fun <T> AppMiuixContentSizedNonGlassTabs(
+    options: List<AppSegmentOption<T>>,
+    selectedValue: T,
+    selectedIndex: Int,
+    enabled: Boolean,
+    itemWidths: List<Dp>,
+    colors: AppSegmentedControlColors,
+    height: Dp,
+    modifier: Modifier,
+    onSelectionChange: (T) -> Unit,
+) {
+    val tabColors = resolveAppMiuixSegmentedColors(colors)
+    val listState = rememberLazyListState()
+    LaunchedEffect(selectedIndex, itemWidths) {
+        listState.animateScrollToItem(selectedIndex.coerceIn(0, options.lastIndex))
+    }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(tabColors.backgroundColor)
+            .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
+    ) {
+        LazyRow(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            itemsIndexed(options) { index, option ->
+                val selected = option.value == selectedValue
+                Box(
+                    modifier = Modifier
+                        .width(itemWidths.getOrElse(index) { 48.dp })
+                        .height(height)
+                        .squircleBorder(
+                            width = { if (selected) 0.dp else 1.dp },
+                            color = { MiuixTheme.colorScheme.outline },
+                            cornerRadius = 8.dp,
+                        )
+                        .clickable(
+                            enabled = enabled,
+                            role = Role.Tab,
+                            onClick = { onSelectionChange(option.value) },
+                        )
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.material3.Text(
+                        text = option.label,
+                        color = if (selected) {
+                            tabColors.selectedContentColor
+                        } else {
+                            tabColors.contentColor
+                        },
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = MiuixTheme.textStyles.body1.fontSize,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
 }

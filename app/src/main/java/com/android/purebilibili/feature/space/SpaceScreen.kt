@@ -2939,6 +2939,7 @@ private fun SpaceSecondarySwitchRow(
                 // category title; only titles that exceed that estimate are ellipsized.
                 allowLabelOverflow = true,
                 miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
+                contentSizedMiuixNonGlassItems = true,
             )
         }
     }

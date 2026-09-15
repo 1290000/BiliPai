@@ -8,6 +8,7 @@ import com.android.purebilibili.core.ui.components.resolveCompactMiuixTabRowWidt
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabContentColor
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabTrackColor
 import com.android.purebilibili.core.ui.components.resolveEqualMiuixNonGlassTabItemWidth
+import com.android.purebilibili.core.ui.components.resolveMiuixNonGlassContentTabItemWidths
 import com.android.purebilibili.core.ui.components.shouldEqualizeMiuixNonGlassTabItems
 import com.android.purebilibili.core.ui.components.shouldStretchMiuixNonGlassTabRowToTrack
 import com.android.purebilibili.core.ui.components.MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP
@@ -109,6 +110,17 @@ class AppSegmentedControlPolicyTest {
             resolveEqualMiuixNonGlassTabItemWidth(
                 longestLabelWidth = 20.dp,
                 minTabWidth = 64.dp,
+            ),
+        )
+    }
+
+    @Test
+    fun `Miuix non glass content tabs size each item from its own label`() {
+        assertEquals(
+            listOf(48.dp, 75.dp, 320.dp),
+            resolveMiuixNonGlassContentTabItemWidths(
+                labelWidths = listOf(20.dp, 51.dp, 400.dp),
+                minTabWidth = 48.dp,
             ),
         )
     }

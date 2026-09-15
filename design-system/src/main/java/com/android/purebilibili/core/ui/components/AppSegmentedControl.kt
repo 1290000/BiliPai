@@ -150,6 +150,15 @@ internal fun resolveEqualMiuixNonGlassTabItemWidth(
     longestLabelWidth + horizontalContentPadding * 2,
 )
 
+fun resolveMiuixNonGlassContentTabItemWidths(
+    labelWidths: List<Dp>,
+    minTabWidth: Dp,
+    maxTabWidth: Dp = 320.dp,
+    horizontalContentPadding: Dp = 24.dp,
+): List<Dp> = labelWidths.map { labelWidth ->
+    (labelWidth + horizontalContentPadding).coerceIn(minTabWidth, maxTabWidth)
+}
+
 fun resolveAppLiquidSegmentedControlSpec(
     itemCount: Int,
     hasExternalBackdrop: Boolean,
@@ -297,6 +306,7 @@ fun <T> AppNativeTabRow(
     indicatorPositionProvider: (() -> Float)? = null,
     miuixNonGlassItemWidthMode: MiuixNonGlassTabItemWidthMode =
         MiuixNonGlassTabItemWidthMode.CONTENT,
+    contentSizedMiuixNonGlassItems: Boolean = false,
     onSelectionChange: (T) -> Unit,
 ) {
     if (options.isEmpty()) return
@@ -313,6 +323,10 @@ fun <T> AppNativeTabRow(
     val effectiveScrollable = !forceEqualWidth &&
         (equalizeMiuixNonGlassItems || scrollable || options.size > 3 ||
             (readableMinTabWidth > minTabWidth && (!compactMiuixWhenTwoOptions || options.size > 2)))
+    val useContentSizedMiuixItems = contentSizedMiuixNonGlassItems &&
+        miuixNonGlassItemWidthMode == MiuixNonGlassTabItemWidthMode.CONTENT &&
+        com.android.purebilibili.core.ui.isMiuixNonGlassEnabled() &&
+        effectiveScrollable
     val viewportBoundedModifier = modifier.widthIn(
         max = LocalConfiguration.current.screenWidthDp.dp,
     )
@@ -333,7 +347,11 @@ fun <T> AppNativeTabRow(
         miuixSurfaceContainerHigh = trackColor,
         miuixOnSurfaceVariantSummary = inactiveTextColor,
     )
-    val targetTabWidth = if (effectiveScrollable) readableMinTabWidth else minTabWidth
+    val targetTabWidth = if (effectiveScrollable && !useContentSizedMiuixItems) {
+        readableMinTabWidth
+    } else {
+        minTabWidth
+    }
     when (if (forceMaterial3) AppSegmentedRenderer.MATERIAL3 else resolveAppSegmentedRenderer(policy.usesNativeTabRow)) {
         AppSegmentedRenderer.MATERIAL3 -> AppMaterial3TabRow(
             options = options,
@@ -363,6 +381,7 @@ fun <T> AppNativeTabRow(
             },
             indicatorPositionProvider = indicatorPositionProvider,
             equalizeScrollableItemWidths = equalizeMiuixNonGlassItems,
+            contentSizedNonGlassItems = useContentSizedMiuixItems,
             onSelectionChange = onSelectionChange,
         )
     }
