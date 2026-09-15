@@ -488,49 +488,61 @@ internal fun TabletVideoLayout(
             // 📝 右侧：评论 / 相关推荐
             if (uiState is VideoPlaybackUiState.Success) {
                 val success = uiState
-                
-                TabletSecondaryContent(
-                    success = success,
-                    commentState = commentState,
-                    subReplyState = subReplyState,
-                    playbackActions = playbackActions,
-                    engagementState = engagementState,
-                    engagementActions = engagementActions,
-                    commentActions = commentActions,
-                    playerState = playerState,
-                    onUpClick = onUpClick,
-                    paneMode = secondaryPaneMode,
-                    onPaneModeChange = { secondaryPaneModeName = it.name },
-                    onRelatedVideoClick = onRelatedVideoClick,
-                    onSearchKeywordClick = onSearchKeywordClick,
-                    showUpBadge = showUpBadge,
-                    showIdentityDecorations = commentMemberDecorationsEnabled,
-                    onOpenBilibiliLink = onOpenBilibiliLink,
-                    requestedTabName = requestedSecondaryTabName,
-                    onRequestedTabConsumed = { requestedSecondaryTabName = null },
-                    fixedTab = if (useThreePaneLayout) TabletSecondaryTab.COMMENTS else null,
-                    introContent = if (layoutPolicy.useTabletopLayout) {
-                        {
-                            TabletVideoInfoPane(
-                                success = success,
-                                engagementState = engagementState,
-                                downloadProgress = downloadProgress,
-                                playbackActions = playbackActions,
-                                engagementActions = engagementActions,
-                                onBgmClick = onBgmClick,
-                                onRelatedVideoClick = onRelatedVideoClick,
-                                onOpenBilibiliLink = onOpenBilibiliLink,
-                                danmakuEnabled = danmakuChrome.enabled,
-                                onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
-                                onDanmakuToggle = danmakuChrome.onToggle,
-                                onOwnerUploadsClick = {
-                                    requestedSecondaryTabName = TabletSecondaryTab.OWNER_UPLOADS.name
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    } else null,
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    TabletSecondaryContent(
+                        success = success,
+                        commentState = commentState,
+                        subReplyState = subReplyState,
+                        playbackActions = playbackActions,
+                        engagementState = engagementState,
+                        engagementActions = engagementActions,
+                        commentActions = commentActions,
+                        playerState = playerState,
+                        onUpClick = onUpClick,
+                        paneMode = secondaryPaneMode,
+                        onPaneModeChange = { secondaryPaneModeName = it.name },
+                        onRelatedVideoClick = onRelatedVideoClick,
+                        onSearchKeywordClick = onSearchKeywordClick,
+                        showUpBadge = showUpBadge,
+                        showIdentityDecorations = commentMemberDecorationsEnabled,
+                        onOpenBilibiliLink = onOpenBilibiliLink,
+                        requestedTabName = requestedSecondaryTabName,
+                        onRequestedTabConsumed = { requestedSecondaryTabName = null },
+                        fixedTab = if (useThreePaneLayout) TabletSecondaryTab.COMMENTS else null,
+                        introContent = if (layoutPolicy.useTabletopLayout) {
+                            {
+                                TabletVideoInfoPane(
+                                    success = success,
+                                    engagementState = engagementState,
+                                    downloadProgress = downloadProgress,
+                                    playbackActions = playbackActions,
+                                    engagementActions = engagementActions,
+                                    onBgmClick = onBgmClick,
+                                    onRelatedVideoClick = onRelatedVideoClick,
+                                    onOpenBilibiliLink = onOpenBilibiliLink,
+                                    danmakuEnabled = danmakuChrome.enabled,
+                                    onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
+                                    onDanmakuToggle = danmakuChrome.onToggle,
+                                    onOwnerUploadsClick = {
+                                        requestedSecondaryTabName = TabletSecondaryTab.OWNER_UPLOADS.name
+                                    },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        } else null,
+                    )
+                    if (!secondaryPaneHidden) {
+                        TabletSecondaryPaneToggleButton(
+                            isSecondaryPaneVisible = true,
+                            onClick = {
+                                secondaryPaneModeName = TabletSecondaryPaneMode.COLLAPSED.name
+                            },
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .offset(x = (-20).dp),
+                        )
+                    }
+                }
             }
         },
         tertiaryContent = if (useThreePaneLayout) {
@@ -650,7 +662,6 @@ internal fun TabletSecondaryContent(
     onRequestedTabConsumed: () -> Unit,
     fixedTab: TabletSecondaryTab? = null,
     introContent: (@Composable () -> Unit)? = null,
-    showPaneModeControls: Boolean = true,
     applyStatusBarPadding: Boolean = true,
     includeRelatedTab: Boolean = true,
     includeOwnerUploadsTab: Boolean = true,
@@ -828,21 +839,6 @@ internal fun TabletSecondaryContent(
                     isScrollInProgressProvider = { pagerState.isScrollInProgress },
                     modifier = Modifier.weight(1f),
                 )
-                if (showPaneModeControls) {
-                    TabletSecondaryPaneToggleButton(
-                        isSecondaryPaneVisible = paneMode != TabletSecondaryPaneMode.COLLAPSED,
-                        onClick = {
-                            onPaneModeChange(
-                                if (paneMode == TabletSecondaryPaneMode.COLLAPSED) {
-                                    TabletSecondaryPaneMode.EXPANDED
-                                } else {
-                                    TabletSecondaryPaneMode.COLLAPSED
-                                }
-                            )
-                        },
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                }
             }
         } else {
             Row(

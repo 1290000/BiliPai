@@ -3,6 +3,9 @@ package com.android.purebilibili.feature.video.screen
 import android.content.res.Configuration
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope.OverlayClip
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -120,6 +124,17 @@ internal fun LargeScreenVideoLayout(
         val canCollapseSidePane = metrics.mode != LargeScreenVideoLayoutMode.VerticalThreePane &&
             metrics.mode != LargeScreenVideoLayoutMode.Phone
         val sidePaneCollapsed = sidePaneCollapsedRequested && canCollapseSidePane
+        val sidePaneTransition = rememberTransition(
+            targetState = sidePaneCollapsed,
+            label = "large-screen-secondary-pane",
+        )
+        val animatedSidePaneWidth by sidePaneTransition.animateDp(
+            transitionSpec = { tween(durationMillis = 320) },
+            label = "secondary-pane-width",
+        ) { collapsed ->
+            if (collapsed) 0.dp else metrics.sidePaneWidthDp.dp
+        }
+        val animatedPlayerWidth = (maxWidth - animatedSidePaneWidth).coerceAtLeast(0.dp)
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
                 modifier = modifier,
@@ -188,14 +203,8 @@ internal fun LargeScreenVideoLayout(
                     commentActions = commentActions,
                     playerState = playerState,
                     onUpClick = onUpClick,
-                    paneMode = if (sidePaneCollapsed) {
-                        TabletSecondaryPaneMode.COLLAPSED
-                    } else {
-                        TabletSecondaryPaneMode.EXPANDED
-                    },
-                    onPaneModeChange = { mode ->
-                        sidePaneCollapsedRequested = mode == TabletSecondaryPaneMode.COLLAPSED
-                    },
+                    paneMode = TabletSecondaryPaneMode.EXPANDED,
+                    onPaneModeChange = {},
                     onRelatedVideoClick = onRelatedVideoClick,
                     onSearchKeywordClick = onSearchKeywordClick,
                     showUpBadge = showUpBadge,
@@ -208,7 +217,6 @@ internal fun LargeScreenVideoLayout(
                     } else {
                         null
                     },
-                    showPaneModeControls = canCollapseSidePane,
                     applyStatusBarPadding = applySideStatusBarPadding,
                     includeRelatedTab = includeRelatedTab,
                     includeOwnerUploadsTab = true,
@@ -243,9 +251,32 @@ internal fun LargeScreenVideoLayout(
                 }
             }
             LargeScreenVideoLayoutMode.Split -> {
-                if (sidePaneCollapsed) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        player(Modifier.fillMaxSize().background(Color.Black))
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        player(
+                            Modifier
+                                .width(animatedPlayerWidth)
+                                .height(metrics.playerHeightDp.dp)
+                                .background(Color.Black),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(animatedSidePaneWidth)
+                                .fillMaxHeight(),
+                        ) {
+                            side(true)
+                            if (!sidePaneCollapsed) {
+                                TabletSecondaryPaneToggleButton(
+                                    isSecondaryPaneVisible = true,
+                                    onClick = { sidePaneCollapsedRequested = true },
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = (-20).dp),
+                                )
+                            }
+                        }
+                    }
+                    if (sidePaneCollapsed) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = false,
                             onClick = { sidePaneCollapsedRequested = false },
@@ -253,22 +284,6 @@ internal fun LargeScreenVideoLayout(
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp),
                         )
-                    }
-                } else {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        player(
-                            Modifier
-                                .width(metrics.playerWidthDp.dp)
-                                .height(metrics.playerHeightDp.dp)
-                                .background(Color.Black),
-                        )
-                        Column(
-                            modifier = Modifier
-                                .width(metrics.sidePaneWidthDp.dp)
-                                .fillMaxHeight(),
-                        ) {
-                            side(true)
-                        }
                     }
                 }
             }
@@ -293,17 +308,28 @@ internal fun LargeScreenVideoLayout(
                                     .padding(end = 4.dp),
                             )
                         } else {
-                            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                                 side(false)
+                                TabletSecondaryPaneToggleButton(
+                                    isSecondaryPaneVisible = true,
+                                    onClick = { sidePaneCollapsedRequested = true },
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = (-20).dp),
+                                )
                             }
                         }
                     }
                 }
             }
             LargeScreenVideoLayoutMode.Landscape -> {
-                if (sidePaneCollapsed) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier
+                                .width(animatedPlayerWidth)
+                                .fillMaxHeight(),
+                        ) {
                             player(
                                 Modifier
                                     .fillMaxWidth()
@@ -318,6 +344,24 @@ internal fun LargeScreenVideoLayout(
                                 )
                             }
                         }
+                        Box(
+                            modifier = Modifier
+                                .width(animatedSidePaneWidth)
+                                .fillMaxHeight(),
+                        ) {
+                            side(!metrics.introBelowPlayer)
+                            if (!sidePaneCollapsed) {
+                                TabletSecondaryPaneToggleButton(
+                                    isSecondaryPaneVisible = true,
+                                    onClick = { sidePaneCollapsedRequested = true },
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = (-20).dp),
+                                )
+                            }
+                        }
+                    }
+                    if (sidePaneCollapsed) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = false,
                             onClick = { sidePaneCollapsedRequested = false },
@@ -325,35 +369,6 @@ internal fun LargeScreenVideoLayout(
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp),
                         )
-                    }
-                } else {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        Column(
-                            modifier = Modifier
-                                .width(metrics.playerWidthDp.dp)
-                                .fillMaxHeight(),
-                        ) {
-                            player(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(metrics.playerHeightDp.dp)
-                                    .background(Color.Black),
-                            )
-                            if (metrics.introBelowPlayer) {
-                                intro(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f),
-                                )
-                            }
-                        }
-                        Column(
-                            modifier = Modifier
-                                .width(metrics.sidePaneWidthDp.dp)
-                                .fillMaxHeight(),
-                        ) {
-                            side(!metrics.introBelowPlayer)
-                        }
                     }
                 }
             }
