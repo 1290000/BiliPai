@@ -139,6 +139,7 @@ import com.android.purebilibili.core.ui.resolveOfficialVerifyBadge
 import com.android.purebilibili.core.ui.components.AppLiquidAwareSearchField
 import com.android.purebilibili.core.ui.components.AppNativeTabRow
 import com.android.purebilibili.core.ui.components.AppSegmentOption
+import com.android.purebilibili.core.ui.components.MiuixNonGlassTabItemWidthMode
 import com.android.purebilibili.core.ui.components.KeepScrollableTabSelectionVisible
 import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
 import com.android.purebilibili.core.store.HomeSettings
@@ -2930,10 +2931,11 @@ private fun SpaceSecondarySwitchRow(
                 selectedValue = selectedId,
                 onSelectionChange = onSelect,
                 modifier = Modifier.fillMaxWidth(),
-                scrollable = useScrollableRail,
-                minTabWidth = itemWidth,
+                scrollable = shouldScrollSpaceSecondarySwitchForNonGlass(items.size),
+                minTabWidth = resolveSpaceSecondarySwitchNonGlassMinTabWidthDp().dp,
                 compactMiuixWhenTwoOptions = false,
                 allowLabelOverflow = false,
+                miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
             )
         }
     }
