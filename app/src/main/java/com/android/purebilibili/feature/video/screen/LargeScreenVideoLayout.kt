@@ -129,7 +129,8 @@ internal fun LargeScreenVideoLayout(
         var sidePaneCollapsedRequested by rememberSaveable(bvid) { mutableStateOf(false) }
         var primaryPaneCollapsedRequested by rememberSaveable(bvid) { mutableStateOf(false) }
         val canCollapseSidePane = metrics.mode == LargeScreenVideoLayoutMode.Split ||
-            metrics.mode == LargeScreenVideoLayoutMode.Landscape
+            metrics.mode == LargeScreenVideoLayoutMode.Landscape ||
+            metrics.mode == LargeScreenVideoLayoutMode.AlmostSquare
         val paneVisibility = when {
             canCollapseSidePane && primaryPaneCollapsedRequested ->
                 LargeScreenPaneVisibility.PRIMARY_COLLAPSED
