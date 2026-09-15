@@ -4,10 +4,7 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
-import android.view.Surface
 import androidx.window.layout.WindowMetricsCalculator
-
-internal const val LARGE_SCREEN_SMALLEST_WIDTH_DP = 600
 
 internal data class PlayerWindowOrientationPolicy(
     val currentWindowWidthDp: Int,
@@ -22,30 +19,6 @@ internal data class PlayerWindowOrientationPolicy(
 ) {
     val usesInWindowFullscreen: Boolean
         get() = isFoldableCoverWindow && isLandscapeNaturalDisplay
-}
-
-internal fun isLandscapeNaturalDisplay(
-    configurationOrientation: Int,
-    displayRotation: Int?,
-    displayModeWidthPx: Int? = null,
-    displayModeHeightPx: Int? = null,
-): Boolean {
-    if (
-        displayModeWidthPx != null &&
-        displayModeHeightPx != null &&
-        displayModeWidthPx > 0 &&
-        displayModeHeightPx > 0 &&
-        displayModeWidthPx != displayModeHeightPx
-    ) {
-        return displayModeWidthPx > displayModeHeightPx
-    }
-    return when (displayRotation) {
-        Surface.ROTATION_0,
-        Surface.ROTATION_180 -> configurationOrientation == Configuration.ORIENTATION_LANDSCAPE
-        Surface.ROTATION_90,
-        Surface.ROTATION_270 -> configurationOrientation == Configuration.ORIENTATION_PORTRAIT
-        else -> false
-    }
 }
 
 internal fun isFoldableCoverWindow(

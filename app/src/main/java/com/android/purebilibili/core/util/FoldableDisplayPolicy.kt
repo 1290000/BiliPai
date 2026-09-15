@@ -1,0 +1,174 @@
+package com.android.purebilibili.core.util
+
+import android.content.res.Configuration
+import android.view.Surface
+
+internal const val LARGE_SCREEN_SMALLEST_WIDTH_DP = 600
+
+enum class AppFoldableDisplayRole {
+    Standard,
+    Cover,
+    Inner,
+    UnknownFoldable,
+}
+
+enum class AppDisplayNaturalOrientation {
+    Portrait,
+    Landscape,
+    Unknown,
+}
+
+enum class AppFoldableDetectionBasis {
+    None,
+    CurrentFoldingFeature,
+    HingeAngleSensor,
+    WindowMetricsFallback,
+}
+
+data class AppDisplayContext(
+    val currentWindowWidthDp: Int,
+    val currentWindowHeightDp: Int,
+    val maximumWindowWidthDp: Int? = null,
+    val maximumWindowHeightDp: Int? = null,
+    val displayModeWidthPx: Int? = null,
+    val displayModeHeightPx: Int? = null,
+    val displayRotation: Int? = null,
+    val foldableDisplayRole: AppFoldableDisplayRole = AppFoldableDisplayRole.Standard,
+    val naturalOrientation: AppDisplayNaturalOrientation = AppDisplayNaturalOrientation.Unknown,
+    val detectionBasis: AppFoldableDetectionBasis = AppFoldableDetectionBasis.None,
+    val isInMultiWindowMode: Boolean = false,
+) {
+    val isFoldableCoverWindow: Boolean
+        get() = foldableDisplayRole == AppFoldableDisplayRole.Cover
+
+    val usesInWindowFullscreen: Boolean
+        get() = isFoldableCoverWindow &&
+            naturalOrientation == AppDisplayNaturalOrientation.Landscape
+}
+
+internal data class AppDisplayContextInput(
+    val currentWindowWidthDp: Int,
+    val currentWindowHeightDp: Int,
+    val maximumWindowWidthDp: Int? = null,
+    val maximumWindowHeightDp: Int? = null,
+    val configurationOrientation: Int = Configuration.ORIENTATION_UNDEFINED,
+    val displayRotation: Int? = null,
+    val displayModeWidthPx: Int? = null,
+    val displayModeHeightPx: Int? = null,
+    val hasCurrentFoldingFeature: Boolean = false,
+    val hasHingeAngleSensor: Boolean = false,
+    val isInMultiWindowMode: Boolean = false,
+)
+
+internal fun resolveAppDisplayContext(input: AppDisplayContextInput): AppDisplayContext {
+    val currentShortSideDp = minOf(
+        input.currentWindowWidthDp,
+        input.currentWindowHeightDp,
+    )
+    val maximumShortSideDp = if (
+        input.maximumWindowWidthDp != null &&
+        input.maximumWindowHeightDp != null
+    ) {
+        minOf(input.maximumWindowWidthDp, input.maximumWindowHeightDp)
+    } else {
+        null
+    }
+
+    val (role, basis) = when {
+        // A FoldingFeature exists only inside the current window, so this is direct evidence
+        // that the activity is running on the foldable's inner display.
+        input.hasCurrentFoldingFeature ->
+            AppFoldableDisplayRole.Inner to AppFoldableDetectionBasis.CurrentFoldingFeature
+
+        // Multi-window bounds do not describe a physical display. Keep the foldable identity,
+        // but do not guess cover versus inner from a resized app window.
+        input.hasHingeAngleSensor && input.isInMultiWindowMode ->
+            AppFoldableDisplayRole.UnknownFoldable to AppFoldableDetectionBasis.HingeAngleSensor
+
+        input.hasHingeAngleSensor && currentShortSideDp < LARGE_SCREEN_SMALLEST_WIDTH_DP ->
+            AppFoldableDisplayRole.Cover to AppFoldableDetectionBasis.HingeAngleSensor
+
+        input.hasHingeAngleSensor ->
+            AppFoldableDisplayRole.Inner to AppFoldableDetectionBasis.HingeAngleSensor
+
+        // Some vendor builds omit the hinge-angle feature. Retain the existing metrics signal
+        // only as a low-confidence, full-window fallback; never use it in multi-window mode.
+        !input.isInMultiWindowMode &&
+            maximumShortSideDp != null &&
+            maximumShortSideDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP &&
+            currentShortSideDp < LARGE_SCREEN_SMALLEST_WIDTH_DP ->
+            AppFoldableDisplayRole.Cover to AppFoldableDetectionBasis.WindowMetricsFallback
+
+        else -> AppFoldableDisplayRole.Standard to AppFoldableDetectionBasis.None
+    }
+
+    return AppDisplayContext(
+        currentWindowWidthDp = input.currentWindowWidthDp,
+        currentWindowHeightDp = input.currentWindowHeightDp,
+        maximumWindowWidthDp = input.maximumWindowWidthDp,
+        maximumWindowHeightDp = input.maximumWindowHeightDp,
+        displayModeWidthPx = input.displayModeWidthPx,
+        displayModeHeightPx = input.displayModeHeightPx,
+        displayRotation = input.displayRotation,
+        foldableDisplayRole = role,
+        naturalOrientation = resolveDisplayNaturalOrientation(
+            configurationOrientation = input.configurationOrientation,
+            displayRotation = input.displayRotation,
+            displayModeWidthPx = input.displayModeWidthPx,
+            displayModeHeightPx = input.displayModeHeightPx,
+        ),
+        detectionBasis = basis,
+        isInMultiWindowMode = input.isInMultiWindowMode,
+    )
+}
+
+internal fun resolveDisplayNaturalOrientation(
+    configurationOrientation: Int,
+    displayRotation: Int?,
+    displayModeWidthPx: Int? = null,
+    displayModeHeightPx: Int? = null,
+): AppDisplayNaturalOrientation {
+    if (
+        displayModeWidthPx != null &&
+        displayModeHeightPx != null &&
+        displayModeWidthPx > 0 &&
+        displayModeHeightPx > 0 &&
+        displayModeWidthPx != displayModeHeightPx
+    ) {
+        return if (displayModeWidthPx > displayModeHeightPx) {
+            AppDisplayNaturalOrientation.Landscape
+        } else {
+            AppDisplayNaturalOrientation.Portrait
+        }
+    }
+
+    return when (displayRotation) {
+        Surface.ROTATION_0,
+        Surface.ROTATION_180 -> when (configurationOrientation) {
+            Configuration.ORIENTATION_LANDSCAPE -> AppDisplayNaturalOrientation.Landscape
+            Configuration.ORIENTATION_PORTRAIT -> AppDisplayNaturalOrientation.Portrait
+            else -> AppDisplayNaturalOrientation.Unknown
+        }
+
+        Surface.ROTATION_90,
+        Surface.ROTATION_270 -> when (configurationOrientation) {
+            Configuration.ORIENTATION_LANDSCAPE -> AppDisplayNaturalOrientation.Portrait
+            Configuration.ORIENTATION_PORTRAIT -> AppDisplayNaturalOrientation.Landscape
+            else -> AppDisplayNaturalOrientation.Unknown
+        }
+
+        else -> AppDisplayNaturalOrientation.Unknown
+    }
+}
+
+internal fun isLandscapeNaturalDisplay(
+    configurationOrientation: Int,
+    displayRotation: Int?,
+    displayModeWidthPx: Int? = null,
+    displayModeHeightPx: Int? = null,
+): Boolean = resolveDisplayNaturalOrientation(
+    configurationOrientation = configurationOrientation,
+    displayRotation = displayRotation,
+    displayModeWidthPx = displayModeWidthPx,
+    displayModeHeightPx = displayModeHeightPx,
+) == AppDisplayNaturalOrientation.Landscape

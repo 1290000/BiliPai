@@ -1,14 +1,19 @@
 // 文件路径: core/util/WindowSizeUtils.kt
 package com.android.purebilibili.core.util
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -23,6 +28,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.window.layout.WindowMetrics
+import androidx.window.layout.WindowMetricsCalculator
 import kotlin.math.min
 
 /**
@@ -183,6 +189,10 @@ data class AppFoldingFeatureInfo(
 data class AppWindowAdaptiveInfo(
     val windowSizeClass: WindowSizeClass,
     val foldingFeature: AppFoldingFeatureInfo = AppFoldingFeatureInfo(),
+    val displayContext: AppDisplayContext = AppDisplayContext(
+        currentWindowWidthDp = windowSizeClass.widthDp.value.toInt(),
+        currentWindowHeightDp = windowSizeClass.heightDp.value.toInt(),
+    ),
     val precisePointerConnected: Boolean = false,
     val hardwareKeyboardConnected: Boolean = false,
 ) {
@@ -232,6 +242,36 @@ fun rememberAppWindowAdaptiveInfo(
     val foldingFeatureInfo = remember(windowPosture) {
         windowPosture.toAppFoldingFeatureInfo()
     }
+    val activity = remember(context) { context.findHostActivity() }
+    val displayContext = remember(
+        activity,
+        configuration.screenWidthDp,
+        configuration.screenHeightDp,
+        configuration.orientation,
+        foldingFeatureInfo,
+    ) {
+        activity.resolveAppDisplayContext(
+            configuration = configuration,
+            hasCurrentFoldingFeature = foldingFeatureInfo.posture != AppFoldPosture.None,
+        )
+    }
+    LaunchedEffect(displayContext) {
+        Logger.d(
+            "AppDisplayContext",
+            "role=${displayContext.foldableDisplayRole}, " +
+                "basis=${displayContext.detectionBasis}, " +
+                "current=${displayContext.currentWindowWidthDp}x" +
+                "${displayContext.currentWindowHeightDp}dp, " +
+                "maximum=${displayContext.maximumWindowWidthDp}x" +
+                "${displayContext.maximumWindowHeightDp}dp, " +
+                "mode=${displayContext.displayModeWidthPx}x" +
+                "${displayContext.displayModeHeightPx}px, " +
+                "rotation=${displayContext.displayRotation}, " +
+                "natural=${displayContext.naturalOrientation}, " +
+                "multiWindow=${displayContext.isInMultiWindowMode}, " +
+                "fullscreen=${if (displayContext.usesInWindowFullscreen) "in-window" else "orientation-driven"}",
+        )
+    }
     val precisePointerConnected by produceState(
         initialValue = context.hasPrecisePointer(),
         key1 = context,
@@ -258,16 +298,69 @@ fun rememberAppWindowAdaptiveInfo(
     return remember(
         windowSizeClass,
         foldingFeatureInfo,
+        displayContext,
         precisePointerConnected,
         hardwareKeyboardConnected,
     ) {
         AppWindowAdaptiveInfo(
             windowSizeClass = windowSizeClass,
             foldingFeature = foldingFeatureInfo,
+            displayContext = displayContext,
             precisePointerConnected = precisePointerConnected,
             hardwareKeyboardConnected = hardwareKeyboardConnected,
         )
     }
+}
+
+@Suppress("DEPRECATION")
+private fun Activity?.resolveAppDisplayContext(
+    configuration: Configuration,
+    hasCurrentFoldingFeature: Boolean,
+): AppDisplayContext {
+    if (this == null) {
+        return resolveAppDisplayContext(
+            AppDisplayContextInput(
+                currentWindowWidthDp = configuration.screenWidthDp,
+                currentWindowHeightDp = configuration.screenHeightDp,
+                configurationOrientation = configuration.orientation,
+            )
+        )
+    }
+
+    val density = resources.displayMetrics.density.coerceAtLeast(1f)
+    val maximumBounds = runCatching {
+        WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this).bounds
+    }.getOrNull()
+    val currentDisplay = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display
+        else windowManager.defaultDisplay
+    }.getOrNull()
+    val displayMode = runCatching { currentDisplay?.mode }.getOrNull()
+    val hasHingeAngleSensor = runCatching {
+        packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+    }.getOrDefault(false)
+
+    return resolveAppDisplayContext(
+        AppDisplayContextInput(
+            currentWindowWidthDp = configuration.screenWidthDp,
+            currentWindowHeightDp = configuration.screenHeightDp,
+            maximumWindowWidthDp = maximumBounds?.let { (it.width() / density).toInt() },
+            maximumWindowHeightDp = maximumBounds?.let { (it.height() / density).toInt() },
+            configurationOrientation = configuration.orientation,
+            displayRotation = currentDisplay?.rotation,
+            displayModeWidthPx = displayMode?.physicalWidth,
+            displayModeHeightPx = displayMode?.physicalHeight,
+            hasCurrentFoldingFeature = hasCurrentFoldingFeature,
+            hasHingeAngleSensor = hasHingeAngleSensor,
+            isInMultiWindowMode = isInMultiWindowMode,
+        )
+    )
+}
+
+private tailrec fun Context.findHostActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findHostActivity()
+    else -> null
 }
 
 private fun androidx.compose.material3.adaptive.Posture.toAppFoldingFeatureInfo(): AppFoldingFeatureInfo {
