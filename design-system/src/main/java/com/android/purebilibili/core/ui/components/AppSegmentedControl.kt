@@ -131,6 +131,15 @@ internal fun shouldEqualizeMiuixNonGlassTabItems(
     isMiuixNonGlass &&
     optionCount > 1
 
+/** Upstream Miuix TabRow itemSpacing. */
+internal const val MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP = 9
+
+internal fun shouldStretchMiuixNonGlassTabRowToTrack(
+    compact: Boolean,
+    scrollable: Boolean,
+    optionCount: Int,
+): Boolean = compact && !scrollable && optionCount in 1..2
+
 internal fun resolveEqualMiuixNonGlassTabItemWidth(
     longestLabelWidth: Dp,
     minTabWidth: Dp,

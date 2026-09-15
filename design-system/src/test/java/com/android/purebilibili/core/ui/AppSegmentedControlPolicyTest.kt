@@ -9,6 +9,8 @@ import com.android.purebilibili.core.ui.components.resolveAppMiuixTabContentColo
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabTrackColor
 import com.android.purebilibili.core.ui.components.resolveEqualMiuixNonGlassTabItemWidth
 import com.android.purebilibili.core.ui.components.shouldEqualizeMiuixNonGlassTabItems
+import com.android.purebilibili.core.ui.components.shouldStretchMiuixNonGlassTabRowToTrack
+import com.android.purebilibili.core.ui.components.MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP
 import com.android.purebilibili.core.ui.components.MiuixNonGlassTabItemWidthMode
 import androidx.compose.ui.graphics.Color
 import java.io.File
@@ -134,6 +136,40 @@ class AppSegmentedControlPolicyTest {
                 optionCount = 2,
             )
         )
+    }
+
+    @Test
+    fun `non glass Miuix page tabs stay content sized except compact two option tracks`() {
+        assertTrue(
+            shouldStretchMiuixNonGlassTabRowToTrack(
+                compact = true,
+                scrollable = false,
+                optionCount = 2,
+            )
+        )
+        assertFalse(
+            shouldStretchMiuixNonGlassTabRowToTrack(
+                compact = false,
+                scrollable = false,
+                optionCount = 3,
+            )
+        )
+        assertFalse(
+            shouldStretchMiuixNonGlassTabRowToTrack(
+                compact = false,
+                scrollable = true,
+                optionCount = 6,
+            )
+        )
+        assertEquals(9, MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP)
+        val miuixSource = loadSource(
+            "src/main/java/com/android/purebilibili/core/ui/renderer/miuix/" +
+                "AppMiuixSegmentedControl.kt"
+        )
+        val nonGlassTabs = miuixSource.substringAfter("private fun <T> AppMiuixNonGlassTabs(")
+        assertTrue(nonGlassTabs.contains("shouldStretchMiuixNonGlassTabRowToTrack("))
+        assertTrue(nonGlassTabs.contains("MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP.dp"))
+        assertTrue(nonGlassTabs.contains("Modifier.weight(1f)"))
     }
 
     @Test

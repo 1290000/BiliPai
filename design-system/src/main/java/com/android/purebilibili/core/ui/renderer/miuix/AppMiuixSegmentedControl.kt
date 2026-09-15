@@ -33,7 +33,9 @@ import com.android.purebilibili.core.ui.components.resolveAppMiuixSegmentedColor
 import com.android.purebilibili.core.ui.components.resolveAppSegmentedSelectionIndex
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabContentColor
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabTrackColor
+import com.android.purebilibili.core.ui.components.MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP
 import com.android.purebilibili.core.ui.components.resolveEqualMiuixNonGlassTabItemWidth
+import com.android.purebilibili.core.ui.components.shouldStretchMiuixNonGlassTabRowToTrack
 import com.android.purebilibili.core.ui.resolveRoundedControlVisualGeometry
 import com.android.purebilibili.core.ui.resolveMiuixNonGlassControlGeometry
 import com.android.purebilibili.core.ui.isMiuixNonGlassEnabled
@@ -255,10 +257,15 @@ private fun <T> AppMiuixNonGlassTabs(
     val textHeight = with(density) { (labelSizes.maxOfOrNull { it.height } ?: 0).toDp() }
     val geometry = resolveMiuixNonGlassControlGeometry(compact, textHeight)
     val targetHeight = height ?: geometry.height
-    val readableWidth = if (compact && !scrollable) {
+    val stretchToTrack = shouldStretchMiuixNonGlassTabRowToTrack(
+        compact = compact,
+        scrollable = scrollable,
+        optionCount = options.size,
+    )
+    val readableWidth = if (stretchToTrack) {
         0.dp
     } else {
-        if (scrollable) maxOf(AppChromeSizeTokens.MinimumTouchTarget, minTabWidth) else 0.dp
+        maxOf(AppChromeSizeTokens.MinimumTouchTarget, minTabWidth)
     }
     val equalItemWidth = resolveEqualMiuixNonGlassTabItemWidth(
         longestLabelWidth = with(density) {
@@ -267,8 +274,8 @@ private fun <T> AppMiuixNonGlassTabs(
         minTabWidth = readableWidth,
     )
     val scrollState = rememberLazyListState()
-    LaunchedEffect(selectedIndex, scrollable, scrollState) {
-        if (scrollable) scrollState.animateScrollToItem(selectedIndex)
+    LaunchedEffect(selectedIndex, stretchToTrack, scrollState) {
+        if (!stretchToTrack) scrollState.animateScrollToItem(selectedIndex)
     }
     Box(
         modifier = modifier
@@ -276,39 +283,7 @@ private fun <T> AppMiuixNonGlassTabs(
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
         contentAlignment = Alignment.CenterStart,
     ) {
-        if (scrollable) {
-            LazyRow(
-                state = scrollState,
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall),
-            ) {
-                itemsIndexed(options) { index, option ->
-                    AppMiuixNonGlassTabItem(
-                        label = option.label,
-                        selected = index == selectedIndex,
-                        enabled = enabled,
-                        visualHeight = targetHeight,
-                        cornerRadius = geometry.cornerRadius,
-                        backgroundColor = if (index == selectedIndex) {
-                            tabColors.selectedBackgroundColor
-                        } else {
-                            tabColors.backgroundColor
-                        },
-                        contentColor = if (index == selectedIndex) {
-                            tabColors.selectedContentColor
-                        } else {
-                            inactiveContentColor
-                        },
-                        modifier = if (equalizeScrollableItemWidths) {
-                            Modifier.width(equalItemWidth)
-                        } else {
-                            Modifier.widthIn(min = readableWidth)
-                        },
-                        onClick = { onSelectionChange(option.value) },
-                    )
-                }
-            }
-        } else {
+        if (stretchToTrack) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall),
@@ -332,6 +307,40 @@ private fun <T> AppMiuixNonGlassTabs(
                             inactiveContentColor
                         },
                         modifier = Modifier.weight(1f),
+                        onClick = { onSelectionChange(option.value) },
+                    )
+                }
+            }
+        } else {
+            LazyRow(
+                state = scrollState,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP.dp,
+                ),
+            ) {
+                itemsIndexed(options) { index, option ->
+                    AppMiuixNonGlassTabItem(
+                        label = option.label,
+                        selected = index == selectedIndex,
+                        enabled = enabled,
+                        visualHeight = targetHeight,
+                        cornerRadius = geometry.cornerRadius,
+                        backgroundColor = if (index == selectedIndex) {
+                            tabColors.selectedBackgroundColor
+                        } else {
+                            tabColors.backgroundColor
+                        },
+                        contentColor = if (index == selectedIndex) {
+                            tabColors.selectedContentColor
+                        } else {
+                            inactiveContentColor
+                        },
+                        modifier = if (equalizeScrollableItemWidths) {
+                            Modifier.width(equalItemWidth)
+                        } else {
+                            Modifier.widthIn(min = readableWidth)
+                        },
                         onClick = { onSelectionChange(option.value) },
                     )
                 }
