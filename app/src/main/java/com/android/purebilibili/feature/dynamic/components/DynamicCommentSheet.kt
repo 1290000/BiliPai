@@ -666,7 +666,9 @@ private fun DynamicCommentSortControl(
         height = spec.heightDp.dp,
         indicatorHeight = spec.indicatorHeightDp.dp,
         labelFontSize = 13.sp,
-        modifier = modifier.width((spec.itemWidthDp * items.size).dp),
+        // Upstream Miuix TabRow may fill its parent; requiredWidth preserves the
+        // beta.36 compact geometry without changing the current tab border style.
+        modifier = modifier.requiredWidth((spec.itemWidthDp * items.size).dp),
         backdrop = miuixBackdrop,
     )
 }
