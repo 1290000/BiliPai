@@ -76,6 +76,7 @@ import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import kotlinx.coroutines.launch
 
