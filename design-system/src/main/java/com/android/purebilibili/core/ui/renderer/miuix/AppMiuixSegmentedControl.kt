@@ -255,6 +255,19 @@ private fun <T> AppMiuixNonGlassTabs(
     val textHeight = with(density) { (labelSizes.maxOfOrNull { it.height } ?: 0).toDp() }
     val geometry = resolveMiuixNonGlassControlGeometry(compact, textHeight)
     val listState = if (scrollable) rememberLazyListState() else null
+    // Keep the upstream TabRow defaults for a scrollable rail. The app-level 48dp
+    // accessibility minimum is too narrow once upstream's 12dp item padding is
+    // applied, which turns otherwise readable Chinese labels into ellipses.
+    val tabRowMinWidth = if (scrollable) {
+        maxOf(minTabWidth, TabRowDefaults.TabRowMinWidth)
+    } else {
+        0.dp
+    }
+    val tabRowMaxWidth = if (scrollable) {
+        TabRowDefaults.TabRowMaxWidth
+    } else {
+        Dp.Infinity
+    }
     TabRow(
         tabs = labels,
         selectedTabIndex = selectedIndex,
@@ -262,7 +275,6 @@ private fun <T> AppMiuixNonGlassTabs(
             if (enabled) options.getOrNull(index)?.let { onSelectionChange(it.value) }
         },
         modifier = modifier
-            .heightIn(min = AppChromeSizeTokens.MinimumTouchTarget)
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
         colors = TabRowDefaults.tabRowColors(
             backgroundColor = tabColors.backgroundColor,
@@ -270,8 +282,8 @@ private fun <T> AppMiuixNonGlassTabs(
             selectedBackgroundColor = tabColors.selectedBackgroundColor,
             selectedContentColor = tabColors.selectedContentColor,
         ),
-        minWidth = if (scrollable) minTabWidth else 0.dp,
-        maxWidth = Dp.Infinity,
+        minWidth = tabRowMinWidth,
+        maxWidth = tabRowMaxWidth,
         height = height ?: geometry.height,
         cornerRadius = geometry.cornerRadius,
         itemSpacing = AppSpacingTokens.Small,

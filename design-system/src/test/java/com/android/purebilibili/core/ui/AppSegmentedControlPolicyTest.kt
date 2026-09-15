@@ -245,9 +245,10 @@ class AppSegmentedControlPolicyTest {
 
         assertFalse(materialSource.contains("heightIn(min = 48.dp)"))
         assertTrue(miuixSource.contains("resolveRoundedControlVisualGeometry("))
-        assertTrue(miuixSource.contains("AppMiuixNonGlassTabItem("))
-        assertTrue(miuixSource.contains(".height(visualHeight)"))
-        assertTrue(miuixSource.contains(".heightIn(min = AppChromeSizeTokens.MinimumTouchTarget)"))
+        assertTrue(miuixSource.contains("TabRow("))
+        assertTrue(miuixSource.contains("TabRowDefaults.TabRowMinWidth"))
+        assertTrue(miuixSource.contains("TabRowDefaults.TabRowMaxWidth"))
+        assertFalse(miuixSource.contains("AppMiuixNonGlassTabItem("))
     }
 
     @Test
