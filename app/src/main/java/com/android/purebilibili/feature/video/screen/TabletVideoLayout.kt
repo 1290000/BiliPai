@@ -1397,54 +1397,7 @@ private fun ScrollableVideoInfoSection(
             }
         }
 
-        // 6. 简介（展开式）
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-            if (info.desc.isNotEmpty()) {
-                var isExpanded by remember(info.bvid) { mutableStateOf(false) }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AppText(
-                        text = "简介",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    AppText(
-                        text = if (isExpanded) "收起" else "展开",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { isExpanded = !isExpanded },
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize()
-                        .background(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-                            shape = AppShapes.container(ContainerLevel.Chip)
-                        )
-                        .clickable { isExpanded = !isExpanded }
-                        .padding(12.dp)
-                ) {
-                    AppText(
-                        text = info.desc,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = if (isExpanded) Int.MAX_VALUE else 3,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        lineHeight = 16.sp
-                    )
-                }
-            }
-        }
-
-        // 7. 更多推荐 (水平滚动)。大屏右栏已有相关推荐 Tab 时不再重复。
+        // 6. 更多推荐 (水平滚动)。大屏右栏已有相关推荐 Tab 时不再重复。
         if (showRelatedVideos && relatedVideos.isNotEmpty()) {
         item {
             Spacer(modifier = Modifier.height(24.dp))
