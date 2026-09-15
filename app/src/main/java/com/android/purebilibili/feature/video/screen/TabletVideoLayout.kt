@@ -195,7 +195,8 @@ internal fun TabletSecondaryLiquidTabRow(
         indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
         labelFontSize = 15.sp,
         liquidGlassEffectsEnabled = liquidGlassEnabled,
-        equalizeMiuixNonGlassItemWidths = true,
+        equalizeMiuixNonGlassItemWidths = false,
+        allowNativeLabelOverflow = true,
         dragSelectionEnabled = true,
         tapPressRefractionEnabled = true,
         indicatorPositionProvider = indicatorPositionProvider,
@@ -606,6 +607,7 @@ internal fun TabletSecondaryContent(
     fixedTab: TabletSecondaryTab? = null,
     introContent: (@Composable () -> Unit)? = null,
     showPaneModeControls: Boolean = true,
+    applyStatusBarPadding: Boolean = true,
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     val tabs = remember(success.info.ugc_season, success.info.owner.mid, fixedTab, introContent != null) {
@@ -746,7 +748,7 @@ internal fun TabletSecondaryContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+            .then(if (applyStatusBarPadding) Modifier.statusBarsPadding() else Modifier)
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (fixedTab == null) {
@@ -772,7 +774,7 @@ internal fun TabletSecondaryContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TabletSecondaryLiquidTabRow(
@@ -785,6 +787,7 @@ internal fun TabletSecondaryContent(
                         pagerState.currentPage + pagerState.currentPageOffsetFraction
                     },
                     isScrollInProgressProvider = { pagerState.isScrollInProgress },
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         } else {

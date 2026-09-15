@@ -100,6 +100,8 @@ internal fun LargeScreenVideoLayout(
                 isVerticalVideo = isVerticalVideo,
             )
         }
+        val applySideStatusBarPadding =
+            metrics.mode != LargeScreenVideoLayoutMode.AlmostSquare
         val success = uiState as? VideoPlaybackUiState.Success
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
@@ -184,6 +186,7 @@ internal fun LargeScreenVideoLayout(
                         null
                     },
                     showPaneModeControls = false,
+                    applyStatusBarPadding = applySideStatusBarPadding,
                 )
             }
         }

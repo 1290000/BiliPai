@@ -23,7 +23,8 @@ class TabletVideoLayoutPolicyTest {
             .substringAfter("internal fun TabletSecondaryLiquidTabRow(")
             .substringBefore("/**\n * 🖥️ 平板端视频详情页布局")
 
-        assertTrue(tabRow.contains("equalizeMiuixNonGlassItemWidths = true"))
+        assertTrue(tabRow.contains("equalizeMiuixNonGlassItemWidths = false"))
+        assertTrue(tabRow.contains("allowNativeLabelOverflow = true"))
         assertFalse(tabRow.contains("108.dp"))
     }
 
@@ -37,6 +38,8 @@ class TabletVideoLayoutPolicyTest {
         assertTrue(source.contains("onDanmakuInputClick = playbackActions.showDanmakuSendDialog"))
         assertTrue(source.contains("fun TabletSecondaryDanmakuActions("))
         assertTrue(source.contains("showPaneModeControls: Boolean = true"))
+        assertTrue(source.contains("applyStatusBarPadding: Boolean = true"))
+        assertTrue(source.contains("padding(horizontal = 16.dp, vertical = 12.dp)"))
         assertTrue(source.contains("NativeDanmakuToggleButton("))
         assertTrue(source.contains("ownerTrailingContent = {"))
         assertTrue(source.contains("trailingContent = ownerTrailingContent"))
