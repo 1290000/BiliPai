@@ -12,12 +12,19 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -109,6 +116,10 @@ internal fun LargeScreenVideoLayout(
         val relatedTabFirst = false
         val includeRelatedTab = true
         val success = uiState as? VideoPlaybackUiState.Success
+        var sidePaneCollapsedRequested by rememberSaveable(bvid) { mutableStateOf(false) }
+        val canCollapseSidePane = metrics.mode != LargeScreenVideoLayoutMode.VerticalThreePane &&
+            metrics.mode != LargeScreenVideoLayoutMode.Phone
+        val sidePaneCollapsed = sidePaneCollapsedRequested && canCollapseSidePane
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
                 modifier = modifier,
@@ -177,8 +188,14 @@ internal fun LargeScreenVideoLayout(
                     commentActions = commentActions,
                     playerState = playerState,
                     onUpClick = onUpClick,
-                    paneMode = TabletSecondaryPaneMode.EXPANDED,
-                    onPaneModeChange = {},
+                    paneMode = if (sidePaneCollapsed) {
+                        TabletSecondaryPaneMode.COLLAPSED
+                    } else {
+                        TabletSecondaryPaneMode.EXPANDED
+                    },
+                    onPaneModeChange = { mode ->
+                        sidePaneCollapsedRequested = mode == TabletSecondaryPaneMode.COLLAPSED
+                    },
                     onRelatedVideoClick = onRelatedVideoClick,
                     onSearchKeywordClick = onSearchKeywordClick,
                     showUpBadge = showUpBadge,
@@ -191,7 +208,7 @@ internal fun LargeScreenVideoLayout(
                     } else {
                         null
                     },
-                    showPaneModeControls = false,
+                    showPaneModeControls = canCollapseSidePane,
                     applyStatusBarPadding = applySideStatusBarPadding,
                     includeRelatedTab = includeRelatedTab,
                     includeOwnerUploadsTab = true,
@@ -226,19 +243,32 @@ internal fun LargeScreenVideoLayout(
                 }
             }
             LargeScreenVideoLayoutMode.Split -> {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    player(
-                        Modifier
-                            .width(metrics.playerWidthDp.dp)
-                            .height(metrics.playerHeightDp.dp)
-                            .background(Color.Black),
-                    )
-                    Column(
-                        modifier = Modifier
-                            .width(metrics.sidePaneWidthDp.dp)
-                            .fillMaxHeight(),
-                    ) {
-                        side(true)
+                if (sidePaneCollapsed) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        player(Modifier.fillMaxSize().background(Color.Black))
+                        TabletSecondaryPaneToggleButton(
+                            isSecondaryPaneVisible = false,
+                            onClick = { sidePaneCollapsedRequested = false },
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 4.dp),
+                        )
+                    }
+                } else {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        player(
+                            Modifier
+                                .width(metrics.playerWidthDp.dp)
+                                .height(metrics.playerHeightDp.dp)
+                                .background(Color.Black),
+                        )
+                        Column(
+                            modifier = Modifier
+                                .width(metrics.sidePaneWidthDp.dp)
+                                .fillMaxHeight(),
+                        ) {
+                            side(true)
+                        }
                     }
                 }
             }
@@ -254,15 +284,80 @@ internal fun LargeScreenVideoLayout(
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             intro(Modifier.fillMaxSize())
                         }
-                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            side(false)
+                        if (sidePaneCollapsed) {
+                            TabletSecondaryPaneToggleButton(
+                                isSecondaryPaneVisible = false,
+                                onClick = { sidePaneCollapsedRequested = false },
+                                modifier = Modifier
+                                    .align(Alignment.CenterVertically)
+                                    .padding(end = 4.dp),
+                            )
+                        } else {
+                            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                side(false)
+                            }
                         }
                     }
                 }
             }
-            LargeScreenVideoLayoutMode.Phone,
-            LargeScreenVideoLayoutMode.Landscape,
-            -> {
+            LargeScreenVideoLayoutMode.Landscape -> {
+                if (sidePaneCollapsed) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            player(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(LARGE_SCREEN_VIDEO_ASPECT_16_9)
+                                    .background(Color.Black),
+                            )
+                            if (metrics.introBelowPlayer) {
+                                intro(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f),
+                                )
+                            }
+                        }
+                        TabletSecondaryPaneToggleButton(
+                            isSecondaryPaneVisible = false,
+                            onClick = { sidePaneCollapsedRequested = false },
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 4.dp),
+                        )
+                    }
+                } else {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier
+                                .width(metrics.playerWidthDp.dp)
+                                .fillMaxHeight(),
+                        ) {
+                            player(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(metrics.playerHeightDp.dp)
+                                    .background(Color.Black),
+                            )
+                            if (metrics.introBelowPlayer) {
+                                intro(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f),
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .width(metrics.sidePaneWidthDp.dp)
+                                .fillMaxHeight(),
+                        ) {
+                            side(!metrics.introBelowPlayer)
+                        }
+                    }
+                }
+            }
+            LargeScreenVideoLayoutMode.Phone -> {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(
                         modifier = Modifier

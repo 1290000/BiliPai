@@ -180,7 +180,7 @@ internal fun TabletSecondaryDanmakuActions(
 }
 
 @Composable
-private fun TabletSecondaryPaneToggleButton(
+internal fun TabletSecondaryPaneToggleButton(
     isSecondaryPaneVisible: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
