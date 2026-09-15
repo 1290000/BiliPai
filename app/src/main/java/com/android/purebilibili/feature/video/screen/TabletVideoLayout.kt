@@ -522,7 +522,7 @@ internal fun TabletVideoLayout(
 }
 
 @Composable
-private fun TabletVideoInfoPane(
+internal fun TabletVideoInfoPane(
     success: VideoPlaybackUiState.Success,
     engagementState: VideoEngagementUiState,
     downloadProgress: Float,
@@ -583,7 +583,7 @@ private fun TabletVideoInfoPane(
  * 📝 平板右侧内容区域（评论/推荐切换）
  */
 @Composable
-private fun TabletSecondaryContent(
+internal fun TabletSecondaryContent(
     success: VideoPlaybackUiState.Success,
     commentState: CommentUiState,
     subReplyState: SubReplyUiState,
@@ -605,6 +605,7 @@ private fun TabletSecondaryContent(
     onRequestedTabConsumed: () -> Unit,
     fixedTab: TabletSecondaryTab? = null,
     introContent: (@Composable () -> Unit)? = null,
+    showPaneModeControls: Boolean = true,
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     val tabs = remember(success.info.ugc_season, success.info.owner.mid, fixedTab, introContent != null) {
@@ -749,20 +750,22 @@ private fun TabletSecondaryContent(
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (fixedTab == null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                AppTextButton(onClick = onPaneModeCycle) {
-                    AppText(
-                        when (paneMode) {
-                            TabletSecondaryPaneMode.EXPANDED -> "半开"
-                            TabletSecondaryPaneMode.COMPACT -> "收起"
-                            TabletSecondaryPaneMode.COLLAPSED -> "展开"
-                        }
-                    )
+            if (showPaneModeControls) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    AppTextButton(onClick = onPaneModeCycle) {
+                        AppText(
+                            when (paneMode) {
+                                TabletSecondaryPaneMode.EXPANDED -> "半开"
+                                TabletSecondaryPaneMode.COMPACT -> "收起"
+                                TabletSecondaryPaneMode.COLLAPSED -> "展开"
+                            }
+                        )
+                    }
                 }
             }
 

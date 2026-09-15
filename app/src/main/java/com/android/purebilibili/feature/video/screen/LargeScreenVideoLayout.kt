@@ -1,0 +1,401 @@
+package com.android.purebilibili.feature.video.screen
+
+import android.content.res.Configuration
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope.OverlayClip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
+import com.android.purebilibili.core.ui.LocalSharedTransitionScope
+import com.android.purebilibili.core.ui.motion.AppMotionTokens
+import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
+import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionSourceCornerDp
+import com.android.purebilibili.core.ui.transition.videoCoverSharedElementKey
+import com.android.purebilibili.data.model.response.BgmInfo
+import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.video.state.VideoPlayerState
+import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
+import com.android.purebilibili.feature.video.ui.section.resolveAllowLivePlayerSharedElementForMorph
+import com.android.purebilibili.feature.video.ui.section.resolveNavigationLiveSurfaceTextureEnabled
+import com.android.purebilibili.feature.video.viewmodel.CommentUiState
+import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
+import com.android.purebilibili.feature.video.viewmodel.VideoEngagementUiState
+import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+internal fun LargeScreenVideoLayout(
+    playerState: VideoPlayerState,
+    uiState: VideoPlaybackUiState,
+    commentState: CommentUiState,
+    engagementState: VideoEngagementUiState,
+    subReplyState: SubReplyUiState,
+    downloadProgress: Float,
+    commentMemberDecorationsEnabled: Boolean,
+    playbackActions: VideoDetailPlaybackActions,
+    engagementActions: VideoDetailEngagementActions,
+    commentActions: VideoDetailCommentActions,
+    @Suppress("UNUSED_PARAMETER")
+    configuration: Configuration,
+    isVerticalVideo: Boolean,
+    sleepTimerMinutes: Int?,
+    viewPoints: List<ViewPoint>,
+    bvid: String,
+    coverUrl: String = "",
+    onBack: () -> Unit,
+    onUpClick: (Long) -> Unit,
+    onBgmClick: (BgmInfo) -> Unit = {},
+    onNavigateToAudioMode: () -> Unit,
+    onToggleFullscreen: () -> Unit,
+    onPortraitFullscreen: () -> Unit,
+    isInPipMode: Boolean,
+    onPipClick: () -> Unit,
+    isPortraitFullscreen: Boolean = false,
+    onHomeClick: () -> Unit,
+    currentCodec: String = "hev1",
+    onCodecChange: (String) -> Unit = {},
+    currentSecondCodec: String = "avc1",
+    onSecondCodecChange: (String) -> Unit = {},
+    currentAudioQuality: Int = -1,
+    onAudioQualityChange: (Int) -> Unit = {},
+    transitionEnabled: Boolean = false,
+    onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
+    showUpBadge: Boolean = true,
+    onSearchKeywordClick: (String) -> Unit = {},
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
+    currentPlayMode: com.android.purebilibili.feature.video.player.PlayMode =
+        com.android.purebilibili.feature.video.player.PlayMode.SEQUENTIAL,
+    onPlayModeClick: () -> Unit = {},
+    forceCoverOnlyOnReturn: Boolean = false,
+    predictiveBackCancelRecoveryGeneration: Int = 0,
+    liveSurfaceCardTransitionEnabled: Boolean = true,
+) {
+    val pageColor = AppSurfaceTokens.chromeBackground()
+    val danmakuChrome = rememberTabletDanmakuChromeState(bvid)
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(pageColor),
+    ) {
+        val metrics = remember(maxWidth, maxHeight, isVerticalVideo) {
+            resolveLargeScreenVideoMetrics(
+                windowWidthDp = maxWidth.value,
+                windowHeightDp = maxHeight.value,
+                isVerticalVideo = isVerticalVideo,
+            )
+        }
+        val success = uiState as? VideoPlaybackUiState.Success
+        val player: @Composable (Modifier) -> Unit = { modifier ->
+            LargeScreenPlayerHost(
+                modifier = modifier,
+                playerState = playerState,
+                uiState = uiState,
+                bvid = bvid,
+                coverUrl = coverUrl,
+                isVerticalVideo = isVerticalVideo,
+                isInPipMode = isInPipMode,
+                isPortraitFullscreen = isPortraitFullscreen,
+                sleepTimerMinutes = sleepTimerMinutes,
+                viewPoints = viewPoints,
+                currentCodec = currentCodec,
+                currentSecondCodec = currentSecondCodec,
+                currentAudioQuality = currentAudioQuality,
+                currentPlayMode = currentPlayMode,
+                transitionEnabled = transitionEnabled,
+                forceCoverOnlyOnReturn = forceCoverOnlyOnReturn,
+                predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
+                liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
+                playbackActions = playbackActions,
+                engagementActions = engagementActions,
+                onBack = onBack,
+                onHomeClick = onHomeClick,
+                onToggleFullscreen = onToggleFullscreen,
+                onPortraitFullscreen = onPortraitFullscreen,
+                onPipClick = onPipClick,
+                onNavigateToAudioMode = onNavigateToAudioMode,
+                onCodecChange = onCodecChange,
+                onSecondCodecChange = onSecondCodecChange,
+                onAudioQualityChange = onAudioQualityChange,
+                onPlayModeClick = onPlayModeClick,
+            )
+        }
+        val intro: @Composable (Modifier) -> Unit = { modifier ->
+            if (success != null) {
+                TabletVideoInfoPane(
+                    success = success,
+                    engagementState = engagementState,
+                    downloadProgress = downloadProgress,
+                    playbackActions = playbackActions,
+                    engagementActions = engagementActions,
+                    onBgmClick = onBgmClick,
+                    onRelatedVideoClick = onRelatedVideoClick,
+                    onOpenBilibiliLink = onOpenBilibiliLink,
+                    danmakuEnabled = danmakuChrome.enabled,
+                    onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
+                    onDanmakuToggle = danmakuChrome.onToggle,
+                    onOwnerUploadsClick = onUpClick,
+                    modifier = modifier,
+                )
+            }
+        }
+        val side: @Composable (Boolean) -> Unit = { includeIntro ->
+            if (success != null) {
+                TabletSecondaryContent(
+                    success = success,
+                    commentState = commentState,
+                    subReplyState = subReplyState,
+                    playbackActions = playbackActions,
+                    engagementState = engagementState,
+                    engagementActions = engagementActions,
+                    commentActions = commentActions,
+                    playerState = playerState,
+                    onUpClick = onUpClick,
+                    paneMode = TabletSecondaryPaneMode.EXPANDED,
+                    onPaneModeChange = {},
+                    onPaneModeCycle = {},
+                    onRelatedVideoClick = onRelatedVideoClick,
+                    onSearchKeywordClick = onSearchKeywordClick,
+                    showUpBadge = showUpBadge,
+                    showIdentityDecorations = commentMemberDecorationsEnabled,
+                    onOpenBilibiliLink = onOpenBilibiliLink,
+                    requestedTabName = null,
+                    onRequestedTabConsumed = {},
+                    introContent = if (includeIntro) {
+                        { intro(Modifier.fillMaxSize()) }
+                    } else {
+                        null
+                    },
+                    showPaneModeControls = false,
+                )
+            }
+        }
+        when (metrics.mode) {
+            LargeScreenVideoLayoutMode.VerticalThreePane -> {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .width(metrics.sidePaneWidthDp.dp)
+                            .fillMaxHeight()
+                            .statusBarsPadding(),
+                    ) {
+                        intro(Modifier.fillMaxSize())
+                    }
+                    player(
+                        Modifier
+                            .width(metrics.playerWidthDp.dp)
+                            .height(metrics.playerHeightDp.dp)
+                            .background(Color.Black),
+                    )
+                    Column(
+                        modifier = Modifier
+                            .width(metrics.sidePaneWidthDp.dp)
+                            .fillMaxHeight(),
+                    ) {
+                        side(false)
+                    }
+                }
+            }
+            LargeScreenVideoLayoutMode.Split -> {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    player(
+                        Modifier
+                            .width(metrics.playerWidthDp.dp)
+                            .height(metrics.playerHeightDp.dp)
+                            .background(Color.Black),
+                    )
+                    Column(
+                        modifier = Modifier
+                            .width(metrics.sidePaneWidthDp.dp)
+                            .fillMaxHeight(),
+                    ) {
+                        side(true)
+                    }
+                }
+            }
+            LargeScreenVideoLayoutMode.AlmostSquare -> {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    player(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(metrics.playerHeightDp.dp)
+                            .background(Color.Black),
+                    )
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            intro(Modifier.fillMaxSize())
+                        }
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            side(false)
+                        }
+                    }
+                }
+            }
+            LargeScreenVideoLayoutMode.Phone,
+            LargeScreenVideoLayoutMode.Landscape,
+            -> {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .width(metrics.playerWidthDp.dp)
+                            .fillMaxHeight(),
+                    ) {
+                        player(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(metrics.playerHeightDp.dp)
+                                .background(Color.Black),
+                        )
+                        if (metrics.introBelowPlayer) {
+                            intro(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .width(metrics.sidePaneWidthDp.dp)
+                            .fillMaxHeight(),
+                    ) {
+                        side(!metrics.introBelowPlayer)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun LargeScreenPlayerHost(
+    modifier: Modifier,
+    playerState: VideoPlayerState,
+    uiState: VideoPlaybackUiState,
+    bvid: String,
+    coverUrl: String,
+    isVerticalVideo: Boolean,
+    isInPipMode: Boolean,
+    isPortraitFullscreen: Boolean,
+    sleepTimerMinutes: Int?,
+    viewPoints: List<ViewPoint>,
+    currentCodec: String,
+    currentSecondCodec: String,
+    currentAudioQuality: Int,
+    currentPlayMode: com.android.purebilibili.feature.video.player.PlayMode,
+    transitionEnabled: Boolean,
+    forceCoverOnlyOnReturn: Boolean,
+    predictiveBackCancelRecoveryGeneration: Int,
+    liveSurfaceCardTransitionEnabled: Boolean,
+    playbackActions: VideoDetailPlaybackActions,
+    engagementActions: VideoDetailEngagementActions,
+    onBack: () -> Unit,
+    onHomeClick: () -> Unit,
+    onToggleFullscreen: () -> Unit,
+    onPortraitFullscreen: () -> Unit,
+    onPipClick: () -> Unit,
+    onNavigateToAudioMode: () -> Unit,
+    onCodecChange: (String) -> Unit,
+    onSecondCodecChange: (String) -> Unit,
+    onAudioQualityChange: (Int) -> Unit,
+    onPlayModeClick: () -> Unit,
+) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+    val sourceRoute = LocalVideoCardSharedElementSourceRoute.current
+    val sharedCoverShape = remember(sourceRoute) {
+        RoundedCornerShape(resolveVideoSharedTransitionSourceCornerDp(sourceRoute).dp)
+    }
+    val playerContainerModifier = if (
+        transitionEnabled &&
+        sharedTransitionScope != null &&
+        animatedVisibilityScope != null &&
+        !forceCoverOnlyOnReturn
+    ) {
+        with(sharedTransitionScope) {
+            modifier.sharedBounds(
+                sharedContentState = rememberSharedContentState(
+                    key = videoCoverSharedElementKey(bvid),
+                ),
+                animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = { _, _ -> AppMotionTokens.spatialSpec() },
+                clipInOverlayDuringTransition = OverlayClip(sharedCoverShape),
+            )
+        }
+    } else {
+        modifier
+    }
+    Box(modifier = playerContainerModifier) {
+        VideoPlayerSection(
+            playerState = playerState,
+            uiState = uiState,
+            isFullscreen = false,
+            isInPipMode = isInPipMode,
+            useTextureSurfaceForNavigation = resolveNavigationLiveSurfaceTextureEnabled(
+                cardTransitionEnabled = transitionEnabled,
+                liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
+            ),
+            allowLivePlayerSharedElement = resolveAllowLivePlayerSharedElementForMorph(
+                cardTransitionEnabled = transitionEnabled,
+                liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
+            ),
+            predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
+            onToggleFullscreen = onToggleFullscreen,
+            onQualityChange = playbackActions.changeQuality,
+            onBack = onBack,
+            onHomeClick = onHomeClick,
+            bvid = bvid,
+            coverUrl = coverUrl,
+            onDoubleTapLike = engagementActions.toggleLike,
+            onReloadVideo = playbackActions.reloadVideo,
+            cdnCount = (uiState as? VideoPlaybackUiState.Success)?.cdnCount ?: 1,
+            cdnLineDiagnostics = (uiState as? VideoPlaybackUiState.Success)?.cdnLineDiagnostics.orEmpty(),
+            isCdnProbing = (uiState as? VideoPlaybackUiState.Success)?.isCdnProbing ?: false,
+            onSwitchCdn = playbackActions.switchCdn,
+            onSwitchCdnTo = playbackActions.switchCdnTo,
+            onProbeCdnCandidates = playbackActions.probeCdnCandidates,
+            isAudioOnly = false,
+            onAudioOnlyToggle = {
+                playbackActions.setAudioMode(true)
+                onNavigateToAudioMode()
+            },
+            sleepTimerMinutes = sleepTimerMinutes,
+            onSleepTimerChange = playbackActions.setSleepTimer,
+            videoshotData = (uiState as? VideoPlaybackUiState.Success)?.videoshotData,
+            viewPoints = viewPoints,
+            isVerticalVideo = isVerticalVideo,
+            onPortraitFullscreen = onPortraitFullscreen,
+            isPortraitFullscreen = isPortraitFullscreen,
+            onPipClick = onPipClick,
+            currentCodec = currentCodec,
+            onCodecChange = onCodecChange,
+            currentSecondCodec = currentSecondCodec,
+            onSecondCodecChange = onSecondCodecChange,
+            currentAudioQuality = currentAudioQuality,
+            onAudioQualityChange = onAudioQualityChange,
+            onPlaybackSpeedChange = playbackActions.applyPlaybackSpeed,
+            onSaveCover = playbackActions.saveCover,
+            onDownloadAudio = playbackActions.downloadAudio,
+            currentPlayMode = currentPlayMode,
+            onPlayModeClick = onPlayModeClick,
+            onSubtitleTrackSelected = playbackActions.selectSubtitleTrack,
+            onDanmakuInputClick = playbackActions.showDanmakuSendDialog,
+        )
+    }
+}

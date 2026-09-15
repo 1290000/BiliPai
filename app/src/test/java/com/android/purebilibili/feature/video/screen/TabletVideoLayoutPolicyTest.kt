@@ -36,6 +36,7 @@ class TabletVideoLayoutPolicyTest {
         assertTrue(source.contains("TabletSecondaryDanmakuActions("))
         assertTrue(source.contains("onDanmakuInputClick = playbackActions.showDanmakuSendDialog"))
         assertTrue(source.contains("fun TabletSecondaryDanmakuActions("))
+        assertTrue(source.contains("showPaneModeControls: Boolean = true"))
         assertTrue(source.contains("NativeDanmakuToggleButton("))
         assertTrue(source.contains("ownerTrailingContent = {"))
         assertTrue(source.contains("trailingContent = ownerTrailingContent"))
