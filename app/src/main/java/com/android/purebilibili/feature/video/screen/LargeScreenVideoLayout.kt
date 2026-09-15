@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +55,29 @@ private enum class LargeScreenPaneVisibility {
     BOTH,
     PRIMARY_COLLAPSED,
     SECONDARY_COLLAPSED,
+}
+
+@Composable
+private fun LargeScreenPaneToggleRail(
+    onCollapsePrimary: () -> Unit,
+    onCollapseSecondary: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        TabletSecondaryPaneToggleButton(
+            isSecondaryPaneVisible = false,
+            onClick = onCollapsePrimary,
+            contentDescription = "收起左侧内容",
+        )
+        TabletSecondaryPaneToggleButton(
+            isSecondaryPaneVisible = true,
+            onClick = onCollapseSecondary,
+            contentDescription = "收起右侧内容",
+        )
+    }
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -323,32 +347,18 @@ internal fun LargeScreenVideoLayout(
                                     .width(animatedPrimaryPaneWidth)
                                     .fillMaxHeight(),
                             ) {
-                                TabletSecondaryPaneToggleButton(
-                                    isSecondaryPaneVisible = false,
-                                    onClick = {
+                                LargeScreenPaneToggleRail(
+                                    onCollapsePrimary = {
                                         primaryPaneCollapsedRequested = true
                                         sidePaneCollapsedRequested = false
                                     },
-                                    contentDescription = "收起左侧内容",
-                                    modifier = Modifier
-                                        .align(Alignment.CenterEnd)
-                                        .offset(x = 20.dp),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(animatedSidePaneWidth)
-                                    .fillMaxHeight(),
-                            ) {
-                                TabletSecondaryPaneToggleButton(
-                                    isSecondaryPaneVisible = true,
-                                    onClick = {
+                                    onCollapseSecondary = {
                                         sidePaneCollapsedRequested = true
                                         primaryPaneCollapsedRequested = false
                                     },
                                     modifier = Modifier
-                                        .align(Alignment.CenterStart)
-                                        .offset(x = (-20).dp),
+                                        .align(Alignment.CenterEnd)
+                                        .offset(x = 20.dp),
                                 )
                             }
                         }
@@ -410,41 +420,19 @@ internal fun LargeScreenVideoLayout(
                                 .padding(top = metrics.playerHeightDp.dp),
                         ) {
                             if (paneVisibility == LargeScreenPaneVisibility.BOTH) {
-                                Row(modifier = Modifier.fillMaxSize()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(animatedPrimaryPaneWidth)
-                                            .fillMaxHeight(),
-                                    ) {
-                                        TabletSecondaryPaneToggleButton(
-                                            isSecondaryPaneVisible = false,
-                                            onClick = {
-                                                primaryPaneCollapsedRequested = true
-                                                sidePaneCollapsedRequested = false
-                                            },
-                                            contentDescription = "收起左侧内容",
-                                            modifier = Modifier
-                                                .align(Alignment.CenterEnd)
-                                                .offset(x = 20.dp),
-                                        )
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .width(animatedSidePaneWidth)
-                                            .fillMaxHeight(),
-                                    ) {
-                                        TabletSecondaryPaneToggleButton(
-                                            isSecondaryPaneVisible = true,
-                                            onClick = {
-                                                sidePaneCollapsedRequested = true
-                                                primaryPaneCollapsedRequested = false
-                                            },
-                                            modifier = Modifier
-                                                .align(Alignment.CenterStart)
-                                                .offset(x = (-20).dp),
-                                        )
-                                    }
-                                }
+                                LargeScreenPaneToggleRail(
+                                    onCollapsePrimary = {
+                                        primaryPaneCollapsedRequested = true
+                                        sidePaneCollapsedRequested = false
+                                    },
+                                    onCollapseSecondary = {
+                                        sidePaneCollapsedRequested = true
+                                        primaryPaneCollapsedRequested = false
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .offset(x = 20.dp),
+                                )
                             } else if (primaryPaneCollapsed) {
                                 TabletSecondaryPaneToggleButton(
                                     isSecondaryPaneVisible = true,
@@ -502,32 +490,18 @@ internal fun LargeScreenVideoLayout(
                                     .width(animatedPrimaryPaneWidth)
                                     .fillMaxHeight(),
                             ) {
-                                TabletSecondaryPaneToggleButton(
-                                    isSecondaryPaneVisible = false,
-                                    onClick = {
+                                LargeScreenPaneToggleRail(
+                                    onCollapsePrimary = {
                                         primaryPaneCollapsedRequested = true
                                         sidePaneCollapsedRequested = false
                                     },
-                                    contentDescription = "收起左侧内容",
-                                    modifier = Modifier
-                                        .align(Alignment.CenterEnd)
-                                        .offset(x = 20.dp),
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(animatedSidePaneWidth)
-                                    .fillMaxHeight(),
-                            ) {
-                                TabletSecondaryPaneToggleButton(
-                                    isSecondaryPaneVisible = true,
-                                    onClick = {
+                                    onCollapseSecondary = {
                                         sidePaneCollapsedRequested = true
                                         primaryPaneCollapsedRequested = false
                                     },
                                     modifier = Modifier
-                                        .align(Alignment.CenterStart)
-                                        .offset(x = (-20).dp),
+                                        .align(Alignment.CenterEnd)
+                                        .offset(x = 20.dp),
                                 )
                             }
                         }
