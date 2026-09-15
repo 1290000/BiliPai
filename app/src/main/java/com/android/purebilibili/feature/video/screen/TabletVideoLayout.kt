@@ -320,11 +320,11 @@ internal fun TabletVideoLayout(
                     animatedVisibilityScope != null &&
                     !forceCoverOnlyOnReturn
                 ) {
-                    with(sharedTransitionScope) {
+                    with(requireNotNull(sharedTransitionScope)) {
                         Modifier
                             .sharedBounds(
                                 sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoCoverSharedElementKey(bvid)),
-                                animatedVisibilityScope = animatedVisibilityScope,
+                                animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
                                 boundsTransform = { _, _ -> com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec() },
                                 clipInOverlayDuringTransition = OverlayClip(sharedCoverShape)
                             )
@@ -625,7 +625,7 @@ internal fun TabletSecondaryContent(
         relatedTabFirst,
     ) {
         if (fixedTab != null) {
-            listOf(fixedTab)
+            listOf(requireNotNull(fixedTab))
         } else {
             buildList {
                 if (relatedTabFirst && includeRelatedTab) add(TabletSecondaryTab.RELATED)
@@ -814,7 +814,7 @@ internal fun TabletSecondaryContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AppText(
-                    text = fixedTab.label,
+                    text = requireNotNull(fixedTab).label,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
