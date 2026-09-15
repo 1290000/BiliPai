@@ -767,7 +767,7 @@ internal fun TabletSecondaryContent(
             .then(if (applyStatusBarPadding) Modifier.statusBarsPadding() else Modifier)
             .background(MaterialTheme.colorScheme.background)
     ) {
-        if (fixedTab == null) {
+        if (fixedTab == null && tabs.size > 1) {
             if (showPaneModeControls) {
                 Row(
                     modifier = Modifier

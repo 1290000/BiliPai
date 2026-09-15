@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -254,7 +255,17 @@ internal fun LargeScreenVideoLayout(
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             intro(Modifier.fillMaxSize())
                         }
-                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        val commentPaneWidthDp = minOf(
+                            LARGE_SCREEN_VIDEO_MAX_SIDE_PANE_DP,
+                            windowWidthDp * 0.42f,
+                        ).coerceAtLeast(
+                            minOf(LARGE_SCREEN_VIDEO_MIN_SIDE_PANE_DP, windowWidthDp / 2f),
+                        )
+                        Column(
+                            modifier = Modifier
+                                .width(commentPaneWidthDp.dp)
+                                .fillMaxHeight(),
+                        ) {
                             if (success != null) {
                                 TabletSecondaryContent(
                                     success = success,

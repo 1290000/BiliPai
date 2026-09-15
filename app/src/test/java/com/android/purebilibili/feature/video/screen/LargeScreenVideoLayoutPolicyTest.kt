@@ -21,6 +21,8 @@ class LargeScreenVideoLayoutPolicyTest {
         assertTrue(text.contains("showRelatedVideos = showRelatedInIntro"))
         assertTrue(text.contains("LargeScreenVideoLayoutMode.AlmostSquare"))
         assertFalse(text.contains("fixedTab = TabletSecondaryTab.COLLECTION"))
+        assertTrue(text.contains("LARGE_SCREEN_VIDEO_MAX_SIDE_PANE_DP"))
+        assertTrue(text.contains("commentPaneWidthDp"))
     }
 
     @Test
