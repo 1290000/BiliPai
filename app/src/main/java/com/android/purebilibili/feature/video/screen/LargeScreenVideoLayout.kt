@@ -93,10 +93,12 @@ internal fun LargeScreenVideoLayout(
             .fillMaxSize()
             .background(pageColor),
     ) {
-        val metrics = remember(maxWidth, maxHeight, isVerticalVideo) {
+        val windowWidthDp = maxWidth.value
+        val windowHeightDp = maxHeight.value
+        val metrics = remember(windowWidthDp, windowHeightDp, isVerticalVideo) {
             resolveLargeScreenVideoMetrics(
-                windowWidthDp = maxWidth.value,
-                windowHeightDp = maxHeight.value,
+                windowWidthDp = windowWidthDp,
+                windowHeightDp = windowHeightDp,
                 isVerticalVideo = isVerticalVideo,
             )
         }
@@ -254,7 +256,7 @@ internal fun LargeScreenVideoLayout(
                         }
                         val hasCollection = success?.info?.ugc_season != null
                         val useCollectionColumn = shouldUseDedicatedCollectionColumn(
-                            availableWidthDp = maxWidth.value,
+                            availableWidthDp = windowWidthDp,
                             hasCollection = hasCollection,
                         )
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
