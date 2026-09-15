@@ -4,8 +4,8 @@ import android.content.res.Configuration
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope.OverlayClip
 import androidx.compose.animation.core.animateDp
-import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -124,7 +124,7 @@ internal fun LargeScreenVideoLayout(
         val canCollapseSidePane = metrics.mode != LargeScreenVideoLayoutMode.VerticalThreePane &&
             metrics.mode != LargeScreenVideoLayoutMode.Phone
         val sidePaneCollapsed = sidePaneCollapsedRequested && canCollapseSidePane
-        val sidePaneTransition = rememberTransition(
+        val sidePaneTransition = updateTransition(
             targetState = sidePaneCollapsed,
             label = "large-screen-secondary-pane",
         )
