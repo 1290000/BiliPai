@@ -102,6 +102,9 @@ internal fun LargeScreenVideoLayout(
         }
         val applySideStatusBarPadding =
             metrics.mode != LargeScreenVideoLayoutMode.AlmostSquare
+        val showRelatedInIntro = metrics.mode != LargeScreenVideoLayoutMode.Landscape
+        val relatedTabFirst = metrics.mode == LargeScreenVideoLayoutMode.Landscape
+        val includeRelatedTab = metrics.mode == LargeScreenVideoLayoutMode.Landscape
         val success = uiState as? VideoPlaybackUiState.Success
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
@@ -155,6 +158,7 @@ internal fun LargeScreenVideoLayout(
                         success.info.owner.mid.takeIf { it > 0L }?.let(onUpClick)
                     },
                     modifier = modifier,
+                    showRelatedVideos = showRelatedInIntro,
                 )
             }
         }
@@ -187,6 +191,9 @@ internal fun LargeScreenVideoLayout(
                     },
                     showPaneModeControls = false,
                     applyStatusBarPadding = applySideStatusBarPadding,
+                    includeRelatedTab = includeRelatedTab,
+                    includeOwnerUploadsTab = false,
+                    relatedTabFirst = relatedTabFirst,
                 )
             }
         }
@@ -246,7 +253,64 @@ internal fun LargeScreenVideoLayout(
                             intro(Modifier.fillMaxSize())
                         }
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            side(false)
+                            if (success != null) {
+                                TabletSecondaryContent(
+                                    success = success,
+                                    commentState = commentState,
+                                    subReplyState = subReplyState,
+                                    playbackActions = playbackActions,
+                                    engagementState = engagementState,
+                                    engagementActions = engagementActions,
+                                    commentActions = commentActions,
+                                    playerState = playerState,
+                                    onUpClick = onUpClick,
+                                    paneMode = TabletSecondaryPaneMode.EXPANDED,
+                                    onPaneModeChange = {},
+                                    onPaneModeCycle = {},
+                                    onRelatedVideoClick = onRelatedVideoClick,
+                                    onSearchKeywordClick = onSearchKeywordClick,
+                                    showUpBadge = showUpBadge,
+                                    showIdentityDecorations = commentMemberDecorationsEnabled,
+                                    onOpenBilibiliLink = onOpenBilibiliLink,
+                                    requestedTabName = null,
+                                    onRequestedTabConsumed = {},
+                                    fixedTab = TabletSecondaryTab.COMMENTS,
+                                    showPaneModeControls = false,
+                                    applyStatusBarPadding = false,
+                                    includeRelatedTab = false,
+                                    includeOwnerUploadsTab = false,
+                                )
+                            }
+                        }
+                        if (success?.info?.ugc_season != null) {
+                            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                TabletSecondaryContent(
+                                    success = success,
+                                    commentState = commentState,
+                                    subReplyState = subReplyState,
+                                    playbackActions = playbackActions,
+                                    engagementState = engagementState,
+                                    engagementActions = engagementActions,
+                                    commentActions = commentActions,
+                                    playerState = playerState,
+                                    onUpClick = onUpClick,
+                                    paneMode = TabletSecondaryPaneMode.EXPANDED,
+                                    onPaneModeChange = {},
+                                    onPaneModeCycle = {},
+                                    onRelatedVideoClick = onRelatedVideoClick,
+                                    onSearchKeywordClick = onSearchKeywordClick,
+                                    showUpBadge = showUpBadge,
+                                    showIdentityDecorations = commentMemberDecorationsEnabled,
+                                    onOpenBilibiliLink = onOpenBilibiliLink,
+                                    requestedTabName = null,
+                                    onRequestedTabConsumed = {},
+                                    fixedTab = TabletSecondaryTab.COLLECTION,
+                                    showPaneModeControls = false,
+                                    applyStatusBarPadding = false,
+                                    includeRelatedTab = false,
+                                    includeOwnerUploadsTab = false,
+                                )
+                            }
                         }
                     }
                 }

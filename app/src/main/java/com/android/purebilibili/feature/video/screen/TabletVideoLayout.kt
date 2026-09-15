@@ -537,6 +537,7 @@ internal fun TabletVideoInfoPane(
     onDanmakuToggle: () -> Unit,
     onOwnerUploadsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showRelatedVideos: Boolean = true,
 ) {
     val engagementSuccess = success.withEngagementUiState(engagementState)
     val currentPageIndex = success.info.pages
@@ -557,7 +558,8 @@ internal fun TabletVideoInfoPane(
         bgmInfo = success.bgmInfo,
         bgmInfoList = success.bgmInfoList,
         onBgmClick = onBgmClick,
-        relatedVideos = success.related,
+        relatedVideos = if (showRelatedVideos) success.related else emptyList(),
+        showRelatedVideos = showRelatedVideos,
         onFollowClick = engagementActions.toggleFollow,
         onFavoriteClick = engagementActions.toggleFavorite,
         onLikeClick = engagementActions.toggleLike,
@@ -608,18 +610,32 @@ internal fun TabletSecondaryContent(
     introContent: (@Composable () -> Unit)? = null,
     showPaneModeControls: Boolean = true,
     applyStatusBarPadding: Boolean = true,
+    includeRelatedTab: Boolean = true,
+    includeOwnerUploadsTab: Boolean = true,
+    relatedTabFirst: Boolean = false,
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
-    val tabs = remember(success.info.ugc_season, success.info.owner.mid, fixedTab, introContent != null) {
+    val tabs = remember(
+        success.info.ugc_season,
+        success.info.owner.mid,
+        fixedTab,
+        introContent != null,
+        includeRelatedTab,
+        includeOwnerUploadsTab,
+        relatedTabFirst,
+    ) {
         if (fixedTab != null) {
             listOf(fixedTab)
         } else {
             buildList {
+                if (relatedTabFirst && includeRelatedTab) add(TabletSecondaryTab.RELATED)
                 add(TabletSecondaryTab.COMMENTS)
                 if (introContent != null) add(TabletSecondaryTab.INTRO)
-                add(TabletSecondaryTab.RELATED)
+                if (!relatedTabFirst && includeRelatedTab) add(TabletSecondaryTab.RELATED)
                 if (success.info.ugc_season != null) add(TabletSecondaryTab.COLLECTION)
-                if (success.info.owner.mid > 0L) add(TabletSecondaryTab.OWNER_UPLOADS)
+                if (includeOwnerUploadsTab && success.info.owner.mid > 0L) {
+                    add(TabletSecondaryTab.OWNER_UPLOADS)
+                }
             }
         }
     }
@@ -1263,6 +1279,7 @@ private fun ScrollableVideoInfoSection(
     onSearchKeywordClick: (String) -> Unit = {},
     onOpenBilibiliLink: ((String) -> Unit)?,
     relatedVideos: List<com.android.purebilibili.data.model.response.RelatedVideo> = emptyList(),
+    showRelatedVideos: Boolean = true,
     modifier: Modifier = Modifier,
     ownerTrailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
@@ -1424,7 +1441,8 @@ private fun ScrollableVideoInfoSection(
             }
         }
 
-        // 7. 更多推荐 (水平滚动)
+        // 7. 更多推荐 (水平滚动)。大屏右栏已有相关推荐 Tab 时不再重复。
+        if (showRelatedVideos && relatedVideos.isNotEmpty()) {
         item {
             Spacer(modifier = Modifier.height(24.dp))
             AppText(
@@ -1528,6 +1546,7 @@ private fun ScrollableVideoInfoSection(
             }
             // 底部留白，防止被圆角遮挡
             Spacer(modifier = Modifier.height(24.dp))
+        }
         }
     }
 }

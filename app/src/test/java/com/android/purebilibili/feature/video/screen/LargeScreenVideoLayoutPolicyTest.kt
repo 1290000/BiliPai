@@ -8,6 +8,22 @@ import kotlin.test.assertTrue
 class LargeScreenVideoLayoutPolicyTest {
 
     @Test
+    fun landscapeLayoutHidesIntroRelatedAndPutsRelatedTabFirst() {
+        val source = java.io.File(
+            "app/src/main/java/com/android/purebilibili/feature/video/screen/LargeScreenVideoLayout.kt"
+        ).takeIf { it.exists() } ?: java.io.File(
+            "src/main/java/com/android/purebilibili/feature/video/screen/LargeScreenVideoLayout.kt"
+        )
+        val text = source.readText()
+        assertTrue(text.contains("showRelatedInIntro = metrics.mode != LargeScreenVideoLayoutMode.Landscape"))
+        assertTrue(text.contains("relatedTabFirst = metrics.mode == LargeScreenVideoLayoutMode.Landscape"))
+        assertTrue(text.contains("includeOwnerUploadsTab = false"))
+        assertTrue(text.contains("showRelatedVideos = showRelatedInIntro"))
+    }
+
+    @Test
+
+    @Test
     fun landscapeTabletUsesLeftPlayerAndClampedSidePane() {
         val metrics = resolveLargeScreenVideoMetrics(
             windowWidthDp = 1280f,
@@ -27,6 +43,7 @@ class LargeScreenVideoLayoutPolicyTest {
             windowWidthDp = 1280f,
             windowHeightDp = 800f,
             isVerticalVideo = true,
+            enableVerticalExpand = true,
         )
         assertEquals(LargeScreenVideoLayoutMode.VerticalThreePane, metrics.mode)
         assertFalse(metrics.introBelowPlayer)
@@ -60,6 +77,16 @@ class LargeScreenVideoLayoutPolicyTest {
                 horizontalAdaptationEnabled = false,
             )
         )
+    }
+
+    @Test
+    fun verticalVideoDefaultsToLandscapeWithoutExpand() {
+        val metrics = resolveLargeScreenVideoMetrics(
+            windowWidthDp = 1280f,
+            windowHeightDp = 800f,
+            isVerticalVideo = true,
+        )
+        assertEquals(LargeScreenVideoLayoutMode.Landscape, metrics.mode)
     }
 
     @Test

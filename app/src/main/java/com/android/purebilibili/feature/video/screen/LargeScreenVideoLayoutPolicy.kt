@@ -58,7 +58,7 @@ internal fun resolveLargeScreenVideoMetrics(
     windowWidthDp: Float,
     windowHeightDp: Float,
     isVerticalVideo: Boolean,
-    enableVerticalExpand: Boolean = true,
+    enableVerticalExpand: Boolean = false,
 ): LargeScreenVideoMetrics {
     if (windowWidthDp <= 0f || windowHeightDp <= 0f) {
         return LargeScreenVideoMetrics(

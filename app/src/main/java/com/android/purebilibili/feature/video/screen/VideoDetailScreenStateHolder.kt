@@ -1219,11 +1219,6 @@ internal fun VideoDetailScreenStateHolder(
                 windowWidthDp = configuration.screenWidthDp.toFloat(),
                 windowHeightDp = configuration.screenHeightDp.toFloat(),
                 horizontalAdaptationEnabled = true,
-            ) || (
-            shouldUseTabletVideoLayout(
-                isExpandedScreen = windowSizeClass.isExpandedScreen,
-                isTabletDevice = windowSizeClass.isTablet,
-            ) && windowSizeClass.shouldUseSplitLayout
             )
         )
 
