@@ -13,7 +13,7 @@ class DynamicCommentSortControlPolicyTest {
     fun `sort segmented control matches bottom-bar compact dock geometry`() {
         val spec = resolveDynamicCommentSortControlSpec(itemCount = 2)
 
-        assertEquals(66, spec.itemWidthDp)
+        assertEquals(56, spec.itemWidthDp)
         assertEquals(40, spec.heightDp)
         assertEquals(30, spec.indicatorHeightDp)
         assertTrue(

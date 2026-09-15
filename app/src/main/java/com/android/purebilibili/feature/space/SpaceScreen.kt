@@ -2935,7 +2935,9 @@ private fun SpaceSecondarySwitchRow(
                 scrollable = shouldScrollSpaceSecondarySwitchForNonGlass(items.size),
                 minTabWidth = resolveSpaceSecondarySwitchNonGlassMinTabWidthDp().dp,
                 compactMiuixWhenTwoOptions = false,
-                allowLabelOverflow = false,
+                // Let the shared renderer derive a readable minimum from the longest
+                // category title; only titles that exceed that estimate are ellipsized.
+                allowLabelOverflow = true,
                 miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
             )
         }

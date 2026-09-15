@@ -678,7 +678,7 @@ internal data class DynamicCommentSortControlSpec(
 )
 
 internal fun resolveDynamicCommentSortControlSpec(itemCount: Int) = DynamicCommentSortControlSpec(
-    itemWidthDp = if (itemCount >= 4) 56 else 66,
+    itemWidthDp = if (itemCount >= 4) 52 else 56,
     heightDp = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp,
     indicatorHeightDp = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp,
 )
