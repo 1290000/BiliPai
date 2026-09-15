@@ -105,9 +105,9 @@ internal fun LargeScreenVideoLayout(
         }
         val applySideStatusBarPadding =
             metrics.mode != LargeScreenVideoLayoutMode.AlmostSquare
-        val showRelatedInIntro = metrics.mode != LargeScreenVideoLayoutMode.Landscape
-        val relatedTabFirst = metrics.mode == LargeScreenVideoLayoutMode.Landscape
-        val includeRelatedTab = metrics.mode == LargeScreenVideoLayoutMode.Landscape
+        val showRelatedInIntro = false
+        val relatedTabFirst = false
+        val includeRelatedTab = true
         val success = uiState as? VideoPlaybackUiState.Success
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
@@ -195,7 +195,7 @@ internal fun LargeScreenVideoLayout(
                     showPaneModeControls = false,
                     applyStatusBarPadding = applySideStatusBarPadding,
                     includeRelatedTab = includeRelatedTab,
-                    includeOwnerUploadsTab = false,
+                    includeOwnerUploadsTab = true,
                     relatedTabFirst = relatedTabFirst,
                 )
             }
@@ -255,44 +255,8 @@ internal fun LargeScreenVideoLayout(
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             intro(Modifier.fillMaxSize())
                         }
-                        val commentPaneWidthDp = minOf(
-                            LARGE_SCREEN_VIDEO_MAX_SIDE_PANE_DP,
-                            windowWidthDp * 0.42f,
-                        ).coerceAtLeast(
-                            minOf(LARGE_SCREEN_VIDEO_MIN_SIDE_PANE_DP, windowWidthDp / 2f),
-                        )
-                        Column(
-                            modifier = Modifier
-                                .width(commentPaneWidthDp.dp)
-                                .fillMaxHeight(),
-                        ) {
-                            if (success != null) {
-                                TabletSecondaryContent(
-                                    success = success,
-                                    commentState = commentState,
-                                    subReplyState = subReplyState,
-                                    playbackActions = playbackActions,
-                                    engagementState = engagementState,
-                                    engagementActions = engagementActions,
-                                    commentActions = commentActions,
-                                    playerState = playerState,
-                                    onUpClick = onUpClick,
-                                    paneMode = TabletSecondaryPaneMode.EXPANDED,
-                                    onPaneModeChange = {},
-                                    onPaneModeCycle = {},
-                                    onRelatedVideoClick = onRelatedVideoClick,
-                                    onSearchKeywordClick = onSearchKeywordClick,
-                                    showUpBadge = showUpBadge,
-                                    showIdentityDecorations = commentMemberDecorationsEnabled,
-                                    onOpenBilibiliLink = onOpenBilibiliLink,
-                                    requestedTabName = null,
-                                    onRequestedTabConsumed = {},
-                                    showPaneModeControls = false,
-                                    applyStatusBarPadding = false,
-                                    includeRelatedTab = false,
-                                    includeOwnerUploadsTab = false,
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            side(false)
                         }
                     }
                 }
