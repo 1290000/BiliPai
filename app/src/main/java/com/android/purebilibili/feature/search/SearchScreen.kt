@@ -253,9 +253,15 @@ internal fun resolveSearchTopBarHeaderColor(
 }
 
 internal fun shouldUseSearchTopBarHeaderBlur(
+    headerBlurRequested: Boolean,
     hazeSourceEnabled: Boolean,
     globalWallpaperVisible: Boolean
-): Boolean = hazeSourceEnabled && !globalWallpaperVisible
+): Boolean = headerBlurRequested && hazeSourceEnabled && !globalWallpaperVisible
+
+internal fun shouldUseSearchSolidTopChrome(
+    headerBlurRequested: Boolean,
+    progressiveBlurRequested: Boolean,
+): Boolean = !headerBlurRequested && !progressiveBlurRequested
 
 /**
  * Search top chrome sizes + semantic shape levels.
@@ -907,12 +913,14 @@ fun SearchScreen(
     }
     val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
     val shouldUseSearchTopBarBlur = shouldUseSearchTopBarHeaderBlur(
+        headerBlurRequested = headerBlurEnabled,
         hazeSourceEnabled = searchHazeEnabled,
         globalWallpaperVisible = globalWallpaperVisible
     )
-    val searchUsesSolidChrome = !headerBlurEnabled &&
-        !progressiveTopBlurEnabled &&
-        !effectiveLiquidGlassEnabled
+    val searchUsesSolidChrome = shouldUseSearchSolidTopChrome(
+        headerBlurRequested = headerBlurEnabled,
+        progressiveBlurRequested = progressiveTopBlurEnabled,
+    )
     val searchTopBarHeaderColor = resolveSearchTopBarHeaderColor(
         // Keep the top chrome on the same semantic plane as the Miuix list scaffold.
         // Using Material surface here made the header black while the list stayed gray.
