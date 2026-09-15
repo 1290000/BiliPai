@@ -47,6 +47,7 @@ import com.android.purebilibili.core.util.calculateWindowSizeClass
 import com.android.purebilibili.core.util.rememberAppWindowAdaptiveInfo
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import com.android.purebilibili.core.util.resolveAppDisplayContext
+import com.android.purebilibili.core.util.LARGE_SCREEN_SMALLEST_WIDTH_DP
 import androidx.window.layout.WindowMetricsCalculator
 // Imports for moved classes
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackViewModel
@@ -99,8 +100,19 @@ class VideoActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         AppWindowSystemUiController.configureEdgeToEdgeHost(this)
-        if (savedInstanceState == null && resources.configuration.smallestScreenWidthDp < 600) {
-            applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+        val entryDisplayContext = resolveAppDisplayContext()
+        if (
+            savedInstanceState == null &&
+            (entryDisplayContext.isFoldableCoverWindow ||
+                minOf(
+                    entryDisplayContext.currentWindowWidthDp,
+                    entryDisplayContext.currentWindowHeightDp,
+                ) < LARGE_SCREEN_SMALLEST_WIDTH_DP)
+        ) {
+            applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                displayContext = entryDisplayContext,
+            )
         }
 
         //  2. 请求权限 (Android 13+)
@@ -129,17 +141,24 @@ class VideoActivity : ComponentActivity() {
 
         setContent {
             val configuration = LocalConfiguration.current
+            val calculator = remember { WindowMetricsCalculator.getOrCreate() }
+            val currentWindowMetrics = remember(
+                configuration.screenWidthDp,
+                configuration.screenHeightDp,
+            ) {
+                calculator.computeCurrentWindowMetrics(this@VideoActivity)
+            }
             val maximumWindowMetrics = remember(
                 configuration.screenWidthDp,
                 configuration.screenHeightDp,
             ) {
-                WindowMetricsCalculator.getOrCreate()
-                    .computeMaximumWindowMetrics(this@VideoActivity)
+                calculator.computeMaximumWindowMetrics(this@VideoActivity)
             }
             val materialWindowAdaptiveInfo =
                 androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2()
             val windowSizeClass = calculateWindowSizeClass(
-                metrics = maximumWindowMetrics,
+                metrics = currentWindowMetrics,
+                maximumMetrics = maximumWindowMetrics,
                 adaptiveWindowSizeClass = materialWindowAdaptiveInfo.windowSizeClass,
             )
             val windowWidthSizeClass = windowSizeClass.widthSizeClass

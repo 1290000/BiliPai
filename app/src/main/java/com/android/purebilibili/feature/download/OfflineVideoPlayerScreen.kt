@@ -365,6 +365,23 @@ fun OfflineVideoPlayerScreen(
     // 返回键处理
     LocalNavigationBackHandler(enabled = isFullscreen) { toggleFullscreen() }
     
+    var previousOfflineDisplayRole by remember {
+        mutableStateOf(displayContext.foldableDisplayRole)
+    }
+    LaunchedEffect(activity, displayContext.foldableDisplayRole) {
+        if (
+            com.android.purebilibili.core.util.shouldReleaseOrientationLockOnDisplayRoleChange(
+                previousRole = previousOfflineDisplayRole,
+                nextRole = displayContext.foldableDisplayRole,
+            )
+        ) {
+            activity?.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                displayContext = displayContext,
+            )
+        }
+        previousOfflineDisplayRole = displayContext.foldableDisplayRole
+    }
     LaunchedEffect(activity, displayContext, isFullscreen) {
         applyWindowMode(isFullscreen)
     }

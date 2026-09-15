@@ -22,7 +22,7 @@ import androidx.window.layout.WindowMetricsCalculator
 import kotlin.math.abs
 import com.android.purebilibili.core.util.AppDisplayContext
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
-import com.android.purebilibili.core.util.isFoldableCoverWindow
+
 import com.android.purebilibili.core.ui.setWindowNavigationBarColor
 import com.android.purebilibili.core.ui.setWindowStatusBarColor
 import com.android.purebilibili.core.ui.adaptive.AdaptiveFoldPosture
@@ -318,7 +318,7 @@ internal fun shouldInferFloatingWindowFromBounds(
  */
 internal fun isActivityInMultiWindowOrFloatingMode(
     activity: Activity,
-    isKnownFoldableCoverScreen: Boolean = false,
+    displayContext: AppDisplayContext? = null,
 ): Boolean {
     // PiP 有独立播放与方向策略，不能仅因窗口边界较小而归入普通悬浮窗。
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity.isInPictureInPictureMode) {
@@ -329,18 +329,10 @@ internal fun isActivityInMultiWindowOrFloatingMode(
     }
 
     return runCatching {
-        val configuration = activity.resources.configuration
-        val density = activity.resources.displayMetrics.density.coerceAtLeast(1f)
         val calculator = WindowMetricsCalculator.getOrCreate()
         val currentBounds = calculator.computeCurrentWindowMetrics(activity).bounds
         val maximumBounds = calculator.computeMaximumWindowMetrics(activity).bounds
-        val isCoverWindow = isFoldableCoverWindow(
-            smallestScreenWidthDp = configuration.smallestScreenWidthDp,
-            currentWindowWidthDp = configuration.screenWidthDp,
-            currentWindowHeightDp = configuration.screenHeightDp,
-            maximumWidthDp = (maximumBounds.width() / density).toInt(),
-            maximumHeightDp = (maximumBounds.height() / density).toInt(),
-        )
+        val isCoverWindow = displayContext?.isFoldableCoverWindow == true
         shouldInferFloatingWindowFromBounds(
             currentBoundsSmallerThanMaximum = isWindowBoundsSmallerThanMaximum(
                 currentWidth = currentBounds.width(),
@@ -348,7 +340,7 @@ internal fun isActivityInMultiWindowOrFloatingMode(
                 maximumWidth = maximumBounds.width(),
                 maximumHeight = maximumBounds.height()
             ),
-            isFoldableCoverWindow = isKnownFoldableCoverScreen || isCoverWindow,
+            isFoldableCoverWindow = isCoverWindow,
         )
     }.getOrDefault(false)
 }
@@ -372,7 +364,7 @@ internal fun toggleVideoDetailFullscreen(
 
     val isInMultiWindowMode = isActivityInMultiWindowOrFloatingMode(
         activity = activity,
-        isKnownFoldableCoverScreen = displayContext?.isFoldableCoverWindow == true,
+        displayContext = displayContext,
     )
     val isInPictureInPictureMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
         activity.isInPictureInPictureMode

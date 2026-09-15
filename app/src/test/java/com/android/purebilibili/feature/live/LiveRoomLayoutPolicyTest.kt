@@ -1,5 +1,9 @@
 package com.android.purebilibili.feature.live
 
+import android.content.res.Configuration
+import android.view.Surface
+import com.android.purebilibili.core.util.AppDisplayContextInput
+import com.android.purebilibili.core.util.resolveAppDisplayContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -65,6 +69,30 @@ class LiveRoomLayoutPolicyTest {
                 isFullscreen = false,
                 isFoldableCoverWindow = true,
                 usesInWindowFullscreen = true,
+            )
+        )
+    }
+
+    @Test
+    fun `display context cover uses in-window live orientation`() {
+        val cover = resolveAppDisplayContext(
+            AppDisplayContextInput(
+                currentWindowWidthDp = 616,
+                currentWindowHeightDp = 421,
+                maximumWindowWidthDp = 861,
+                maximumWindowHeightDp = 609,
+                configurationOrientation = Configuration.ORIENTATION_LANDSCAPE,
+                displayRotation = Surface.ROTATION_0,
+                displayModeWidthPx = 1848,
+                displayModeHeightPx = 1264,
+                hasHingeAngleSensor = true,
+            )
+        )
+        assertEquals(
+            LiveRequestedOrientationMode.Unspecified,
+            resolveLiveRequestedOrientationMode(
+                displayContext = cover,
+                isFullscreen = true,
             )
         )
     }

@@ -12,7 +12,11 @@ import com.android.purebilibili.core.player.HiResCompatibleRenderersFactory
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
+import com.android.purebilibili.core.util.formatAppAdaptiveStrategySnapshot
+import com.android.purebilibili.core.util.resolvePlayerPresentationPolicy
 import com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy
+import com.android.purebilibili.core.util.shouldReleaseOrientationLockOnDisplayRoleChange
+import com.android.purebilibili.core.util.toAdaptiveStrategySnapshot
 import com.android.purebilibili.core.ui.LocalNavigationBackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -100,21 +104,31 @@ fun BangumiPlayerScreen(
         .collectAsStateWithLifecycle(initialValue = false)
     
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val isTablet = configuration.smallestScreenWidthDp >= 600
     val windowSizeClass = LocalWindowSizeClass.current
-    val displayContext = LocalAppWindowAdaptiveInfo.current.displayContext
+    val appWindowAdaptiveInfo = LocalAppWindowAdaptiveInfo.current
+    val displayContext = appWindowAdaptiveInfo.displayContext
+    val isTablet = windowSizeClass.shouldUseSplitLayout || appWindowAdaptiveInfo.shouldAvoidHinge
     val hostActivity = remember(context) { context.findActivity() }
     val playerWindowOrientationPolicy = remember(displayContext) {
         resolvePlayerWindowOrientationPolicy(displayContext)
     }
     val usesInWindowFullscreen = playerWindowOrientationPolicy.usesInWindowFullscreen
     var userRequestedFullscreen by rememberSaveable(seasonId) { mutableStateOf(false) }
-    val isFullscreen = resolveBangumiFullscreen(
-        isLandscape = isLandscape,
-        isTablet = isTablet,
-        usesInWindowFullscreen = usesInWindowFullscreen,
-        userRequestedFullscreen = userRequestedFullscreen,
-    )
+    val playerPresentation = remember(
+        displayContext,
+        isLandscape,
+        userRequestedFullscreen,
+        isTablet,
+    ) {
+        resolvePlayerPresentationPolicy(
+            displayContext = displayContext,
+            isLandscape = isLandscape,
+            userFullscreenIntent = userRequestedFullscreen,
+            prefersManualFullscreen = isTablet,
+            isInMultiWindowMode = displayContext.isInMultiWindowMode,
+        )
+    }
+    val isFullscreen = playerPresentation.isFullscreen
     var isPlayerScreenLocked by rememberSaveable(seasonId) { mutableStateOf(false) }
     val latestIsLandscape by rememberUpdatedState(isLandscape)
     val statusBarsInsetTop = WindowInsets.statusBars
@@ -423,25 +437,40 @@ fun BangumiPlayerScreen(
         }
     }
 
-    LaunchedEffect(hostActivity, displayContext, usesInWindowFullscreen) {
-        if (usesInWindowFullscreen) {
+    var previousDisplayRole by remember {
+        mutableStateOf(displayContext.foldableDisplayRole)
+    }
+    LaunchedEffect(hostActivity, displayContext.foldableDisplayRole, usesInWindowFullscreen) {
+        val shouldReleaseLock = shouldReleaseOrientationLockOnDisplayRoleChange(
+            previousRole = previousDisplayRole,
+            nextRole = displayContext.foldableDisplayRole,
+        )
+        if (shouldReleaseLock || usesInWindowFullscreen) {
             hostActivity?.applyPlayerRequestedOrientation(
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
                 displayContext = displayContext,
             )
         }
+        previousDisplayRole = displayContext.foldableDisplayRole
     }
 
-    LaunchedEffect(playerWindowOrientationPolicy, isFullscreen) {
-        val policy = playerWindowOrientationPolicy
+    LaunchedEffect(appWindowAdaptiveInfo, playerPresentation) {
         com.android.purebilibili.core.util.Logger.d(
             "BangumiPlayerScreen",
-            "Player window policy: current=${policy.currentWindowWidthDp}x${policy.currentWindowHeightDp}dp, " +
-                "maximum=${policy.maximumWindowWidthDp}x${policy.maximumWindowHeightDp}dp, " +
-                "mode=${policy.displayModeWidthPx}x${policy.displayModeHeightPx}px, " +
-                "rotation=${policy.displayRotation}, cover=${policy.isFoldableCoverWindow}, " +
-                "naturalLandscape=${policy.isLandscapeNaturalDisplay}, " +
-                "inWindowFullscreen=${policy.usesInWindowFullscreen}, fullscreen=$isFullscreen"
+            formatAppAdaptiveStrategySnapshot(
+                appWindowAdaptiveInfo.toAdaptiveStrategySnapshot(
+                    playerPresentation = if (playerPresentation.usesInWindowFullscreen) {
+                        "in-window(user=${playerPresentation.userFullscreenIntent}," +
+                            "fullscreen=${playerPresentation.isFullscreen})"
+                    } else if (playerPresentation.orientationGeneratedFullscreen) {
+                        "orientation-generated"
+                    } else if (playerPresentation.isFullscreen) {
+                        "user-fullscreen"
+                    } else {
+                        "inline"
+                    },
+                )
+            ),
         )
     }
 

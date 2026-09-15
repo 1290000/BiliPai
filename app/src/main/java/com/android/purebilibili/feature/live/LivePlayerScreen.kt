@@ -807,17 +807,28 @@ fun LivePlayerScreen(
         }
     }
 
-    val liveRequestedOrientationMode = remember(
-        windowSizeClass.isTabletDevice,
-        displayContext,
-        isFullscreen,
-    ) {
+    val liveRequestedOrientationMode = remember(displayContext, isFullscreen) {
         resolveLiveRequestedOrientationMode(
-            isTabletDevice = windowSizeClass.isTabletDevice,
+            displayContext = displayContext,
             isFullscreen = isFullscreen,
-            isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
-            usesInWindowFullscreen = displayContext.usesInWindowFullscreen,
         )
+    }
+    var previousLiveDisplayRole by remember {
+        mutableStateOf(displayContext.foldableDisplayRole)
+    }
+    LaunchedEffect(activity, displayContext.foldableDisplayRole) {
+        if (
+            com.android.purebilibili.core.util.shouldReleaseOrientationLockOnDisplayRoleChange(
+                previousRole = previousLiveDisplayRole,
+                nextRole = displayContext.foldableDisplayRole,
+            )
+        ) {
+            activity?.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                displayContext = displayContext,
+            )
+        }
+        previousLiveDisplayRole = displayContext.foldableDisplayRole
     }
     LaunchedEffect(activity, displayContext, liveRequestedOrientationMode) {
         val requestedOrientation = when (liveRequestedOrientationMode) {
