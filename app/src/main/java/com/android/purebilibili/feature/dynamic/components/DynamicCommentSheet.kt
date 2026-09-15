@@ -718,18 +718,22 @@ fun DynamicInlineCommentHeader(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        Spacer(modifier = Modifier.weight(1f))
-        DynamicCommentSortControl(
-            items = sortModeLabels,
-            selectedIndex = sortModes.indexOf(sortMode).coerceAtLeast(0),
-            onSelected = { index ->
-                sortModes.getOrNull(index)?.let(onSortModeChange)
-            },
-            // Null deliberately selects the shared control's mounted local source. Do not
-            // manufacture an unrecorded Backdrop here or sample the LazyColumn containing
-            // this header, which would be invalid/recursive on Xiaomi's native renderer.
-            miuixBackdrop = miuixBackdrop,
-        )
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            DynamicCommentSortControl(
+                items = sortModeLabels,
+                selectedIndex = sortModes.indexOf(sortMode).coerceAtLeast(0),
+                onSelected = { index ->
+                    sortModes.getOrNull(index)?.let(onSortModeChange)
+                },
+                // Null deliberately selects the shared control's mounted local source. Do not
+                // manufacture an unrecorded Backdrop here or sample the LazyColumn containing
+                // this header, which would be invalid/recursive on Xiaomi's native renderer.
+                miuixBackdrop = miuixBackdrop,
+            )
+        }
     }
     AppHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }

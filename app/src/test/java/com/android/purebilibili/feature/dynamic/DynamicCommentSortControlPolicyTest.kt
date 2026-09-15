@@ -36,6 +36,7 @@ class DynamicCommentSortControlPolicyTest {
         assertTrue(!source.contains("forceLiquidChrome"))
         assertTrue(source.contains("itemWidth = spec.itemWidthDp.dp"))
         assertTrue(source.contains("requiredWidth((spec.itemWidthDp * items.size).dp)"))
+        assertTrue(source.contains("contentAlignment = Alignment.CenterEnd"))
         assertTrue(source.contains("listOf(CommentSortMode.HOT, CommentSortMode.NEWEST)"))
         assertTrue(!source.contains("CommentSegmentedControl("))
     }
