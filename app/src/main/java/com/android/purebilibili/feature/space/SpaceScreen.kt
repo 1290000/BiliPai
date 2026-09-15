@@ -2329,21 +2329,32 @@ private fun SpaceHeader(
     )
 
     // PiliPlus 风格头部结构：
-    // - hero 背景全宽沉浸延伸至状态栏，按标准 1125:396 (约 2.84:1) 比例完整展示，横向不裁切
+    // - 窄屏 hero 按 1125:396 全宽展示；桌面/横屏窗口把高度钳到约 135dp，与 PiliPlus kHeaderHeight 对齐
     // - 头像 80dp（顶部 24dp 压在背景图上，底部 56dp 伸出背景，带 2dp 边框与认证标）
     // - 头像右侧独立区域：上层 3 项数据统计（粉丝/关注/获赞），下层私信与关注操作按钮
     // - 窄屏信息区位于头像下方；宽屏放入头像与操作区之间
-    val bannerAspectRatio = 1125f / 396f
     val avatarSize = 80.dp
     val avatarBannerOverlap = 24.dp
     val actionsTopMargin = 8.dp
+    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         // The hero is rendered beyond the grid's content padding. Use that exact rendered
         // width for both the banner height and avatar anchor so a wide window cannot create
         // phantom vertical space between them.
         val renderedBannerWidth = maxWidth + outerPadding.coerceAtLeast(0.dp) * 2
-        val bannerTotalHeightDp = renderedBannerWidth / bannerAspectRatio
+        val bannerMetrics = remember(
+            renderedBannerWidth,
+            windowSizeClass.widthDp,
+            windowSizeClass.heightDp,
+        ) {
+            resolveSpaceBannerMetrics(
+                renderedBannerWidthDp = renderedBannerWidth.value,
+                windowWidthDp = windowSizeClass.widthDp.value,
+                windowHeightDp = windowSizeClass.heightDp.value,
+            )
+        }
+        val bannerTotalHeightDp = bannerMetrics.heightDp.dp
         val heroHeight = (bannerTotalHeightDp - chromeTopInset.coerceAtLeast(0.dp))
             .coerceAtLeast(0.dp)
         val avatarTopPadding = (heroHeight - avatarBannerOverlap).coerceAtLeast(0.dp)
@@ -2364,7 +2375,7 @@ private fun SpaceHeader(
                         val horizontalInsetPx = outerPadding.coerceAtLeast(0.dp).roundToPx()
                         val topInsetPx = chromeTopInset.coerceAtLeast(0.dp).roundToPx()
                         val targetWidth = constraints.maxWidth + horizontalInsetPx * 2
-                        val bannerTotalHeightPx = (targetWidth / bannerAspectRatio).roundToInt()
+                        val bannerTotalHeightPx = bannerTotalHeightDp.roundToPx()
                         val visibleHeightPx = (bannerTotalHeightPx - topInsetPx).coerceAtLeast(0)
                         val placeable = measurable.measure(
                             constraints.copy(
@@ -2391,7 +2402,11 @@ private fun SpaceHeader(
                             .crossfade(true)
                             .build(),
                         contentDescription = null,
-                        contentScale = ContentScale.FillWidth,
+                        contentScale = if (bannerMetrics.cropToFill) {
+                            ContentScale.Crop
+                        } else {
+                            ContentScale.FillWidth
+                        },
                         alignment = Alignment.TopCenter,
                         modifier = Modifier.fillMaxSize()
                     )

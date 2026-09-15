@@ -305,6 +305,7 @@ class SpaceScreenStructureTest {
         assertTrue(source.contains("useExpandedLayout = adaptiveLayoutSpec.useExpandedHeader"))
         assertTrue(header.contains("BoxWithConstraints("))
         assertTrue(header.contains("val renderedBannerWidth = maxWidth + outerPadding"))
+        assertTrue(header.contains("resolveSpaceBannerMetrics("))
         assertFalse(header.contains("LocalConfiguration.current"))
         assertTrue(header.contains(".widthIn(max = 480.dp)"))
         assertTrue(dynamicItems.contains("span = { GridItemSpan(1) }"))
