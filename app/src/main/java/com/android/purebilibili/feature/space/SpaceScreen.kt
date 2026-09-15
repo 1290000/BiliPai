@@ -174,6 +174,8 @@ import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.core.util.responsiveContentWidth
 import com.android.purebilibili.data.model.response.FavFolder
+import com.android.purebilibili.data.model.response.SeasonArchiveItem
+import com.android.purebilibili.data.model.response.SeriesArchiveItem
 import com.android.purebilibili.data.model.response.DynamicDesc
 import kotlin.math.roundToInt
 import com.android.purebilibili.data.model.response.FollowBangumiItem
@@ -282,12 +284,21 @@ fun SpaceScreen(
 
     val currentSuccessState = uiState as? SpaceUiState.Success
     var contributionVideoLayoutMode by rememberSaveable(mid) {
-        mutableStateOf(SpaceContributionVideoLayoutMode.SINGLE_COLUMN)
+        mutableStateOf(defaultSpaceContributionVideoLayoutMode())
     }
     val nextContributionVideoLayoutMode = toggleSpaceContributionVideoLayoutMode(contributionVideoLayoutMode)
     val showContributionVideoMenuActions = currentSuccessState?.let { state ->
         state.tabShellState.selectedTab == SpaceMainTab.CONTRIBUTION &&
             state.selectedSubTab in setOf(SpaceSubTab.VIDEO, SpaceSubTab.CHARGING_VIDEO)
+    } == true
+    val showContributionLayoutToggle = currentSuccessState?.let { state ->
+        state.tabShellState.selectedTab == SpaceMainTab.CONTRIBUTION &&
+            state.selectedSubTab in setOf(
+                SpaceSubTab.VIDEO,
+                SpaceSubTab.CHARGING_VIDEO,
+                SpaceSubTab.SEASON_VIDEO,
+                SpaceSubTab.SERIES,
+            )
     } == true
     val playAllSpaceVideos: () -> Unit = playAll@{
         val state = currentSuccessState ?: return@playAll
@@ -437,22 +448,9 @@ fun SpaceScreen(
                                                 icon = Icons.Outlined.PlayCircleOutline,
                                                 onClick = playAllSpaceVideos,
                                             ),
-                                            AppWindowAction(
-                                                label = if (
-                                                    contributionVideoLayoutMode == SpaceContributionVideoLayoutMode.SINGLE_COLUMN
-                                                ) {
-                                                    "切换为双列"
-                                                } else {
-                                                    "切换为单列"
-                                                },
-                                                icon = if (
-                                                    contributionVideoLayoutMode == SpaceContributionVideoLayoutMode.SINGLE_COLUMN
-                                                ) {
-                                                    Icons.Outlined.GridView
-                                                } else {
-                                                    Icons.Outlined.ViewAgenda
-                                                },
-                                                onClick = {
+                                            contributionLayoutToggleAction(
+                                                layoutMode = contributionVideoLayoutMode,
+                                                onToggle = {
                                                     contributionVideoLayoutMode =
                                                         nextContributionVideoLayoutMode
                                                 },
@@ -466,6 +464,18 @@ fun SpaceScreen(
                                                         selected = currentSuccessState?.sortOrder == order,
                                                         onClick = { viewModel.selectSortOrder(order) },
                                                     )
+                                                },
+                                            ),
+                                        )
+                                    )
+                                } else if (showContributionLayoutToggle) {
+                                    add(
+                                        listOf(
+                                            contributionLayoutToggleAction(
+                                                layoutMode = contributionVideoLayoutMode,
+                                                onToggle = {
+                                                    contributionVideoLayoutMode =
+                                                        nextContributionVideoLayoutMode
                                                 },
                                             ),
                                         )
@@ -1960,20 +1970,24 @@ private fun SpaceContent(
                         items(
                             items = archives,
                             key = { "season_video_${it.aid}_${it.bvid}" },
-                            span = { GridItemSpan(maxLineSpan) }
+                            span = {
+                                GridItemSpan(
+                                    resolveSpaceContributionVideoGridSpan(
+                                        layoutMode = contributionVideoLayoutMode,
+                                        maxLineSpan = maxLineSpan,
+                                    )
+                                )
+                            }
                         ) { archive ->
-                            SpaceArchiveListItemRow(
-                                title = archive.title,
-                                cover = archive.pic,
-                                duration = FormatUtils.formatDuration(archive.duration),
-                                publishTime = FormatUtils.formatPublishTime(archive.pubdate),
-                                play = archive.stat.view,
-                                secondaryCount = archive.stat.danmaku,
-                                modifier = boundedListModifier,
+                            SpaceContributionArchiveVideoItem(
+                                video = archive.toSpaceVideoItem(),
+                                layoutMode = contributionVideoLayoutMode,
+                                coverAspectRatio = spaceFeedCoverAspectRatio,
+                                boundedListModifier = boundedListModifier,
                                 onClick = { playVideoFromSpace(archive.bvid) },
                                 sharedTransitionKey = resolveSpaceArchiveSharedTransitionKey(archive.bvid),
                                 sharedTransitionScope = lazyGridSharedTransitionScope,
-                                animatedVisibilityScope = lazyGridAnimatedVisibilityScope
+                                animatedVisibilityScope = lazyGridAnimatedVisibilityScope,
                             )
                         }
                     }
@@ -2010,20 +2024,24 @@ private fun SpaceContent(
                         items(
                             items = archives,
                             key = { "series_video_${it.aid}_${it.bvid}" },
-                            span = { GridItemSpan(maxLineSpan) }
+                            span = {
+                                GridItemSpan(
+                                    resolveSpaceContributionVideoGridSpan(
+                                        layoutMode = contributionVideoLayoutMode,
+                                        maxLineSpan = maxLineSpan,
+                                    )
+                                )
+                            }
                         ) { archive ->
-                            SpaceArchiveListItemRow(
-                                title = archive.title,
-                                cover = archive.pic,
-                                duration = FormatUtils.formatDuration(archive.duration),
-                                publishTime = FormatUtils.formatPublishTime(archive.pubdate),
-                                play = archive.stat.view,
-                                secondaryCount = archive.stat.danmaku,
-                                modifier = boundedListModifier,
+                            SpaceContributionArchiveVideoItem(
+                                video = archive.toSpaceVideoItem(),
+                                layoutMode = contributionVideoLayoutMode,
+                                coverAspectRatio = spaceFeedCoverAspectRatio,
+                                boundedListModifier = boundedListModifier,
                                 onClick = { playVideoFromSpace(archive.bvid) },
                                 sharedTransitionKey = resolveSpaceArchiveSharedTransitionKey(archive.bvid),
                                 sharedTransitionScope = lazyGridSharedTransitionScope,
-                                animatedVisibilityScope = lazyGridAnimatedVisibilityScope
+                                animatedVisibilityScope = lazyGridAnimatedVisibilityScope,
                             )
                         }
                     }
@@ -3646,6 +3664,87 @@ private fun SpaceNoticeCard(notice: String) {
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
+private fun contributionLayoutToggleAction(
+    layoutMode: SpaceContributionVideoLayoutMode,
+    onToggle: () -> Unit,
+): AppWindowAction {
+    val isSingleColumn = layoutMode == SpaceContributionVideoLayoutMode.SINGLE_COLUMN
+    return AppWindowAction(
+        label = if (isSingleColumn) "切换为双列" else "切换为单列",
+        icon = if (isSingleColumn) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+        onClick = onToggle,
+    )
+}
+
+@Composable
+private fun SpaceContributionArchiveVideoItem(
+    video: SpaceVideoItem,
+    layoutMode: SpaceContributionVideoLayoutMode,
+    coverAspectRatio: Float,
+    boundedListModifier: Modifier,
+    onClick: () -> Unit,
+    sharedTransitionKey: String?,
+    sharedTransitionScope: SharedTransitionScope?,
+    animatedVisibilityScope: AnimatedVisibilityScope?,
+) {
+    when (layoutMode) {
+        SpaceContributionVideoLayoutMode.GRID -> {
+            SpaceHomeVideoCard(
+                video = video,
+                progressState = resolveSpaceVideoProgressState(
+                    video = video,
+                    localPositionMs = 0L,
+                    syncedProgress = null,
+                ),
+                coverAspectRatio = coverAspectRatio,
+                onClick = onClick,
+                sharedTransitionKey = sharedTransitionKey,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+        SpaceContributionVideoLayoutMode.SINGLE_COLUMN -> {
+            SpaceArchiveListItemRow(
+                title = video.title,
+                cover = video.pic,
+                duration = video.length,
+                publishTime = FormatUtils.formatPublishTime(video.created),
+                play = video.play.toLong(),
+                secondaryCount = video.comment.toLong(),
+                modifier = boundedListModifier,
+                onClick = onClick,
+                sharedTransitionKey = sharedTransitionKey,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+    }
+}
+
+private fun SeasonArchiveItem.toSpaceVideoItem(): SpaceVideoItem = SpaceVideoItem(
+    aid = aid,
+    bvid = bvid,
+    title = title,
+    pic = pic,
+    play = stat.view.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
+    comment = stat.reply.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
+    length = FormatUtils.formatDuration(duration),
+    created = pubdate,
+    author = author,
+)
+
+private fun SeriesArchiveItem.toSpaceVideoItem(): SpaceVideoItem = SpaceVideoItem(
+    aid = aid,
+    bvid = bvid,
+    title = title,
+    pic = pic,
+    play = stat.view.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
+    comment = stat.reply.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
+    length = FormatUtils.formatDuration(duration),
+    created = pubdate,
+    author = author,
+)
+
 private fun SpaceArchiveListItemRow(
     title: String,
     cover: String,

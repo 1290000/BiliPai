@@ -93,10 +93,13 @@ class SpaceScreenStructureTest {
             .substringBefore("if (state.isLoadingMore)")
 
         assertTrue(source.contains("showContributionVideoMenuActions"))
+        assertTrue(source.contains("showContributionLayoutToggle"))
+        assertTrue(source.contains("defaultSpaceContributionVideoLayoutMode()"))
         assertTrue(source.contains("toggleSpaceContributionVideoLayoutMode"))
         assertTrue(source.contains("resolveSpaceContributionVideoGridSpan("))
         assertTrue(source.contains("resolveSpaceContributionVideoItemKey("))
         assertTrue(source.contains("SpaceContributionVideoLayoutMode.SINGLE_COLUMN"))
+        assertFalse(source.contains("mutableStateOf(SpaceContributionVideoLayoutMode.SINGLE_COLUMN)"))
         assertTrue(source.contains("SpaceArchiveListItemRow("))
         assertTrue(contributionVideoItems.contains("AnimatedVideoListItem(modifier = videoListItemModifier("))
         assertFalse(contributionVideoItems.contains("Modifier.animateItem()"))
