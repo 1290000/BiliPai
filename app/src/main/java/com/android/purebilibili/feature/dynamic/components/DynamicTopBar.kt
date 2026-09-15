@@ -2,6 +2,7 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import com.android.purebilibili.core.ui.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppChromeSizeTokens
 
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.AppShapes
@@ -182,15 +183,22 @@ fun DynamicTopBarWithTabs(
             horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier.wrapContentWidth(),
-                contentAlignment = Alignment.Center,
+            BoxWithConstraints(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart,
             ) {
+                val tabCount = tabs.size.coerceAtLeast(1)
+                val tabItemWidth = (
+                    (maxWidth - AppSpacingTokens.ExtraSmall * 2) / tabCount
+                ).coerceIn(
+                    AppChromeSizeTokens.MinimumTouchTarget,
+                    resolveDynamicTopBarTabItemWidthDp().dp,
+                )
                 BottomBarLiquidSegmentedControl(
                     items = tabs,
                     selectedIndex = selectedTab,
                     onSelected = onTabSelected,
-                    itemWidth = resolveDynamicTopBarTabItemWidthDp().dp,
+                    itemWidth = tabItemWidth,
                     height = liquidTabSpec.heightDp.dp,
                     geometryMode = com.android.purebilibili.feature.home.components.FloatingBottomBarGeometryMode.TopNavigation,
                     indicatorHeight = liquidTabSpec.indicatorHeightDp.dp,
@@ -209,8 +217,6 @@ fun DynamicTopBarWithTabs(
                         LocalAppUiStyle.current != AppUiStyle.MIUIX,
                 )
             }
-
-            Spacer(modifier = Modifier.weight(1f))
 
             val localActionDockBackdrop = if (liquidGlassEnabled && dockBackdrop == null) {
                 rememberLayerBackdrop()
