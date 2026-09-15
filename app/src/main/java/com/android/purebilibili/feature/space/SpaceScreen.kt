@@ -3665,8 +3665,6 @@ private fun SpaceNoticeCard(notice: String) {
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
 private fun contributionLayoutToggleAction(
     layoutMode: SpaceContributionVideoLayoutMode,
     onToggle: () -> Unit,
@@ -3679,6 +3677,7 @@ private fun contributionLayoutToggleAction(
     )
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun SpaceContributionArchiveVideoItem(
     video: SpaceVideoItem,
@@ -3748,6 +3747,8 @@ private fun SeriesArchiveItem.toSpaceVideoItem(): SpaceVideoItem = SpaceVideoIte
     author = author,
 )
 
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
 private fun SpaceArchiveListItemRow(
     title: String,
     cover: String,
