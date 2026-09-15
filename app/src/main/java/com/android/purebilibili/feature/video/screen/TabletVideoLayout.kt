@@ -288,7 +288,8 @@ internal fun TabletVideoLayout(
     onPlayModeClick: () -> Unit = {},
     forceCoverOnlyOnReturn: Boolean = false,
     predictiveBackCancelRecoveryGeneration: Int = 0,
-    liveSurfaceCardTransitionEnabled: Boolean = true
+    liveSurfaceCardTransitionEnabled: Boolean = true,
+    paneControlsEnabled: Boolean = true,
 ) {
     val adaptiveInfo = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current
     val foldHalfOpened = adaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Book ||
@@ -472,7 +473,7 @@ internal fun TabletVideoLayout(
                     )
                 }
                 }
-                if (secondaryPaneHidden) {
+                if (paneControlsEnabled && secondaryPaneHidden) {
                     TabletSecondaryPaneToggleButton(
                         isSecondaryPaneVisible = false,
                         onClick = {
@@ -532,7 +533,7 @@ internal fun TabletVideoLayout(
                             }
                         } else null,
                     )
-                    if (!secondaryPaneHidden) {
+                    if (paneControlsEnabled && !secondaryPaneHidden) {
                         TabletSecondaryPaneToggleButton(
                             isSecondaryPaneVisible = true,
                             onClick = {
