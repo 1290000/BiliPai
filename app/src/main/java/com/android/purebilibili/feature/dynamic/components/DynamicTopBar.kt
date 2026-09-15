@@ -183,7 +183,7 @@ fun DynamicTopBarWithTabs(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.wrapContentWidth(),
                 contentAlignment = Alignment.Center,
             ) {
                 BottomBarLiquidSegmentedControl(
