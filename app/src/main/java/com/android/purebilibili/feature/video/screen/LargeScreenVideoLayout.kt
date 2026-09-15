@@ -179,7 +179,6 @@ internal fun LargeScreenVideoLayout(
                     onUpClick = onUpClick,
                     paneMode = TabletSecondaryPaneMode.EXPANDED,
                     onPaneModeChange = {},
-                    onPaneModeCycle = {},
                     onRelatedVideoClick = onRelatedVideoClick,
                     onSearchKeywordClick = onSearchKeywordClick,
                     showUpBadge = showUpBadge,

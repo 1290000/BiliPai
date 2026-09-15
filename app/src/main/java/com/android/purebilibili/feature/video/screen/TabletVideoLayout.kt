@@ -2,6 +2,8 @@
 package com.android.purebilibili.feature.video.screen
 
 import com.android.purebilibili.navigation.animatePagerSelection
+import com.android.purebilibili.core.ui.components.AppIcon
+import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppText
 
 import android.content.res.Configuration
@@ -177,6 +179,31 @@ internal fun TabletSecondaryDanmakuActions(
 }
 
 @Composable
+private fun TabletSecondaryPaneToggleButton(
+    isSecondaryPaneVisible: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AppIconButton(
+        onClick = onClick,
+        modifier = modifier.size(40.dp),
+    ) {
+        AppIcon(
+            imageVector = if (isSecondaryPaneVisible) {
+                Icons.Outlined.KeyboardArrowLeft
+            } else {
+                Icons.Outlined.KeyboardArrowRight
+            },
+            contentDescription = if (isSecondaryPaneVisible) {
+                "收起右侧内容"
+            } else {
+                "展开右侧内容"
+            },
+        )
+    }
+}
+
+@Composable
 internal fun TabletSecondaryLiquidTabRow(
     labels: List<String>,
     selectedIndex: Int,
@@ -284,6 +311,11 @@ internal fun TabletVideoLayout(
     )
     val useThreePaneLayout = LocalWindowSizeClass.current.shouldUseThreePaneLayout &&
         !layoutPolicy.useTabletopLayout
+    val secondaryPaneHidden = shouldHideTabletSecondaryPane(
+        paneMode = secondaryPaneMode,
+        useThreePaneLayout = useThreePaneLayout,
+        useTabletopLayout = layoutPolicy.useTabletopLayout,
+    )
     val danmakuChrome = rememberTabletDanmakuChromeState(bvid)
     
     // 🖥️ [修复] 使用 LocalContext 获取 Activity，而非 playerState.context
@@ -294,14 +326,16 @@ internal fun TabletVideoLayout(
     }
     
     AppSplitLayout(
+        secondaryPaneVisible = !secondaryPaneHidden,
         primaryContent = {
-            // 📹 左侧：播放器 + 视频信息（可滚动）
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // 📹 左侧：播放器 + 视频信息（可滚动）
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
                 // 视频播放器（固定高度，不参与滚动）
                 
                 //  尝试获取共享元素作用域
@@ -435,6 +469,18 @@ internal fun TabletVideoLayout(
                             .align(Alignment.CenterHorizontally),
                     )
                 }
+                }
+                if (secondaryPaneHidden) {
+                    TabletSecondaryPaneToggleButton(
+                        isSecondaryPaneVisible = false,
+                        onClick = {
+                            secondaryPaneModeName = TabletSecondaryPaneMode.EXPANDED.name
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 4.dp),
+                    )
+                }
             }
         },
         secondaryContent = {
@@ -454,9 +500,6 @@ internal fun TabletVideoLayout(
                     onUpClick = onUpClick,
                     paneMode = secondaryPaneMode,
                     onPaneModeChange = { secondaryPaneModeName = it.name },
-                    onPaneModeCycle = {
-                        secondaryPaneModeName = nextTabletSecondaryPaneMode(secondaryPaneMode).name
-                    },
                     onRelatedVideoClick = onRelatedVideoClick,
                     onSearchKeywordClick = onSearchKeywordClick,
                     showUpBadge = showUpBadge,
@@ -504,7 +547,6 @@ internal fun TabletVideoLayout(
                         onUpClick = onUpClick,
                         paneMode = TabletSecondaryPaneMode.EXPANDED,
                         onPaneModeChange = {},
-                        onPaneModeCycle = {},
                         onRelatedVideoClick = onRelatedVideoClick,
                         onSearchKeywordClick = onSearchKeywordClick,
                         showUpBadge = showUpBadge,
@@ -598,7 +640,6 @@ internal fun TabletSecondaryContent(
     onUpClick: (Long) -> Unit,
     paneMode: TabletSecondaryPaneMode,
     onPaneModeChange: (TabletSecondaryPaneMode) -> Unit,
-    onPaneModeCycle: () -> Unit,
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     showUpBadge: Boolean,
     showIdentityDecorations: Boolean,
@@ -768,25 +809,6 @@ internal fun TabletSecondaryContent(
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (fixedTab == null && tabs.size > 1) {
-            if (showPaneModeControls) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    AppTextButton(onClick = onPaneModeCycle) {
-                        AppText(
-                            when (paneMode) {
-                                TabletSecondaryPaneMode.EXPANDED -> "半开"
-                                TabletSecondaryPaneMode.COMPACT -> "收起"
-                                TabletSecondaryPaneMode.COLLAPSED -> "展开"
-                            }
-                        )
-                    }
-                }
-            }
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -803,8 +825,23 @@ internal fun TabletSecondaryContent(
                         pagerState.currentPage + pagerState.currentPageOffsetFraction
                     },
                     isScrollInProgressProvider = { pagerState.isScrollInProgress },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                 )
+                if (showPaneModeControls) {
+                    TabletSecondaryPaneToggleButton(
+                        isSecondaryPaneVisible = paneMode != TabletSecondaryPaneMode.COLLAPSED,
+                        onClick = {
+                            onPaneModeChange(
+                                if (paneMode == TabletSecondaryPaneMode.COLLAPSED) {
+                                    TabletSecondaryPaneMode.EXPANDED
+                                } else {
+                                    TabletSecondaryPaneMode.COLLAPSED
+                                }
+                            )
+                        },
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
         } else {
             Row(
