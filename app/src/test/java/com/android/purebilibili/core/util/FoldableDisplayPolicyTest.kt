@@ -130,6 +130,28 @@ class FoldableDisplayPolicyTest {
         assertEquals(AppFoldableDisplayRole.Standard, context.foldableDisplayRole)
     }
 
+    @Test
+    fun `foldable capability keeps large-screen defaults available on a compact cover`() {
+        assertTrue(
+            resolveLargeScreenOrFoldableConfiguration(
+                smallestScreenWidthDp = 421,
+                hasHingeAngleSensor = true,
+            )
+        )
+        assertFalse(
+            resolveLargeScreenOrFoldableConfiguration(
+                smallestScreenWidthDp = 421,
+                hasHingeAngleSensor = false,
+            )
+        )
+        assertTrue(
+            resolveLargeScreenOrFoldableConfiguration(
+                smallestScreenWidthDp = 700,
+                hasHingeAngleSensor = false,
+            )
+        )
+    }
+
     private fun puraCover(
         currentWidthDp: Int,
         currentHeightDp: Int,

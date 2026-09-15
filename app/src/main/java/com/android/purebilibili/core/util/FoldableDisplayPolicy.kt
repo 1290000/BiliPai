@@ -1,6 +1,7 @@
 package com.android.purebilibili.core.util
 
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -44,6 +45,9 @@ data class AppDisplayContext(
 ) {
     val isFoldableCoverWindow: Boolean
         get() = foldableDisplayRole == AppFoldableDisplayRole.Cover
+
+    val isKnownFoldableDevice: Boolean
+        get() = foldableDisplayRole != AppFoldableDisplayRole.Standard
 
     val usesInWindowFullscreen: Boolean
         get() = isFoldableCoverWindow &&
@@ -191,9 +195,7 @@ internal fun Activity.resolveAppDisplayContext(
         else windowManager.defaultDisplay
     }.getOrNull()
     val displayMode = runCatching { currentDisplay?.mode }.getOrNull()
-    val hasHingeAngleSensor = runCatching {
-        packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
-    }.getOrDefault(false)
+    val hasHingeAngleSensor = hasFoldableHingeAngleSensor()
 
     return resolveAppDisplayContext(
         AppDisplayContextInput(
@@ -211,3 +213,19 @@ internal fun Activity.resolveAppDisplayContext(
         )
     )
 }
+
+internal fun Context.hasFoldableHingeAngleSensor(): Boolean = runCatching {
+    packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+}.getOrDefault(false)
+
+internal fun Context.isLargeScreenOrFoldableConfiguration(): Boolean {
+    return resolveLargeScreenOrFoldableConfiguration(
+        smallestScreenWidthDp = resources.configuration.smallestScreenWidthDp,
+        hasHingeAngleSensor = hasFoldableHingeAngleSensor(),
+    )
+}
+
+internal fun resolveLargeScreenOrFoldableConfiguration(
+    smallestScreenWidthDp: Int,
+    hasHingeAngleSensor: Boolean,
+): Boolean = smallestScreenWidthDp >= LARGE_SCREEN_SMALLEST_WIDTH_DP || hasHingeAngleSensor

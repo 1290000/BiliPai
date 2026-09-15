@@ -137,18 +137,21 @@ class PlayerOrientationPolicyTest {
     }
 
     @Test
-    fun `known cover marker survives vendor maximum metrics reporting only the outer display`() {
+    fun `hinge sensor still identifies a cover when vendor maximum metrics match the outer display`() {
         val policy = resolvePlayerWindowOrientationPolicy(
-            smallestScreenWidthDp = 421,
-            currentWindowWidthDp = 421,
-            currentWindowHeightDp = 616,
-            maximumWidthDp = 616,
-            maximumHeightDp = 421,
-            configurationOrientation = Configuration.ORIENTATION_PORTRAIT,
-            displayRotation = Surface.ROTATION_0,
-            displayModeWidthPx = 1848,
-            displayModeHeightPx = 1264,
-            isKnownFoldableCoverWindow = true,
+            resolveAppDisplayContext(
+                AppDisplayContextInput(
+                    currentWindowWidthDp = 421,
+                    currentWindowHeightDp = 616,
+                    maximumWindowWidthDp = 616,
+                    maximumWindowHeightDp = 421,
+                    configurationOrientation = Configuration.ORIENTATION_PORTRAIT,
+                    displayRotation = Surface.ROTATION_0,
+                    displayModeWidthPx = 1848,
+                    displayModeHeightPx = 1264,
+                    hasHingeAngleSensor = true,
+                )
+            )
         )
 
         assertTrue(policy.isFoldableCoverWindow)

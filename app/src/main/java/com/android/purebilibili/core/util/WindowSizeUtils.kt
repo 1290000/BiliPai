@@ -181,7 +181,12 @@ data class AppFoldingFeatureInfo(
     val hingeBounds: IntRect? = null,
     val isSeparating: Boolean = false,
     val isOccluding: Boolean = false,
-)
+    val hinges: List<AppHingeFeature> = emptyList(),
+) {
+    val hasObstructingHinge: Boolean
+        get() = isSeparating || isOccluding ||
+            hinges.any { hinge -> hinge.isSeparating || hinge.isOccluding }
+}
 
 data class AppWindowAdaptiveInfo(
     val windowSizeClass: WindowSizeClass,
@@ -197,7 +202,7 @@ data class AppWindowAdaptiveInfo(
         get() = foldingFeature.posture
 
     val shouldAvoidHinge: Boolean
-        get() = (foldingFeature.isSeparating || foldingFeature.isOccluding) &&
+        get() = foldingFeature.hasObstructingHinge &&
             windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact
 }
 
@@ -259,23 +264,6 @@ fun rememberAppWindowAdaptiveInfo(
             )
         )
     }
-    LaunchedEffect(displayContext) {
-        Logger.d(
-            "AppDisplayContext",
-            "role=${displayContext.foldableDisplayRole}, " +
-                "basis=${displayContext.detectionBasis}, " +
-                "current=${displayContext.currentWindowWidthDp}x" +
-                "${displayContext.currentWindowHeightDp}dp, " +
-                "maximum=${displayContext.maximumWindowWidthDp}x" +
-                "${displayContext.maximumWindowHeightDp}dp, " +
-                "mode=${displayContext.displayModeWidthPx}x" +
-                "${displayContext.displayModeHeightPx}px, " +
-                "rotation=${displayContext.displayRotation}, " +
-                "natural=${displayContext.naturalOrientation}, " +
-                "multiWindow=${displayContext.isInMultiWindowMode}, " +
-                "fullscreen=${if (displayContext.usesInWindowFullscreen) "in-window" else "orientation-driven"}",
-        )
-    }
     val precisePointerConnected by produceState(
         initialValue = context.hasPrecisePointer(),
         key1 = context,
@@ -299,7 +287,7 @@ fun rememberAppWindowAdaptiveInfo(
         awaitDispose { inputManager.unregisterInputDeviceListener(listener) }
     }
     val hardwareKeyboardConnected = configuration.keyboard != Configuration.KEYBOARD_NOKEYS
-    return remember(
+    val adaptiveInfo = remember(
         windowSizeClass,
         foldingFeatureInfo,
         displayContext,
@@ -314,6 +302,13 @@ fun rememberAppWindowAdaptiveInfo(
             hardwareKeyboardConnected = hardwareKeyboardConnected,
         )
     }
+    val strategySnapshot = remember(adaptiveInfo) {
+        adaptiveInfo.toAdaptiveStrategySnapshot()
+    }
+    LaunchedEffect(strategySnapshot) {
+        Logger.d("AppDisplayContext", formatAppAdaptiveStrategySnapshot(strategySnapshot))
+    }
+    return adaptiveInfo
 }
 
 private tailrec fun Context.findHostActivity(): Activity? = when (this) {
@@ -323,29 +318,32 @@ private tailrec fun Context.findHostActivity(): Activity? = when (this) {
 }
 
 private fun androidx.compose.material3.adaptive.Posture.toAppFoldingFeatureInfo(): AppFoldingFeatureInfo {
-    val hinge = hingeList.firstOrNull() ?: return AppFoldingFeatureInfo()
-    val orientation = if (hinge.isVertical) {
-        AppHingeOrientation.Vertical
-    } else {
-        AppHingeOrientation.Horizontal
+    val hinges = hingeList.map { hinge ->
+        AppHingeFeature(
+            orientation = if (hinge.isVertical) {
+                AppHingeOrientation.Vertical
+            } else {
+                AppHingeOrientation.Horizontal
+            },
+            bounds = IntRect(
+                hinge.bounds.left.toInt(),
+                hinge.bounds.top.toInt(),
+                hinge.bounds.right.toInt(),
+                hinge.bounds.bottom.toInt(),
+            ),
+            isSeparating = hinge.isSeparating,
+            isOccluding = hinge.isOccluding,
+            isFlat = hinge.isFlat,
+        )
     }
-    val posture = when {
-        isTabletop -> AppFoldPosture.Tabletop
-        hinge.isFlat -> AppFoldPosture.Flat
-        hinge.isVertical -> AppFoldPosture.Book
-        else -> AppFoldPosture.Tabletop
-    }
+    val primary = selectPrimaryHingeFeature(hinges) ?: return AppFoldingFeatureInfo()
     return AppFoldingFeatureInfo(
-        posture = posture,
-        hingeOrientation = orientation,
-        hingeBounds = IntRect(
-            hinge.bounds.left.toInt(),
-            hinge.bounds.top.toInt(),
-            hinge.bounds.right.toInt(),
-            hinge.bounds.bottom.toInt(),
-        ),
-        isSeparating = hinge.isSeparating,
-        isOccluding = hinge.isOccluding,
+        posture = resolveAppFoldPosture(isTabletop = isTabletop, hinges = hinges),
+        hingeOrientation = primary.orientation,
+        hingeBounds = primary.bounds,
+        isSeparating = hinges.any { hinge -> hinge.isSeparating },
+        isOccluding = hinges.any { hinge -> hinge.isOccluding },
+        hinges = hinges,
     )
 }
 
@@ -368,13 +366,15 @@ private fun Context.hasPrecisePointer(): Boolean {
 fun calculateWindowSizeClass(
     densityMultiplier: Float = 1f,
     metrics: WindowMetrics,
+    maximumMetrics: WindowMetrics? = null,
     adaptiveWindowSizeClass: androidx.window.core.layout.WindowSizeClass,
 ): WindowSizeClass {
     val configuration = LocalConfiguration.current
     val widthDp = (configuration.screenWidthDp / densityMultiplier).dp
     val heightDp = (configuration.screenHeightDp / densityMultiplier).dp
+    val currentDisplayMaximumMetrics = maximumMetrics ?: metrics
     val deviceWidthSizeClass = resolveStableDeviceWidthSizeClass(
-        min(metrics.widthDp, metrics.heightDp).toInt()
+        min(currentDisplayMaximumMetrics.widthDp, currentDisplayMaximumMetrics.heightDp).toInt()
     )
     
     val widthSizeClass = resolveWindowWidthSizeClass(adaptiveWindowSizeClass)

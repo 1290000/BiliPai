@@ -124,18 +124,8 @@ internal fun resolvePlayerWindowOrientationPolicy(
 @Suppress("DEPRECATION")
 internal fun Activity.resolvePlayerWindowOrientationPolicy(
     displayContext: AppDisplayContext? = null,
-    isKnownFoldableCoverWindow: Boolean = false,
 ): PlayerWindowOrientationPolicy {
-    val unifiedDisplayContext = displayContext ?: resolveAppDisplayContext()
-    if (!isKnownFoldableCoverWindow || unifiedDisplayContext.isFoldableCoverWindow) {
-        return resolvePlayerWindowOrientationPolicy(unifiedDisplayContext)
-    }
-    return resolvePlayerWindowOrientationPolicy(
-        unifiedDisplayContext.copy(
-            foldableDisplayRole = AppFoldableDisplayRole.Cover,
-            detectionBasis = AppFoldableDetectionBasis.WindowMetricsFallback,
-        )
-    )
+    return resolvePlayerWindowOrientationPolicy(displayContext ?: resolveAppDisplayContext())
 }
 
 private fun isPlayerAxisOrientationRequest(requestedOrientation: Int): Boolean {
@@ -163,11 +153,9 @@ internal fun resolveEffectivePlayerRequestedOrientation(
 internal fun Activity.applyPlayerRequestedOrientation(
     requestedOrientation: Int,
     displayContext: AppDisplayContext? = null,
-    isKnownFoldableCoverWindow: Boolean = false,
 ): Boolean {
     val policy = resolvePlayerWindowOrientationPolicy(
         displayContext = displayContext,
-        isKnownFoldableCoverWindow = isKnownFoldableCoverWindow,
     )
     val effectiveOrientation = resolveEffectivePlayerRequestedOrientation(
         requestedOrientation = requestedOrientation,
