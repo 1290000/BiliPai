@@ -149,7 +149,9 @@ internal fun LargeScreenVideoLayout(
                     danmakuEnabled = danmakuChrome.enabled,
                     onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
                     onDanmakuToggle = danmakuChrome.onToggle,
-                    onOwnerUploadsClick = onUpClick,
+                    onOwnerUploadsClick = {
+                        success.info.owner.mid.takeIf { it > 0L }?.let(onUpClick)
+                    },
                     modifier = modifier,
                 )
             }

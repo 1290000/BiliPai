@@ -93,7 +93,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.feature.space.SpaceUiState
 import com.android.purebilibili.feature.space.SpaceViewModel
 
-private enum class TabletSecondaryTab(val label: String) {
+internal enum class TabletSecondaryTab(val label: String) {
     COMMENTS("评论"),
     INTRO("简介"),
     RELATED("相关推荐"),
