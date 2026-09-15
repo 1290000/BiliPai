@@ -261,4 +261,36 @@ class PlayerOrientationPolicyTest {
             )
         )
     }
+
+    @Test
+    fun `display context maps to player policy without Activity overload recursion`() {
+        val context = resolveAppDisplayContext(
+            AppDisplayContextInput(
+                currentWindowWidthDp = 1280,
+                currentWindowHeightDp = 800,
+                maximumWindowWidthDp = 1280,
+                maximumWindowHeightDp = 800,
+                configurationOrientation = Configuration.ORIENTATION_LANDSCAPE,
+                displayRotation = Surface.ROTATION_90,
+            )
+        )
+        val policy = context.toPlayerWindowOrientationPolicy()
+        assertEquals(1280, policy.currentWindowWidthDp)
+        assertEquals(800, policy.currentWindowHeightDp)
+        assertFalse(policy.usesInWindowFullscreen)
+
+        val source = java.io.File(
+            "app/src/main/java/com/android/purebilibili/core/util/PlayerOrientationPolicy.kt"
+        ).takeIf { it.exists() } ?: java.io.File(
+            "src/main/java/com/android/purebilibili/core/util/PlayerOrientationPolicy.kt"
+        )
+        val activityOverload = source.readText()
+            .substringAfter("internal fun Activity.resolvePlayerWindowOrientationPolicy(")
+            .substringBefore("private fun isPlayerAxisOrientationRequest(")
+        assertTrue(activityOverload.contains("toPlayerWindowOrientationPolicy()"))
+        assertFalse(
+            activityOverload.contains("return resolvePlayerWindowOrientationPolicy("),
+            "Activity overload must not recurse into itself",
+        )
+    }
 }

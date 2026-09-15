@@ -19,20 +19,24 @@ internal data class PlayerWindowOrientationPolicy(
         get() = isFoldableCoverWindow && isLandscapeNaturalDisplay
 }
 
+internal fun AppDisplayContext.toPlayerWindowOrientationPolicy(): PlayerWindowOrientationPolicy {
+    return PlayerWindowOrientationPolicy(
+        currentWindowWidthDp = currentWindowWidthDp,
+        currentWindowHeightDp = currentWindowHeightDp,
+        maximumWindowWidthDp = maximumWindowWidthDp,
+        maximumWindowHeightDp = maximumWindowHeightDp,
+        displayModeWidthPx = displayModeWidthPx,
+        displayModeHeightPx = displayModeHeightPx,
+        displayRotation = displayRotation,
+        isFoldableCoverWindow = isFoldableCoverWindow,
+        isLandscapeNaturalDisplay =
+            naturalOrientation == AppDisplayNaturalOrientation.Landscape,
+    )
+}
+
 internal fun resolvePlayerWindowOrientationPolicy(
     displayContext: AppDisplayContext,
-): PlayerWindowOrientationPolicy = PlayerWindowOrientationPolicy(
-    currentWindowWidthDp = displayContext.currentWindowWidthDp,
-    currentWindowHeightDp = displayContext.currentWindowHeightDp,
-    maximumWindowWidthDp = displayContext.maximumWindowWidthDp,
-    maximumWindowHeightDp = displayContext.maximumWindowHeightDp,
-    displayModeWidthPx = displayContext.displayModeWidthPx,
-    displayModeHeightPx = displayContext.displayModeHeightPx,
-    displayRotation = displayContext.displayRotation,
-    isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
-    isLandscapeNaturalDisplay =
-        displayContext.naturalOrientation == AppDisplayNaturalOrientation.Landscape,
-)
+): PlayerWindowOrientationPolicy = displayContext.toPlayerWindowOrientationPolicy()
 
 internal fun isFoldableCoverWindow(
     smallestScreenWidthDp: Int,
@@ -125,7 +129,10 @@ internal fun resolvePlayerWindowOrientationPolicy(
 internal fun Activity.resolvePlayerWindowOrientationPolicy(
     displayContext: AppDisplayContext? = null,
 ): PlayerWindowOrientationPolicy {
-    return resolvePlayerWindowOrientationPolicy(displayContext ?: resolveAppDisplayContext())
+    // Do not call resolvePlayerWindowOrientationPolicy(...) from this Activity extension.
+    // Kotlin would re-select this same overload via the implicit Activity receiver and
+    // overflow the stack when opening video detail.
+    return (displayContext ?: resolveAppDisplayContext()).toPlayerWindowOrientationPolicy()
 }
 
 private fun isPlayerAxisOrientationRequest(requestedOrientation: Int): Boolean {
@@ -154,9 +161,7 @@ internal fun Activity.applyPlayerRequestedOrientation(
     requestedOrientation: Int,
     displayContext: AppDisplayContext? = null,
 ): Boolean {
-    val policy = resolvePlayerWindowOrientationPolicy(
-        displayContext = displayContext,
-    )
+    val policy = (displayContext ?: resolveAppDisplayContext()).toPlayerWindowOrientationPolicy()
     val effectiveOrientation = resolveEffectivePlayerRequestedOrientation(
         requestedOrientation = requestedOrientation,
         usesInWindowFullscreen = policy.usesInWindowFullscreen,
