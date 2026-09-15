@@ -317,7 +317,7 @@ private fun <T> AppMiuixNonGlassTabs(
                 state = scrollState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentWidth(Alignment.Center),
+                    .wrapContentWidth(Alignment.CenterHorizontally),
                 horizontalArrangement = Arrangement.spacedBy(
                     MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP.dp,
                 ),
