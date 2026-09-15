@@ -719,7 +719,9 @@ fun DynamicInlineCommentHeader(
             fontWeight = FontWeight.SemiBold,
         )
         Box(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
             contentAlignment = Alignment.CenterEnd,
         ) {
             DynamicCommentSortControl(
@@ -728,6 +730,7 @@ fun DynamicInlineCommentHeader(
                 onSelected = { index ->
                     sortModes.getOrNull(index)?.let(onSortModeChange)
                 },
+                modifier = Modifier.align(Alignment.CenterEnd),
                 // Null deliberately selects the shared control's mounted local source. Do not
                 // manufacture an unrecorded Backdrop here or sample the LazyColumn containing
                 // this header, which would be invalid/recursive on Xiaomi's native renderer.

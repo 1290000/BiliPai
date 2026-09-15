@@ -331,6 +331,7 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
     onSelectionChange: (T) -> Unit,
 ) {
     val tabColors = resolveAppMiuixSegmentedColors(colors)
+    val outlineColor = MiuixTheme.colorScheme.outline
     val listState = rememberLazyListState()
     LaunchedEffect(selectedIndex, itemWidths) {
         listState.animateScrollToItem(selectedIndex.coerceIn(0, options.lastIndex))
@@ -356,7 +357,7 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
                         .height(height)
                         .squircleBorder(
                             width = { if (selected) 0.dp else 1.dp },
-                            color = { MiuixTheme.colorScheme.outline },
+                            color = { outlineColor },
                             cornerRadius = 8.dp,
                         )
                         .clickable(

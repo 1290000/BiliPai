@@ -9,6 +9,8 @@ import com.android.purebilibili.core.ui.AppChromeSizeTokens
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
+import com.android.purebilibili.core.ui.components.AppNativeTabRow
+import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.resolveScrollableTabIndicatorFollowDeltaPx
 import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.theme.LocalAppUiStyle
@@ -1090,6 +1092,43 @@ private fun LightweightHomeTopTabs(
         showIcon = showIcon,
         showText = showText
     )
+    val useOfficialMiuixHomeTabs = shouldUseOfficialMiuixHomeTopTabs(
+        uiStyle = LocalAppUiStyle.current,
+        liquidGlassEnabled = isLiquidGlassEnabled,
+    ) && !skinPlainStyle && !hasSkinStickerIcons
+    if (useOfficialMiuixHomeTabs) {
+        AppNativeTabRow(
+            options = categories.mapIndexed { index, label ->
+                AppSegmentOption(index, label)
+            },
+            selectedValue = selectedIndex,
+            onSelectionChange = { index ->
+                if (index == selectedIndex) {
+                    scrollChannel?.trySend(
+                        com.android.purebilibili.feature.home.HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH
+                    )
+                } else {
+                    onCategorySelected(index)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = rowHeight)
+                .padding(
+                    horizontal = resolveTopTabRowHorizontalPaddingDp(
+                        isFloatingStyle = isFloatingStyle,
+                        edgeToEdge = edgeToEdge,
+                        labelMode = normalizedLabelMode,
+                    ).dp
+                ),
+            scrollable = categories.size > 4,
+            minTabWidth = 72.dp,
+            compactMiuixWhenTwoOptions = false,
+            height = rowHeight,
+            allowLabelOverflow = true,
+        )
+        return
+    }
     val actionButtonSize = if (skinPlainStyle) {
         resolveHomeSkinTopTabActionButtonSize()
     } else when (effectivePresentation) {
