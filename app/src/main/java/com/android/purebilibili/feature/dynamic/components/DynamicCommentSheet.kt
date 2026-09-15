@@ -678,7 +678,8 @@ internal data class DynamicCommentSortControlSpec(
 )
 
 internal fun resolveDynamicCommentSortControlSpec(itemCount: Int) = DynamicCommentSortControlSpec(
-    itemWidthDp = if (itemCount >= 4) 52 else 56,
+    // Keep the beta.36 dynamic comment layout: two-option sorting tabs are 66dp each.
+    itemWidthDp = if (itemCount >= 4) 56 else 66,
     heightDp = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp,
     indicatorHeightDp = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp,
 )

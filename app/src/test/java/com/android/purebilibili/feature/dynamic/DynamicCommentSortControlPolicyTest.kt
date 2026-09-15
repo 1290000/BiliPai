@@ -10,10 +10,10 @@ import kotlin.test.assertTrue
 class DynamicCommentSortControlPolicyTest {
 
     @Test
-    fun `sort segmented control matches bottom-bar compact dock geometry`() {
+    fun `sort segmented control matches beta36 dynamic comment geometry`() {
         val spec = resolveDynamicCommentSortControlSpec(itemCount = 2)
 
-        assertEquals(56, spec.itemWidthDp)
+        assertEquals(66, spec.itemWidthDp)
         assertEquals(40, spec.heightDp)
         assertEquals(30, spec.indicatorHeightDp)
         assertTrue(
