@@ -1198,6 +1198,7 @@ internal fun VideoDetailScreenStateHolder(
     val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
     val appWindowAdaptiveInfo =
         com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current
+    val displayContext = appWindowAdaptiveInfo.displayContext
     val horizontalAdaptationEnabled by com.android.purebilibili.core.store.SettingsManager
         .getHorizontalAdaptationEnabled(context)
         .collectAsStateWithLifecycle(
@@ -1225,26 +1226,16 @@ internal fun VideoDetailScreenStateHolder(
     var preserveCurrentFrameOnFullscreenChange by remember { mutableStateOf(false) }
     var pendingFullscreenPositionRestoreMs by remember { mutableLongStateOf(-1L) }
     val activity = remember { context.findActivity() }
-    val playerWindowOrientationPolicy = remember(
-        activity,
-        configuration.orientation,
-        configuration.smallestScreenWidthDp,
-        configuration.screenWidthDp,
-        configuration.screenHeightDp,
-        windowSizeClass.isFoldableCoverScreen,
-    ) {
-        activity?.resolvePlayerWindowOrientationPolicy(
-            isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
-        )
+    val playerWindowOrientationPolicy = remember(displayContext) {
+        com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy(displayContext)
     }
-    val usesInWindowFullscreen =
-        playerWindowOrientationPolicy?.usesInWindowFullscreen == true
+    val usesInWindowFullscreen = playerWindowOrientationPolicy.usesInWindowFullscreen
     val isActivityInMultiWindowMode = activity?.let {
-        isActivityInMultiWindowOrFloatingMode(
+        displayContext.isInMultiWindowMode || isActivityInMultiWindowOrFloatingMode(
             activity = it,
-            isKnownFoldableCoverScreen = windowSizeClass.isFoldableCoverScreen,
+            isKnownFoldableCoverScreen = displayContext.isFoldableCoverWindow,
         )
-    } ?: false
+    } ?: displayContext.isInMultiWindowMode
 
     // 📐 全屏模式逻辑：
     // - 紧凑窗口：横放时自动进入全屏
@@ -1262,7 +1253,7 @@ internal fun VideoDetailScreenStateHolder(
     // Portrait-natural covers retain phone gravity behavior. Landscape-natural covers (such as
     // Pura X Max) use explicit in-window fullscreen so their default landscape is not a phantom FS.
     val orientationPolicyDevice = !usesInWindowFullscreen &&
-        (windowSizeClass.isCompactDevice || windowSizeClass.isFoldableCoverScreen)
+        (windowSizeClass.isCompactDevice || displayContext.isFoldableCoverWindow)
     val isOrientationDrivenFullscreen = !prefersManualFullscreenMode &&
         shouldUseOrientationDrivenFullscreen(
         isCompactDevice = orientationPolicyDevice
@@ -1273,10 +1264,13 @@ internal fun VideoDetailScreenStateHolder(
         userRequestedFullscreen = userRequestedFullscreen,
         isInMultiWindowMode = isActivityInMultiWindowMode
     )
-    LaunchedEffect(usesInWindowFullscreen) {
+    LaunchedEffect(activity, displayContext, usesInWindowFullscreen) {
         if (usesInWindowFullscreen) {
             manualPortraitHoldActive = false
-            activity?.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+            activity?.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                displayContext = displayContext,
+            )
         }
     }
     LaunchedEffect(
@@ -1284,7 +1278,7 @@ internal fun VideoDetailScreenStateHolder(
         isOrientationDrivenFullscreen,
         isFullscreenMode,
     ) {
-        val policy = playerWindowOrientationPolicy ?: return@LaunchedEffect
+        val policy = playerWindowOrientationPolicy
         com.android.purebilibili.core.util.Logger.d(
             "VideoDetailScreen",
             "Player window policy: current=${policy.currentWindowWidthDp}x${policy.currentWindowHeightDp}dp, " +
@@ -1310,6 +1304,7 @@ internal fun VideoDetailScreenStateHolder(
     ManualFullscreenRequestLifecycleEffect(
         manualFullscreenRequested = userRequestedFullscreen,
         isFullscreenMode = isFullscreenMode,
+        requestEnvironmentKey = isOrientationDrivenFullscreen,
         onReleaseManualFullscreenRequest = { userRequestedFullscreen = false }
     )
     LaunchedEffect(isFullscreenMode) {
@@ -1404,7 +1399,12 @@ internal fun VideoDetailScreenStateHolder(
     }
 
     //  从小窗展开时自动进入全屏
-    LaunchedEffect(startInFullscreen, isOrientationDrivenFullscreen, isLandscape) {
+    LaunchedEffect(
+        startInFullscreen,
+        isOrientationDrivenFullscreen,
+        isLandscape,
+        displayContext,
+    ) {
         if (startInFullscreen) {
             if (!isOrientationDrivenFullscreen) {
                 userRequestedFullscreen = true
@@ -1412,7 +1412,7 @@ internal fun VideoDetailScreenStateHolder(
                 context.findActivity()?.let { activity ->
                     val isInMultiWindowMode = isActivityInMultiWindowOrFloatingMode(
                         activity = activity,
-                        isKnownFoldableCoverScreen = windowSizeClass.isFoldableCoverScreen,
+                        isKnownFoldableCoverScreen = displayContext.isFoldableCoverWindow,
                     )
                     if (!shouldApplyStartFullscreenOrientationRequest(
                             startInFullscreen = startInFullscreen,
@@ -1426,7 +1426,10 @@ internal fun VideoDetailScreenStateHolder(
                         }
                         return@let
                     }
-                    activity.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
+                    activity.applyPlayerRequestedOrientation(
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                        displayContext = displayContext,
+                    )
                 }
             }
         }
@@ -2297,7 +2300,7 @@ internal fun VideoDetailScreenStateHolder(
         !isVerticalVideo
     var continuousPlayerPhase by rememberSaveable(currentBvid) {
         mutableStateOf(
-            if (isLandscape) {
+            if (isFullscreenMode) {
                 ContinuousPlayerTransitionPhase.Fullscreen
             } else {
                 ContinuousPlayerTransitionPhase.Inline
@@ -2305,7 +2308,7 @@ internal fun VideoDetailScreenStateHolder(
         )
     }
     val continuousPlayerProgress = remember(currentBvid) {
-        Animatable(if (isLandscape) 1f else 0f)
+        Animatable(if (isFullscreenMode) 1f else 0f)
     }
     val isContinuousPlayerMorphing = continuousFullscreenTransitionEnabled &&
         continuousPlayerPhase == ContinuousPlayerTransitionPhase.Collapsing
@@ -2318,16 +2321,20 @@ internal fun VideoDetailScreenStateHolder(
                 userRequestedFullscreen = true
                 manualPortraitHoldActive = false
                 activity?.applyPlayerRequestedOrientation(
-                    resolvePhoneFullscreenEnterOrientation(
+                    requestedOrientation = resolvePhoneFullscreenEnterOrientation(
                         fullscreenMode = fullscreenMode,
                         isVerticalVideo = false,
-                    ) ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    ) ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                    displayContext = displayContext,
                 )
             }
             ContinuousPlayerOrientationRequest.Portrait -> {
                 userRequestedFullscreen = false
                 manualPortraitHoldActive = true
-                activity?.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+                activity?.applyPlayerRequestedOrientation(
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                    displayContext = displayContext,
+                )
             }
         }
     }
@@ -2336,12 +2343,18 @@ internal fun VideoDetailScreenStateHolder(
         continuousFullscreenTransitionEnabled,
         continuousPlayerPhase,
         isLandscape,
+        isFullscreenMode,
     ) {
-        // 关闭 continuous morph 时也要清掉可能残留的全屏进度，否则再次启用/回竖屏会铺满。
+        // 关闭 continuous morph 时同步到真实全屏层，避免折叠/展开后继承旧方向相位。
         if (!continuousFullscreenTransitionEnabled) {
-            if (!isLandscape && continuousPlayerProgress.value > 0.001f) {
-                continuousPlayerProgress.snapTo(0f)
-                continuousPlayerPhase = ContinuousPlayerTransitionPhase.Inline
+            val target = if (isFullscreenMode) 1f else 0f
+            if (kotlin.math.abs(continuousPlayerProgress.value - target) > 0.001f) {
+                continuousPlayerProgress.snapTo(target)
+            }
+            continuousPlayerPhase = if (isFullscreenMode) {
+                ContinuousPlayerTransitionPhase.Fullscreen
+            } else {
+                ContinuousPlayerTransitionPhase.Inline
             }
             return@LaunchedEffect
         }
@@ -2437,7 +2450,7 @@ internal fun VideoDetailScreenStateHolder(
         manualPortraitHoldActive,
         isVerticalVideo,
         isPortraitFullscreen,
-        windowSizeClass.isFoldableCoverScreen,
+        displayContext,
         isLandscape,
         isFullscreenPlayerLocked,
     ) {
@@ -2469,7 +2482,10 @@ internal fun VideoDetailScreenStateHolder(
             nowMs = nowMs
         ) ?: return@LaunchedEffect
 
-        activity?.applyPlayerRequestedOrientation(targetToApply)
+        activity?.applyPlayerRequestedOrientation(
+            requestedOrientation = targetToApply,
+            displayContext = displayContext,
+        )
         if (isLandscapeRequestedOrientation(targetToApply)) {
             lastPhoneAutoRotateLandscapeAppliedAtMs = nowMs
         }
@@ -2489,7 +2505,7 @@ internal fun VideoDetailScreenStateHolder(
         isActivityInMultiWindowMode,
         isPipMode,
         isPortraitFullscreen,
-        windowSizeClass.isFoldableCoverScreen,
+        displayContext,
         isFullscreenPlayerLocked,
     ) {
         if (isFullscreenPlayerLocked) {
@@ -2505,7 +2521,7 @@ internal fun VideoDetailScreenStateHolder(
                 isInMultiWindowMode = isActivityInMultiWindowMode,
                 isInPictureInPictureMode = isPipMode,
                 isPortraitFullscreen = isPortraitFullscreen,
-                observeWhenAutoRotateDisabled = windowSizeClass.isFoldableCoverScreen,
+                observeWhenAutoRotateDisabled = displayContext.isFoldableCoverWindow,
                 isFullscreenMode = isFullscreenMode,
             )
         ) {
@@ -2525,7 +2541,7 @@ internal fun VideoDetailScreenStateHolder(
         isActivityInMultiWindowMode,
         isPipMode,
         isPortraitFullscreen,
-        windowSizeClass.isFoldableCoverScreen,
+        displayContext,
         isFullscreenPlayerLocked,
     ) {
         val hostActivity = activity
@@ -2541,7 +2557,7 @@ internal fun VideoDetailScreenStateHolder(
                 isInMultiWindowMode = isActivityInMultiWindowMode,
                 isInPictureInPictureMode = isPipMode,
                 isPortraitFullscreen = isPortraitFullscreen,
-                observeWhenAutoRotateDisabled = windowSizeClass.isFoldableCoverScreen,
+                observeWhenAutoRotateDisabled = displayContext.isFoldableCoverWindow,
                 isFullscreenMode = isFullscreenMode,
             ) ||
             !isOrientationDrivenFullscreen
@@ -2574,7 +2590,10 @@ internal fun VideoDetailScreenStateHolder(
                     lastLandscapeAppliedAtMs = lastPhoneAutoRotateLandscapeAppliedAtMs,
                     nowMs = nowMs
                 ) ?: return
-                hostActivity.applyPlayerRequestedOrientation(targetToApply)
+                hostActivity.applyPlayerRequestedOrientation(
+                    requestedOrientation = targetToApply,
+                    displayContext = displayContext,
+                )
                 lastPhoneAutoRotateLandscapeAppliedAtMs =
                     if (isLandscapeRequestedOrientation(targetToApply)) nowMs else null
             }
@@ -3010,7 +3029,7 @@ internal fun VideoDetailScreenStateHolder(
             fullscreenMode = fullscreenMode,
             isVerticalVideo = isVerticalVideo,
             preferPortraitForFlatFoldable = false,
-            isFoldableCoverScreen = windowSizeClass.isFoldableCoverScreen,
+            displayContext = displayContext,
             portraitExperienceEnabled = portraitExperienceEnabled,
             onEnterPortraitFullscreen = { enterPortraitFullscreen() },
             onUserRequestedFullscreenChange = { requested -> userRequestedFullscreen = requested },
@@ -5160,12 +5179,15 @@ internal fun VideoDetailScreenStateHolder(
                     targetOrientation != null &&
                     !isActivityInMultiWindowOrFloatingMode(
                         activity = hostActivity,
-                        isKnownFoldableCoverScreen = windowSizeClass.isFoldableCoverScreen,
+                        isKnownFoldableCoverScreen = displayContext.isFoldableCoverWindow,
                     )
                 ) {
                     userRequestedFullscreen = true
                     manualPortraitHoldActive = false
-                    hostActivity.applyPlayerRequestedOrientation(targetOrientation)
+                    hostActivity.applyPlayerRequestedOrientation(
+                        requestedOrientation = targetOrientation,
+                        displayContext = displayContext,
+                    )
                 } else {
                     toggleFullscreen()
                 }

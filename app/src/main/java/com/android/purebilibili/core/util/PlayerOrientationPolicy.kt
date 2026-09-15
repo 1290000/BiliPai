@@ -2,9 +2,7 @@ package com.android.purebilibili.core.util
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.os.Build
-import androidx.window.layout.WindowMetricsCalculator
 
 internal data class PlayerWindowOrientationPolicy(
     val currentWindowWidthDp: Int,
@@ -20,6 +18,21 @@ internal data class PlayerWindowOrientationPolicy(
     val usesInWindowFullscreen: Boolean
         get() = isFoldableCoverWindow && isLandscapeNaturalDisplay
 }
+
+internal fun resolvePlayerWindowOrientationPolicy(
+    displayContext: AppDisplayContext,
+): PlayerWindowOrientationPolicy = PlayerWindowOrientationPolicy(
+    currentWindowWidthDp = displayContext.currentWindowWidthDp,
+    currentWindowHeightDp = displayContext.currentWindowHeightDp,
+    maximumWindowWidthDp = displayContext.maximumWindowWidthDp,
+    maximumWindowHeightDp = displayContext.maximumWindowHeightDp,
+    displayModeWidthPx = displayContext.displayModeWidthPx,
+    displayModeHeightPx = displayContext.displayModeHeightPx,
+    displayRotation = displayContext.displayRotation,
+    isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
+    isLandscapeNaturalDisplay =
+        displayContext.naturalOrientation == AppDisplayNaturalOrientation.Landscape,
+)
 
 internal fun isFoldableCoverWindow(
     smallestScreenWidthDp: Int,
@@ -110,32 +123,18 @@ internal fun resolvePlayerWindowOrientationPolicy(
 
 @Suppress("DEPRECATION")
 internal fun Activity.resolvePlayerWindowOrientationPolicy(
+    displayContext: AppDisplayContext? = null,
     isKnownFoldableCoverWindow: Boolean = false,
 ): PlayerWindowOrientationPolicy {
-    val configuration = resources.configuration
-    val density = resources.displayMetrics.density.coerceAtLeast(1f)
-    val maximumBounds = runCatching {
-        WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this).bounds
-    }.getOrNull()
-    val currentDisplay = runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            display
-        } else {
-            windowManager.defaultDisplay
-        }
-    }.getOrNull()
-    val displayMode = runCatching { currentDisplay?.mode }.getOrNull()
+    val unifiedDisplayContext = displayContext ?: resolveAppDisplayContext()
+    if (!isKnownFoldableCoverWindow || unifiedDisplayContext.isFoldableCoverWindow) {
+        return resolvePlayerWindowOrientationPolicy(unifiedDisplayContext)
+    }
     return resolvePlayerWindowOrientationPolicy(
-        smallestScreenWidthDp = configuration.smallestScreenWidthDp,
-        currentWindowWidthDp = configuration.screenWidthDp,
-        currentWindowHeightDp = configuration.screenHeightDp,
-        maximumWidthDp = maximumBounds?.let { (it.width() / density).toInt() },
-        maximumHeightDp = maximumBounds?.let { (it.height() / density).toInt() },
-        configurationOrientation = configuration.orientation,
-        displayRotation = currentDisplay?.rotation,
-        displayModeWidthPx = displayMode?.physicalWidth,
-        displayModeHeightPx = displayMode?.physicalHeight,
-        isKnownFoldableCoverWindow = isKnownFoldableCoverWindow,
+        unifiedDisplayContext.copy(
+            foldableDisplayRole = AppFoldableDisplayRole.Cover,
+            detectionBasis = AppFoldableDetectionBasis.WindowMetricsFallback,
+        )
     )
 }
 
@@ -163,9 +162,11 @@ internal fun resolveEffectivePlayerRequestedOrientation(
  */
 internal fun Activity.applyPlayerRequestedOrientation(
     requestedOrientation: Int,
+    displayContext: AppDisplayContext? = null,
     isKnownFoldableCoverWindow: Boolean = false,
 ): Boolean {
     val policy = resolvePlayerWindowOrientationPolicy(
+        displayContext = displayContext,
         isKnownFoldableCoverWindow = isKnownFoldableCoverWindow,
     )
     val effectiveOrientation = resolveEffectivePlayerRequestedOrientation(

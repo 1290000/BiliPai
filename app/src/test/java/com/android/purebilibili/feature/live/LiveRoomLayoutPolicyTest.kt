@@ -48,6 +48,41 @@ class LiveRoomLayoutPolicyTest {
     }
 
     @Test
+    fun `landscape natural cover keeps live fullscreen inside the current window`() {
+        assertEquals(
+            LiveRequestedOrientationMode.Unspecified,
+            resolveLiveRequestedOrientationMode(
+                isTabletDevice = true,
+                isFullscreen = true,
+                isFoldableCoverWindow = true,
+                usesInWindowFullscreen = true,
+            )
+        )
+        assertEquals(
+            LiveRequestedOrientationMode.Unspecified,
+            resolveLiveRequestedOrientationMode(
+                isTabletDevice = true,
+                isFullscreen = false,
+                isFoldableCoverWindow = true,
+                usesInWindowFullscreen = true,
+            )
+        )
+    }
+
+    @Test
+    fun `portrait natural cover retains phone-style live orientation requests`() {
+        assertEquals(
+            LiveRequestedOrientationMode.SensorLandscape,
+            resolveLiveRequestedOrientationMode(
+                isTabletDevice = true,
+                isFullscreen = true,
+                isFoldableCoverWindow = true,
+                usesInWindowFullscreen = false,
+            )
+        )
+    }
+
+    @Test
     fun `portrait vertical live uses overlay layout like BiliPai portrait room`() {
         val mode = resolveLiveRoomLayoutMode(
             isLandscape = false,

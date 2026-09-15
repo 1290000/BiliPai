@@ -83,6 +83,7 @@ import com.android.purebilibili.core.store.DanmakuSettingsScope
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.resolveDanmakuSettingsScope
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import com.android.purebilibili.data.model.response.LiveQuality
 import com.android.purebilibili.data.repository.LiveRedPocketInfo
@@ -169,6 +170,7 @@ fun LivePlayerScreen(
     val miniPlayerManager = remember { com.android.purebilibili.feature.video.player.MiniPlayerManager.getInstance(context) }
     val configuration = LocalConfiguration.current
     val windowSizeClass = LocalWindowSizeClass.current
+    val displayContext = LocalAppWindowAdaptiveInfo.current.displayContext
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     
@@ -805,13 +807,19 @@ fun LivePlayerScreen(
         }
     }
 
-    val liveRequestedOrientationMode = remember(windowSizeClass.isTabletDevice, isFullscreen) {
+    val liveRequestedOrientationMode = remember(
+        windowSizeClass.isTabletDevice,
+        displayContext,
+        isFullscreen,
+    ) {
         resolveLiveRequestedOrientationMode(
             isTabletDevice = windowSizeClass.isTabletDevice,
             isFullscreen = isFullscreen,
+            isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
+            usesInWindowFullscreen = displayContext.usesInWindowFullscreen,
         )
     }
-    LaunchedEffect(liveRequestedOrientationMode) {
+    LaunchedEffect(activity, displayContext, liveRequestedOrientationMode) {
         val requestedOrientation = when (liveRequestedOrientationMode) {
             LiveRequestedOrientationMode.Unspecified ->
                 ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -822,7 +830,7 @@ fun LivePlayerScreen(
         }
         activity?.applyPlayerRequestedOrientation(
             requestedOrientation = requestedOrientation,
-            isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
+            displayContext = displayContext,
         )
     }
 

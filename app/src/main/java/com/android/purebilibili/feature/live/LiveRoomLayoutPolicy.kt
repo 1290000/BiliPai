@@ -52,9 +52,12 @@ enum class LiveRequestedOrientationMode {
 fun resolveLiveRequestedOrientationMode(
     isTabletDevice: Boolean,
     isFullscreen: Boolean,
+    isFoldableCoverWindow: Boolean = false,
+    usesInWindowFullscreen: Boolean = false,
 ): LiveRequestedOrientationMode {
     return when {
-        isTabletDevice -> LiveRequestedOrientationMode.Unspecified
+        usesInWindowFullscreen -> LiveRequestedOrientationMode.Unspecified
+        isTabletDevice && !isFoldableCoverWindow -> LiveRequestedOrientationMode.Unspecified
         isFullscreen -> LiveRequestedOrientationMode.SensorLandscape
         else -> LiveRequestedOrientationMode.Portrait
     }

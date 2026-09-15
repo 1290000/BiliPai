@@ -10,6 +10,7 @@ import android.widget.Toast
 import android.annotation.SuppressLint
 import com.android.purebilibili.core.player.HiResCompatibleRenderersFactory
 import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy
 import com.android.purebilibili.core.ui.LocalNavigationBackHandler
@@ -101,21 +102,12 @@ fun BangumiPlayerScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val isTablet = configuration.smallestScreenWidthDp >= 600
     val windowSizeClass = LocalWindowSizeClass.current
+    val displayContext = LocalAppWindowAdaptiveInfo.current.displayContext
     val hostActivity = remember(context) { context.findActivity() }
-    val playerWindowOrientationPolicy = remember(
-        hostActivity,
-        configuration.orientation,
-        configuration.smallestScreenWidthDp,
-        configuration.screenWidthDp,
-        configuration.screenHeightDp,
-        windowSizeClass.isFoldableCoverScreen,
-    ) {
-        hostActivity?.resolvePlayerWindowOrientationPolicy(
-            isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
-        )
+    val playerWindowOrientationPolicy = remember(displayContext) {
+        resolvePlayerWindowOrientationPolicy(displayContext)
     }
-    val usesInWindowFullscreen =
-        playerWindowOrientationPolicy?.usesInWindowFullscreen == true
+    val usesInWindowFullscreen = playerWindowOrientationPolicy.usesInWindowFullscreen
     var userRequestedFullscreen by rememberSaveable(seasonId) { mutableStateOf(false) }
     val isFullscreen = resolveBangumiFullscreen(
         isLandscape = isLandscape,
@@ -395,7 +387,8 @@ fun BangumiPlayerScreen(
             exoPlayer.release()
             //  恢复默认方向，避免离开播放器后卡在横屏
             context.findActivity()?.applyPlayerRequestedOrientation(
-                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                displayContext = displayContext,
             )
             
             //  [修复] 离开番剧播放页时取消屏幕常亮
@@ -418,22 +411,29 @@ fun BangumiPlayerScreen(
         }
         val activity = context.findActivity() ?: return
         if (isLandscape) {
-            activity.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+            activity.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                displayContext = displayContext,
+            )
         } else {
-            activity.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
+            activity.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                displayContext = displayContext,
+            )
         }
     }
 
-    LaunchedEffect(usesInWindowFullscreen) {
+    LaunchedEffect(hostActivity, displayContext, usesInWindowFullscreen) {
         if (usesInWindowFullscreen) {
             hostActivity?.applyPlayerRequestedOrientation(
-                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                displayContext = displayContext,
             )
         }
     }
 
     LaunchedEffect(playerWindowOrientationPolicy, isFullscreen) {
-        val policy = playerWindowOrientationPolicy ?: return@LaunchedEffect
+        val policy = playerWindowOrientationPolicy
         com.android.purebilibili.core.util.Logger.d(
             "BangumiPlayerScreen",
             "Player window policy: current=${policy.currentWindowWidthDp}x${policy.currentWindowHeightDp}dp, " +
@@ -445,25 +445,37 @@ fun BangumiPlayerScreen(
         )
     }
 
-    DisposableEffect(context, isFullscreen, isPlayerScreenLocked, isTablet) {
+    DisposableEffect(context, displayContext, isFullscreen, isPlayerScreenLocked, isTablet) {
         val activity = context.findActivity()
         val shouldLockOrientation = !isTablet && isFullscreen && isPlayerScreenLocked
         val previousRequestedOrientation = activity?.requestedOrientation
         if (shouldLockOrientation) {
-            activity?.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED)
+            activity?.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED,
+                displayContext = displayContext,
+            )
         }
         onDispose {
             if (
                 activity?.requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_LOCKED &&
                 previousRequestedOrientation != null
             ) {
-                activity.applyPlayerRequestedOrientation(previousRequestedOrientation)
+                activity.applyPlayerRequestedOrientation(
+                    requestedOrientation = previousRequestedOrientation,
+                    displayContext = displayContext,
+                )
             }
         }
     }
     
     // 自动检测设备方向变化；播放器锁定时不再响应传感器。
-    DisposableEffect(context, isTablet, usesInWindowFullscreen, isPlayerScreenLocked) {
+    DisposableEffect(
+        context,
+        displayContext,
+        isTablet,
+        usesInWindowFullscreen,
+        isPlayerScreenLocked,
+    ) {
         if (isPlayerScreenLocked) return@DisposableEffect onDispose {}
         val activity = context.findActivity()
         val orientationEventListener = object : android.view.OrientationEventListener(context) {
@@ -487,9 +499,15 @@ fun BangumiPlayerScreen(
                     
                     activity?.let { act ->
                         if (latestIsLandscape && isUprightPortrait) {
-                            act.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+                            act.applyPlayerRequestedOrientation(
+                                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                                displayContext = displayContext,
+                            )
                         } else if (!latestIsLandscape && isDeviceLandscape) {
-                            act.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
+                            act.applyPlayerRequestedOrientation(
+                                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                                displayContext = displayContext,
+                            )
                         }
                     }
                 }

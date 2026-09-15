@@ -1,7 +1,11 @@
 package com.android.purebilibili.core.util
 
+import android.app.Activity
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import android.view.Surface
+import androidx.window.layout.WindowMetricsCalculator
 
 internal const val LARGE_SCREEN_SMALLEST_WIDTH_DP = 600
 
@@ -172,3 +176,38 @@ internal fun isLandscapeNaturalDisplay(
     displayModeWidthPx = displayModeWidthPx,
     displayModeHeightPx = displayModeHeightPx,
 ) == AppDisplayNaturalOrientation.Landscape
+
+@Suppress("DEPRECATION")
+internal fun Activity.resolveAppDisplayContext(
+    configuration: Configuration = resources.configuration,
+    hasCurrentFoldingFeature: Boolean = false,
+): AppDisplayContext {
+    val density = resources.displayMetrics.density.coerceAtLeast(1f)
+    val maximumBounds = runCatching {
+        WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this).bounds
+    }.getOrNull()
+    val currentDisplay = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display
+        else windowManager.defaultDisplay
+    }.getOrNull()
+    val displayMode = runCatching { currentDisplay?.mode }.getOrNull()
+    val hasHingeAngleSensor = runCatching {
+        packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
+    }.getOrDefault(false)
+
+    return resolveAppDisplayContext(
+        AppDisplayContextInput(
+            currentWindowWidthDp = configuration.screenWidthDp,
+            currentWindowHeightDp = configuration.screenHeightDp,
+            maximumWindowWidthDp = maximumBounds?.let { (it.width() / density).toInt() },
+            maximumWindowHeightDp = maximumBounds?.let { (it.height() / density).toInt() },
+            configurationOrientation = configuration.orientation,
+            displayRotation = currentDisplay?.rotation,
+            displayModeWidthPx = displayMode?.physicalWidth,
+            displayModeHeightPx = displayMode?.physicalHeight,
+            hasCurrentFoldingFeature = hasCurrentFoldingFeature,
+            hasHingeAngleSensor = hasHingeAngleSensor,
+            isInMultiWindowMode = isInMultiWindowMode,
+        )
+    )
+}

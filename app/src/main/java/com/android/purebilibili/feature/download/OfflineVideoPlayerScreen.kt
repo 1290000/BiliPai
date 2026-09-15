@@ -5,7 +5,7 @@ import com.android.purebilibili.core.ui.components.AppText
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
-import com.android.purebilibili.core.util.LocalWindowSizeClass
+import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import android.content.res.Configuration
 import android.media.AudioManager
@@ -102,7 +102,7 @@ fun OfflineVideoPlayerScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-    val windowSizeClass = LocalWindowSizeClass.current
+    val displayContext = LocalAppWindowAdaptiveInfo.current.displayContext
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
     val miniPlayerManager = remember(context) { MiniPlayerManager.getInstance(context) }
@@ -308,19 +308,28 @@ fun OfflineVideoPlayerScreen(
     
     fun applyWindowMode(fullscreen: Boolean) {
         val act = getActivity() ?: return
-        if (fullscreen) {
-            act.applyPlayerRequestedOrientation(
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-                isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
+        val requestedOrientation = when (
+            resolveOfflineRequestedOrientationMode(
+                isFullscreen = fullscreen,
+                usesInWindowFullscreen = displayContext.usesInWindowFullscreen,
             )
+        ) {
+            OfflineRequestedOrientationMode.Unspecified ->
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            OfflineRequestedOrientationMode.SensorLandscape ->
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            OfflineRequestedOrientationMode.Portrait ->
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+        act.applyPlayerRequestedOrientation(
+            requestedOrientation = requestedOrientation,
+            displayContext = displayContext,
+        )
+        if (fullscreen) {
             val windowInsetsController = WindowCompat.getInsetsController(act.window, act.window.decorView)
             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
             windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
-            act.applyPlayerRequestedOrientation(
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
-                isKnownFoldableCoverWindow = windowSizeClass.isFoldableCoverScreen,
-            )
             val windowInsetsController = WindowCompat.getInsetsController(act.window, act.window.decorView)
             windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
         }
@@ -356,7 +365,7 @@ fun OfflineVideoPlayerScreen(
     // 返回键处理
     LocalNavigationBackHandler(enabled = isFullscreen) { toggleFullscreen() }
     
-    LaunchedEffect(activity, isFullscreen) {
+    LaunchedEffect(activity, displayContext, isFullscreen) {
         applyWindowMode(isFullscreen)
     }
 

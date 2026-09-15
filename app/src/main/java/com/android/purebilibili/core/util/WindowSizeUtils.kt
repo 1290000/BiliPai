@@ -4,9 +4,7 @@ package com.android.purebilibili.core.util
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.os.Build
 import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,7 +26,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.window.layout.WindowMetrics
-import androidx.window.layout.WindowMetricsCalculator
 import kotlin.math.min
 
 /**
@@ -250,9 +247,16 @@ fun rememberAppWindowAdaptiveInfo(
         configuration.orientation,
         foldingFeatureInfo,
     ) {
-        activity.resolveAppDisplayContext(
+        activity?.resolveAppDisplayContext(
             configuration = configuration,
             hasCurrentFoldingFeature = foldingFeatureInfo.posture != AppFoldPosture.None,
+        ) ?: resolveAppDisplayContext(
+            AppDisplayContextInput(
+                currentWindowWidthDp = configuration.screenWidthDp,
+                currentWindowHeightDp = configuration.screenHeightDp,
+                configurationOrientation = configuration.orientation,
+                hasCurrentFoldingFeature = foldingFeatureInfo.posture != AppFoldPosture.None,
+            )
         )
     }
     LaunchedEffect(displayContext) {
@@ -310,51 +314,6 @@ fun rememberAppWindowAdaptiveInfo(
             hardwareKeyboardConnected = hardwareKeyboardConnected,
         )
     }
-}
-
-@Suppress("DEPRECATION")
-private fun Activity?.resolveAppDisplayContext(
-    configuration: Configuration,
-    hasCurrentFoldingFeature: Boolean,
-): AppDisplayContext {
-    if (this == null) {
-        return resolveAppDisplayContext(
-            AppDisplayContextInput(
-                currentWindowWidthDp = configuration.screenWidthDp,
-                currentWindowHeightDp = configuration.screenHeightDp,
-                configurationOrientation = configuration.orientation,
-            )
-        )
-    }
-
-    val density = resources.displayMetrics.density.coerceAtLeast(1f)
-    val maximumBounds = runCatching {
-        WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this).bounds
-    }.getOrNull()
-    val currentDisplay = runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display
-        else windowManager.defaultDisplay
-    }.getOrNull()
-    val displayMode = runCatching { currentDisplay?.mode }.getOrNull()
-    val hasHingeAngleSensor = runCatching {
-        packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
-    }.getOrDefault(false)
-
-    return resolveAppDisplayContext(
-        AppDisplayContextInput(
-            currentWindowWidthDp = configuration.screenWidthDp,
-            currentWindowHeightDp = configuration.screenHeightDp,
-            maximumWindowWidthDp = maximumBounds?.let { (it.width() / density).toInt() },
-            maximumWindowHeightDp = maximumBounds?.let { (it.height() / density).toInt() },
-            configurationOrientation = configuration.orientation,
-            displayRotation = currentDisplay?.rotation,
-            displayModeWidthPx = displayMode?.physicalWidth,
-            displayModeHeightPx = displayMode?.physicalHeight,
-            hasCurrentFoldingFeature = hasCurrentFoldingFeature,
-            hasHingeAngleSensor = hasHingeAngleSensor,
-            isInMultiWindowMode = isInMultiWindowMode,
-        )
-    )
 }
 
 private tailrec fun Context.findHostActivity(): Activity? = when (this) {

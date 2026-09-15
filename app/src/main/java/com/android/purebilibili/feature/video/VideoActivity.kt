@@ -46,6 +46,7 @@ import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.calculateWindowSizeClass
 import com.android.purebilibili.core.util.rememberAppWindowAdaptiveInfo
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
+import com.android.purebilibili.core.util.resolveAppDisplayContext
 import androidx.window.layout.WindowMetricsCalculator
 // Imports for moved classes
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackViewModel
@@ -299,14 +300,29 @@ class VideoActivity : ComponentActivity() {
 
     private fun updateStateFromConfig(config: Configuration) {
         val isLandscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
-        isFullscreen = isLandscape
+        isFullscreen = isLandscape && !resolveAppDisplayContext(config).usesInWindowFullscreen
     }
 
     private fun toggleFullscreen() {
+        val displayContext = resolveAppDisplayContext()
+        if (displayContext.usesInWindowFullscreen) {
+            isFullscreen = !isFullscreen
+            applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                displayContext = displayContext,
+            )
+            return
+        }
         if (isFullscreen) {
-            applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+            applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                displayContext = displayContext,
+            )
         } else {
-            applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
+            applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                displayContext = displayContext,
+            )
         }
     }
 

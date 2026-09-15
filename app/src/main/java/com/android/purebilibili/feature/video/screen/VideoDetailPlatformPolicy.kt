@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.view.WindowInsetsCompat
@@ -19,6 +20,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.Player
 import androidx.window.layout.WindowMetricsCalculator
 import kotlin.math.abs
+import com.android.purebilibili.core.util.AppDisplayContext
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import com.android.purebilibili.core.util.isFoldableCoverWindow
 import com.android.purebilibili.core.ui.setWindowNavigationBarColor
@@ -360,7 +362,7 @@ internal fun toggleVideoDetailFullscreen(
     fullscreenMode: com.android.purebilibili.core.store.FullscreenMode,
     isVerticalVideo: Boolean,
     preferPortraitForFlatFoldable: Boolean = false,
-    isFoldableCoverScreen: Boolean = false,
+    displayContext: AppDisplayContext? = null,
     portraitExperienceEnabled: Boolean,
     onEnterPortraitFullscreen: () -> Unit,
     onUserRequestedFullscreenChange: (Boolean) -> Unit,
@@ -370,7 +372,7 @@ internal fun toggleVideoDetailFullscreen(
 
     val isInMultiWindowMode = isActivityInMultiWindowOrFloatingMode(
         activity = activity,
-        isKnownFoldableCoverScreen = isFoldableCoverScreen,
+        isKnownFoldableCoverScreen = displayContext?.isFoldableCoverWindow == true,
     )
     val isInPictureInPictureMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
         activity.isInPictureInPictureMode
@@ -399,7 +401,10 @@ internal fun toggleVideoDetailFullscreen(
             isCompactDevice &&
             fullscreenMode == com.android.purebilibili.core.store.FullscreenMode.VERTICAL
         ) {
-            activity.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+            activity.applyPlayerRequestedOrientation(
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                displayContext = displayContext,
+            )
         }
         return
     }
@@ -407,7 +412,10 @@ internal fun toggleVideoDetailFullscreen(
     if (isLandscape) {
         onUserRequestedFullscreenChange(false)
         onManualPortraitHoldActiveChange(true)
-        activity.applyPlayerRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+        activity.applyPlayerRequestedOrientation(
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+            displayContext = displayContext,
+        )
         return
     }
 
@@ -430,7 +438,10 @@ internal fun toggleVideoDetailFullscreen(
 
     onUserRequestedFullscreenChange(true)
     onManualPortraitHoldActiveChange(false)
-    activity.applyPlayerRequestedOrientation(targetOrientation)
+    activity.applyPlayerRequestedOrientation(
+        requestedOrientation = targetOrientation,
+        displayContext = displayContext,
+    )
 }
 
 internal fun resolveNextPlayerHeightOffset(
@@ -572,11 +583,17 @@ internal fun shouldKeepManualFullscreenRequest(
 internal fun ManualFullscreenRequestLifecycleEffect(
     manualFullscreenRequested: Boolean,
     isFullscreenMode: Boolean,
+    requestEnvironmentKey: Any? = Unit,
     onReleaseManualFullscreenRequest: () -> Unit
 ) {
-    var hasEnteredFullscreenDuringRequest by rememberSaveable { mutableStateOf(false) }
+    var hasEnteredFullscreenDuringRequest by rememberSaveable(requestEnvironmentKey) {
+        mutableStateOf(false)
+    }
+    val latestOnReleaseManualFullscreenRequest by rememberUpdatedState(
+        onReleaseManualFullscreenRequest
+    )
 
-    LaunchedEffect(manualFullscreenRequested, isFullscreenMode) {
+    LaunchedEffect(requestEnvironmentKey, manualFullscreenRequested, isFullscreenMode) {
         if (manualFullscreenRequested && isFullscreenMode) {
             hasEnteredFullscreenDuringRequest = true
             return@LaunchedEffect
@@ -590,7 +607,7 @@ internal fun ManualFullscreenRequestLifecycleEffect(
             )
         ) {
             if (manualFullscreenRequested) {
-                onReleaseManualFullscreenRequest()
+                latestOnReleaseManualFullscreenRequest()
             }
             hasEnteredFullscreenDuringRequest = false
         }
