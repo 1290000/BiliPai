@@ -158,6 +158,7 @@ import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmented
 import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.ui.AppSpacingTokens
+import com.android.purebilibili.core.ui.isMiuixNonGlassEnabled
 import com.android.purebilibili.core.ui.videoCardTitleMaxLines
 import com.android.purebilibili.core.ui.videoCardTitleOverflow
 import com.android.purebilibili.core.ui.feedContentTypography
@@ -4561,10 +4562,15 @@ private fun SpaceHeaderMetricDivider() {
 
 @Composable
 private fun SpaceLoadingFooter() {
+    val footerVertical = if (isMiuixNonGlassEnabled()) {
+        AppSpacingTokens.Large + AppSpacingTokens.ExtraSmall
+    } else {
+        18.dp
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 18.dp),
+            .padding(vertical = footerVertical),
         contentAlignment = Alignment.Center
     ) {
         AdaptiveLoadingIndicator(size = 24.dp)
@@ -4576,10 +4582,17 @@ private fun SpaceSectionEmptyState(
     title: String,
     subtitle: String
 ) {
+    val horizontal = if (isMiuixNonGlassEnabled()) AppSpacingTokens.ExtraLarge else 24.dp
+    val vertical = if (isMiuixNonGlassEnabled()) {
+        AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Large
+    } else {
+        42.dp
+    }
+    val titleGap = if (isMiuixNonGlassEnabled()) AppSpacingTokens.Small else 8.dp
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 42.dp),
+            .padding(horizontal = horizontal, vertical = vertical),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AppText(
@@ -4588,7 +4601,7 @@ private fun SpaceSectionEmptyState(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(titleGap))
         AppText(
             text = subtitle,
             fontSize = 13.sp,
@@ -4604,10 +4617,17 @@ private fun SpaceErrorSection(
     message: String,
     onRetry: () -> Unit
 ) {
+    val horizontal = if (isMiuixNonGlassEnabled()) AppSpacingTokens.ExtraLarge else 24.dp
+    val vertical = if (isMiuixNonGlassEnabled()) {
+        AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Large
+    } else {
+        42.dp
+    }
+    val actionGap = if (isMiuixNonGlassEnabled()) AppSpacingTokens.Medium else 12.dp
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 42.dp),
+            .padding(horizontal = horizontal, vertical = vertical),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AppText(
@@ -4615,7 +4635,7 @@ private fun SpaceErrorSection(
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(actionGap))
         AppButton(onClick = onRetry) {
             AppText("重试")
         }
