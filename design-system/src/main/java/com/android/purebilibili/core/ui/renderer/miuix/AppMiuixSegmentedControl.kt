@@ -32,7 +32,6 @@ import com.android.purebilibili.core.ui.components.AppSegmentedControlColors
 import com.android.purebilibili.core.ui.components.resolveAppMiuixSegmentedColors
 import com.android.purebilibili.core.ui.components.resolveAppSegmentedSelectionIndex
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabContentColor
-import com.android.purebilibili.core.ui.components.resolveAppMiuixTabTrackColor
 import com.android.purebilibili.core.ui.resolveRoundedControlVisualGeometry
 import com.android.purebilibili.core.ui.resolveMiuixNonGlassControlGeometry
 import com.android.purebilibili.core.ui.isMiuixNonGlassEnabled
@@ -93,10 +92,6 @@ internal fun <T> AppMiuixSegmentedControl(
         )
         return
     }
-    val trackColor = resolveAppMiuixTabTrackColor(
-        nonGlassMiuix = nonGlassMiuix,
-        trackColor = tabColors.backgroundColor,
-    )
     val inactiveContentColor = resolveAppMiuixTabContentColor(
         nonGlassMiuix = nonGlassMiuix,
         inactiveContentColor = tabColors.contentColor,
@@ -105,22 +100,15 @@ internal fun <T> AppMiuixSegmentedControl(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .adaptiveSquircleBackground(
-                color = trackColor,
-                cornerRadius = cornerRadius + 3.dp,
-            )
-            .squircleClip(cornerRadius + 3.dp)
-            .padding(if (nonGlassMiuix) 0.dp else 3.dp)
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
-        horizontalArrangement = Arrangement.spacedBy(if (nonGlassMiuix) 4.dp else 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         options.forEach { option ->
             val selected = option.value == selectedValue
             val itemBackground = when {
                 selected -> tabColors.selectedBackgroundColor
-                nonGlassMiuix -> tabColors.backgroundColor
-                else -> Color.Transparent
+                else -> tabColors.backgroundColor
             }
             val contentColor = if (selected) {
                 tabColors.selectedContentColor

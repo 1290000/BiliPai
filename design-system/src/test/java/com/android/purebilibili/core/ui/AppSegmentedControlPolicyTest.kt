@@ -37,7 +37,8 @@ class AppSegmentedControlPolicyTest {
             "src/main/java/com/android/purebilibili/core/ui/renderer/miuix/" +
                 "AppMiuixSegmentedControl.kt"
         )
-        assertTrue(source.contains("nonGlassMiuix -> tabColors.backgroundColor"))
+        assertTrue(source.contains("else -> tabColors.backgroundColor"))
+        assertFalse(source.contains("adaptiveSquircleBackground(\n                color = trackColor"))
         assertTrue(source.contains("AppMiuixNonGlassTabItem("))
         assertTrue(source.contains("Arrangement.spacedBy(AppSpacingTokens.ExtraSmall)"))
     }
