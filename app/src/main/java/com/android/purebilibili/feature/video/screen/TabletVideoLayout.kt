@@ -1401,20 +1401,32 @@ private fun ScrollableVideoInfoSection(
         item {
             Spacer(modifier = Modifier.height(24.dp))
             if (info.desc.isNotEmpty()) {
-                AppText(
-                    text = "简介",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                var isExpanded by remember(info.bvid) { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AppText(
+                        text = "简介",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    AppText(
+                        text = if (isExpanded) "收起" else "展开",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { isExpanded = !isExpanded },
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
-                var isExpanded by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateContentSize()
                         .background(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), // 🎨 修复粉色背景，使用中性灰
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                             shape = AppShapes.container(ContainerLevel.Chip)
                         )
                         .clickable { isExpanded = !isExpanded }
@@ -1428,15 +1440,6 @@ private fun ScrollableVideoInfoSection(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         lineHeight = 16.sp
                     )
-                    if (info.desc.length > 50) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AppText(
-                            text = if (isExpanded) "收起" else "展开",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.align(Alignment.End)
-                        )
-                    }
                 }
             }
         }

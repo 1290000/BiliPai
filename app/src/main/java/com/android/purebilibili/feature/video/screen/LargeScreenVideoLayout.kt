@@ -252,6 +252,11 @@ internal fun LargeScreenVideoLayout(
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             intro(Modifier.fillMaxSize())
                         }
+                        val hasCollection = success?.info?.ugc_season != null
+                        val useCollectionColumn = shouldUseDedicatedCollectionColumn(
+                            availableWidthDp = maxWidth.value,
+                            hasCollection = hasCollection,
+                        )
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             if (success != null) {
                                 TabletSecondaryContent(
@@ -274,7 +279,11 @@ internal fun LargeScreenVideoLayout(
                                     onOpenBilibiliLink = onOpenBilibiliLink,
                                     requestedTabName = null,
                                     onRequestedTabConsumed = {},
-                                    fixedTab = TabletSecondaryTab.COMMENTS,
+                                    fixedTab = if (useCollectionColumn || !hasCollection) {
+                                        TabletSecondaryTab.COMMENTS
+                                    } else {
+                                        null
+                                    },
                                     showPaneModeControls = false,
                                     applyStatusBarPadding = false,
                                     includeRelatedTab = false,
@@ -282,7 +291,7 @@ internal fun LargeScreenVideoLayout(
                                 )
                             }
                         }
-                        if (success?.info?.ugc_season != null) {
+                        if (useCollectionColumn && success != null) {
                             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                                 TabletSecondaryContent(
                                     success = success,

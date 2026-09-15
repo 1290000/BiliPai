@@ -24,6 +24,28 @@ class LargeScreenVideoLayoutPolicyTest {
     @Test
 
     @Test
+    fun collectionGetsOwnColumnOnlyWhenEachPaneIsAtLeast280dp() {
+        assertFalse(
+            shouldUseDedicatedCollectionColumn(
+                availableWidthDp = 800f,
+                hasCollection = true,
+            )
+        )
+        assertTrue(
+            shouldUseDedicatedCollectionColumn(
+                availableWidthDp = 960f,
+                hasCollection = true,
+            )
+        )
+        assertFalse(
+            shouldUseDedicatedCollectionColumn(
+                availableWidthDp = 1280f,
+                hasCollection = false,
+            )
+        )
+    }
+
+    @Test
     fun landscapeTabletUsesLeftPlayerAndClampedSidePane() {
         val metrics = resolveLargeScreenVideoMetrics(
             windowWidthDp = 1280f,

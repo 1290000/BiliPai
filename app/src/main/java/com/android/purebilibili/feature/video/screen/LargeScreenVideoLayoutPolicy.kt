@@ -39,6 +39,14 @@ internal fun shouldUseLargeScreenVideoLayout(
     return fullWidthPlayerHeight >= 0.4f * windowHeightDp
 }
 
+internal fun shouldUseDedicatedCollectionColumn(
+    availableWidthDp: Float,
+    hasCollection: Boolean,
+): Boolean {
+    if (!hasCollection || availableWidthDp <= 0f) return false
+    return availableWidthDp / 3f >= LARGE_SCREEN_VIDEO_MIN_SIDE_PANE_DP
+}
+
 internal fun resolveLargeScreenLandscapePlayerWidthDp(
     windowWidthDp: Float,
     windowHeightDp: Float,
