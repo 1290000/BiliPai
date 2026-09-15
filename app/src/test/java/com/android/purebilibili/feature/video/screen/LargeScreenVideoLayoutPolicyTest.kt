@@ -19,6 +19,8 @@ class LargeScreenVideoLayoutPolicyTest {
         assertTrue(text.contains("relatedTabFirst = metrics.mode == LargeScreenVideoLayoutMode.Landscape"))
         assertTrue(text.contains("includeOwnerUploadsTab = false"))
         assertTrue(text.contains("showRelatedVideos = showRelatedInIntro"))
+        assertTrue(text.contains("LargeScreenVideoLayoutMode.AlmostSquare"))
+        assertFalse(text.contains("fixedTab = TabletSecondaryTab.COLLECTION"))
     }
 
     @Test

@@ -254,11 +254,6 @@ internal fun LargeScreenVideoLayout(
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             intro(Modifier.fillMaxSize())
                         }
-                        val hasCollection = success?.info?.ugc_season != null
-                        val useCollectionColumn = shouldUseDedicatedCollectionColumn(
-                            availableWidthDp = windowWidthDp,
-                            hasCollection = hasCollection,
-                        )
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                             if (success != null) {
                                 TabletSecondaryContent(
@@ -281,41 +276,6 @@ internal fun LargeScreenVideoLayout(
                                     onOpenBilibiliLink = onOpenBilibiliLink,
                                     requestedTabName = null,
                                     onRequestedTabConsumed = {},
-                                    fixedTab = if (useCollectionColumn || !hasCollection) {
-                                        TabletSecondaryTab.COMMENTS
-                                    } else {
-                                        null
-                                    },
-                                    showPaneModeControls = false,
-                                    applyStatusBarPadding = false,
-                                    includeRelatedTab = false,
-                                    includeOwnerUploadsTab = false,
-                                )
-                            }
-                        }
-                        if (useCollectionColumn && success != null) {
-                            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                TabletSecondaryContent(
-                                    success = success,
-                                    commentState = commentState,
-                                    subReplyState = subReplyState,
-                                    playbackActions = playbackActions,
-                                    engagementState = engagementState,
-                                    engagementActions = engagementActions,
-                                    commentActions = commentActions,
-                                    playerState = playerState,
-                                    onUpClick = onUpClick,
-                                    paneMode = TabletSecondaryPaneMode.EXPANDED,
-                                    onPaneModeChange = {},
-                                    onPaneModeCycle = {},
-                                    onRelatedVideoClick = onRelatedVideoClick,
-                                    onSearchKeywordClick = onSearchKeywordClick,
-                                    showUpBadge = showUpBadge,
-                                    showIdentityDecorations = commentMemberDecorationsEnabled,
-                                    onOpenBilibiliLink = onOpenBilibiliLink,
-                                    requestedTabName = null,
-                                    onRequestedTabConsumed = {},
-                                    fixedTab = TabletSecondaryTab.COLLECTION,
                                     showPaneModeControls = false,
                                     applyStatusBarPadding = false,
                                     includeRelatedTab = false,
