@@ -337,6 +337,20 @@ class HomeSettingsMappingPolicyTest {
     }
 
     @Test
+    fun searchOnlyCollapseMode_mapsCorrectlyAndEnablesCollapse() {
+        val prefs = mutablePreferencesOf(
+            intPreferencesKey("home_header_collapse_mode") to HomeHeaderCollapseMode.SEARCH_ONLY.value
+        )
+
+        val result = mapHomeSettingsFromPreferences(prefs)
+
+        assertEquals(HomeHeaderCollapseMode.SEARCH_ONLY, result.homeHeaderCollapseMode)
+        assertTrue(result.isHeaderCollapseEnabled)
+        assertTrue(result.homeHeaderCollapseMode.collapseSearch)
+        assertFalse(result.homeHeaderCollapseMode.collapseTabs)
+    }
+
+    @Test
     fun invalidHomeBarHideTypeFallsBackToSync() {
         val prefs = mutablePreferencesOf(
             intPreferencesKey("home_bar_hide_type") to 99

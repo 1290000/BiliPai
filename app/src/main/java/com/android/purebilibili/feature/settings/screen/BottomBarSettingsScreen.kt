@@ -43,7 +43,6 @@ import com.android.purebilibili.core.store.HomeHeaderCollapseMode
 import com.android.purebilibili.core.store.HomeTopLayoutOrder
 import com.android.purebilibili.core.store.HomeTopRightAction
 import com.android.purebilibili.core.store.SettingsManager
-import com.android.purebilibili.core.store.resolveHomeHeaderCollapseModeForTopBarHide
 import com.android.purebilibili.core.theme.BottomBarColors  //  统一底栏颜色配置
 import com.android.purebilibili.core.theme.BottomBarColorPalette  //  调色板
 import com.android.purebilibili.core.theme.BottomBarColorNames  //  颜色名称
@@ -471,19 +470,24 @@ fun BottomBarSettingsContent(
                                 icon = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_troubleshoot_24),
                                 iconTint = com.android.purebilibili.core.theme.iOSTeal,
                                 title = "全局顶栏显示",
-                                subtitle = if (homeHeaderCollapseMode.hasAnyCollapse) {
-                                    "首页、历史、收藏和稍后再看等页面离开顶部后收起沉浸顶栏，回顶后恢复"
-                                } else {
-                                    "首页和二级列表的沉浸顶栏始终显示"
+                                subtitle = when (homeHeaderCollapseMode) {
+                                    HomeHeaderCollapseMode.OFF -> "首页和二级列表的沉浸顶栏始终显示"
+                                    HomeHeaderCollapseMode.SEARCH_ONLY -> "下滑时仅收起顶部搜索框，标签页留在顶部（参考 PiliPlus）"
+                                    HomeHeaderCollapseMode.BOTH -> "首页、历史、收藏和稍后再看等页面离开顶部后收起沉浸顶栏，回顶后恢复"
+                                    HomeHeaderCollapseMode.TABS_ONLY -> "下滑时仅收起标签页，搜索框保持显示"
                                 },
                                 options = listOf(
-                                    AppSegmentOption(false, "始终显示"),
-                                    AppSegmentOption(true, "仅回顶显示"),
+                                    AppSegmentOption(HomeHeaderCollapseMode.OFF, "始终显示"),
+                                    AppSegmentOption(HomeHeaderCollapseMode.SEARCH_ONLY, "仅收起搜索"),
+                                    AppSegmentOption(HomeHeaderCollapseMode.BOTH, "全部收起"),
                                 ),
-                                selectedValue = homeHeaderCollapseMode.hasAnyCollapse,
-                                onSelectionChange = { hideUntilTop ->
-                                    val nextMode = resolveHomeHeaderCollapseModeForTopBarHide(hideUntilTop)
-                                    scope.launch { SettingsManager.setHomeHeaderCollapseMode(context, nextMode) }
+                                selectedValue = if (homeHeaderCollapseMode == HomeHeaderCollapseMode.TABS_ONLY) {
+                                    HomeHeaderCollapseMode.BOTH
+                                } else {
+                                    homeHeaderCollapseMode
+                                },
+                                onSelectionChange = { mode ->
+                                    scope.launch { SettingsManager.setHomeHeaderCollapseMode(context, mode) }
                                 },
                             )
                             AppHorizontalDivider()

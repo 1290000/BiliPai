@@ -3745,10 +3745,9 @@ object SettingsManager {
         }
 
     suspend fun setHomeHeaderCollapseMode(context: Context, mode: HomeHeaderCollapseMode) {
-        val normalized = resolveHomeHeaderCollapseModeForTopBarHide(mode.hideTopBar)
         context.settingsDataStore.edit { preferences ->
-            preferences[KEY_HOME_HEADER_COLLAPSE_MODE] = normalized.value
-            preferences[KEY_HEADER_COLLAPSE_ENABLED] = normalized.hideTopBar
+            preferences[KEY_HOME_HEADER_COLLAPSE_MODE] = mode.value
+            preferences[KEY_HEADER_COLLAPSE_ENABLED] = mode.hasAnyCollapse
         }
     }
 

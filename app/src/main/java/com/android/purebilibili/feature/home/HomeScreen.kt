@@ -318,7 +318,7 @@ fun HomeScreen(
     val targetVideoItemState = remember { mutableStateOf<VideoItem?>(null) }
     var pendingNotInterestedVideo by remember { mutableStateOf<VideoItem?>(null) }
     val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
-    val headerSettleMotionSpec = AppMotionTokens.standardSpec<Float>()
+    val headerSettleMotionSpec = AppMotionTokens.emphasizedSpec<Float>()
     val globalScrollOffset = LocalHomeScrollOffset.current
     val globalFeedScrollInProgress = LocalHomeFeedScrollInProgress.current
     // [Header] 首页重选/双击回顶时需要强制恢复顶部，避免自动收缩后残留空白区域。
@@ -1512,7 +1512,7 @@ fun HomeScreen(
     }
     val collapsedEmbeddedTabInset by animateDpAsState(
         targetValue = if (topTabsAutoCollapsedByScroll) tabRowHeightDp else AppSpacingTokens.None,
-        animationSpec = AppMotionTokens.standardSpec(),
+        animationSpec = AppMotionTokens.emphasizedSpec(),
         label = "homeEmbeddedTabInset",
     )
     val embeddedPageTopPadding by remember(
