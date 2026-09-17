@@ -201,6 +201,29 @@ internal fun resolveTopTabIndicatorShape(
         resolveSharedBottomBarCapsuleShape()
     }
 
+/**
+ * Resolves the vertical center offset (in Dp) of the MD3 native underline indicator
+ * relative to the center of the tab row container.
+ *
+ * Tab content (icons and text) is vertically centered inside the container.
+ * - Text-only tabs: Text line-height is ~20sp centered, meaning the text bottom
+ *   is ~10dp below the container center. An offset of +14dp places the underline directly below the text.
+ * - Icon-and-text tabs: Total height is ~42dp centered, placing the text bottom ~21dp below center.
+ *   An offset of +26dp places the underline directly below the text.
+ * - Icon-only tabs: Icon is ~18-24dp centered, placing the icon bottom ~9-12dp below center.
+ *   An offset of +13dp places the underline directly below the icon.
+ */
+internal fun resolveMd3TopTabUnderlineCenterOffsetDp(
+    showIcon: Boolean,
+    showText: Boolean,
+): Float {
+    return when {
+        showIcon && showText -> 26f
+        showIcon -> 13f
+        else -> 14f
+    }
+}
+
 internal fun resolveTopTabDockIndicatorWidthDp(
     itemWidthDp: Float,
     horizontalGapDp: Float,
@@ -2181,11 +2204,16 @@ private fun LightweightHomeTopTabs(
                     }
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
+                            .align(Alignment.CenterStart)
                             .graphicsLayer {
                                 translationX = nativeUnderlineBounds.translationXPx
                             }
-                            .offset(y = -AppSpacingTokens.ExtraSmall)
+                            .offset(
+                                y = resolveMd3TopTabUnderlineCenterOffsetDp(
+                                    showIcon = showIcon,
+                                    showText = showText
+                                ).dp
+                            )
                             .width(with(density) { nativeUnderlineBounds.widthPx.toDp() })
                             .height(AppSpacingTokens.Micro * 1.5f)
                             .clip(RoundedCornerShape(percent = 50))
