@@ -1168,14 +1168,15 @@ private fun LightweightHomeTopTabs(
                 ).dp
             )
     ) {
+        val isMiuixOfficialTabs = shouldUseOfficialMiuixHomeTopTabs(
+            uiStyle = LocalAppUiStyle.current,
+            liquidGlassEnabled = isLiquidGlassEnabled,
+        )
         val wrapDock = (wrapDockWidth ?: shouldWrapTopTabDockWidth(
             isFloatingStyle = isFloatingStyle,
             hasOuterChromeSurface = hasOuterChromeSurface,
             edgeToEdge = edgeToEdge
-        )) || shouldUseOfficialMiuixHomeTopTabs(
-            uiStyle = LocalAppUiStyle.current,
-            liquidGlassEnabled = isLiquidGlassEnabled,
-        )
+        )) || isMiuixOfficialTabs
         // 分栏 dock 最大宽度 = 顶部三控件合计宽度，与外壳共享同一上限。
         val effectiveMaxDockWidth = minOf(maxWidth.value, maxDockWidthDp)
         val fillItemWidthDp = when (effectivePresentation) {
@@ -1185,7 +1186,12 @@ private fun LightweightHomeTopTabs(
                 labelMode = normalizedLabelMode
             )
             AppTopTabPresentation.MATERIAL_UNDERLINE,
-            AppTopTabPresentation.TONAL_CAPSULE -> if (forceMaterialUnderline) {
+            AppTopTabPresentation.TONAL_CAPSULE -> if (isMiuixOfficialTabs) {
+                resolveTopTabWrapItemWidthDp(
+                    labelMode = normalizedLabelMode,
+                    isFloatingStyle = isFloatingStyle
+                )
+            } else if (forceMaterialUnderline) {
                 resolveFixedHomeTopTabItemWidthDp(
                     containerWidthDp = effectiveMaxDockWidth,
                     categoryCount = categories.size,
