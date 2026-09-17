@@ -144,11 +144,12 @@ internal fun BiliPaiImmersiveTopBar(
     headerBlurActive: Boolean = false,
     modifier: Modifier = Modifier,
     extendBelowBounds: Boolean = false,
+    opaqueBackgroundFallback: Boolean = true,
     content: @androidx.compose.runtime.Composable () -> Unit,
 ) {
     val active = shouldUseBiliPaiProgressiveTopBlur(enabled, backdrop != null) &&
         !isLowBlurBudgetForced()
-    val opaqueBackground = shouldUseOpaqueTopChromeBackground(
+    val opaqueBackground = opaqueBackgroundFallback && shouldUseOpaqueTopChromeBackground(
         progressiveBlurActive = active,
         headerBlurActive = headerBlurActive,
     )

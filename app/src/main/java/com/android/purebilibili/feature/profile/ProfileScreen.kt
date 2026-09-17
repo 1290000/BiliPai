@@ -264,6 +264,19 @@ internal fun resolveProfileTopBarScrimAlpha(
     return 0f
 }
 
+internal const val PROFILE_PINNED_TOP_CHROME_FADE_RANGE_PX = 120
+
+/** 0 at rest over the banner, 1 after the header has scrolled under the pinned chrome. */
+internal fun resolveProfilePinnedTopChromeScrim(
+    firstVisibleItemIndex: Int,
+    firstVisibleItemScrollOffset: Int,
+    fadeRangePx: Int = PROFILE_PINNED_TOP_CHROME_FADE_RANGE_PX,
+): Float {
+    if (firstVisibleItemIndex > 0) return 1f
+    if (fadeRangePx <= 0) return 0f
+    return (firstVisibleItemScrollOffset.toFloat() / fadeRangePx).coerceIn(0f, 1f)
+}
+
 internal fun resolveProfileLightStatusBars(
     isImmersive: Boolean,
     useSplitLayout: Boolean,
@@ -1192,10 +1205,25 @@ private fun ProfileSpaceContent(
             onSurfaceVariantColor = colorScheme.onSurfaceVariant
         )
     }
-    val topBarIconColor = heroChrome.textColor
     val tabletRailScrollState = rememberScrollState()
     val tabletFeedListState = rememberLazyListState()
     val mobileListState = rememberLazyListState()
+    val isMobileScrolling by remember {
+        derivedStateOf { mobileListState.isScrollInProgress }
+    }
+    val mobileTopChromeScrim by remember {
+        derivedStateOf {
+            resolveProfilePinnedTopChromeScrim(
+                firstVisibleItemIndex = mobileListState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = mobileListState.firstVisibleItemScrollOffset,
+            )
+        }
+    }
+    val topBarIconColor = androidx.compose.ui.graphics.lerp(
+        heroChrome.textColor,
+        contentChrome.onSurfaceColor,
+        mobileTopChromeScrim
+    )
     ObserveProfileScrollToTop(
         requestId = scrollToTopRequestId,
         listState = if (isTablet) tabletFeedListState else mobileListState,
@@ -1271,6 +1299,7 @@ private fun ProfileSpaceContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .profileProgressiveBackdrop(progressiveTopChrome.backdrop)
+                    .then(if (hazeState != null) Modifier.hazeSourceCompat(hazeState) else Modifier)
                     .globalWallpaperAwareBackground(colorScheme.surface),
             ) {
                 Box(
@@ -1354,6 +1383,7 @@ private fun ProfileSpaceContent(
                 enabled = progressiveTopChrome.enabled,
                 headerBlurActive = hazeState?.let { recoverableBlurEnabled(it) } == true &&
                     !progressiveTopChrome.enabled,
+                opaqueBackgroundFallback = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
@@ -1364,12 +1394,19 @@ private fun ProfileSpaceContent(
                             hazeState?.takeIf { recoverableBlurEnabled(it) }
                                 ?.let {
                                     Modifier
-                                        .unifiedBlur(it, surfaceType = BlurSurfaceType.HEADER)
+                                        .unifiedBlur(
+                                            hazeState = it,
+                                            surfaceType = BlurSurfaceType.HEADER,
+                                            isScrolling = isMobileScrolling,
+                                            enabled = mobileTopChromeScrim > 0f
+                                        )
                                         .background(
                                             AppSurfaceTokens.cardContainer()
-                                                .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                                                .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha * mobileTopChromeScrim)
                                         )
-                                } ?: Modifier
+                                } ?: Modifier.background(
+                                    MaterialTheme.colorScheme.surface.copy(alpha = mobileTopChromeScrim)
+                                )
                         }
                     ),
             ) {
@@ -3315,6 +3352,17 @@ private fun MobileProfileContent(
         // YES, remove background here.
         
     val guestListState = rememberLazyListState()
+    val isGuestScrolling by remember {
+        derivedStateOf { guestListState.isScrollInProgress }
+    }
+    val guestTopChromeScrim by remember {
+        derivedStateOf {
+            resolveProfilePinnedTopChromeScrim(
+                firstVisibleItemIndex = guestListState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = guestListState.firstVisibleItemScrollOffset,
+            )
+        }
+    }
     ObserveProfileScrollToTop(
         requestId = scrollToTopRequestId,
         listState = guestListState
@@ -3409,10 +3457,11 @@ private fun MobileProfileContent(
             enabled = progressiveTopChrome.enabled,
             headerBlurActive = hazeState?.let { recoverableBlurEnabled(it) } == true &&
                 !progressiveTopChrome.enabled,
+            opaqueBackgroundFallback = false,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
         ) {
         AppTopBar(
-            title = "我的",
+            title = if (guestTopChromeScrim > 0.4f) "我的" else "",
             style = AppTopBarStyle.CENTERED,
             navigationIcon = {
                 AppIconButton(onClick = onBack) {
@@ -3431,12 +3480,19 @@ private fun MobileProfileContent(
                 hazeState?.takeIf { recoverableBlurEnabled(it) }
                     ?.let {
                         Modifier
-                            .unifiedBlur(it, surfaceType = BlurSurfaceType.HEADER)
+                            .unifiedBlur(
+                                hazeState = it,
+                                surfaceType = BlurSurfaceType.HEADER,
+                                isScrolling = isGuestScrolling,
+                                enabled = guestTopChromeScrim > 0f
+                            )
                             .background(
                                 AppSurfaceTokens.cardContainer()
-                                    .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                                    .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha * guestTopChromeScrim)
                             )
-                    } ?: Modifier
+                    } ?: Modifier.background(
+                        MaterialTheme.colorScheme.surface.copy(alpha = guestTopChromeScrim)
+                    )
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
