@@ -179,31 +179,6 @@ internal fun TabletSecondaryDanmakuActions(
     }
 }
 
-@Composable
-internal fun TabletSecondaryPaneToggleButton(
-    isSecondaryPaneVisible: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null,
-) {
-    AppIconButton(
-        onClick = onClick,
-        modifier = modifier.size(40.dp),
-    ) {
-        AppIcon(
-            imageVector = if (isSecondaryPaneVisible) {
-                Icons.Outlined.KeyboardArrowLeft
-            } else {
-                Icons.Outlined.KeyboardArrowRight
-            },
-            contentDescription = contentDescription ?: if (isSecondaryPaneVisible) {
-                "收起右侧内容"
-            } else {
-                "展开右侧内容"
-            },
-        )
-    }
-}
 
 @Composable
 internal fun TabletSecondaryLiquidTabRow(
@@ -472,20 +447,9 @@ internal fun TabletVideoLayout(
                             .align(Alignment.CenterHorizontally),
                     )
                 }
-                }
-                if (paneControlsEnabled && secondaryPaneHidden) {
-                    TabletSecondaryPaneToggleButton(
-                        isSecondaryPaneVisible = false,
-                        onClick = {
-                            secondaryPaneModeName = TabletSecondaryPaneMode.EXPANDED.name
-                        },
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 0.dp),
-                    )
-                }
             }
-        },
+        }
+    },
         secondaryContent = {
             // 📝 右侧：评论 / 相关推荐
             if (uiState is VideoPlaybackUiState.Success) {
@@ -533,17 +497,6 @@ internal fun TabletVideoLayout(
                             }
                         } else null,
                     )
-                    if (paneControlsEnabled && !secondaryPaneHidden) {
-                        TabletSecondaryPaneToggleButton(
-                            isSecondaryPaneVisible = true,
-                            onClick = {
-                                secondaryPaneModeName = TabletSecondaryPaneMode.COLLAPSED.name
-                            },
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .offset(x = (-20).dp),
-                        )
-                    }
                 }
             }
         },
