@@ -472,7 +472,7 @@ fun BottomBarSettingsContent(
                                 title = "全局顶栏显示",
                                 subtitle = when (homeHeaderCollapseMode) {
                                     HomeHeaderCollapseMode.OFF -> "首页和二级列表的沉浸顶栏始终显示"
-                                    HomeHeaderCollapseMode.SEARCH_ONLY -> "下滑时仅收起顶部搜索框，标签页留在顶部（参考 PiliPlus）"
+                                    HomeHeaderCollapseMode.SEARCH_ONLY -> "下滑时仅收起顶部搜索框，标签页留在顶部"
                                     HomeHeaderCollapseMode.BOTH -> "首页、历史、收藏和稍后再看等页面离开顶部后收起沉浸顶栏，回顶后恢复"
                                     HomeHeaderCollapseMode.TABS_ONLY -> "下滑时仅收起标签页，搜索框保持显示"
                                 },
