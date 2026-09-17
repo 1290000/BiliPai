@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.ui.AppChromeSizeTokens
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.LocalImmersiveTopChromeActive
 import com.android.purebilibili.core.ui.rememberAppSegmentedControlPolicy
 import com.android.purebilibili.core.ui.roundMatchedLiquidIndicatorHeightDp
 import com.android.purebilibili.core.ui.renderer.material3.AppMaterial3SegmentedControl
@@ -249,8 +250,13 @@ fun <T> AppNativeSegmentedControl(
     if (options.isEmpty()) return
     val policy = rememberAppSegmentedControlPolicy()
     val materialColors = MaterialTheme.colorScheme
-    val trackColor = AppSurfaceTokens.surfaceContainer()
-    val activeCardColor = AppSurfaceTokens.surfaceContainerHighest()
+    val isImmersiveTopChrome = LocalImmersiveTopChromeActive.current
+    val trackColor = if (isImmersiveTopChrome) {
+        Color.Transparent
+    } else {
+        AppSurfaceTokens.surfaceContainerHigh()
+    }
+    val activeCardColor = AppSurfaceTokens.surfaceContainer()
     val activeTextColor = AppSurfaceTokens.onSurface()
     val inactiveTextColor = AppSurfaceTokens.onSurfaceContainerHigh()
     val colors = resolveAppSegmentedControlColors(
@@ -336,8 +342,13 @@ fun <T> AppNativeTabRow(
     )
     val policy = rememberAppSegmentedControlPolicy()
     val materialColors = MaterialTheme.colorScheme
-    val trackColor = AppSurfaceTokens.surfaceContainer()
-    val activeCardColor = AppSurfaceTokens.surfaceContainerHighest()
+    val isImmersiveTopChrome = LocalImmersiveTopChromeActive.current
+    val trackColor = if (isImmersiveTopChrome) {
+        Color.Transparent
+    } else {
+        AppSurfaceTokens.surfaceContainerHigh()
+    }
+    val activeCardColor = AppSurfaceTokens.surfaceContainer()
     val activeTextColor = AppSurfaceTokens.onSurface()
     val inactiveTextColor = AppSurfaceTokens.onSurfaceContainerHigh()
     val colors = resolveAppSegmentedControlColors(

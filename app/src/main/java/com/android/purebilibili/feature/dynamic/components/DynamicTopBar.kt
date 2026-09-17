@@ -160,7 +160,9 @@ fun DynamicTopBarWithTabs(
         extendBelowBounds = !(displayMode.isHorizontalUserList() && shouldShowHorizontalUserList),
         modifier = modifier.then(
             if (!isProgressiveBlurActive && headerBlurEnabled && hazeState != null) {
-                Modifier.unifiedBlur(hazeState = hazeState, surfaceType = BlurSurfaceType.HEADER)
+                Modifier
+                    .unifiedBlur(hazeState = hazeState, surfaceType = BlurSurfaceType.HEADER)
+                    .background(AppSurfaceTokens.cardContainer().copy(alpha = 0.65f))
             } else Modifier
         ),
     ) {
@@ -214,7 +216,9 @@ fun DynamicTopBarWithTabs(
                     containerColorOverride = dockColor,
                     liquidGlassTuningOverride = liquidGlassTuning,
                     drawMiuixNonGlassTrack = liquidGlassEnabled ||
-                        LocalAppUiStyle.current != AppUiStyle.MIUIX,
+                        LocalAppUiStyle.current != AppUiStyle.MIUIX ||
+                        isProgressiveBlurActive ||
+                        headerBlurEnabled,
                 )
             }
 

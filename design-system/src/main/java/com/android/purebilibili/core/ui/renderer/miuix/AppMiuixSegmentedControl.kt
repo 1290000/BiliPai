@@ -294,6 +294,7 @@ private fun <T> AppMiuixNonGlassTabs(
             if (enabled) options.getOrNull(index)?.let { onSelectionChange(it.value) }
         },
         modifier = modifier
+            .squircleClip(geometry.cornerRadius)
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
         colors = TabRowDefaults.tabRowColors(
             backgroundColor = if (drawTrack) tabColors.backgroundColor else Color.Transparent,

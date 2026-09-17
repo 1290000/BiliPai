@@ -163,7 +163,9 @@ fun BangumiScreen(
                 ).then(
                     if (hazeActive) {
                         hazeState?.let {
-                            Modifier.unifiedBlur(hazeState = it, surfaceType = BlurSurfaceType.HEADER)
+                            Modifier
+                                .unifiedBlur(hazeState = it, surfaceType = BlurSurfaceType.HEADER)
+                                .background(AppSurfaceTokens.cardContainer().copy(alpha = 0.65f))
                         } ?: Modifier
                     } else {
                         Modifier
