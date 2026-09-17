@@ -5,6 +5,7 @@ import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.ui.components.shouldUseCompactMiuixTabRow
 import com.android.purebilibili.core.ui.components.resolveReadableNativeTabMinWidth
 import com.android.purebilibili.core.ui.components.resolveCompactMiuixTabRowWidth
+import com.android.purebilibili.core.ui.components.resolveLabelContentMinWidth
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabContentColor
 import com.android.purebilibili.core.ui.components.resolveAppMiuixTabTrackColor
 import com.android.purebilibili.core.ui.components.resolveEqualMiuixNonGlassTabItemWidth
@@ -59,6 +60,15 @@ class AppSegmentedControlPolicyTest {
         assertEquals(144.dp, resolveCompactMiuixTabRowWidth(400.dp, 72.dp, 2, false))
         assertEquals(400.dp, resolveCompactMiuixTabRowWidth(400.dp, 72.dp, 2, true))
         assertEquals(400.dp, resolveCompactMiuixTabRowWidth(400.dp, 72.dp, 3, false))
+    }
+
+    @Test
+    fun `label content min width calculates safe minimum width to prevent ellipsis truncation`() {
+        assertEquals(88.dp, resolveLabelContentMinWidth(listOf("相关推荐", "评论")))
+        assertEquals(56.dp, resolveLabelContentMinWidth(listOf("简介", "评论")))
+        assertEquals(72.dp, resolveLabelContentMinWidth(listOf("按热度", "按时间")))
+        assertEquals(48.dp, resolveLabelContentMinWidth(listOf("A", "B")))
+        assertEquals(0.dp, resolveLabelContentMinWidth(emptyList()))
     }
 
     @Test

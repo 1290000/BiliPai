@@ -102,6 +102,20 @@ fun resolveCompactMiuixTabRowWidth(
     scrollable: Boolean,
 ): Dp = if (optionCount == 2 && !scrollable) minTabWidth * 2 else viewportWidth
 
+fun resolveLabelContentMinWidth(
+    labels: List<String>,
+): Dp {
+    if (labels.isEmpty()) return 0.dp
+    val maxEstimatedWidthDp = labels.maxOfOrNull { label ->
+        val textWidth = label.sumOf { char ->
+            if (char.code in 0..127) 8 else 16
+        }
+        val padding = if (textWidth > 64) 28 else 24
+        textWidth + padding
+    } ?: 0
+    return maxEstimatedWidthDp.coerceIn(48, 320).dp
+}
+
 fun resolveReadableNativeTabMinWidth(
     requestedMinWidth: Dp,
     labels: List<String>,
@@ -320,11 +334,13 @@ fun <T> AppNativeTabRow(
     onSelectionChange: (T) -> Unit,
 ) {
     if (options.isEmpty()) return
+    val labelContentMinWidth = resolveLabelContentMinWidth(options.map { it.label })
     val readableMinTabWidth = resolveReadableNativeTabMinWidth(
         requestedMinWidth = minTabWidth,
         labels = options.map { it.label },
         allowLabelOverflow = allowLabelOverflow,
     )
+    val compactItemWidth = maxOf(minTabWidth, readableMinTabWidth, labelContentMinWidth)
     val equalizeMiuixNonGlassItems = shouldEqualizeMiuixNonGlassTabItems(
         widthMode = miuixNonGlassItemWidthMode,
         isMiuixNonGlass = com.android.purebilibili.core.ui.isMiuixNonGlassEnabled(),
@@ -365,7 +381,7 @@ fun <T> AppNativeTabRow(
     val targetTabWidth = if (effectiveScrollable && !useContentSizedMiuixItems) {
         readableMinTabWidth
     } else {
-        minTabWidth
+        compactItemWidth
     }
     when (if (forceMaterial3) AppSegmentedRenderer.MATERIAL3 else resolveAppSegmentedRenderer(policy.usesNativeTabRow)) {
         AppSegmentedRenderer.MATERIAL3 -> AppMaterial3TabRow(
@@ -389,7 +405,7 @@ fun <T> AppNativeTabRow(
             preferredCornerRadius = policy.preferredCornerRadius,
             height = height,
             modifier = if (shouldUseCompactMiuixTabRow(options.size, effectiveScrollable, compactMiuixWhenTwoOptions)) {
-                viewportBoundedModifier.requiredWidth(minTabWidth * options.size)
+                viewportBoundedModifier.requiredWidth(compactItemWidth * options.size)
             } else {
                 viewportBoundedModifier
             },
