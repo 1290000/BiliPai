@@ -131,3 +131,7 @@ internal fun resolveLargeScreenVideoMetrics(
         introBelowPlayer = true,
     )
 }
+
+internal fun resolveShowRelatedInIntro(mode: LargeScreenVideoLayoutMode): Boolean {
+    return mode == LargeScreenVideoLayoutMode.AlmostSquare
+}

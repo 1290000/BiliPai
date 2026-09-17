@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -143,11 +145,12 @@ internal fun LargeScreenVideoLayout(
                 windowWidthDp = windowWidthDp,
                 windowHeightDp = windowHeightDp,
                 isVerticalVideo = isVerticalVideo,
+                enableVerticalExpand = true,
             )
         }
         val applySideStatusBarPadding =
             metrics.mode != LargeScreenVideoLayoutMode.AlmostSquare
-        val showRelatedInIntro = false
+        val showRelatedInIntro = resolveShowRelatedInIntro(metrics.mode)
         val relatedTabFirst = false
         val includeRelatedTab = true
         val success = uiState as? VideoPlaybackUiState.Success
@@ -302,11 +305,21 @@ internal fun LargeScreenVideoLayout(
                     ) {
                         intro(Modifier.fillMaxSize())
                     }
+                    VerticalDivider(
+                        modifier = Modifier.fillMaxHeight(),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                        thickness = 1.dp,
+                    )
                     player(
                         Modifier
                             .width(metrics.playerWidthDp.dp)
                             .height(metrics.playerHeightDp.dp)
                             .background(Color.Black),
+                    )
+                    VerticalDivider(
+                        modifier = Modifier.fillMaxHeight(),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                        thickness = 1.dp,
                     )
                     Column(
                         modifier = Modifier
@@ -404,6 +417,13 @@ internal fun LargeScreenVideoLayout(
                             ) {
                                 intro(Modifier.fillMaxSize())
                             }
+                            if (paneVisibility == LargeScreenPaneVisibility.BOTH) {
+                                VerticalDivider(
+                                    modifier = Modifier.fillMaxHeight(),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                    thickness = 1.dp,
+                                )
+                            }
                             Box(
                                 modifier = Modifier
                                     .width(animatedSidePaneWidth)
@@ -474,6 +494,13 @@ internal fun LargeScreenVideoLayout(
                                     )
                                 }
                             }
+                        }
+                        if (paneVisibility == LargeScreenPaneVisibility.BOTH) {
+                            VerticalDivider(
+                                modifier = Modifier.fillMaxHeight(),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                                thickness = 1.dp,
+                            )
                         }
                         Box(
                             modifier = Modifier
