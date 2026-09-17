@@ -2309,8 +2309,10 @@ internal fun VideoDetailScreenStateHolder(
     // 删除冗余的暂停逻辑，避免与 VideoPlayerState 中的生命周期处理冲突
     // VideoPlayerState 会检查 PiP/小窗模式来决定是否暂停
 
-    // 📱 [优化] 竖屏视频检测已移至 VideoPlayerState 集中管理
-    val isVerticalVideo by playerState.isVerticalVideo.collectAsStateWithLifecycle()
+    // 📱 [优化] 综合合并路由初值、API 信息与 PlayerState 维度，确保第 0 帧即可识别竖屏
+    val isVerticalFromPlayer by playerState.isVerticalVideo.collectAsStateWithLifecycle()
+    val isVerticalFromInfo = (uiState as? VideoPlaybackUiState.Success)?.info?.dimension?.isVertical == true
+    val isVerticalVideo = initialVerticalFromRoute || isVerticalFromPlayer || isVerticalFromInfo
     val continuousFullscreenTransitionEnabled = transitionEnabled &&
         isOrientationDrivenFullscreen &&
         orientationPolicyDevice &&
@@ -3225,8 +3227,7 @@ internal fun VideoDetailScreenStateHolder(
             viewPoints = viewPoints,
             pbpProgressData = visiblePbpProgressData,
             sponsorProgressMarkers = sponsorProgressMarkers,
-            isVerticalVideo = isVerticalVideo &&
-                (allowStandalonePortraitExperience || useOfficialInlinePortraitDetailExperience),
+            isVerticalVideo = isVerticalVideo,
             onPortraitFullscreen = { enterPortraitFullscreen() },
             isPortraitFullscreen = isPortraitFullscreen,
             onPipClick = handlePipClick,
@@ -3508,7 +3509,7 @@ internal fun VideoDetailScreenStateHolder(
                         sponsorMarkers = sponsorProgressMarkers,
                         onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
                     // 📱 [新增] 竖屏全屏模式
-                    isVerticalVideo = isVerticalVideo && allowStandalonePortraitExperience,
+                    isVerticalVideo = isVerticalVideo,
                     isPortraitFullscreen = isPortraitFullscreen,
                     onPortraitFullscreen = {
                         if (allowStandalonePortraitExperience) {
@@ -4301,11 +4302,13 @@ internal fun VideoDetailScreenStateHolder(
                         // Exact stationary list cover request (URL + key + size). Never fixImageUrl.
                         val residentCoverImageRequest = remember(
                             context,
+                            isVerticalVideo,
                             residentCoverSource?.url,
                             residentCoverSource?.cacheKey,
                             residentCoverSource?.decodeWidthPx,
                             residentCoverSource?.decodeHeightPx,
                         ) {
+                            if (isVerticalVideo) return@remember null
                             val source = residentCoverSource ?: return@remember null
                             coil3.request.ImageRequest.Builder(context)
                                 .data(source.url)
@@ -4588,7 +4591,7 @@ internal fun VideoDetailScreenStateHolder(
                                 viewPoints = viewPoints,
                                 pbpProgressData = visiblePbpProgressData,
                                 sponsorProgressMarkers = sponsorProgressMarkers,
-                                isVerticalVideo = isVerticalVideo && (allowStandalonePortraitExperience || useOfficialInlinePortraitDetailExperience),
+                                isVerticalVideo = isVerticalVideo,
                                 onPortraitFullscreen = {
                                     when (
                                         resolvePortraitFullscreenButtonAction(

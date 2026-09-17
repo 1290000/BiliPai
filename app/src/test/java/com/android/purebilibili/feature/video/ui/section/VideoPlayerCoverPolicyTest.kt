@@ -331,7 +331,7 @@ class VideoPlayerCoverPolicyTest {
             targetMode = VideoSharedTransitionTargetMode.PortraitFullscreen
         )
 
-        assertTrue(spec.coverUsesSharedBounds)
+        assertFalse(spec.coverUsesSharedBounds)
         assertTrue(spec.fillCoverViewport)
         assertTrue(spec.showManualStartPlayButton)
         assertEquals(VideoPlayerCoverContentScaleMode.Fit, spec.coverContentScaleMode)
@@ -480,7 +480,7 @@ class VideoPlayerCoverPolicyTest {
                 forceCoverDuringReturnAnimation = false,
             )
         )
-        assertTrue(
+        assertFalse(
             shouldLoadVideoPlayerCoverImage(
                 isVerticalVideo = true,
                 shouldKeepCoverForManualStart = true,

@@ -1135,15 +1135,17 @@ internal fun shouldShowCoverImage(
 }
 
 /**
- * 竖屏视频进入播放页时只保留黑色播放器，不请求详情封面。
- * 返回共享转场仍允许封面承接，避免返回列表时媒体区域突然变黑。
+ * 竖屏视频进入播放页时任何情况下都不显示封面，改为黑屏。
  */
 @Suppress("UNUSED_PARAMETER")
 internal fun shouldLoadVideoPlayerCoverImage(
     isVerticalVideo: Boolean,
     shouldKeepCoverForManualStart: Boolean,
     forceCoverDuringReturnAnimation: Boolean,
-): Boolean = forceCoverDuringReturnAnimation || !isVerticalVideo
+): Boolean {
+    if (isVerticalVideo) return false
+    return forceCoverDuringReturnAnimation || !isVerticalVideo
+}
 
 /**
  * 即播路径的封面是透明 TextureView 下的底图，不能持续压在视频帧上；
@@ -1302,9 +1304,9 @@ internal fun resolveVideoPlayerEntryPresentationSpec(
         targetMode == com.android.purebilibili.core.ui.transition.VideoSharedTransitionTargetMode.LandscapeFullscreen ||
             targetMode == com.android.purebilibili.core.ui.transition.VideoSharedTransitionTargetMode.PortraitFullscreen
     val fillCoverViewport = !forceCoverDuringReturnAnimation &&
-        (targetFillsViewport || shouldKeepCoverForManualStart)
+        (targetFillsViewport || shouldKeepCoverForManualStart || isVerticalVideo)
     return VideoPlayerEntryPresentationSpec(
-        coverUsesSharedBounds = forceCoverDuringReturnAnimation || shouldKeepCoverForManualStart,
+        coverUsesSharedBounds = !isVerticalVideo && (forceCoverDuringReturnAnimation || shouldKeepCoverForManualStart),
         fillCoverViewport = fillCoverViewport,
         showManualStartPlayButton = shouldKeepCoverForManualStart,
         enableManualStartCoverOverlay = shouldKeepCoverForManualStart,
