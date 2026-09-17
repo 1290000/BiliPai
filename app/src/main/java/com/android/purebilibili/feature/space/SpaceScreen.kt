@@ -4473,8 +4473,8 @@ private fun SpaceHeaderRelationActions(
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
             ),
             modifier = Modifier
-                .height(36.dp)
-                .width(46.dp)
+                .heightIn(min = 36.dp)
+                .widthIn(min = 46.dp)
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -4501,7 +4501,7 @@ private fun SpaceHeaderRelationActions(
             } else null,
             modifier = Modifier
                 .weight(1f)
-                .height(36.dp)
+                .heightIn(min = 36.dp)
         ) {
             Row(
                 modifier = Modifier
