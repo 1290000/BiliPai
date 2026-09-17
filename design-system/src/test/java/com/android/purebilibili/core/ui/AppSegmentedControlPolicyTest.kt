@@ -39,8 +39,8 @@ class AppSegmentedControlPolicyTest {
         )
         assertTrue(source.contains("else -> tabColors.backgroundColor"))
         assertFalse(source.contains("adaptiveSquircleBackground(\n                color = trackColor"))
-        assertTrue(source.contains("AppMiuixNonGlassTabItem("))
-        assertTrue(source.contains("Arrangement.spacedBy(AppSpacingTokens.ExtraSmall)"))
+        assertTrue(source.contains("AppMiuixNonGlassTabs("))
+        assertTrue(source.contains("Arrangement.spacedBy(AppSpacingTokens.Small)"))
     }
 
     @Test
@@ -180,10 +180,9 @@ class AppSegmentedControlPolicyTest {
                 "AppMiuixSegmentedControl.kt"
         )
         val nonGlassTabs = miuixSource.substringAfter("private fun <T> AppMiuixNonGlassTabs(")
-        assertTrue(nonGlassTabs.contains("shouldStretchMiuixNonGlassTabRowToTrack("))
-        assertTrue(nonGlassTabs.contains("MIUIX_NON_GLASS_TAB_ITEM_SPACING_DP.dp"))
-        assertTrue(nonGlassTabs.contains("wrapContentWidth(Alignment.CenterHorizontally)"))
-        assertTrue(nonGlassTabs.contains("Modifier.weight(1f)"))
+        assertTrue(nonGlassTabs.contains("TabRow("))
+        assertTrue(nonGlassTabs.contains("itemSpacing = AppSpacingTokens.Small"))
+        assertTrue(nonGlassTabs.contains("maxWidth = tabRowMaxWidth"))
     }
 
     @Test
@@ -219,7 +218,7 @@ class AppSegmentedControlPolicyTest {
         val material = resolveAppSegmentedControlPolicy(AppUiStyle.MATERIAL3)
         val miuix = resolveAppSegmentedControlPolicy(AppUiStyle.MIUIX)
         assertEquals(10.8.dp, material.preferredCornerRadius)
-        assertEquals(13.8.dp, miuix.preferredCornerRadius)
+        assertEquals(16.dp, miuix.preferredCornerRadius)
     }
 
     @Test
@@ -229,9 +228,9 @@ class AppSegmentedControlPolicyTest {
             nativeMinimumHeight = 40.dp,
         )
 
-        assertEquals(40.dp, geometry.height)
-        assertEquals(12.dp, geometry.cornerRadius)
-        assertTrue(geometry.cornerRadius < geometry.height / 2)
+        assertEquals(48.dp, geometry.height)
+        assertEquals(14.4.dp, geometry.cornerRadius)
+        assertTrue(geometry.cornerRadius <= geometry.height * 0.3f + 0.1.dp)
     }
 
     @Test

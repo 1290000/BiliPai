@@ -348,6 +348,10 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
                     modifier = Modifier
                         .width(itemWidths.getOrElse(index) { 48.dp })
                         .height(height)
+                        .adaptiveSquircleBackground(
+                            color = if (selected) tabColors.selectedBackgroundColor else Color.Transparent,
+                            cornerRadius = 8.dp,
+                        )
                         .squircleBorder(
                             width = { if (selected) 0.dp else 1.dp },
                             color = { outlineColor },
