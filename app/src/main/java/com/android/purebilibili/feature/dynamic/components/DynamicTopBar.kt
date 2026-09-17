@@ -162,7 +162,7 @@ fun DynamicTopBarWithTabs(
             if (!isProgressiveBlurActive && headerBlurEnabled && hazeState != null) {
                 Modifier
                     .unifiedBlur(hazeState = hazeState, surfaceType = BlurSurfaceType.HEADER)
-                    .background(AppSurfaceTokens.cardContainer().copy(alpha = 0.65f))
+                    .background(AppSurfaceTokens.cardContainer().copy(alpha = AppSurfaceTokens.FrostedScrimAlpha))
             } else Modifier
         ),
     ) {

@@ -114,6 +114,7 @@ import com.android.purebilibili.core.ui.components.AppTextButton
 import com.android.purebilibili.core.ui.AppScaffold
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.AppTopBarStyle
 import com.android.purebilibili.feature.home.components.BiliPaiImmersiveTopBar
@@ -1357,9 +1358,19 @@ private fun ProfileSpaceContent(
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .then(
-                        hazeState?.takeIf { recoverableBlurEnabled(it) }
-                            ?.let { Modifier.unifiedBlur(it, surfaceType = BlurSurfaceType.HEADER) }
-                            ?: Modifier
+                        if (progressiveTopChrome.enabled) {
+                            Modifier
+                        } else {
+                            hazeState?.takeIf { recoverableBlurEnabled(it) }
+                                ?.let {
+                                    Modifier
+                                        .unifiedBlur(it, surfaceType = BlurSurfaceType.HEADER)
+                                        .background(
+                                            AppSurfaceTokens.cardContainer()
+                                                .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                                        )
+                                } ?: Modifier
+                        }
                     ),
             ) {
             Row(
@@ -3416,9 +3427,17 @@ private fun MobileProfileContent(
                     AppIcon(rememberAppSettingsIcon(), contentDescription = "Settings", tint = contentColor)
                 }
             },
-            modifier = hazeState?.takeIf { recoverableBlurEnabled(it) }
-                ?.let { Modifier.unifiedBlur(it, surfaceType = BlurSurfaceType.HEADER) }
-                ?: Modifier,
+            modifier = if (progressiveTopChrome.enabled) Modifier else {
+                hazeState?.takeIf { recoverableBlurEnabled(it) }
+                    ?.let {
+                        Modifier
+                            .unifiedBlur(it, surfaceType = BlurSurfaceType.HEADER)
+                            .background(
+                                AppSurfaceTokens.cardContainer()
+                                    .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                            )
+                    } ?: Modifier
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
                 scrolledContainerColor = Color.Transparent,

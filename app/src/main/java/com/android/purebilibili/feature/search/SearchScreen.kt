@@ -1082,20 +1082,21 @@ fun SearchScreen(
                             backdrop = searchChromeBackdrop,
                             enabled = immersiveSearchChrome,
                             headerBlurActive = shouldUseSearchTopBarBlur && !immersiveSearchChrome,
-                            modifier = Modifier.background(
-                                if (immersiveSearchChrome || shouldUseSearchTopBarBlur) {
-                                    Color.Transparent
-                                } else {
-                                    searchTopBarHeaderColor
-                                }
-                            ).then(
-                                if (shouldUseSearchTopBarBlur && !immersiveSearchChrome) {
-                                    Modifier.unifiedBlur(
-                                        hazeState = hazeState,
-                                        surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
-                                    )
-                                } else {
+                            modifier = Modifier.then(
+                                if (immersiveSearchChrome) {
+                                    Modifier.background(Color.Transparent)
+                                } else if (shouldUseSearchTopBarBlur) {
                                     Modifier
+                                        .unifiedBlur(
+                                            hazeState = hazeState,
+                                            surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
+                                        )
+                                        .background(
+                                            searchTopBarHeaderColor
+                                                .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                                        )
+                                } else {
+                                    Modifier.background(searchTopBarHeaderColor)
                                 }
                             ),
                         ) {

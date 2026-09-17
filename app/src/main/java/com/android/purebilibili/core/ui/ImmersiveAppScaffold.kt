@@ -78,16 +78,21 @@ internal fun ImmersiveAppScaffold(
                     backdrop = backdrop.takeIf { progressiveActive },
                     enabled = progressiveActive,
                     headerBlurActive = hazeActive,
-                    modifier = Modifier.background(
-                        if (blurActive) Color.Transparent else globalWallpaperAwareChromeColor(containerColor)
-                    ).then(
-                        if (hazeActive && hazeState != null) {
-                            Modifier.unifiedBlur(
-                                hazeState = hazeState,
-                                surfaceType = BlurSurfaceType.HEADER,
-                            )
-                        } else {
+                    modifier = Modifier.then(
+                        if (progressiveActive) {
+                            Modifier.background(Color.Transparent)
+                        } else if (hazeActive && hazeState != null) {
                             Modifier
+                                .unifiedBlur(
+                                    hazeState = hazeState,
+                                    surfaceType = BlurSurfaceType.HEADER,
+                                )
+                                .background(
+                                    globalWallpaperAwareChromeColor(containerColor)
+                                        .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                                )
+                        } else {
+                            Modifier.background(globalWallpaperAwareChromeColor(containerColor))
                         }
                     ),
                     content = topBar,

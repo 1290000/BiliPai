@@ -403,12 +403,17 @@ fun SpaceScreen(
                             Modifier
                         } else {
                             hazeState?.let {
-                                Modifier.unifiedBlur(
-                                    hazeState = it,
-                                    surfaceType = BlurSurfaceType.HEADER,
-                                    isScrolling = isSpaceScrolling,
-                                    enabled = pinnedTopChromeScrim > 0f
-                                )
+                                Modifier
+                                    .unifiedBlur(
+                                        hazeState = it,
+                                        surfaceType = BlurSurfaceType.HEADER,
+                                        isScrolling = isSpaceScrolling,
+                                        enabled = pinnedTopChromeScrim > 0f
+                                    )
+                                    .background(
+                                        com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.surface)
+                                            .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha * pinnedTopChromeScrim)
+                                    )
                             } ?: Modifier
                         }
                     )

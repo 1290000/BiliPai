@@ -334,6 +334,7 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .squircleClip(8.dp)
             .background(if (drawTrack) tabColors.backgroundColor else Color.Transparent)
             .then(if (!enabled) Modifier.semantics { disabled() } else Modifier),
     ) {
