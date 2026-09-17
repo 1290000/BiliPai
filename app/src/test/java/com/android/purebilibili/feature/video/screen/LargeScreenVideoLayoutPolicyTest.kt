@@ -11,13 +11,18 @@ class LargeScreenVideoLayoutPolicyTest {
     fun landscapeLayoutHidesIntroRelatedAndPutsRelatedTabFirst() {
         assertFalse(resolveShowRelatedInIntro(LargeScreenVideoLayoutMode.Landscape))
         assertTrue(resolveShowRelatedInIntro(LargeScreenVideoLayoutMode.AlmostSquare))
+        assertTrue(resolveIncludeRelatedTabInSecondary(LargeScreenVideoLayoutMode.Landscape))
+        assertFalse(resolveIncludeRelatedTabInSecondary(LargeScreenVideoLayoutMode.AlmostSquare))
+        assertTrue(resolveRelatedTabFirstInSecondary(LargeScreenVideoLayoutMode.Landscape))
+        assertFalse(resolveRelatedTabFirstInSecondary(LargeScreenVideoLayoutMode.AlmostSquare))
         val source = java.io.File(
             "app/src/main/java/com/android/purebilibili/feature/video/screen/LargeScreenVideoLayout.kt"
         ).takeIf { it.exists() } ?: java.io.File(
             "src/main/java/com/android/purebilibili/feature/video/screen/LargeScreenVideoLayout.kt"
         )
         val text = source.readText()
-        assertTrue(text.contains("includeRelatedTab = true"))
+        assertTrue(text.contains("includeRelatedTab = resolveIncludeRelatedTabInSecondary(metrics.mode)"))
+        assertTrue(text.contains("relatedTabFirst = resolveRelatedTabFirstInSecondary(metrics.mode)"))
         assertTrue(text.contains("includeOwnerUploadsTab = true"))
         assertTrue(text.contains("showRelatedVideos = showRelatedInIntro"))
         assertTrue(text.contains("LargeScreenVideoLayoutMode.AlmostSquare"))

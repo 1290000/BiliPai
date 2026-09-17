@@ -440,6 +440,7 @@ internal fun TabletVideoLayout(
                             requestedSecondaryTabName = TabletSecondaryTab.OWNER_UPLOADS.name
                             secondaryPaneModeName = TabletSecondaryPaneMode.EXPANDED.name
                         },
+                        showRelatedVideos = false,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
@@ -475,6 +476,7 @@ internal fun TabletVideoLayout(
                         requestedTabName = requestedSecondaryTabName,
                         onRequestedTabConsumed = { requestedSecondaryTabName = null },
                         fixedTab = if (useThreePaneLayout) TabletSecondaryTab.COMMENTS else null,
+                        relatedTabFirst = true,
                         introContent = if (layoutPolicy.useTabletopLayout) {
                             {
                                 TabletVideoInfoPane(
@@ -992,19 +994,21 @@ internal fun TabletSecondaryContent(
                                     style = MaterialTheme.typography.titleMedium,
                                     color = commentAppearance.secondaryTextColor
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                AppText(
-                                    text = "先看看相关推荐",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = commentAppearance.secondaryTextColor
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                AppTextButton(onClick = {
-                                    scope.launch {
-                                        animatePagerSelection(pagerState, relatedTabIndex)
+                                if (includeRelatedTab) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    AppText(
+                                        text = "先看看相关推荐",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = commentAppearance.secondaryTextColor
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    AppTextButton(onClick = {
+                                        scope.launch {
+                                            animatePagerSelection(pagerState, relatedTabIndex)
+                                        }
+                                    }) {
+                                        AppText("切换到相关推荐")
                                     }
-                                }) {
-                                    AppText("切换到相关推荐")
                                 }
                             }
                         }

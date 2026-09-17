@@ -135,3 +135,11 @@ internal fun resolveLargeScreenVideoMetrics(
 internal fun resolveShowRelatedInIntro(mode: LargeScreenVideoLayoutMode): Boolean {
     return mode == LargeScreenVideoLayoutMode.AlmostSquare
 }
+
+internal fun resolveIncludeRelatedTabInSecondary(mode: LargeScreenVideoLayoutMode): Boolean {
+    return mode != LargeScreenVideoLayoutMode.AlmostSquare
+}
+
+internal fun resolveRelatedTabFirstInSecondary(mode: LargeScreenVideoLayoutMode): Boolean {
+    return mode == LargeScreenVideoLayoutMode.Landscape || mode == LargeScreenVideoLayoutMode.Split
+}
