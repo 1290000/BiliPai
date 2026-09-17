@@ -107,7 +107,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.core.animate
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.Job
-import com.android.purebilibili.core.theme.AppMotionTokens
+import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.BackHandler
 import com.android.purebilibili.R
