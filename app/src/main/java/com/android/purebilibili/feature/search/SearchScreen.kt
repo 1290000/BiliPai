@@ -863,7 +863,7 @@ fun SearchScreen(
     val searchStatusBarHeightPx = with(density) {
         WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
     }
-    val searchCollapseDistancePx = (searchTopBarHeightPx.toFloat() - searchStatusBarHeightPx).coerceAtLeast(0f)
+    val searchCollapseDistancePx = searchTopBarHeightPx.toFloat().coerceAtLeast(0f)
     val searchHeaderSettleMotionSpec = AppMotionTokens.emphasizedSpec<Float>()
 
     val isSearchResultsAtTop by remember(
@@ -1183,76 +1183,109 @@ fun SearchScreen(
                                 }
                             ),
                         ) {
+                            val searchCollapseFraction = if (isSearchCollapseEnabled && searchCollapseDistancePx > 0f) {
+                                (-searchHeaderOffsetPx / searchCollapseDistancePx).coerceIn(0f, 1f)
+                            } else {
+                                0f
+                            }
+                            val currentSearchHeightDp = with(density) {
+                                (searchTopBarHeightPx * (1f - searchCollapseFraction)).toDp()
+                            }
+                            val currentSearchAlpha = (1f - searchCollapseFraction * 1.35f).coerceIn(0f, 1f)
                             Layout(
                                 modifier = Modifier.clipToBounds(),
                                 content = {
-                                    Column(
+                                    Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .onGloballyPositioned { coordinates ->
-                                                searchTopBarHeightPx = coordinates.size.height
+                                            .then(
+                                                if (isSearchCollapseEnabled && searchCollapseDistancePx > 0f) {
+                                                    Modifier.height(currentSearchHeightDp)
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
+                                            .clipToBounds()
+                                            .graphicsLayer {
+                                                alpha = if (isSearchCollapseEnabled && searchCollapseDistancePx > 0f) {
+                                                    currentSearchAlpha
+                                                } else {
+                                                    1f
+                                                }
                                             }
                                     ) {
-                                        SearchTopBar(
-                                            query = state.query,
-                                            onBack = handleSearchBack,
-                                            onQueryChange = { viewModel.onQueryChange(it) },
-                                            onSearch = {
-                                                autoFocusConsumed = true
-                                                viewModel.search(it)
-                                                dismissSearchKeyboardAndFocus()
-                                            },
-                                            onClearQuery = { viewModel.onQueryChange("") },
-                                            onFocusChanged = { focused ->
-                                                searchFieldFocused = focused
-                                                if (focused) {
-                                                    autoFocusConsumed = true
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .onGloballyPositioned { coordinates ->
+                                                    if (coordinates.size.height > 0 && searchCollapseFraction <= 0.05f) {
+                                                        searchTopBarHeightPx = coordinates.size.height
+                                                    }
                                                 }
-                                            },
-                                            focusRequester = searchFocusRequester,
-                                            placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
-                                            suggestedKeyword = displayedSearchHint,
-                                            autoFocusEnabled = false,
-                                            reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
-                                            isScrollInProgressProvider = { isSearchResultsScrolling },
-                                            liquidGlassEnabled = effectiveLiquidGlassEnabled,
-                                            miuixBackdrop = searchChromeBackdrop,
-                                        )
-                                        //  搜索彩蛋消息横幅
-                                        val easterEggMsg = state.easterEggMessage
-                                        if (easterEggMsg != null) {
-                                            val easterEggColors = resolveAccessibleContainerColors(
-                                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                backgroundColor = MaterialTheme.colorScheme.surface,
-                                                fallbackContentColors = listOf(
-                                                    MaterialTheme.colorScheme.onSurface,
-                                                    MaterialTheme.colorScheme.onBackground,
-                                                ),
+                                        ) {
+                                            SearchTopBar(
+                                                query = state.query,
+                                                onBack = handleSearchBack,
+                                                onQueryChange = { viewModel.onQueryChange(it) },
+                                                onSearch = {
+                                                    autoFocusConsumed = true
+                                                    viewModel.search(it)
+                                                    dismissSearchKeyboardAndFocus()
+                                                },
+                                                onClearQuery = { viewModel.onQueryChange("") },
+                                                onFocusChanged = { focused ->
+                                                    searchFieldFocused = focused
+                                                    if (focused) {
+                                                        autoFocusConsumed = true
+                                                    }
+                                                },
+                                                focusRequester = searchFocusRequester,
+                                                placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
+                                                suggestedKeyword = displayedSearchHint,
+                                                autoFocusEnabled = false,
+                                                reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
+                                                isScrollInProgressProvider = { isSearchResultsScrolling },
+                                                liquidGlassEnabled = effectiveLiquidGlassEnabled,
+                                                miuixBackdrop = searchChromeBackdrop,
+                                                includeStatusBarPadding = false,
                                             )
-                                            AppSurface(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                                color = easterEggColors.containerColor,
-                                                shape = AppShapes.container(ContainerLevel.Card)
-                                            ) {
-                                                Row(
+                                            //  搜索彩蛋消息横幅
+                                            val easterEggMsg = state.easterEggMessage
+                                            if (easterEggMsg != null) {
+                                                val easterEggColors = resolveAccessibleContainerColors(
+                                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    backgroundColor = MaterialTheme.colorScheme.surface,
+                                                    fallbackContentColors = listOf(
+                                                        MaterialTheme.colorScheme.onSurface,
+                                                        MaterialTheme.colorScheme.onBackground,
+                                                    ),
+                                                )
+                                                AppSurface(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                                    horizontalArrangement = Arrangement.Center,
-                                                    verticalAlignment = Alignment.CenterVertically
+                                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                    color = easterEggColors.containerColor,
+                                                    shape = AppShapes.container(ContainerLevel.Card)
                                                 ) {
-                                                    AppText(
-                                                        text = easterEggMsg,
-                                                        color = easterEggColors.contentColor,
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        maxLines = 2,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                                    )
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                        horizontalArrangement = Arrangement.Center,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        AppText(
+                                                            text = easterEggMsg,
+                                                            color = easterEggColors.contentColor,
+                                                            fontSize = 14.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -1332,29 +1365,12 @@ fun SearchScreen(
                                 val placeables = measurables.map { it.measure(constraints) }
                                 val width = placeables.maxOfOrNull { it.width }?.coerceIn(constraints.minWidth, constraints.maxWidth)
                                     ?: constraints.minWidth
-                                if (isSearchCollapseEnabled && placeables.isNotEmpty() && searchCollapseDistancePx > 0f) {
-                                    val topBarHeight = placeables.first().height
-                                    val dockHeight = placeables.drop(1).sumOf { it.height }
-                                    val collapseFraction = (-searchHeaderOffsetPx / searchCollapseDistancePx).coerceIn(0f, 1f)
-                                    val topBarOffset = (-searchCollapseDistancePx * collapseFraction).toInt()
-                                    val dockTop = (topBarHeight + searchHeaderOffsetPx).coerceAtLeast(searchStatusBarHeightPx).toInt()
-                                    val height = (dockTop + dockHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
-                                    layout(width, height) {
-                                        placeables.first().placeRelative(0, topBarOffset)
-                                        var y = dockTop
-                                        placeables.drop(1).forEach { placeable ->
-                                            placeable.placeRelative(0, y)
-                                            y += placeable.height
-                                        }
-                                    }
-                                } else {
-                                    val height = placeables.sumOf { it.height }.coerceIn(constraints.minHeight, constraints.maxHeight)
-                                    layout(width, height) {
-                                        var y = 0
-                                        placeables.forEach { placeable ->
-                                            placeable.placeRelative(0, y)
-                                            y += placeable.height
-                                        }
+                                val height = placeables.sumOf { it.height }.coerceIn(constraints.minHeight, constraints.maxHeight)
+                                layout(width, height) {
+                                    var y = 0
+                                    placeables.forEach { placeable ->
+                                        placeable.placeRelative(0, y)
+                                        y += placeable.height
                                     }
                                 }
                             }
@@ -2381,6 +2397,7 @@ fun SearchTopBar(
     isScrollInProgressProvider: () -> Boolean = { false },
     liquidGlassEnabled: Boolean = false,
     miuixBackdrop: MiuixBackdrop? = null,
+    includeStatusBarPadding: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val topChromePolicy = rememberAppTopChromePolicy()
@@ -2533,7 +2550,9 @@ fun SearchTopBar(
         shadowElevation = 0.dp
     ) {
         Column {
-            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            if (includeStatusBarPadding) {
+                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            }
 
             Row(
                 modifier = Modifier
