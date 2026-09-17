@@ -1078,122 +1078,117 @@ fun SearchScreen(
                     containerColor = Color.Transparent,
                     contentWindowInsets = WindowInsets(0, 0, 0, 0),
                     topBar = {
-                        Column {
-                            BiliPaiImmersiveTopBar(
-                                backdrop = searchChromeBackdrop,
-                                enabled = immersiveSearchChrome,
-                                headerBlurActive = shouldUseSearchTopBarBlur && !immersiveSearchChrome,
-                                extendBelowBounds = false,
-                                modifier = Modifier.then(
-                                    if (immersiveSearchChrome) {
-                                        Modifier.background(Color.Transparent)
-                                    } else if (shouldUseSearchTopBarBlur) {
-                                        Modifier
-                                            .unifiedBlur(
-                                                hazeState = hazeState,
-                                                surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
-                                            )
-                                            .background(
-                                                searchTopBarHeaderColor
-                                                    .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
-                                            )
-                                    } else {
-                                        Modifier.background(searchTopBarHeaderColor)
-                                    }
-                                ),
-                            ) {
-                                Column {
-                                    SearchTopBar(
-                                        query = state.query,
-                                        onBack = handleSearchBack,
-                                        onQueryChange = { viewModel.onQueryChange(it) },
-                                        onSearch = {
-                                            autoFocusConsumed = true
-                                            viewModel.search(it)
-                                            dismissSearchKeyboardAndFocus()
-                                        },
-                                        onClearQuery = { viewModel.onQueryChange("") },
-                                        onFocusChanged = { focused ->
-                                            searchFieldFocused = focused
-                                            if (focused) {
-                                                autoFocusConsumed = true
-                                            }
-                                        },
-                                        focusRequester = searchFocusRequester,
-                                        placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
-                                        suggestedKeyword = displayedSearchHint,
-                                        autoFocusEnabled = false,
-                                        reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
-                                        isScrollInProgressProvider = { isSearchResultsScrolling },
-                                        liquidGlassEnabled = effectiveLiquidGlassEnabled,
-                                        miuixBackdrop = searchChromeBackdrop,
-                                    )
-                                    //  搜索彩蛋消息横幅
-                                    val easterEggMsg = state.easterEggMessage
-                                    if (easterEggMsg != null) {
-                                        val easterEggColors = resolveAccessibleContainerColors(
-                                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            backgroundColor = MaterialTheme.colorScheme.surface,
-                                            fallbackContentColors = listOf(
-                                                MaterialTheme.colorScheme.onSurface,
-                                                MaterialTheme.colorScheme.onBackground,
-                                            ),
+                        val searchChromeSurface = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+                            AppSurfaceTokens.groupedListContainer()
+                        )
+                        BiliPaiImmersiveTopBar(
+                            backdrop = searchChromeBackdrop,
+                            enabled = immersiveSearchChrome,
+                            headerBlurActive = shouldUseSearchTopBarBlur && !immersiveSearchChrome,
+                            extendBelowBounds = false,
+                            modifier = Modifier.then(
+                                if (immersiveSearchChrome) {
+                                    Modifier.background(Color.Transparent)
+                                } else if (shouldUseSearchTopBarBlur) {
+                                    Modifier
+                                        .unifiedBlur(
+                                            hazeState = hazeState,
+                                            surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
                                         )
-                                        AppSurface(
+                                        .background(
+                                            searchChromeSurface
+                                                .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
+                                        )
+                                } else {
+                                    Modifier.background(searchChromeSurface)
+                                }
+                            ),
+                        ) {
+                            Column {
+                                SearchTopBar(
+                                    query = state.query,
+                                    onBack = handleSearchBack,
+                                    onQueryChange = { viewModel.onQueryChange(it) },
+                                    onSearch = {
+                                        autoFocusConsumed = true
+                                        viewModel.search(it)
+                                        dismissSearchKeyboardAndFocus()
+                                    },
+                                    onClearQuery = { viewModel.onQueryChange("") },
+                                    onFocusChanged = { focused ->
+                                        searchFieldFocused = focused
+                                        if (focused) {
+                                            autoFocusConsumed = true
+                                        }
+                                    },
+                                    focusRequester = searchFocusRequester,
+                                    placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
+                                    suggestedKeyword = displayedSearchHint,
+                                    autoFocusEnabled = false,
+                                    reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
+                                    isScrollInProgressProvider = { isSearchResultsScrolling },
+                                    liquidGlassEnabled = effectiveLiquidGlassEnabled,
+                                    miuixBackdrop = searchChromeBackdrop,
+                                )
+                                //  搜索彩蛋消息横幅
+                                val easterEggMsg = state.easterEggMessage
+                                if (easterEggMsg != null) {
+                                    val easterEggColors = resolveAccessibleContainerColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        backgroundColor = MaterialTheme.colorScheme.surface,
+                                        fallbackContentColors = listOf(
+                                            MaterialTheme.colorScheme.onSurface,
+                                            MaterialTheme.colorScheme.onBackground,
+                                        ),
+                                    )
+                                    AppSurface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        color = easterEggColors.containerColor,
+                                        shape = AppShapes.container(ContainerLevel.Card)
+                                    ) {
+                                        Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                                            color = easterEggColors.containerColor,
-                                            shape = AppShapes.container(ContainerLevel.Card)
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                                horizontalArrangement = Arrangement.Center,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                AppText(
-                                                    text = easterEggMsg,
-                                                    color = easterEggColors.contentColor,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                                )
-                                            }
+                                            AppText(
+                                                text = easterEggMsg,
+                                                color = easterEggColors.contentColor,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                            )
                                         }
                                     }
-                                    SearchResultTypeTabRow(
-                                        tabs = searchTabs,
-                                        pagerState = searchPagerState,
-                                        miuixBackdrop = searchChromeBackdrop,
-                                        onTabClick = { page, type ->
-                                            if (searchPagerState.currentPage == page && state.searchType == type) {
-                                                scrollToTopSearchType = type
-                                                scrollToTopRequestId += 1
-                                            } else {
-                                                scope.launch { animatePagerSelection(searchPagerState, page) }
-                                            }
-                                        }
-                                    )
                                 }
-                            }
-                            val showStableFilterBar = resolveSearchFilterControls(
-                                currentType = state.searchType,
-                                currentUpOrder = state.upOrder
-                            ).isNotEmpty()
-                            AnimatedVisibility(
-                                visible = showStableFilterBar,
-                                enter = fadeIn(animationSpec = tween(90)),
-                                exit = fadeOut(animationSpec = tween(70))
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(searchTopBarHeaderColor)
+                                SearchResultTypeTabRow(
+                                    tabs = searchTabs,
+                                    pagerState = searchPagerState,
+                                    miuixBackdrop = searchChromeBackdrop,
+                                    onTabClick = { page, type ->
+                                        if (searchPagerState.currentPage == page && state.searchType == type) {
+                                            scrollToTopSearchType = type
+                                            scrollToTopRequestId += 1
+                                        } else {
+                                            scope.launch { animatePagerSelection(searchPagerState, page) }
+                                        }
+                                    }
+                                )
+                                val showStableFilterBar = resolveSearchFilterControls(
+                                    currentType = state.searchType,
+                                    currentUpOrder = state.upOrder
+                                ).isNotEmpty()
+                                AnimatedVisibility(
+                                    visible = showStableFilterBar,
+                                    enter = fadeIn(animationSpec = tween(90)),
+                                    exit = fadeOut(animationSpec = tween(70))
                                 ) {
                                     if (state.searchType == SearchType.VIDEO) {
                                         SearchVideoFilterBar(
