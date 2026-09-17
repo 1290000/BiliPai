@@ -303,8 +303,9 @@ fun CommonListScreen(
     var showHistoryBatchDeleteConfirm by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var showHistoryClearConfirm by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var pendingHistorySingleDeleteKey by rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    // 收藏页保持完整的导航、搜索和筛选栏；折叠后会在首个收藏夹上方留下大块空洞。
-    val supportsCollapsibleCommonListHeader = historyViewModel != null
+    // 历史与收藏页面支持随全局顶栏收起设置协同折叠搜索栏/标题栏
+    val supportsCollapsibleCommonListHeader = (historyViewModel != null || favoriteViewModel != null) &&
+        homeSettings.homeHeaderCollapseMode.hasAnyCollapse
     val visibleHistoryItems = remember(state.items, historyContentFilter, historyViewModel) {
         if (historyViewModel == null) {
             state.items
@@ -647,8 +648,9 @@ fun CommonListScreen(
     var headerHeightPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var visibleHeaderHeightPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var fixedTopBarHeightPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var searchBarHeightPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val headerHeightDp = with(LocalDensity.current) {
-        (if (historyViewModel != null) visibleHeaderHeightPx else headerHeightPx).toDp()
+        (if (supportsCollapsibleCommonListHeader) visibleHeaderHeightPx else headerHeightPx).toDp()
     }
     var commonListHeaderOffsetPx by remember { mutableFloatStateOf(0f) }
     var commonListHeaderSettleJob by remember { androidx.compose.runtime.mutableStateOf<Job?>(null) }
@@ -660,9 +662,12 @@ fun CommonListScreen(
     val statusBarHeightPx = with(LocalDensity.current) {
         WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
     }
-    val commonListHeaderMaxCollapsePx = if (historyViewModel != null) {
-        // 历史页只移走标题内容；保留状态栏安全区，让搜索和分类 Dock 停在其下方。
-        (fixedTopBarHeightPx.toFloat() - statusBarHeightPx).coerceAtLeast(0f)
+    val commonListHeaderMaxCollapsePx = if (supportsCollapsibleCommonListHeader) {
+        if (homeSettings.homeHeaderCollapseMode == HomeHeaderCollapseMode.SEARCH_ONLY) {
+            searchBarHeightPx.toFloat().coerceAtLeast(0f)
+        } else {
+            (fixedTopBarHeightPx.toFloat() - statusBarHeightPx).coerceAtLeast(0f)
+        }
     } else {
         resolveCommonListHeaderMaxCollapsePx(
             headerHeightPx = headerHeightPx,
@@ -1339,18 +1344,18 @@ fun CommonListScreen(
                     .zIndex(1f)
                     .align(Alignment.TopCenter)
                     .graphicsLayer {
-                        translationY = if (historyViewModel != null) 0f else commonListHeaderOffsetPx
+                        translationY = if (supportsCollapsibleCommonListHeader) 0f else commonListHeaderOffsetPx
                     }
                     .then(topBarBackgroundModifier)
                     .onGloballyPositioned { coordinates ->
                         visibleHeaderHeightPx = coordinates.size.height
-                        if (historyViewModel == null || commonListHeaderOffsetPx >= -0.5f) {
+                        if (!supportsCollapsibleCommonListHeader || commonListHeaderOffsetPx >= -0.5f) {
                             headerHeightPx = coordinates.size.height
                         }
                     }
             ) {
                 Layout(
-                    modifier = if (historyViewModel != null) Modifier.clipToBounds() else Modifier,
+                    modifier = if (supportsCollapsibleCommonListHeader) Modifier.clipToBounds() else Modifier,
                     content = {
                     AppTopBar(
                         title = state.title,
@@ -1643,6 +1648,9 @@ fun CommonListScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .onGloballyPositioned { coordinates ->
+                                searchBarHeightPx = coordinates.size.height
+                            }
                             .padding(
                                 horizontal = if (historyViewModel != null && historyFilterChrome.useLiquidDock) {
                                     historyFilterChrome.horizontalPaddingDp.dp
@@ -1834,26 +1842,47 @@ fun CommonListScreen(
                     val width = placeables.maxOfOrNull { it.width }
                         ?.coerceIn(constraints.minWidth, boundedMaxWidth)
                         ?: constraints.minWidth
-                    if (historyViewModel != null && placeables.isNotEmpty()) {
+                    if (supportsCollapsibleCommonListHeader && placeables.isNotEmpty()) {
                         val titleHeight = placeables.first().height
-                        val floatingDockHeight = placeables.drop(1).sumOf { it.height }
-                        val titleOffset = resolveHistoryTitleOffsetPx(
-                            headerOffsetPx = commonListHeaderOffsetPx,
-                            maxCollapsePx = commonListHeaderMaxCollapsePx,
-                            titleHeightPx = titleHeight,
-                        )
-                        val floatingDockTop = (titleHeight + commonListHeaderOffsetPx)
-                            .coerceAtLeast(statusBarHeightPx)
-                            .toInt()
-                        val height = (floatingDockTop + floatingDockHeight)
-                            .coerceIn(constraints.minHeight, constraints.maxHeight)
-                        layout(width, height) {
-                            // 标题完整离场；Dock 仍只上移到状态栏安全区下方。
-                            placeables.first().placeRelative(0, titleOffset)
-                            var y = floatingDockTop
-                            placeables.drop(1).forEach { placeable ->
-                                placeable.placeRelative(0, y)
-                                y += placeable.height
+                        val isSearchOnly = homeSettings.homeHeaderCollapseMode == HomeHeaderCollapseMode.SEARCH_ONLY
+                        if (isSearchOnly && placeables.size >= 2 && commonListHeaderMaxCollapsePx > 0f) {
+                            // 仅折叠搜索：标题栏停留在顶部，搜索行上滑折叠，标签页停在标题栏下方
+                            val searchBarHeight = placeables[1].height
+                            val collapseFraction = (-commonListHeaderOffsetPx / commonListHeaderMaxCollapsePx).coerceIn(0f, 1f)
+                            val searchBarOffset = titleHeight - (collapseFraction * searchBarHeight).toInt()
+                            val searchBarVisibleHeight = (searchBarHeight * (1f - collapseFraction)).toInt()
+                            val dockTop = titleHeight + searchBarVisibleHeight
+                            val remainingHeight = placeables.drop(2).sumOf { it.height }
+                            val height = (dockTop + remainingHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
+                            layout(width, height) {
+                                placeables[0].placeRelative(0, 0)
+                                placeables[1].placeRelative(0, searchBarOffset)
+                                var y = dockTop
+                                placeables.drop(2).forEach { placeable ->
+                                    placeable.placeRelative(0, y)
+                                    y += placeable.height
+                                }
+                            }
+                        } else {
+                            val floatingDockHeight = placeables.drop(1).sumOf { it.height }
+                            val titleOffset = resolveHistoryTitleOffsetPx(
+                                headerOffsetPx = commonListHeaderOffsetPx,
+                                maxCollapsePx = commonListHeaderMaxCollapsePx,
+                                titleHeightPx = titleHeight,
+                            )
+                            val floatingDockTop = (titleHeight + commonListHeaderOffsetPx)
+                                .coerceAtLeast(statusBarHeightPx)
+                                .toInt()
+                            val height = (floatingDockTop + floatingDockHeight)
+                                .coerceIn(constraints.minHeight, constraints.maxHeight)
+                            layout(width, height) {
+                                // 标题完整离场；Dock 仍只上移到状态栏安全区下方。
+                                placeables.first().placeRelative(0, titleOffset)
+                                var y = floatingDockTop
+                                placeables.drop(1).forEach { placeable ->
+                                    placeable.placeRelative(0, y)
+                                    y += placeable.height
+                                }
                             }
                         }
                     } else {

@@ -98,6 +98,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.animation.core.animate
+import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.Job
+import com.android.purebilibili.core.theme.AppMotionTokens
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.BackHandler
 import com.android.purebilibili.R
@@ -846,6 +856,73 @@ fun SearchScreen(
                 searchPagerState.isScrollInProgress
         }
     }
+    val isSearchCollapseEnabled = homeSettings.homeHeaderCollapseMode.collapseSearch
+    var searchTopBarHeightPx by remember { mutableIntStateOf(0) }
+    var searchHeaderOffsetPx by remember { mutableFloatStateOf(0f) }
+    var searchHeaderSettleJob by remember { mutableStateOf<Job?>(null) }
+    val searchStatusBarHeightPx = with(density) {
+        WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
+    }
+    val searchCollapseDistancePx = (searchTopBarHeightPx.toFloat() - searchStatusBarHeightPx).coerceAtLeast(0f)
+
+    val isSearchResultsAtTop by remember(
+        state.showResults,
+        state.searchType,
+        resultGridState,
+        resultListState
+    ) {
+        derivedStateOf {
+            if (!state.showResults) {
+                true
+            } else if (state.searchType == SearchType.VIDEO) {
+                resultGridState.firstVisibleItemIndex == 0 && resultGridState.firstVisibleItemScrollOffset == 0
+            } else {
+                resultListState.firstVisibleItemIndex == 0 && resultListState.firstVisibleItemScrollOffset == 0
+            }
+        }
+    }
+
+    fun animateSearchHeaderOffsetTo(targetOffsetPx: Float) {
+        if (kotlin.math.abs(searchHeaderOffsetPx - targetOffsetPx) <= 0.5f) {
+            searchHeaderOffsetPx = targetOffsetPx
+            return
+        }
+        searchHeaderSettleJob?.cancel()
+        searchHeaderSettleJob = scope.launch {
+            animate(
+                initialValue = searchHeaderOffsetPx,
+                targetValue = targetOffsetPx,
+                animationSpec = AppMotionTokens.emphasizedSpec()
+            ) { value, _ ->
+                searchHeaderOffsetPx = value
+            }
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (searchHeaderSettleJob === job) {
+                    searchHeaderSettleJob = null
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(isSearchCollapseEnabled, isSearchResultsAtTop) {
+        if (!isSearchCollapseEnabled || isSearchResultsAtTop) {
+            animateSearchHeaderOffsetTo(0f)
+        }
+    }
+
+    val searchHeaderScrollConnection = remember(isSearchCollapseEnabled, searchCollapseDistancePx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!isSearchCollapseEnabled || searchCollapseDistancePx <= 0f) return Offset.Zero
+                if (kotlin.math.abs(available.y) < 0.5f) return Offset.Zero
+                searchHeaderSettleJob?.cancel()
+                searchHeaderSettleJob = null
+                searchHeaderOffsetPx = (searchHeaderOffsetPx + available.y).coerceIn(-searchCollapseDistancePx, 0f)
+                return Offset.Zero
+            }
+        }
+    }
     val searchMotionBudget by remember(state.query, state.isSearching, isSearchResultsScrolling) {
         derivedStateOf {
             resolveSearchMotionBudget(
@@ -1074,6 +1151,7 @@ fun SearchScreen(
                     modifier = Modifier
                         .responsiveContentWidth(maxWidth = searchContentWidth)
                         .fillMaxSize()
+                        .nestedScroll(searchHeaderScrollConnection)
                         .graphicsLayer { alpha = exitContentAlpha },
                     containerColor = Color.Transparent,
                     contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -1104,137 +1182,178 @@ fun SearchScreen(
                                 }
                             ),
                         ) {
-                            Column {
-                                SearchTopBar(
-                                    query = state.query,
-                                    onBack = handleSearchBack,
-                                    onQueryChange = { viewModel.onQueryChange(it) },
-                                    onSearch = {
-                                        autoFocusConsumed = true
-                                        viewModel.search(it)
-                                        dismissSearchKeyboardAndFocus()
-                                    },
-                                    onClearQuery = { viewModel.onQueryChange("") },
-                                    onFocusChanged = { focused ->
-                                        searchFieldFocused = focused
-                                        if (focused) {
-                                            autoFocusConsumed = true
-                                        }
-                                    },
-                                    focusRequester = searchFocusRequester,
-                                    placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
-                                    suggestedKeyword = displayedSearchHint,
-                                    autoFocusEnabled = false,
-                                    reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
-                                    isScrollInProgressProvider = { isSearchResultsScrolling },
-                                    liquidGlassEnabled = effectiveLiquidGlassEnabled,
-                                    miuixBackdrop = searchChromeBackdrop,
-                                )
-                                //  搜索彩蛋消息横幅
-                                val easterEggMsg = state.easterEggMessage
-                                if (easterEggMsg != null) {
-                                    val easterEggColors = resolveAccessibleContainerColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        backgroundColor = MaterialTheme.colorScheme.surface,
-                                        fallbackContentColors = listOf(
-                                            MaterialTheme.colorScheme.onSurface,
-                                            MaterialTheme.colorScheme.onBackground,
-                                        ),
-                                    )
-                                    AppSurface(
+                            Layout(
+                                modifier = Modifier.clipToBounds(),
+                                content = {
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                        color = easterEggColors.containerColor,
-                                        shape = AppShapes.container(ContainerLevel.Card)
+                                            .onGloballyPositioned { coordinates ->
+                                                searchTopBarHeightPx = coordinates.size.height
+                                            }
                                     ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                                            horizontalArrangement = Arrangement.Center,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            AppText(
-                                                text = easterEggMsg,
-                                                color = easterEggColors.contentColor,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        SearchTopBar(
+                                            query = state.query,
+                                            onBack = handleSearchBack,
+                                            onQueryChange = { viewModel.onQueryChange(it) },
+                                            onSearch = {
+                                                autoFocusConsumed = true
+                                                viewModel.search(it)
+                                                dismissSearchKeyboardAndFocus()
+                                            },
+                                            onClearQuery = { viewModel.onQueryChange("") },
+                                            onFocusChanged = { focused ->
+                                                searchFieldFocused = focused
+                                                if (focused) {
+                                                    autoFocusConsumed = true
+                                                }
+                                            },
+                                            focusRequester = searchFocusRequester,
+                                            placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
+                                            suggestedKeyword = displayedSearchHint,
+                                            autoFocusEnabled = false,
+                                            reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
+                                            isScrollInProgressProvider = { isSearchResultsScrolling },
+                                            liquidGlassEnabled = effectiveLiquidGlassEnabled,
+                                            miuixBackdrop = searchChromeBackdrop,
+                                        )
+                                        //  搜索彩蛋消息横幅
+                                        val easterEggMsg = state.easterEggMessage
+                                        if (easterEggMsg != null) {
+                                            val easterEggColors = resolveAccessibleContainerColors(
+                                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                backgroundColor = MaterialTheme.colorScheme.surface,
+                                                fallbackContentColors = listOf(
+                                                    MaterialTheme.colorScheme.onSurface,
+                                                    MaterialTheme.colorScheme.onBackground,
+                                                ),
+                                            )
+                                            AppSurface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                color = easterEggColors.containerColor,
+                                                shape = AppShapes.container(ContainerLevel.Card)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                    horizontalArrangement = Arrangement.Center,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    AppText(
+                                                        text = easterEggMsg,
+                                                        color = easterEggColors.contentColor,
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    SearchResultTypeTabRow(
+                                        tabs = searchTabs,
+                                        pagerState = searchPagerState,
+                                        miuixBackdrop = searchChromeBackdrop,
+                                        onTabClick = { page, type ->
+                                            if (searchPagerState.currentPage == page && state.searchType == type) {
+                                                scrollToTopSearchType = type
+                                                scrollToTopRequestId += 1
+                                                animateSearchHeaderOffsetTo(0f)
+                                            } else {
+                                                scope.launch { animatePagerSelection(searchPagerState, page) }
+                                            }
+                                        }
+                                    )
+                                    val showStableFilterBar = resolveSearchFilterControls(
+                                        currentType = state.searchType,
+                                        currentUpOrder = state.upOrder
+                                    ).isNotEmpty()
+                                    AnimatedVisibility(
+                                        visible = showStableFilterBar,
+                                        enter = fadeIn(animationSpec = tween(90)),
+                                        exit = fadeOut(animationSpec = tween(70))
+                                    ) {
+                                        if (state.searchType == SearchType.VIDEO) {
+                                            SearchVideoFilterBar(
+                                                singleColumn = listLayout.singleColumn,
+                                                onLayoutToggle = listLayout.toggle,
+                                                currentOrder = state.searchOrder,
+                                                currentDurations = state.searchDurations,
+                                                currentVideoTid = state.videoTid,
+                                                currentPubTimeType = state.pubTimeType,
+                                                currentPubBegin = state.pubBegin,
+                                                currentPubEnd = state.pubEnd,
+                                                miuixBackdrop = searchChromeBackdrop,
+                                                onOrderChange = { viewModel.setSearchOrder(it) },
+                                                onDurationSelect = { viewModel.setSearchDuration(it) },
+                                                onVideoTidChange = { viewModel.setVideoTid(it) },
+                                                onPubTimeTypeChange = { viewModel.setPubTimeType(it) },
+                                                onCustomPubTimeRange = { begin, end ->
+                                                    viewModel.setCustomPubTimeRange(begin, end)
+                                                }
+                                            )
+                                        } else {
+                                            SearchFilterBar(
+                                                currentType = state.searchType,
+                                                currentOrder = state.searchOrder,
+                                                currentDurations = state.searchDurations,
+                                                currentVideoTid = state.videoTid,
+                                                currentUpOrder = state.upOrder,
+                                                currentUpOrderSort = state.upOrderSort,
+                                                currentUpUserType = state.upUserType,
+                                                currentLiveOrder = state.liveOrder,
+                                                currentArticleOrder = state.articleOrder,
+                                                currentArticleCategory = state.articleCategory,
+                                                currentPhotoOrder = state.photoOrder,
+                                                currentPhotoCategory = state.photoCategory,
+                                                onOrderChange = { viewModel.setSearchOrder(it) },
+                                                onDurationToggle = { viewModel.toggleSearchDuration(it) },
+                                                onVideoTidChange = { viewModel.setVideoTid(it) },
+                                                onUpOrderChange = { viewModel.setUpOrder(it) },
+                                                onUpOrderSortChange = { viewModel.setUpOrderSort(it) },
+                                                onUpUserTypeChange = { viewModel.setUpUserType(it) },
+                                                onLiveOrderChange = { viewModel.setLiveOrder(it) },
+                                                onArticleOrderChange = viewModel::setArticleOrder,
+                                                onArticleCategoryChange = viewModel::setArticleCategory,
+                                                onPhotoOrderChange = viewModel::setPhotoOrder,
+                                                onPhotoCategoryChange = viewModel::setPhotoCategory
                                             )
                                         }
                                     }
                                 }
-                                SearchResultTypeTabRow(
-                                    tabs = searchTabs,
-                                    pagerState = searchPagerState,
-                                    miuixBackdrop = searchChromeBackdrop,
-                                    onTabClick = { page, type ->
-                                        if (searchPagerState.currentPage == page && state.searchType == type) {
-                                            scrollToTopSearchType = type
-                                            scrollToTopRequestId += 1
-                                        } else {
-                                            scope.launch { animatePagerSelection(searchPagerState, page) }
+                            ) { measurables, constraints ->
+                                val placeables = measurables.map { it.measure(constraints) }
+                                val width = placeables.maxOfOrNull { it.width }?.coerceIn(constraints.minWidth, constraints.maxWidth)
+                                    ?: constraints.minWidth
+                                if (isSearchCollapseEnabled && placeables.isNotEmpty() && searchCollapseDistancePx > 0f) {
+                                    val topBarHeight = placeables.first().height
+                                    val dockHeight = placeables.drop(1).sumOf { it.height }
+                                    val collapseFraction = (-searchHeaderOffsetPx / searchCollapseDistancePx).coerceIn(0f, 1f)
+                                    val topBarOffset = (-searchCollapseDistancePx * collapseFraction).toInt()
+                                    val dockTop = (topBarHeight + searchHeaderOffsetPx).coerceAtLeast(searchStatusBarHeightPx).toInt()
+                                    val height = (dockTop + dockHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
+                                    layout(width, height) {
+                                        placeables.first().placeRelative(0, topBarOffset)
+                                        var y = dockTop
+                                        placeables.drop(1).forEach { placeable ->
+                                            placeable.placeRelative(0, y)
+                                            y += placeable.height
                                         }
                                     }
-                                )
-                                val showStableFilterBar = resolveSearchFilterControls(
-                                    currentType = state.searchType,
-                                    currentUpOrder = state.upOrder
-                                ).isNotEmpty()
-                                AnimatedVisibility(
-                                    visible = showStableFilterBar,
-                                    enter = fadeIn(animationSpec = tween(90)),
-                                    exit = fadeOut(animationSpec = tween(70))
-                                ) {
-                                    if (state.searchType == SearchType.VIDEO) {
-                                        SearchVideoFilterBar(
-                                            singleColumn = listLayout.singleColumn,
-                                            onLayoutToggle = listLayout.toggle,
-                                            currentOrder = state.searchOrder,
-                                            currentDurations = state.searchDurations,
-                                            currentVideoTid = state.videoTid,
-                                            currentPubTimeType = state.pubTimeType,
-                                            currentPubBegin = state.pubBegin,
-                                            currentPubEnd = state.pubEnd,
-                                            miuixBackdrop = searchChromeBackdrop,
-                                            onOrderChange = { viewModel.setSearchOrder(it) },
-                                            onDurationSelect = { viewModel.setSearchDuration(it) },
-                                            onVideoTidChange = { viewModel.setVideoTid(it) },
-                                            onPubTimeTypeChange = { viewModel.setPubTimeType(it) },
-                                            onCustomPubTimeRange = { begin, end ->
-                                                viewModel.setCustomPubTimeRange(begin, end)
-                                            }
-                                        )
-                                    } else {
-                                        SearchFilterBar(
-                                            currentType = state.searchType,
-                                            currentOrder = state.searchOrder,
-                                            currentDurations = state.searchDurations,
-                                            currentVideoTid = state.videoTid,
-                                            currentUpOrder = state.upOrder,
-                                            currentUpOrderSort = state.upOrderSort,
-                                            currentUpUserType = state.upUserType,
-                                            currentLiveOrder = state.liveOrder,
-                                            currentArticleOrder = state.articleOrder,
-                                            currentArticleCategory = state.articleCategory,
-                                            currentPhotoOrder = state.photoOrder,
-                                            currentPhotoCategory = state.photoCategory,
-                                            onOrderChange = { viewModel.setSearchOrder(it) },
-                                            onDurationToggle = { viewModel.toggleSearchDuration(it) },
-                                            onVideoTidChange = { viewModel.setVideoTid(it) },
-                                            onUpOrderChange = { viewModel.setUpOrder(it) },
-                                            onUpOrderSortChange = { viewModel.setUpOrderSort(it) },
-                                            onUpUserTypeChange = { viewModel.setUpUserType(it) },
-                                            onLiveOrderChange = { viewModel.setLiveOrder(it) },
-                                            onArticleOrderChange = viewModel::setArticleOrder,
-                                            onArticleCategoryChange = viewModel::setArticleCategory,
-                                            onPhotoOrderChange = viewModel::setPhotoOrder,
-                                            onPhotoCategoryChange = viewModel::setPhotoCategory
-                                        )
+                                } else {
+                                    val height = placeables.sumOf { it.height }.coerceIn(constraints.minHeight, constraints.maxHeight)
+                                    layout(width, height) {
+                                        var y = 0
+                                        placeables.forEach { placeable ->
+                                            placeable.placeRelative(0, y)
+                                            y += placeable.height
+                                        }
                                     }
                                 }
                             }
@@ -2200,10 +2319,11 @@ fun SearchScreen(
                 visible = backToTopButtonEnabled && shouldShowBackToTop,
                 onClick = {
                     scope.launch {
+                        animateSearchHeaderOffsetTo(0f)
                         if (state.searchType == SearchType.VIDEO) {
-                            resultGridState.animateScrollToTop()
+                            resultGridState.animateScrollToTop(fast = true)
                         } else {
-                            resultListState.animateScrollToTop()
+                            resultListState.animateScrollToTop(fast = true)
                         }
                     }
                 },
