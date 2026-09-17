@@ -78,6 +78,7 @@ internal fun ImmersiveAppScaffold(
                     backdrop = backdrop.takeIf { progressiveActive },
                     enabled = progressiveActive,
                     headerBlurActive = hazeActive,
+                    extendBelowBounds = false,
                     modifier = Modifier.then(
                         if (progressiveActive) {
                             Modifier.background(Color.Transparent)

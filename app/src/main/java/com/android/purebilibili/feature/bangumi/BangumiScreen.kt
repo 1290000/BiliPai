@@ -157,6 +157,7 @@ fun BangumiScreen(
                 backdrop = chromeBackdrop.takeIf { progressiveActive },
                 enabled = progressiveActive,
                 headerBlurActive = hazeActive,
+                extendBelowBounds = false,
                 modifier = Modifier.background(
                     if (chromeActive) Color.Transparent
                     else globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background)

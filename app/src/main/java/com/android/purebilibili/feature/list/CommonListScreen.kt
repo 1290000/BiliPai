@@ -1334,6 +1334,7 @@ fun CommonListScreen(
                 backdrop = commonListChromeBackdrop,
                 enabled = useProgressiveHeaderBlur,
                 headerBlurActive = headerBlurActive,
+                extendBelowBounds = false,
                 modifier = Modifier
                     .zIndex(1f)
                     .align(Alignment.TopCenter)

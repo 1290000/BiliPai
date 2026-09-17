@@ -739,6 +739,7 @@ fun WatchLaterScreen(
                 backdrop = watchLaterChromeBackdrop,
                 enabled = progressiveChromeActive,
                 headerBlurActive = headerBlurActive,
+                extendBelowBounds = false,
                 modifier = Modifier.fillMaxWidth().then(
                     if (progressiveChromeActive) {
                         Modifier.background(Color.Transparent)
