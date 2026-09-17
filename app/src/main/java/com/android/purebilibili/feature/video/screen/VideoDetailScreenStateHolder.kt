@@ -3723,6 +3723,9 @@ internal fun VideoDetailScreenStateHolder(
                                 predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
                                 liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
                                 paneControlsEnabled = isTransitionFinished,
+                                videoAiSummaryEntryEnabled = videoAiSummaryEntryEnabled,
+                                videoNoteEnabled = videoNoteEnabled,
+                                videoNoteDefaultCollapsed = videoNoteDefaultCollapsed,
                             )
                         } else {
                             LargeScreenVideoLayout(
@@ -3791,6 +3794,9 @@ internal fun VideoDetailScreenStateHolder(
                             predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
                             liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
                             paneControlsEnabled = isTransitionFinished,
+                            videoAiSummaryEntryEnabled = videoAiSummaryEntryEnabled,
+                            videoNoteEnabled = videoNoteEnabled,
+                            videoNoteDefaultCollapsed = videoNoteDefaultCollapsed,
                             )
                         }
                     } else {
