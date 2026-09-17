@@ -112,42 +112,6 @@ internal enum class TabletSecondaryTab(val label: String) {
     OWNER_UPLOADS("UP 投稿")
 }
 
-internal data class TabletDanmakuChromeState(
-    val enabled: Boolean,
-    val onToggle: () -> Unit,
-)
-
-@Composable
-internal fun rememberTabletDanmakuChromeState(bvid: String): TabletDanmakuChromeState {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val danmakuManager = rememberDanmakuManager(bvid)
-    val danmakuSettings by SettingsManager
-        .getDanmakuSettings(context, DanmakuSettingsScope.PORTRAIT)
-        .collectAsStateWithLifecycle(initialValue = DanmakuSettings())
-    val latestEnabled = rememberUpdatedState(danmakuSettings.enabled)
-    val onToggle = remember(danmakuManager, context, scope) {
-        {
-            val newValue = !latestEnabled.value
-            danmakuManager.isEnabled = newValue
-            if (!newValue) {
-                danmakuManager.clear()
-            }
-            scope.launch {
-                SettingsManager.setDanmakuEnabled(
-                    context,
-                    newValue,
-                    DanmakuSettingsScope.PORTRAIT,
-                )
-            }
-            Unit
-        }
-    }
-    return TabletDanmakuChromeState(
-        enabled = danmakuSettings.enabled,
-        onToggle = onToggle,
-    )
-}
 
 @Composable
 internal fun TabletSecondaryDanmakuActions(
