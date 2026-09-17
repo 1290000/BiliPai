@@ -864,6 +864,7 @@ fun SearchScreen(
         WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
     }
     val searchCollapseDistancePx = (searchTopBarHeightPx.toFloat() - searchStatusBarHeightPx).coerceAtLeast(0f)
+    val searchHeaderSettleMotionSpec = AppMotionTokens.emphasizedSpec<Float>()
 
     val isSearchResultsAtTop by remember(
         state.showResults,
@@ -892,7 +893,7 @@ fun SearchScreen(
             animate(
                 initialValue = searchHeaderOffsetPx,
                 targetValue = targetOffsetPx,
-                animationSpec = AppMotionTokens.emphasizedSpec()
+                animationSpec = searchHeaderSettleMotionSpec
             ) { value, _ ->
                 searchHeaderOffsetPx = value
             }
