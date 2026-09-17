@@ -382,12 +382,26 @@ fun HomeScreen(
     suspend fun withHomeScrollToTopLock(block: suspend () -> Unit) {
         homeHeaderRevealLock = true
         headerSettleAnimationJob?.cancel()
-        headerSettleAnimationJob = null
+        topTabsAutoCollapsedByScroll = false
+        globalScrollOffset.floatValue = 0f
+        val headerAnimJob = coroutineScope.launch {
+            if (headerOffsetHeightPx < -0.5f) {
+                animate(
+                    initialValue = headerOffsetHeightPx,
+                    targetValue = 0f,
+                    animationSpec = headerSettleMotionSpec
+                ) { value, _ ->
+                    headerOffsetHeightPx = value
+                }
+            } else {
+                headerOffsetHeightPx = 0f
+            }
+        }
+        headerSettleAnimationJob = headerAnimJob
         try {
             block()
         } finally {
-            // Reveal chrome only after the list reaches its top. Revealing before scrollToItem /
-            // animateScrollToItem makes the dock and avatar appear one frame before content moves.
+            headerAnimJob.join()
             revealHomeHeaderNow()
             homeHeaderRevealLock = false
         }
@@ -476,7 +490,7 @@ fun HomeScreen(
 
                         if (!isAtTop) {
                             val listState = requireNotNull(gridState)
-                            listState.animateScrollToTop()
+                            listState.animateScrollToTop(fast = true)
                         }
                         val shouldRefresh = request == HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH ||
                             (request == HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH && isAtTop)
@@ -1293,7 +1307,7 @@ fun HomeScreen(
                             viewModel.refresh()
                         } else {
                             val listState = requireNotNull(gridState)
-                            listState.animateScrollToTop()
+                            listState.animateScrollToTop(fast = true)
                         }
                     }
                 }
@@ -2392,9 +2406,9 @@ fun HomeScreen(
             },
             onStatusBarDoubleTap = {
                 coroutineScope.launch {
-                    activeGridState?.animateScrollToTop()
-                    revealHomeHeaderNow()
-                    globalScrollOffset.floatValue = 0f
+                    withHomeScrollToTopLock {
+                        activeGridState?.animateScrollToTop(fast = true)
+                    }
                 }
             },
             isRefreshing = isRefreshing,
