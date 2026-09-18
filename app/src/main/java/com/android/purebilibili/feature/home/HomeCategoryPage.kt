@@ -45,6 +45,7 @@ import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
 import com.android.purebilibili.core.util.responsiveContentWidth
+import kotlinx.collections.immutable.ImmutableSet
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.home.components.HomeHeroCarousel
@@ -143,8 +144,8 @@ internal fun HomeCategoryPageContent(
     gridState: LazyStaggeredGridState,
     gridColumns: Int,
     contentPadding: PaddingValues,
-    dissolvingVideos: Set<String>,
-    followingMids: Set<Long>,
+    dissolvingVideos: ImmutableSet<String>,
+    followingMids: ImmutableSet<Long>,
     showOnlineCount: Boolean,
     coverRequestSpec: HomeCoverRequestSpec,
     onVideoClick: (HomeVideoClickRequest) -> Unit,

@@ -985,18 +985,6 @@ fun HomeScreen(
         )
     }
     val isLiquidGlassEnabled = homePerformanceConfig.isAnyLiquidGlassEnabled
-    val shouldCaptureHomeHaze = isLiquidGlassEnabled ||
-        isHeaderBlurEnabled || isBottomBarBlurEnabled
-    // 首页使用独立 HazeState，避免命中外层全局 source 的祖先过滤规则导致无模糊。
-    // 实色路径不创建 source；普通模糊或玻璃路径才承担背景采样成本。
-    val hazeState = if (shouldCaptureHomeHaze &&
-        shouldAllowRenderEffectBackedHazeEffect(Build.VERSION.SDK_INT) &&
-        !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
-    ) {
-        rememberRecoverableHazeState(initialBlurEnabled = true)
-    } else {
-        null
-    }?.takeIf { recoverableBlurEnabled(it) }
     val appThemeConfig = com.android.purebilibili.core.ui.LocalAppThemeConfig.current
     val chromeCategoryStateFlow = remember(viewModel, currentCategory, popularSubCategory) {
         if (currentCategory == HomeCategory.POPULAR) {
@@ -1019,6 +1007,28 @@ fun HomeScreen(
     val readyHomeMiuixBackdrop = homeMiuixBackdropSource?.takeIf {
         chromeContentReady && it.isReady
     }?.backdrop
+
+    // [性能优化] 避免双重捕获：当 MiuixBackdrop 已经激活且处于 Miuix 视觉体系时，顶栏与底栏均走
+    // MiuixBackdrop 渲染，此时 Feed 容器无需重复挂载 HazeSource 离屏录制。仅在 MD3 工具栏或 Backdrop 缺失时保留 Haze。
+    val appUiStyle = com.android.purebilibili.core.theme.LocalAppUiStyle.current
+    val shouldCaptureHomeHaze = if (homeMiuixBackdropSource != null) {
+        com.android.purebilibili.feature.home.components.shouldUseOfficialMd3HomeTopToolbar(
+            uiStyle = appUiStyle,
+            liquidGlassEnabled = isLiquidGlassEnabled,
+        )
+    } else {
+        isLiquidGlassEnabled || isHeaderBlurEnabled || isBottomBarBlurEnabled
+    }
+    // 首页使用独立 HazeState，避免命中外层全局 source 的祖先过滤规则导致无模糊。
+    // 实色路径不创建 source；普通模糊或玻璃路径才承担背景采样成本。
+    val hazeState = if (shouldCaptureHomeHaze &&
+        shouldAllowRenderEffectBackedHazeEffect(Build.VERSION.SDK_INT) &&
+        !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
+    ) {
+        rememberRecoverableHazeState(initialBlurEnabled = true)
+    } else {
+        null
+    }?.takeIf { recoverableBlurEnabled(it) }
     val isDataSaverActive = homePerformanceConfig.isDataSaverActive
     val preloadAheadCount = homePerformanceConfig.preloadAheadCount
     val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context).collectAsStateWithLifecycle(initialValue = ""

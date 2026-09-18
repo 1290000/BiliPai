@@ -1030,6 +1030,7 @@ internal fun ElegantVideoCard(
                     layer = nativeCardLayer,
                     freezeProvider = { freezeNativeCardLayer.value },
                     bvid = video.bvid,
+                    enabled = effectiveTransitionEnabled,
                 ),
         ) {
             Box(
@@ -1171,6 +1172,7 @@ internal fun ElegantVideoCard(
                         layer = nativeCoverOverlayLayer,
                         freezeProvider = { freezeNativeCardLayer.value },
                         bvid = video.bvid,
+                        enabled = effectiveTransitionEnabled,
                     ),
             ) {
             if (premiumBadgeLabel != null) {
