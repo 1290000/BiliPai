@@ -2226,8 +2226,7 @@ fun FrostedBottomBar(
     uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
     val foldPosture = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current.posture
-    val forceBottomNavigation = foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Book ||
-        foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
+    val forceBottomNavigation = foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
     // Fold posture decides whether navigation stays at the bottom; window size still owns the
     // dock geometry so a large foldable does not shrink to phone-sized icons and indicators.
     val isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet

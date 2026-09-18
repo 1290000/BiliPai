@@ -1405,6 +1405,7 @@ private fun CinemaCommentsPane(
                 scrollPositionProvider = {
                     listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
                 },
+                showActionButtons = false,
             )
 
             }

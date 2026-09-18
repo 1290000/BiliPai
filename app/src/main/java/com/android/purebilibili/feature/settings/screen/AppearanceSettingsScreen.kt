@@ -232,6 +232,9 @@ fun AppearanceSettingsContent(
     val singleChoicePresentation by SettingsManager
         .getSingleChoicePresentation(context)
         .collectAsStateWithLifecycle(AppSingleChoicePresentation.WINDOW_POPUP)
+    val pinchToChangeGridColumnsEnabled by SettingsManager
+        .getPinchToChangeGridColumnsEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = true)
     val singleChoicePresentationOptions = remember {
         listOf(
             AppSegmentOption(AppSingleChoicePresentation.WINDOW_POPUP, "跟随选项弹出"),
@@ -1703,6 +1706,17 @@ fun AppearanceSettingsContent(
                                     options = resolveHomeFeedCardWidthPresetSegmentOptions(),
                                     selectedValue = state.homeFeedCardWidthPreset,
                                     onSelectionChange = viewModel::setHomeFeedCardWidthPreset,
+                                )
+                                AppPreferenceDivider(modifier = Modifier.padding(start = 16.dp))
+                                AppSwitchPreference(
+                                    title = "双指缩放网格列数",
+                                    subtitle = "在视频列表上双指捏合或撑开可随手无级调节网格列数",
+                                    checked = pinchToChangeGridColumnsEnabled,
+                                    onCheckedChange = { enabled ->
+                                        scope.launch {
+                                            SettingsManager.setPinchToChangeGridColumnsEnabled(context, enabled)
+                                        }
+                                    },
                                 )
                             }
                         }

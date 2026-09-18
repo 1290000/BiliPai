@@ -13,10 +13,17 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.android.purebilibili.feature.home.homeFeedPinchZoom
+import com.android.purebilibili.feature.home.resolveHomeFeedPinchColumnBounds
+import com.android.purebilibili.feature.home.GridPinchColumnHudPill
 import com.android.purebilibili.core.ui.components.AppLiquidGlassBackToTopButton
 import com.android.purebilibili.core.ui.rememberBackToTopButtonEnabled
 import com.android.purebilibili.core.util.animateScrollToTop
@@ -1283,10 +1290,25 @@ private fun SpaceContent(
             contentMaxWidthDp = adaptiveLayoutSpec.contentMaxWidthDp,
             widthSizeClass = windowSizeClass.widthSizeClass,
         )
+        var interactiveColumns by remember { mutableStateOf<Int?>(null) }
+        var isPinchPillVisible by remember { mutableStateOf(false) }
+        var pinchPillDismissJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+        val haptic = LocalHapticFeedback.current
+        val coroutineScope = rememberCoroutineScope()
+        val effectivePreferredColumns = interactiveColumns ?: preferredGridColumns
         val gridColumns = if (selectedMainTab == SpaceMainTab.DYNAMIC) {
             adaptiveLayoutSpec.dynamicColumns
         } else {
-            preferredGridColumns
+            effectivePreferredColumns
+        }
+        val pinchColumnBounds = remember(windowSizeClass.widthSizeClass, windowWidthDp) {
+            resolveHomeFeedPinchColumnBounds(
+                widthSizeClass = windowSizeClass.widthSizeClass,
+                contentWidthDp = windowWidthDp,
+            )
+        }
+        LaunchedEffect(homeSettings.gridColumnCount) {
+            interactiveColumns = null
         }
         val spaceFeedCardLayout = resolveHomeFeedCardLayout(
             style = homeSettings.homeFeedCardStyle,
@@ -1298,7 +1320,29 @@ private fun SpaceContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(gridColumns),
             state = gridState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .homeFeedPinchZoom(
+                    enabled = selectedMainTab != SpaceMainTab.DYNAMIC && homeSettings.pinchToChangeGridColumnsEnabled,
+                    currentColumns = gridColumns,
+                    bounds = pinchColumnBounds,
+                    onColumnsChange = { newColumns ->
+                        interactiveColumns = newColumns
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        isPinchPillVisible = true
+                        pinchPillDismissJob?.cancel()
+                    },
+                    onGestureEnd = { finalColumns ->
+                        coroutineScope.launch {
+                            SettingsManager.setGridColumnCount(context, finalColumns)
+                        }
+                        pinchPillDismissJob?.cancel()
+                        pinchPillDismissJob = coroutineScope.launch {
+                            kotlinx.coroutines.delay(1000)
+                            isPinchPillVisible = false
+                        }
+                    }
+                ),
             contentPadding = PaddingValues(
                 start = outerPaddingDp,
                 end = outerPaddingDp,
@@ -2340,9 +2384,16 @@ private fun SpaceContent(
                             }
                         )
                     }
-                }
-            }
         }
+
+        // [新增] 双指缩放切换网格列数 HUD 胶囊 (自适应 MD3 / MIUIX)
+        GridPinchColumnHudPill(
+            visible = isPinchPillVisible,
+            columns = gridColumns,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = chromeTopInset + 16.dp)
+        )
         }
     }
 }

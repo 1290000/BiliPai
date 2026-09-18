@@ -12,8 +12,12 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi //  Added
 import androidx.compose.foundation.LocalOverscrollFactory // [Fix] Import for disabling overscroll (New API)
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -1177,14 +1181,30 @@ fun HomeScreen(
             widthSizeClass = windowSizeClass.widthSizeClass
         )
     }
+    var interactiveColumns by remember { mutableStateOf<Int?>(null) }
+    var isPinchPillVisible by remember { mutableStateOf(false) }
+    var pinchPillDismissJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val effectiveGridColumns = interactiveColumns ?: gridColumns
+    val haptic = LocalHapticFeedback.current
+    val pinchColumnBounds = remember(windowSizeClass.widthSizeClass, contentWidth, displayMode) {
+        resolveHomeFeedPinchColumnBounds(
+            widthSizeClass = windowSizeClass.widthSizeClass,
+            contentWidthDp = contentWidth.value.toInt(),
+            displayMode = displayMode,
+        )
+    }
+    LaunchedEffect(homeSettings.gridColumnCount) {
+        interactiveColumns = null
+    }
+
     val homeFeedCardLayout = remember(
         homeFeedCardStyle,
-        gridColumns,
+        effectiveGridColumns,
         windowSizeClass.widthSizeClass,
     ) {
         resolveHomeFeedCardLayout(
             style = homeFeedCardStyle,
-            gridColumns = gridColumns,
+            gridColumns = effectiveGridColumns,
             widthSizeClass = windowSizeClass.widthSizeClass,
         )
     }
@@ -1194,12 +1214,12 @@ fun HomeScreen(
         resolveHomeFeedBookHingeGridSpec(appWindowAdaptiveInfo, density.density)
     }
     val homeFeedHorizontalArrangement = remember(
-        gridColumns,
+        effectiveGridColumns,
         homeFeedCardLayout.itemSpacingDp,
         hingeGridSpec,
     ) {
         resolveHomeFeedHorizontalArrangement(
-            columns = gridColumns,
+            columns = effectiveGridColumns,
             baseSpacing = homeFeedCardLayout.itemSpacingDp.dp,
             hingeSpec = hingeGridSpec,
         )
@@ -1271,7 +1291,7 @@ fun HomeScreen(
 
     val homeCoverRequestSpec = remember(
         contentWidth,
-        gridColumns,
+        effectiveGridColumns,
         homeFeedCardLayout,
         density.density,
         isDataSaverActive,
@@ -1280,8 +1300,8 @@ fun HomeScreen(
         val cardWidthDp = (
             contentWidth.value -
                 homeFeedCardLayout.outerPaddingDp * 2f -
-                homeFeedCardLayout.itemSpacingDp * (gridColumns - 1).coerceAtLeast(0)
-            ) / gridColumns.coerceAtLeast(1)
+                homeFeedCardLayout.itemSpacingDp * (effectiveGridColumns - 1).coerceAtLeast(0)
+            ) / effectiveGridColumns.coerceAtLeast(1)
         resolveHomeCoverRequestSpec(
             cardWidthDp = cardWidthDp,
             density = density.density,
@@ -2021,51 +2041,72 @@ fun HomeScreen(
                              }
                         ) {
                              // [物理优化] 内容容器应用下沉效果
-                             Box(
-                                 modifier = Modifier
-                                     .fillMaxSize()
-                                     .zIndex(0f)
-                                      .graphicsLayer {
-                                          translationY = if (
-                                              pullRefreshIndicatorStyle == AppPullRefreshIndicatorStyle.MIUIX_NATIVE ||
-                                              pullRefreshIndicatorStyle == AppPullRefreshIndicatorStyle.MATERIAL_DEFAULT
+                              Box(
+                                  modifier = Modifier
+                                      .fillMaxSize()
+                                      .zIndex(0f)
+                                       .graphicsLayer {
+                                           translationY = if (
+                                               pullRefreshIndicatorStyle == AppPullRefreshIndicatorStyle.MIUIX_NATIVE ||
+                                               pullRefreshIndicatorStyle == AppPullRefreshIndicatorStyle.MATERIAL_DEFAULT
+                                           ) {
+                                               0f
+                                           } else {
+                                               calculateDragOffset()
+                                           }
+                                       }
+                                       .homeFeedPinchZoom(
+                                           enabled = !isSingleColumnMode && homeSettings.pinchToChangeGridColumnsEnabled,
+                                           currentColumns = effectiveGridColumns,
+                                           bounds = pinchColumnBounds,
+                                           onColumnsChange = { newColumns ->
+                                               interactiveColumns = newColumns
+                                               haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                               isPinchPillVisible = true
+                                               pinchPillDismissJob?.cancel()
+                                           },
+                                           onGestureEnd = { finalColumns ->
+                                               coroutineScope.launch {
+                                                   SettingsManager.setGridColumnCount(context, finalColumns)
+                                               }
+                                               pinchPillDismissJob?.cancel()
+                                               pinchPillDismissJob = coroutineScope.launch {
+                                                   kotlinx.coroutines.delay(1000)
+                                                   isPinchPillVisible = false
+                                               }
+                                           }
+                                       )
+                              ) {
+                              if (category != HomeCategory.POPULAR && categoryState.isLoading && categoryState.videos.isEmpty() && categoryState.liveRooms.isEmpty()) {
+                                  // Loading Skeleton per page
+                                  val skeletonPulse = rememberHomeFeedSkeletonPulse()
+                                  LazyVerticalStaggeredGrid(
+                                      columns = StaggeredGridCells.Fixed(effectiveGridColumns),
+                                      contentPadding = PaddingValues(
+                                          bottom = homeListBottomPadding,
+                                          start = homeFeedCardLayout.outerPaddingDp.dp,
+                                          end = homeFeedCardLayout.outerPaddingDp.dp,
+                                          top = listTopPadding
+                                      ),
+                                      horizontalArrangement = homeFeedHorizontalArrangement,
+                                      verticalItemSpacing = homeFeedCardLayout.verticalItemSpacingDp.dp,
+                                      modifier = Modifier.fillMaxSize()
+                                  ) {
+                                      // [新增] 用户启用首页横幅时，骨架顶部渲染横幅占位，
+                                      // 与加载完成后的 HomeHeroCarousel 布局对齐
+                                      if (category == HomeCategory.RECOMMEND && homeSettings.homeHeroCarouselEnabled) {
+                                          item(
+                                              key = "home_hero_carousel_skeleton",
+                                              contentType = "home_hero_carousel_skeleton",
+                                              span = StaggeredGridItemSpan.FullLine
                                           ) {
-                                              0f
-                                          } else {
-                                              calculateDragOffset()
+                                              HomeFeedHeroCarouselSkeleton(
+                                                  pulse = skeletonPulse
+                                              )
                                           }
                                       }
-                             ) {
-                             if (category != HomeCategory.POPULAR && categoryState.isLoading && categoryState.videos.isEmpty() && categoryState.liveRooms.isEmpty()) {
-                                 // Loading Skeleton per page
-                                 val skeletonPulse = rememberHomeFeedSkeletonPulse()
-                                 LazyVerticalStaggeredGrid(
-                                     columns = StaggeredGridCells.Fixed(gridColumns),
-                                     contentPadding = PaddingValues(
-                                         bottom = homeListBottomPadding,
-                                         start = homeFeedCardLayout.outerPaddingDp.dp,
-                                         end = homeFeedCardLayout.outerPaddingDp.dp,
-                                         top = listTopPadding
-                                     ),
-                                     horizontalArrangement = homeFeedHorizontalArrangement,
-                                     verticalItemSpacing = homeFeedCardLayout.verticalItemSpacingDp.dp,
-                                     modifier = Modifier.fillMaxSize()
-                                 ) {
-                                     // [新增] 用户启用首页横幅时，骨架顶部渲染横幅占位，
-                                     // 与加载完成后的 HomeHeroCarousel 布局对齐
-                                     if (category == HomeCategory.RECOMMEND && homeSettings.homeHeroCarouselEnabled) {
-                                         item(
-                                             key = "home_hero_carousel_skeleton",
-                                             contentType = "home_hero_carousel_skeleton",
-                                             span = StaggeredGridItemSpan.FullLine
-                                         ) {
-                                             HomeFeedHeroCarouselSkeleton(
-                                                 pulse = skeletonPulse
-                                             )
-                                         }
-                                     }
-                                     // [Fix] Dynamic skeleton count to fill tablet screens (at least 5 rows)
-                                     val skeletonItemCount = gridColumns * 5
+                                      // [Fix] Dynamic skeleton count to fill tablet screens (at least 5 rows)
+                                      val skeletonItemCount = effectiveGridColumns * 5
                                      items(
                                          count = skeletonItemCount,
                                          key = { it },
@@ -2145,7 +2186,7 @@ fun HomeScreen(
                                      category = category,
                                      categoryState = pageCategoryState,
                                      gridState = contentGridState,
-                                     gridColumns = gridColumns,
+                                     gridColumns = effectiveGridColumns,
                                      contentPadding = pageContentPadding,
                                      dissolvingVideos = dissolvingVideos,
                                      followingMids = followingMids,
@@ -2511,6 +2552,15 @@ fun HomeScreen(
                 }
             }
         }
+
+        // [新增] 双指缩放切换网格列数 HUD 胶囊 (自适应 MD3 / MIUIX)
+        GridPinchColumnHudPill(
+            visible = isPinchPillVisible,
+            columns = effectiveGridColumns,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = listTopPadding + AppSpacingTokens.Small)
+        )
 
         //  [新增] 刷新撤销悬浮按钮（右下角，5秒后自动消失）
         val undoVisible = undoAvailable && currentCategory == HomeCategory.RECOMMEND

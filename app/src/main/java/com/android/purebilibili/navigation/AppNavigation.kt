@@ -4102,9 +4102,18 @@ fun AppNavigation(
                             dockAudioContent?.invoke(Modifier, 0f, 0f, 0f)
                         }
                         if (isBottomBarFloating) {
+                            val isBookPosture = appWindowAdaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Book
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (isBookPosture) {
+                                            Modifier.padding(start = 24.dp)
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
+                                contentAlignment = if (isBookPosture) Alignment.CenterStart else Alignment.Center
                             ) {
                                 FrostedBottomBar(
                                     nowPlayingContent = dockAudioContent,

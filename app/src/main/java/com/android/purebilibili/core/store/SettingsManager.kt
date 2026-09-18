@@ -652,6 +652,7 @@ data class HomeSettings(
     val isHeaderCollapseEnabled: Boolean = true,
     val showPgcTimeline: Boolean = true,
     val gridColumnCount: Int = 0, // [New] 网格列数 (0=自动, 1-6=固定)
+    val pinchToChangeGridColumnsEnabled: Boolean = true, // [新增] 双指缩放切换网格列数
     val homeFeedCardWidthPreset: HomeFeedCardWidthPreset = HomeFeedCardWidthPreset.AUTO,
     val homeFeedCardStyle: HomeFeedCardStyle = HomeFeedCardStyle.BILIPAI,
     val homeHeroCarouselEnabled: Boolean = true,
@@ -1502,6 +1503,8 @@ object SettingsManager {
     private val KEY_DISPLAY_MODE = intPreferencesKey("display_mode")
     //  [新增] 网格列数 (0=Auto)
     private val KEY_GRID_COLUMN_COUNT = intPreferencesKey("grid_column_count")
+    private val KEY_PINCH_TO_CHANGE_GRID_COLUMNS_ENABLED =
+        booleanPreferencesKey("pinch_to_change_grid_columns_enabled")
     private val KEY_HOME_FEED_CARD_WIDTH_PRESET =
         intPreferencesKey("home_feed_card_width_preset")
     private val KEY_HOME_FEED_CARD_STYLE = intPreferencesKey("home_feed_card_style")
@@ -1717,6 +1720,8 @@ object SettingsManager {
             isHeaderCollapseEnabled = headerCollapseMode.hasAnyCollapse,
             showPgcTimeline = preferences[KEY_SHOW_PGC_TIMELINE] ?: true,
             gridColumnCount = preferences[KEY_GRID_COLUMN_COUNT] ?: 0,
+            pinchToChangeGridColumnsEnabled =
+                preferences[KEY_PINCH_TO_CHANGE_GRID_COLUMNS_ENABLED] ?: true,
             homeFeedCardWidthPreset = HomeFeedCardWidthPreset.fromValue(
                 preferences[KEY_HOME_FEED_CARD_WIDTH_PRESET] ?: HomeFeedCardWidthPreset.AUTO.value
             ),
@@ -2947,6 +2952,15 @@ object SettingsManager {
     suspend fun setGridColumnCount(context: Context, count: Int) {
         context.settingsDataStore.edit { preferences -> 
             preferences[KEY_GRID_COLUMN_COUNT] = count
+        }
+    }
+
+    fun getPinchToChangeGridColumnsEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_PINCH_TO_CHANGE_GRID_COLUMNS_ENABLED] ?: true }
+
+    suspend fun setPinchToChangeGridColumnsEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_PINCH_TO_CHANGE_GRID_COLUMNS_ENABLED] = enabled
         }
     }
 
@@ -7438,6 +7452,10 @@ object SettingsManager {
             StringShareablePreferenceDefinition(KEY_BLUR_INTENSITY, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_DISPLAY_MODE, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_GRID_COLUMN_COUNT, SettingsShareSection.APPEARANCE),
+            BooleanShareablePreferenceDefinition(
+                KEY_PINCH_TO_CHANGE_GRID_COLUMNS_ENABLED,
+                SettingsShareSection.APPEARANCE
+            ),
             IntShareablePreferenceDefinition(
                 KEY_HOME_FEED_CARD_WIDTH_PRESET,
                 SettingsShareSection.APPEARANCE
