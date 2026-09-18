@@ -1510,11 +1510,18 @@ fun HomeHeader(
     val usesTonalContainerTreatment = contentCardSurfaceSpec.usesTonalContainerTreatment
     val haptic = rememberHapticFeedback()
     val density = LocalDensity.current
+    val topChromeLiquidGlassEnabled = resolveHomeTopChromeLiquidGlassEnabled(
+        homeSettings = homeSettings,
+    )
     val resolvedHeaderBlurMode = homeSettings?.headerBlurMode ?: HomeHeaderBlurMode.FOLLOW_PRESET
-    val isHeaderBlurEnabled = remember(resolvedHeaderBlurMode) {
-        resolveHomeHeaderBlurEnabled(
-            mode = resolvedHeaderBlurMode,
-        )
+    val isHeaderBlurEnabled = remember(resolvedHeaderBlurMode, topChromeLiquidGlassEnabled) {
+        if (topChromeLiquidGlassEnabled) {
+            false
+        } else {
+            resolveHomeHeaderBlurEnabled(
+                mode = resolvedHeaderBlurMode,
+            )
+        }
     }
     val linkedBottomBarAppearance = remember(
         homeSettings,
@@ -1549,9 +1556,6 @@ fun HomeHeader(
     } else {
         onSettingsClick
     }
-    val topChromeLiquidGlassEnabled = resolveHomeTopChromeLiquidGlassEnabled(
-        homeSettings = homeSettings,
-    )
     val useLegacyHomeTopTabs = shouldUseLegacyHomeTopTabs(
         liquidGlassEnabled = topChromeLiquidGlassEnabled,
         bottomBarFloating = linkedBottomBarAppearance.isFloating,
@@ -1986,8 +1990,8 @@ fun HomeHeader(
         animationSpec = AppMotionTokens.standardSpec(),
         label = "tabContentAlpha"
     )
-    val effectiveContinuousSlabRenderMode = if (integratedCollapsedTopBar) {
-        topPanelChromeRenderMode
+    val effectiveContinuousSlabRenderMode = if (isGlassEnabled || topChromeLiquidGlassEnabled || integratedCollapsedTopBar) {
+        HomeTopChromeRenderMode.PLAIN
     } else {
         continuousSlabRenderMode
     }
@@ -2237,6 +2241,7 @@ fun HomeHeader(
                     hasBackdrop = miuixBackdrop != null,
                 ) && !forceLowBlurBudget,
                 headerBlurActive = isHeaderBlurEnabled,
+                liquidGlassActive = isGlassEnabled || topChromeLiquidGlassEnabled,
             )
         ) {
             Box(

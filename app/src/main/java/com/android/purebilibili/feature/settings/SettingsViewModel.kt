@@ -1097,6 +1097,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             SettingsManager.setAndroidNativeLiquidGlassEnabled(context, enabled)
             if (enabled) {
                 SettingsManager.setBottomBarBlurEnabled(context, false)
+                SettingsManager.setHeaderBlurEnabled(context, false)
             }
         }
     }

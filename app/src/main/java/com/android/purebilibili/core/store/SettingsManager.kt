@@ -3930,6 +3930,11 @@ object SettingsManager {
     suspend fun setAndroidNativeLiquidGlassEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED] = value
+            if (value) {
+                preferences[KEY_BOTTOM_BAR_BLUR_ENABLED] = false
+                preferences[KEY_HEADER_BLUR_ENABLED] = false
+                preferences[KEY_HOME_HEADER_BLUR_MODE] = HomeHeaderBlurMode.ALWAYS_OFF.value
+            }
         }
     }
     
