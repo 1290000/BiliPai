@@ -439,6 +439,32 @@ class BottomBarMiuixStructureTest {
         assertFalse(miuixDockedItemSource.contains("height(64.dp)"))
     }
 
+    @Test
+    fun `official md3 floating bar handles nowPlayingContent without falling back to miuix`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/BottomBar.kt")
+        val materialBarSource = source
+            .substringAfter("private fun MaterialBottomBar(")
+            .substringBefore("private fun MiuixBottomBar(")
+
+        assertFalse(
+            materialBarSource.contains("nowPlayingContent == null"),
+            "MaterialBottomBar should not bypass official MD3 toolbar when nowPlayingContent is active"
+        )
+        assertTrue(
+            materialBarSource.contains("nowPlayingContent = nowPlayingContent"),
+            "MaterialBottomBar must pass nowPlayingContent to OfficialMd3FloatingBottomBar"
+        )
+
+        val officialBarSource = source
+            .substringAfter("private fun OfficialMd3FloatingBottomBar(")
+            .substringBefore("private fun MaterialBottomBarAnimatedIcon(")
+
+        assertTrue(
+            officialBarSource.contains("nowPlayingContent != null"),
+            "OfficialMd3FloatingBottomBar must render nowPlayingContent when present"
+        )
+    }
+
     private fun biliPaiFloatingBody(source: String): String {
         val after = source.substringAfter("private fun BiliPaiFloatingBottomBar(")
         // End at next major private composable after the floating host + tab visual.

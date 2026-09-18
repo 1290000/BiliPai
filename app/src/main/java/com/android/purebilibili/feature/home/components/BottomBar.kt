@@ -2428,7 +2428,6 @@ private fun MaterialBottomBar(
     )
 
     if (
-        !homeSettings.isBottomBarSearchEnabled && nowPlayingContent == null &&
         shouldUseOfficialMd3FloatingToolbar(
             isFloating = isFloating,
             liquidGlassEnabled = glassEnabled,
@@ -2436,6 +2435,7 @@ private fun MaterialBottomBar(
     ) {
         OfficialMd3FloatingBottomBar(
             currentItem = currentItem,
+            nowPlayingContent = nowPlayingContent,
             onItemClick = onItemClick,
             modifier = modifier,
             visibleItems = bottomBarVisibleItems,
@@ -2634,6 +2634,7 @@ private fun MaterialBottomBar(
 @Composable
 private fun OfficialMd3FloatingBottomBar(
     currentItem: BottomNavItem,
+    nowPlayingContent: (@Composable (Modifier, Float, Float, Float) -> Unit)? = null,
     onItemClick: (BottomNavItem) -> Unit,
     modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
@@ -2715,28 +2716,43 @@ private fun OfficialMd3FloatingBottomBar(
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        if (searchEnabled) {
-            HorizontalFloatingToolbar(
-                expanded = true,
-                floatingActionButton = {
-                    FloatingToolbarDefaults.StandardFloatingActionButton(
-                        onClick = {
-                            performMaterialBottomBarTap(haptic = haptic, onClick = onSearchClick)
-                        },
-                    ) {
-                        AppIcon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = stringResource(R.string.common_search),
-                        )
-                    }
-                },
-                content = toolbarContent,
-            )
-        } else {
-            HorizontalFloatingToolbar(
-                expanded = true,
-                content = toolbarContent,
-            )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (nowPlayingContent != null) {
+                nowPlayingContent(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    0f,
+                    0f,
+                    0f,
+                )
+            }
+            if (searchEnabled) {
+                HorizontalFloatingToolbar(
+                    expanded = true,
+                    floatingActionButton = {
+                        FloatingToolbarDefaults.StandardFloatingActionButton(
+                            onClick = {
+                                performMaterialBottomBarTap(haptic = haptic, onClick = onSearchClick)
+                            },
+                        ) {
+                            AppIcon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = stringResource(R.string.common_search),
+                            )
+                        }
+                    },
+                    content = toolbarContent,
+                )
+            } else {
+                HorizontalFloatingToolbar(
+                    expanded = true,
+                    content = toolbarContent,
+                )
+            }
         }
     }
 }
