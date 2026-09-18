@@ -2362,8 +2362,9 @@ private fun SpaceHeader(
     }
     val colorScheme = MaterialTheme.colorScheme
     val followButtonColors = resolveSpaceFollowButtonColors(
-        isFollowed = if (isOwner) false else userInfo.isFollowed,
-        colorScheme = colorScheme
+        isFollowed = userInfo.isFollowed,
+        colorScheme = colorScheme,
+        isOwner = isOwner
     )
 
     // PiliPlus 风格头部结构：

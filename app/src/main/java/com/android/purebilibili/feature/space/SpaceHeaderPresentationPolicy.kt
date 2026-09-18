@@ -20,10 +20,15 @@ internal fun resolveSpaceHeaderMetricItems(
 }
 
 /**
- * Resolves the action button label on the UP space header:
+ * Resolves the action button label on the UP space header aligned with PiliPlus:
  * - isOwner: "编辑资料"
- * - isFollowed: "已关注"
- * - otherwise: "关注"
+ * - relationStatus == 128: "移除黑名单"
+ * - !isFollowed: "关注"
+ * - isFollowed:
+ *   - relationStatus == 1: "悄悄关注"
+ *   - relationStatus in setOf(4, 6): "已互关"
+ *   - relationStatus == -10: "特别关注"
+ *   - otherwise: "已关注"
  */
 internal fun resolveSpaceFollowActionLabel(
     isOwner: Boolean,
@@ -31,8 +36,14 @@ internal fun resolveSpaceFollowActionLabel(
     isFollowed: Boolean = false,
 ): String {
     if (isOwner) return "编辑资料"
-    val followed = isFollowed || (relationStatus in setOf(1, 2, 4, 6, -10))
-    return if (followed) "已关注" else "关注"
+    if (relationStatus == 128) return "移除黑名单"
+    if (!isFollowed) return "关注"
+    return when (relationStatus) {
+        1 -> "悄悄关注"
+        4, 6 -> "已互关"
+        -10 -> "特别关注"
+        else -> "已关注"
+    }
 }
 
 internal const val SPACE_PINNED_TOP_CHROME_FADE_RANGE_PX = 120

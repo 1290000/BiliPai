@@ -172,6 +172,25 @@ class SpaceViewModel(
     private val collectionPreviewLimit = 3
     private var currentKeyword: String = ""
     
+    init {
+        viewModelScope.launch {
+            ActionRepository.followStateChanges.collect { change ->
+                val currentState = _uiState.value as? SpaceUiState.Success ?: return@collect
+                if (currentState.userInfo.mid == change.mid && currentState.userInfo.isFollowed != change.isFollowing) {
+                    val nextStatus = if (change.isFollowing) 2 else 0
+                    val newUserInfo = currentState.userInfo.copy(
+                        isFollowed = change.isFollowing,
+                        relationStatus = nextStatus
+                    )
+                    _uiState.value = currentState.copy(
+                        userInfo = newUserInfo,
+                        headerState = currentState.headerState.copy(userInfo = newUserInfo)
+                    )
+                }
+            }
+        }
+    }
+
     fun loadSpaceInfo(mid: Long) {
         if (mid <= 0) return
 
@@ -322,6 +341,7 @@ class SpaceViewModel(
         val userInfo = userInfoRaw.copy(
             topPhoto = resolvedTopPhoto,
             isFollowed = followStatus,
+            relationStatus = if (followStatus) 2 else 0
         )
         currentPage = videosResult?.resolvedPage ?: 1
         val videoData = videosResult?.data
@@ -390,12 +410,29 @@ class SpaceViewModel(
 
     private fun loadSpaceFollowStatus(mid: Long, requestGeneration: Long) {
         viewModelScope.launch {
-            val isFollowed = ActionRepository.checkFollowStatus(mid)
+            val relationData = ActionRepository.getRelationDetail(mid)
             if (!shouldApplySpaceLoadResult(mid, currentMid, requestGeneration, activeSpaceLoadGeneration)) {
                 return@launch
             }
             val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
-            val userInfo = currentState.userInfo.copy(isFollowed = isFollowed)
+            val (isFollowed, relationStatus) = if (relationData != null) {
+                val following = relationData.isFollowing
+                val status = if (!following) {
+                    if (relationData.attribute == 128) 128 else 0
+                } else if (relationData.special == 1) {
+                    -10
+                } else {
+                    relationData.attribute.takeIf { it != 0 } ?: 2
+                }
+                Pair(following, status)
+            } else {
+                val following = ActionRepository.checkFollowStatus(mid)
+                Pair(following, if (following) 2 else 0)
+            }
+            val userInfo = currentState.userInfo.copy(
+                isFollowed = isFollowed,
+                relationStatus = relationStatus
+            )
             _uiState.value = currentState.copy(
                 userInfo = userInfo,
                 headerState = currentState.headerState.copy(userInfo = userInfo),
@@ -1911,7 +1948,12 @@ class SpaceViewModel(
         followToggleInFlight = true
         viewModelScope.launch {
             // 1. 乐观更新 UI
-            val newUserInfo = current.userInfo.copy(isFollowed = !isFollowing)
+            val nextFollowed = !isFollowing
+            val nextRelationStatus = if (nextFollowed) 2 else 0
+            val newUserInfo = current.userInfo.copy(
+                isFollowed = nextFollowed,
+                relationStatus = nextRelationStatus
+            )
             _uiState.value = current.copy(
                 userInfo = newUserInfo,
                 headerState = current.headerState.copy(userInfo = newUserInfo)
@@ -1919,9 +1961,12 @@ class SpaceViewModel(
             
             try {
                 // 2. 调用统一仓库逻辑
-                val result = ActionRepository.followUser(mid = mid, follow = !isFollowing)
+                val result = ActionRepository.followUser(mid = mid, follow = nextFollowed)
                 if (result.isFailure) {
-                    _uiState.value = current.copy(userInfo = current.userInfo)
+                    _uiState.value = current.copy(
+                        userInfo = current.userInfo,
+                        headerState = current.headerState.copy(userInfo = current.userInfo)
+                    )
                     com.android.purebilibili.core.util.Logger.e(
                         "SpaceVM",
                         "toggleFollow failed: ${result.exceptionOrNull()?.message}"
@@ -1930,14 +1975,20 @@ class SpaceViewModel(
                     val latestState = _uiState.value as? SpaceUiState.Success
                     if (latestState != null) {
                         _uiState.value = latestState.copy(
-                            userInfo = latestState.userInfo.copy(isFollowed = !isFollowing),
+                            userInfo = latestState.userInfo.copy(
+                                isFollowed = nextFollowed,
+                                relationStatus = nextRelationStatus
+                            ),
                             headerState = latestState.headerState.copy(
-                                userInfo = latestState.userInfo.copy(isFollowed = !isFollowing)
+                                userInfo = latestState.userInfo.copy(
+                                    isFollowed = nextFollowed,
+                                    relationStatus = nextRelationStatus
+                                )
                             )
                         )
                     }
 
-                    if (!isFollowing) {
+                    if (nextFollowed) {
                         showFollowGroupDialogForUser(mid)
                     }
 

@@ -60,16 +60,17 @@ class SpaceHeaderPresentationPolicyTest {
     }
 
     @Test
-    fun `resolveSpaceFollowActionLabel maps relations and owner to simplified follow state`() {
+    fun `resolveSpaceFollowActionLabel maps relations and owner aligned with PiliPlus`() {
         assertEquals("编辑资料", resolveSpaceFollowActionLabel(isOwner = true))
         assertEquals("关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 0, isFollowed = false))
+        assertEquals("关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 2, isFollowed = false))
+        assertEquals("移除黑名单", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 128, isFollowed = false))
         assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 0, isFollowed = true))
-        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 1))
-        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 2))
-        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 4))
-        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 6))
-        assertEquals("关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 128))
-        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = -10))
+        assertEquals("悄悄关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 1, isFollowed = true))
+        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 2, isFollowed = true))
+        assertEquals("已互关", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 4, isFollowed = true))
+        assertEquals("已互关", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 6, isFollowed = true))
+        assertEquals("特别关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = -10, isFollowed = true))
     }
 
     @Test

@@ -498,6 +498,26 @@ internal fun resolveSpaceTopImageItems(images: SpaceAggregateImages?): List<com.
     return emptyList()
 }
 
+internal fun resolveSpaceRelationState(
+    aggregateRelation: Int? = null,
+    relSpecial: Int? = null,
+    cardRelation: SpaceAggregateRelation? = null
+): Pair<Boolean, Int> {
+    if (aggregateRelation == -1) {
+        return Pair(false, 128)
+    }
+    val relation = cardRelation ?: SpaceAggregateRelation()
+    if (relation.isFollow == 1) {
+        val status = if (relSpecial == 1) {
+            -10
+        } else {
+            relation.status.takeIf { it != 0 } ?: 2
+        }
+        return Pair(true, status)
+    }
+    return Pair(false, 0)
+}
+
 internal fun resolveSpaceInitialSeedFromAggregate(
     data: SpaceAggregateData,
     cardLargePhoto: String = "",
@@ -513,8 +533,11 @@ internal fun resolveSpaceInitialSeedFromAggregate(
         cardSmallPhoto = cardSmallPhoto
     )
     val topImageItems = resolveSpaceTopImageItems(data.images)
-    val relation = card.relation
-    val isFollowed = relation.isFollow == 1 || relation.status in setOf(2, 6)
+    val (isFollowed, relationStatus) = resolveSpaceRelationState(
+        aggregateRelation = data.relation,
+        relSpecial = data.relSpecial,
+        cardRelation = card.relation
+    )
     val mainTabs = resolveSpaceMainTabs(data.tab2)
     val contributionTabs = ensureSpaceContributionTabsForAvailableContent(
         tabs = resolveSpaceContributionTabs(data.tab2),
@@ -537,7 +560,7 @@ internal fun resolveSpaceInitialSeedFromAggregate(
             official = card.officialVerify,
             vip = card.vip,
             isFollowed = isFollowed,
-            relationStatus = relation.status,
+            relationStatus = relationStatus,
             topPhoto = topPhoto,
             nightTopPhoto = data.images?.nightImgUrl.orEmpty(),
             topImages = topImageItems,

@@ -881,4 +881,54 @@ class SpaceLoadPolicyTest {
         assertEquals(0f, parseTopImageDy("", 396.0))
         assertEquals(0f, parseTopImageDy("invalid", 396.0))
     }
+
+    @Test
+    fun `resolveSpaceRelationState aligns with PiliPlus relation determination`() {
+        // Blacklisted
+        assertEquals(
+            Pair(false, 128),
+            resolveSpaceRelationState(aggregateRelation = -1)
+        )
+        // Followed with special relation
+        assertEquals(
+            Pair(true, -10),
+            resolveSpaceRelationState(
+                aggregateRelation = 0,
+                relSpecial = 1,
+                cardRelation = SpaceAggregateRelation(status = 2, isFollow = 1)
+            )
+        )
+        // Followed mutual
+        assertEquals(
+            Pair(true, 6),
+            resolveSpaceRelationState(
+                aggregateRelation = 0,
+                relSpecial = 0,
+                cardRelation = SpaceAggregateRelation(status = 6, isFollow = 1)
+            )
+        )
+        // Followed standard
+        assertEquals(
+            Pair(true, 2),
+            resolveSpaceRelationState(
+                aggregateRelation = 0,
+                relSpecial = 0,
+                cardRelation = SpaceAggregateRelation(status = 2, isFollow = 1)
+            )
+        )
+        // Not followed even if status has residual value 2
+        assertEquals(
+            Pair(false, 0),
+            resolveSpaceRelationState(
+                aggregateRelation = 0,
+                relSpecial = 0,
+                cardRelation = SpaceAggregateRelation(status = 2, isFollow = 0)
+            )
+        )
+        // Null card relation
+        assertEquals(
+            Pair(false, 0),
+            resolveSpaceRelationState()
+        )
+    }
 }

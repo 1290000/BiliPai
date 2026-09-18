@@ -104,6 +104,9 @@ data class SpaceAggregateResponse(
 data class SpaceAggregateData(
     @SerialName("default_tab")
     val defaultTab: String = "",
+    val relation: Int? = null,
+    @SerialName("rel_special")
+    val relSpecial: Int? = null,
     val card: SpaceAggregateCard? = null,
     val images: SpaceAggregateImages? = null,
     val live: SpaceLiveRoom? = null,
@@ -182,7 +185,9 @@ data class SpaceAggregateLikes(
 data class SpaceAggregateRelation(
     val status: Int = 0,
     @SerialName("is_follow")
-    val isFollow: Int = 0
+    val isFollow: Int = 0,
+    @SerialName("is_followed")
+    val isFollowed: Int = 0
 )
 
 @Serializable
