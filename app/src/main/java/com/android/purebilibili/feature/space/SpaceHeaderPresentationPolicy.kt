@@ -47,3 +47,25 @@ internal fun resolveSpacePinnedTopChromeScrim(
     if (fadeRangePx <= 0) return 0f
     return (firstVisibleItemScrollOffset.toFloat() / fadeRangePx).coerceIn(0f, 1f)
 }
+
+internal fun resolveSpaceBannerAlignment(dy: Float): androidx.compose.ui.Alignment {
+    return androidx.compose.ui.BiasAlignment(0f, dy.coerceIn(-1f, 1f))
+}
+
+internal fun resolveSpaceBannerColorFilter(
+    isLight: Boolean,
+    hasFilter: Boolean = true
+): androidx.compose.ui.graphics.ColorFilter? {
+    if (!hasFilter) return null
+    return if (isLight) {
+        androidx.compose.ui.graphics.ColorFilter.tint(
+            androidx.compose.ui.graphics.Color(0x5DFFFFFF),
+            androidx.compose.ui.graphics.BlendMode.Lighten
+        )
+    } else {
+        androidx.compose.ui.graphics.ColorFilter.tint(
+            androidx.compose.ui.graphics.Color(0x8D000000),
+            androidx.compose.ui.graphics.BlendMode.Darken
+        )
+    }
+}

@@ -71,4 +71,24 @@ class SpaceHeaderPresentationPolicyTest {
         assertEquals("关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 128))
         assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = -10))
     }
+
+    @Test
+    fun `resolveSpaceBannerAlignment creates BiasAlignment with clamped dy`() {
+        val center = resolveSpaceBannerAlignment(0f) as androidx.compose.ui.BiasAlignment
+        assertEquals(0f, center.horizontalBias)
+        assertEquals(0f, center.verticalBias)
+
+        val top = resolveSpaceBannerAlignment(-0.8f) as androidx.compose.ui.BiasAlignment
+        assertEquals(-0.8f, top.verticalBias, 0.001f)
+
+        val clamped = resolveSpaceBannerAlignment(2.5f) as androidx.compose.ui.BiasAlignment
+        assertEquals(1f, clamped.verticalBias, 0.001f)
+    }
+
+    @Test
+    fun `resolveSpaceBannerColorFilter returns null when hasFilter is false`() {
+        kotlin.test.assertNull(resolveSpaceBannerColorFilter(isLight = true, hasFilter = false))
+        kotlin.test.assertNotNull(resolveSpaceBannerColorFilter(isLight = true, hasFilter = true))
+        kotlin.test.assertNotNull(resolveSpaceBannerColorFilter(isLight = false, hasFilter = true))
+    }
 }

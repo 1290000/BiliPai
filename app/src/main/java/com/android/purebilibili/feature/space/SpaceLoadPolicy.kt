@@ -296,7 +296,8 @@ internal data class SpaceAdaptiveLayoutSpec(
 )
 
 internal const val SPACE_BANNER_ASPECT_RATIO = 1125f / 396f
-/** Matches PiliPlus desktop/landscape `kHeaderHeight` instead of scaling 1125:396 to the full window. */
+/** Matches PiliPlus `kHeaderHeight = 135.0`. */
+internal const val SPACE_HEADER_HEIGHT_DP = 135f
 internal const val SPACE_WIDE_BANNER_MAX_HEIGHT_DP = 135f
 internal const val SPACE_WIDE_BANNER_MIN_HEIGHT_DP = 120f
 
@@ -335,10 +336,9 @@ internal fun resolveSpaceBannerMetrics(
     windowWidthDp: Float,
     windowHeightDp: Float,
 ): SpaceBannerMetrics {
-    val naturalHeight = renderedBannerWidthDp.coerceAtLeast(0f) / SPACE_BANNER_ASPECT_RATIO
     val landscape = windowHeightDp > 0f && windowWidthDp > windowHeightDp
     val useDesktopHeader = windowWidthDp >= 600f || landscape
-    val maxHeight = if (useDesktopHeader) {
+    val height = if (useDesktopHeader) {
         if (windowHeightDp > 0f) {
             (windowHeightDp * 0.22f).coerceIn(
                 SPACE_WIDE_BANNER_MIN_HEIGHT_DP,
@@ -348,12 +348,11 @@ internal fun resolveSpaceBannerMetrics(
             SPACE_WIDE_BANNER_MAX_HEIGHT_DP
         }
     } else {
-        naturalHeight
+        SPACE_HEADER_HEIGHT_DP
     }
-    val height = naturalHeight.coerceAtMost(maxHeight)
     return SpaceBannerMetrics(
         heightDp = height,
-        cropToFill = height + 0.5f < naturalHeight,
+        cropToFill = true,
     )
 }
 
@@ -461,6 +460,44 @@ internal fun resolveSpaceAggregateTopPhoto(
     }
 }
 
+internal fun parseTopImageDy(location: String, height: Double): Float {
+    if (location.isBlank() || height <= 0.0) return 0f
+    return try {
+        val parts = location.split('-').drop(1).take(2).mapNotNull { it.toFloatOrNull() }
+        if (parts.size == 2) {
+            val start = parts[0]
+            val end = parts[1]
+            ((start + end) / height.toFloat() - 1f).coerceIn(-1f, 1f)
+        } else {
+            0f
+        }
+    } catch (_: Exception) {
+        0f
+    }
+}
+
+internal fun resolveSpaceTopImageItems(images: SpaceAggregateImages?): List<com.android.purebilibili.data.model.response.SpaceTopImageItem> {
+    if (images == null) return emptyList()
+    val collectionItems = images.collectionTopSimple?.top?.result.orEmpty()
+    if (collectionItems.isNotEmpty()) {
+        return collectionItems.mapNotNull { item ->
+            val detail = item.item
+            val img = detail?.image ?: detail?.animation
+            val defaultImg = img?.defaultImage?.takeIf { it.isNotBlank() }
+            val fullCover = item.cover.takeIf { it.isNotBlank() } ?: defaultImg ?: return@mapNotNull null
+            val header = defaultImg ?: fullCover
+            val dy = parseTopImageDy(img?.location.orEmpty(), img?.height ?: 0.0)
+            com.android.purebilibili.data.model.response.SpaceTopImageItem(
+                header = header,
+                fullCover = fullCover,
+                dy = dy,
+                title = item.title
+            )
+        }
+    }
+    return emptyList()
+}
+
 internal fun resolveSpaceInitialSeedFromAggregate(
     data: SpaceAggregateData,
     cardLargePhoto: String = "",
@@ -475,6 +512,7 @@ internal fun resolveSpaceInitialSeedFromAggregate(
         cardLargePhoto = cardLargePhoto,
         cardSmallPhoto = cardSmallPhoto
     )
+    val topImageItems = resolveSpaceTopImageItems(data.images)
     val relation = card.relation
     val isFollowed = relation.isFollow == 1 || relation.status in setOf(2, 6)
     val mainTabs = resolveSpaceMainTabs(data.tab2)
@@ -495,12 +533,16 @@ internal fun resolveSpaceInitialSeedFromAggregate(
             face = card.face,
             sign = card.sign,
             level = card.levelInfo.currentLevel,
+            silence = card.silence,
             official = card.officialVerify,
             vip = card.vip,
             isFollowed = isFollowed,
             relationStatus = relation.status,
             topPhoto = topPhoto,
             nightTopPhoto = data.images?.nightImgUrl.orEmpty(),
+            topImages = topImageItems,
+            followingsFollowed = card.followingsFollowedUpper,
+            spaceTags = card.spaceTag,
             liveRoom = data.live
         ),
         relationStat = RelationStatData(

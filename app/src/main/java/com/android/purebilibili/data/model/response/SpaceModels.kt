@@ -17,6 +17,14 @@ data class SpaceInfoResponse(
 )
 
 @Serializable
+data class SpaceTopImageItem(
+    val header: String = "",
+    val fullCover: String = "",
+    val dy: Float = 0f,
+    val title: SpaceCollectionTopTitle? = null
+)
+
+@Serializable
 data class SpaceUserInfo(
     val mid: Long = 0,
     val name: String = "",
@@ -24,6 +32,7 @@ data class SpaceUserInfo(
     val face: String = "",
     val sign: String = "",
     val level: Int = 0,
+    val silence: Int = 0,
     @SerialName("fans_badge")
     val fansBadge: Boolean = false,
     val official: SpaceOfficial = SpaceOfficial(),
@@ -36,6 +45,12 @@ data class SpaceUserInfo(
     val topPhoto: String = "",
     @SerialName("night_top_photo")
     val nightTopPhoto: String = "",
+    @SerialName("top_images")
+    val topImages: List<SpaceTopImageItem> = emptyList(),
+    @SerialName("followings_followed")
+    val followingsFollowed: SpaceFollowingsFollowedUpper? = null,
+    @SerialName("space_tags")
+    val spaceTags: List<SpaceTagItem> = emptyList(),
     @SerialName("live_room")
     val liveRoom: SpaceLiveRoom? = null,
     @SerialName("live_place")
@@ -109,6 +124,26 @@ data class SpaceAggregateData(
 )
 
 @Serializable
+data class SpaceFollowingsFollowedUpper(
+    val items: List<SpaceFollowingsFollowedItem> = emptyList(),
+    @SerialName("jump_url")
+    val jumpUrl: String = ""
+)
+
+@Serializable
+data class SpaceFollowingsFollowedItem(
+    val mid: Long = 0L,
+    val name: String = "",
+    val face: String = ""
+)
+
+@Serializable
+data class SpaceTagItem(
+    val title: String = "",
+    val uri: String = ""
+)
+
+@Serializable
 data class SpaceAggregateCard(
     val mid: String = "",
     val name: String = "",
@@ -117,13 +152,18 @@ data class SpaceAggregateCard(
     val sex: String = "",
     val attention: Int = 0,
     val fans: Int = 0,
+    val silence: Int = 0,
     @SerialName("official_verify")
     val officialVerify: SpaceOfficial = SpaceOfficial(),
     val vip: SpaceVip = SpaceVip(),
     @SerialName("level_info")
     val levelInfo: SpaceAggregateLevelInfo = SpaceAggregateLevelInfo(),
     val likes: SpaceAggregateLikes = SpaceAggregateLikes(),
-    val relation: SpaceAggregateRelation = SpaceAggregateRelation()
+    val relation: SpaceAggregateRelation = SpaceAggregateRelation(),
+    @SerialName("followings_followed_upper")
+    val followingsFollowedUpper: SpaceFollowingsFollowedUpper? = null,
+    @SerialName("space_tag")
+    val spaceTag: List<SpaceTagItem> = emptyList()
 )
 
 @Serializable
@@ -175,20 +215,30 @@ data class SpaceCollectionTopItem(
 
 @Serializable
 data class SpaceCollectionTopItemDetail(
-    val image: SpaceCollectionTopImage? = null
+    val image: SpaceCollectionTopImage? = null,
+    val animation: SpaceCollectionTopImage? = null
 )
 
 @Serializable
 data class SpaceCollectionTopImage(
     @SerialName("default_image")
-    val defaultImage: String = ""
+    val defaultImage: String = "",
+    val location: String = "",
+    val height: Double = 0.0
+)
+
+@Serializable
+data class SpaceSubTitleColorFormat(
+    val colors: List<String> = emptyList()
 )
 
 @Serializable
 data class SpaceCollectionTopTitle(
     val title: String = "",
     @SerialName("sub_title")
-    val subTitle: String = ""
+    val subTitle: String = "",
+    @SerialName("sub_title_color_format")
+    val subTitleColorFormat: SpaceSubTitleColorFormat? = null
 )
 
 @Serializable

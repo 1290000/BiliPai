@@ -17,10 +17,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import com.android.purebilibili.core.ui.components.liquidDockViewport
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -40,9 +44,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Email
@@ -2366,8 +2372,8 @@ private fun SpaceHeader(
     // - 头像右侧独立区域：上层 3 项数据统计（粉丝/关注/获赞），下层私信与关注操作按钮
     // - 窄屏信息区位于头像下方；宽屏放入头像与操作区之间
     val avatarSize = 80.dp
-    val avatarBannerOverlap = 24.dp
-    val actionsTopMargin = 8.dp
+    val avatarBannerOverlap = 20.dp
+    val actionsTopMargin = 5.dp
     val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -2423,40 +2429,16 @@ private fun SpaceHeader(
                     }
                     .align(Alignment.TopCenter)
                     .clickable(
-                        enabled = shouldEnableSpaceTopPhotoPreview(topPhotoUrl),
+                        enabled = shouldEnableSpaceTopPhotoPreview(topPhotoUrl) || userInfo.topImages.isNotEmpty(),
                         onClick = onTopPhotoClick
                     )
             ) {
-                if (topPhotoUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(topPhotoUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = if (bannerMetrics.cropToFill) {
-                            ContentScale.Crop
-                        } else {
-                            ContentScale.FillWidth
-                        },
-                        alignment = Alignment.TopCenter,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        colorScheme.surfaceVariant.copy(alpha = 0.86f),
-                                        colorScheme.secondaryContainer.copy(alpha = 0.56f),
-                                        colorScheme.surface
-                                    )
-                                )
-                            )
-                    )
-                }
+                SpaceHeaderBanner(
+                    topImages = userInfo.topImages,
+                    fallbackTopPhotoUrl = topPhotoUrl,
+                    isDarkTheme = isDarkTheme,
+                    modifier = Modifier.fillMaxSize()
+                )
 
                 Box(
                     modifier = Modifier
@@ -2568,7 +2550,7 @@ private fun SpaceHeader(
                         .weight(if (useExpandedLayout) 0.8f else 1f, fill = !useExpandedLayout)
                         .widthIn(max = 480.dp)
                         .padding(top = (avatarBannerOverlap + actionsTopMargin).coerceAtLeast(0.dp)),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -2742,6 +2724,18 @@ private fun SpaceHeaderIdentityInfo(
                         )
                     }
                 }
+            }
+
+            userInfo.followingsFollowed?.let { followedUp ->
+                if (followedUp.items.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SpaceFollowedUpSection(followedUp = followedUp)
+                }
+            }
+
+            if (userInfo.silence == 1) {
+                Spacer(modifier = Modifier.height(8.dp))
+                SpaceBanBanner()
             }
     }
 }
@@ -4556,6 +4550,7 @@ private fun SpaceHeaderRelationActions(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SpaceHeaderStat(
     label: String,
@@ -4563,14 +4558,24 @@ private fun SpaceHeaderStat(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .combinedClickable(
+                onClick = { onClick?.invoke() },
+                onLongClick = {
+                    android.widget.Toast.makeText(
+                        context,
+                        "$label: $value",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AppText(
             text = FormatUtils.formatStat(value),
-            fontSize = 15.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -4580,7 +4585,7 @@ private fun SpaceHeaderStat(
         AppText(
             text = label,
             fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.outline,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -4592,9 +4597,259 @@ private fun SpaceHeaderMetricDivider() {
     Box(
         modifier = Modifier
             .width(1.dp)
-            .height(16.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            .height(15.dp)
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     )
+}
+
+@Composable
+private fun SpaceHeaderBanner(
+    topImages: List<com.android.purebilibili.data.model.response.SpaceTopImageItem>,
+    fallbackTopPhotoUrl: String,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    if (topImages.size > 1) {
+        val pagerState = rememberPagerState { topImages.size }
+        Box(modifier = modifier) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val item = topImages[page]
+                val alignment = resolveSpaceBannerAlignment(item.dy)
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(item.header)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = alignment,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            val currentTitle = topImages.getOrNull(pagerState.currentPage)?.title
+            if (currentTitle != null && currentTitle.title.isNotBlank()) {
+                SpaceHeaderTitleBadge(
+                    title = currentTitle,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 4.dp)
+                )
+            }
+
+            AppLinearProgressIndicator(
+                progress = { (pagerState.currentPage + 1f) / topImages.size },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.5.dp)
+                    .align(Alignment.BottomCenter),
+                color = Color.White,
+                trackColor = Color(0x669E9E9E)
+            )
+        }
+    } else if (topImages.size == 1) {
+        val item = topImages[0]
+        val alignment = resolveSpaceBannerAlignment(item.dy)
+        Box(modifier = modifier) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(item.header)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = alignment,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (item.title != null && item.title.title.isNotBlank()) {
+                SpaceHeaderTitleBadge(
+                    title = item.title,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 4.dp)
+                )
+            }
+        }
+    } else if (fallbackTopPhotoUrl.isNotBlank()) {
+        val colorFilter = resolveSpaceBannerColorFilter(
+            isLight = !isDarkTheme,
+            hasFilter = true
+        )
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(fallbackTopPhotoUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.Center,
+            colorFilter = colorFilter,
+            modifier = modifier
+        )
+    } else {
+        Box(
+            modifier = modifier.background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.86f),
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.56f),
+                        MaterialTheme.colorScheme.surface
+                    )
+                )
+            )
+        )
+    }
+}
+
+@Composable
+private fun SpaceHeaderTitleBadge(
+    title: com.android.purebilibili.data.model.response.SpaceCollectionTopTitle,
+    modifier: Modifier = Modifier,
+) {
+    val subTitleColor = remember(title.subTitleColorFormat) {
+        val colorHex = title.subTitleColorFormat?.colors?.lastOrNull()
+        if (!colorHex.isNullOrBlank()) {
+            try {
+                val hex = colorHex.removePrefix("#")
+                if (hex.length == 6) {
+                    Color(hex.toLong(16) or 0xFF000000)
+                } else if (hex.length == 8) {
+                    Color(hex.toLong(16))
+                } else Color.White
+            } catch (_: Exception) {
+                Color.White
+            }
+        } else {
+            Color.White
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .widthIn(max = 140.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.12f),
+                        Color.Black.copy(alpha = 0.38f),
+                        Color.Black.copy(alpha = 0.45f),
+                    )
+                )
+            )
+            .padding(start = 16.dp, end = 6.dp, top = 2.dp, bottom = 2.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.End) {
+            AppText(
+                text = title.title,
+                fontSize = 12.sp,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (title.subTitle.isNotBlank()) {
+                AppText(
+                    text = title.subTitle,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = subTitleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpaceFollowedUpSection(
+    followedUp: com.android.purebilibili.data.model.response.SpaceFollowingsFollowedUpper,
+    modifier: Modifier = Modifier,
+) {
+    val items = followedUp.items
+    if (items.isEmpty()) return
+    val displayUsers = items.take(3)
+    val moreCount = items.size
+    val namesText = displayUsers.joinToString("、") { it.name }
+    val suffixText = if (items.size > 3) "等${moreCount}人也关注了TA" else "也关注了TA"
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy((-6).dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            displayUsers.forEach { user ->
+                AsyncImage(
+                    model = FormatUtils.buildSizedImageUrl(user.face, 64, 64),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        AppText(
+            text = namesText,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        AppText(
+            text = suffixText,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.outline,
+            maxLines = 1
+        )
+        AppIcon(
+            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+@Composable
+private fun SpaceBanBanner(
+    modifier: Modifier = Modifier
+) {
+    AppSurface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.errorContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AppIcon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(16.dp)
+            )
+            AppText(
+                text = "该账号封禁中",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+    }
 }
 
 @Composable

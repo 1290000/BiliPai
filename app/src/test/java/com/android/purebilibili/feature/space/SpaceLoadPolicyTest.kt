@@ -489,8 +489,8 @@ class SpaceLoadPolicyTest {
             windowWidthDp = 393f,
             windowHeightDp = 851f,
         )
-        assertFalse(phoneBanner.cropToFill)
-        assertEquals(393f / SPACE_BANNER_ASPECT_RATIO, phoneBanner.heightDp, 0.01f)
+        assertTrue(phoneBanner.cropToFill)
+        assertEquals(SPACE_HEADER_HEIGHT_DP, phoneBanner.heightDp, 0.01f)
         val landscapeTabletBanner = resolveSpaceBannerMetrics(
             renderedBannerWidthDp = 1280f,
             windowWidthDp = 1280f,
@@ -503,7 +503,7 @@ class SpaceLoadPolicyTest {
             windowWidthDp = 421f,
             windowHeightDp = 616f,
         )
-        assertFalse(compactCover.cropToFill)
+        assertTrue(compactCover.cropToFill)
         assertEquals(
             7,
             resolveSpaceContentGridColumnCount(
@@ -871,5 +871,14 @@ class SpaceLoadPolicyTest {
                 total = 91,
             ),
         )
+    }
+
+    @Test
+    fun `parseTopImageDy calculates vertical bias matching PiliPlus dy formula`() {
+        assertEquals(0f, parseTopImageDy("0-0-396", 396.0), 0.001f)
+        assertEquals(-0.5f, parseTopImageDy("0-0-198", 396.0), 0.001f)
+        assertEquals(0.5f, parseTopImageDy("0-198-396", 396.0), 0.001f)
+        assertEquals(0f, parseTopImageDy("", 396.0))
+        assertEquals(0f, parseTopImageDy("invalid", 396.0))
     }
 }
