@@ -933,11 +933,6 @@ fun HomeScreen(
     }
     val baseIsBottomBarBlurEnabled = homeSettings.isBottomBarBlurEnabled
     val crashTrackingConsentShown = homeSettings.crashTrackingConsentShown
-    LaunchedEffect(effectiveHomeSettings.hideTopTabs) {
-        if (effectiveHomeSettings.hideTopTabs && pagerState.currentPage != 0) {
-            pagerState.scrollToPage(0)
-        }
-    }
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled
     val baseIsDataSaverActive = remember(context) {
@@ -1803,8 +1798,10 @@ fun HomeScreen(
                     )
                     // [Fix] Re-enabled default overscroll for better feedback
                         val homeTopPagerSwipeEnabled =
-                            !effectiveHomeSettings.hideTopTabs &&
-                                shouldEnableHomeTopPagerUserScroll(isTopLevelActive)
+                            shouldEnableHomeTopPagerUserScroll(
+                                isTopLevelActive = isTopLevelActive,
+                                hideTopTabs = effectiveHomeSettings.hideTopTabs
+                            )
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 0,
