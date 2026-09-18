@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.QueueMusic
 import com.android.purebilibili.core.theme.LocalAppUiStyle
 import com.android.purebilibili.core.theme.LocalSettingsLiquidGlassEnabled
+import dev.chrisbanes.haze.HazeState
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
@@ -94,6 +95,8 @@ internal fun AudioNowPlayingBar(
     returningDetailBvid: String? = null,
     isSharedTransitionActive: Boolean = false,
     glassEnabled: Boolean = LocalSettingsLiquidGlassEnabled.current,
+    blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
     miuixBackdrop: MiuixBackdrop? = null,
     liquidGlassTuning: LiquidGlassTuning = LocalLiquidGlassRenderConfig.current.tuning,
     liftAboveBottomBar: Boolean = true,
@@ -246,6 +249,8 @@ internal fun AudioNowPlayingBar(
                     pressProgress = 0f,
                     shape = shape,
                     enabled = glassActive,
+                    blurEnabled = blurEnabled,
+                    hazeState = hazeState,
                     liquidGlassTuning = liquidGlassTuning,
                 )
         )

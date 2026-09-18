@@ -4084,6 +4084,8 @@ fun AppNavigation(
                                             "视频详情页"
                                         },
                                         glassEnabled = effectiveHomeSettings.androidNativeLiquidGlassEnabled,
+                                        blurEnabled = isBottomBarBlurEnabled,
+                                        hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                         miuixBackdrop = bottomBarBackdrop,
                                         liquidGlassTuning = liquidGlassRenderConfig.tuning,
                                         liftAboveBottomBar = false,
@@ -4254,6 +4256,8 @@ fun AppNavigation(
                         "视频详情页"
                     },
                     glassEnabled = effectiveHomeSettings.androidNativeLiquidGlassEnabled,
+                    blurEnabled = isBottomBarBlurEnabled,
+                    hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                     miuixBackdrop = bottomBarBackdrop,
                     liquidGlassTuning = liquidGlassRenderConfig.tuning,
                     liftAboveBottomBar = false,

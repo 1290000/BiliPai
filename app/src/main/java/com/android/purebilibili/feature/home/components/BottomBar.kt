@@ -2452,6 +2452,7 @@ private fun MaterialBottomBar(
                 containerColor = containerColor,
                 backdrop = miuixBackdrop,
                 blurEnabled = blurEnabled,
+                hazeState = hazeState,
                 glassEnabled = false,
                 liquidGlassTuning = liquidGlassTuning,
                 iconStyle = SharedFloatingBottomBarIconStyle.MATERIAL,
@@ -2473,6 +2474,13 @@ private fun MaterialBottomBar(
                         showText = showText,
                         haptic = haptic,
                         modifier = Modifier.fillMaxSize(),
+                        blurEnabled = blurEnabled,
+                        hazeState = hazeState,
+                        backdrop = miuixBackdrop,
+                        containerColor = containerColor,
+                        motionTier = motionTier,
+                        isTransitionRunning = isTransitionRunning,
+                        forceLowBlurBudget = forceLowBlurBudget,
                     )
                 }
             )
@@ -2491,6 +2499,13 @@ private fun MaterialBottomBar(
             showIcon = showIcon,
             showText = showText,
             haptic = haptic,
+            blurEnabled = blurEnabled,
+            hazeState = hazeState,
+            backdrop = miuixBackdrop,
+            containerColor = containerColor,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
         )
         return
     }
@@ -2685,7 +2700,36 @@ private fun OfficialMd3FloatingToolbarContent(
     showText: Boolean,
     haptic: (HapticType) -> Unit,
     modifier: Modifier = Modifier,
+    blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
+    backdrop: MiuixLayerBackdrop? = null,
+    containerColor: Color = Color.Unspecified,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false,
 ) {
+    val useBlur = blurEnabled && (hazeState != null || backdrop != null)
+    val toolbarShape = FloatingToolbarDefaults.ContainerShape
+    val toolbarColors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+        toolbarContainerColor = if (useBlur) Color.Transparent else Color.Unspecified,
+    )
+    val toolbarModifier = if (useBlur) {
+        Modifier.biliPaiFloatingDockShell(
+            backdrop = backdrop,
+            containerColor = if (containerColor != Color.Unspecified) containerColor else MaterialTheme.colorScheme.surfaceContainer,
+            pressProgress = 0f,
+            shape = toolbarShape,
+            enabled = false,
+            blurEnabled = true,
+            hazeState = hazeState,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
+        )
+    } else {
+        Modifier
+    }
+
     val toolbarContent: @Composable RowScope.() -> Unit = {
         visibleItems.forEach { item ->
             val selected = currentItem == item
@@ -2749,6 +2793,9 @@ private fun OfficialMd3FloatingToolbarContent(
     ) {
         HorizontalFloatingToolbar(
             expanded = true,
+            modifier = toolbarModifier,
+            colors = toolbarColors,
+            shape = toolbarShape,
             content = toolbarContent,
         )
     }
@@ -2768,6 +2815,13 @@ private fun OfficialMd3FloatingBottomBar(
     showIcon: Boolean,
     showText: Boolean,
     haptic: (HapticType) -> Unit,
+    blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
+    backdrop: MiuixLayerBackdrop? = null,
+    containerColor: Color = Color.Unspecified,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false,
 ) {
     Box(
         modifier = modifier
@@ -2791,6 +2845,13 @@ private fun OfficialMd3FloatingBottomBar(
             showIcon = showIcon,
             showText = showText,
             haptic = haptic,
+            blurEnabled = blurEnabled,
+            hazeState = hazeState,
+            backdrop = backdrop,
+            containerColor = containerColor,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
         )
     }
 }
@@ -3300,6 +3361,7 @@ private fun BiliPaiFloatingBottomBar(
             containerColor = containerColor,
             backdrop = miuixBackdrop,
             blurEnabled = blurEnabled,
+            hazeState = hazeState,
             glassEnabled = glassEnabled && !forceLowBlurBudget,
             liquidGlassTuning = liquidGlassTuning,
             iconStyle = iconStyle,

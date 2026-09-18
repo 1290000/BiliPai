@@ -49,6 +49,10 @@ import top.yukonga.miuix.kmp.blur.highlight.Highlight
 import top.yukonga.miuix.kmp.blur.highlight.LightPosition
 import top.yukonga.miuix.kmp.blur.highlight.LightSource
 import top.yukonga.miuix.kmp.blur.sensor.rememberDeviceTilt
+import dev.chrisbanes.haze.HazeState
+import com.android.purebilibili.core.ui.blur.unifiedBlur
+import com.android.purebilibili.core.ui.blur.BlurSurfaceType
+import com.android.purebilibili.core.ui.adaptive.MotionTier
 
 private val iosIndicatorSpecular: Highlight = Highlight(
     width = 1.dp,
@@ -146,6 +150,10 @@ internal fun Modifier.biliPaiFloatingDockShell(
     shape: Shape = CircleShape,
     enabled: Boolean = true,
     blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false,
     drawLens: Boolean = true,
     lensIntensity: Float = 1f,
     liquidGlassTuning: LiquidGlassTuning = resolveLiquidGlassTuning(progress = 0.5f),
@@ -164,28 +172,45 @@ internal fun Modifier.biliPaiFloatingDockShell(
             ),
         )
 
-    if (backdrop == null || (!enabled && !blurEnabled)) {
+    val canBlur = (backdrop != null && enabled) || blurEnabled
+    val hasValidTarget = (backdrop != null) || (hazeState != null)
+    if (!canBlur || !hasValidTarget) {
         val opaqueColor = if (containerColor.alpha == 0f) containerColor else containerColor.copy(alpha = 1f)
         return baseModifier.background(opaqueColor, shape)
     }
 
     if (!enabled && blurEnabled) {
-        val blurRadiusPx = with(density) { 25.dp.toPx() }
-        val blurSurfaceColor = containerColor.copy(alpha = 0.65f)
-        val onDrawBlurSurface = remember(blurSurfaceColor) {
-            val block: DrawScope.() -> Unit = {
-                drawRect(blurSurfaceColor)
+        if (hazeState != null) {
+            val blurSurfaceColor = containerColor.copy(alpha = 0.65f)
+            return baseModifier
+                .unifiedBlur(
+                    hazeState = hazeState,
+                    shape = shape,
+                    surfaceType = BlurSurfaceType.BOTTOM_BAR,
+                    motionTier = motionTier,
+                    isScrolling = false,
+                    isTransitionRunning = isTransitionRunning,
+                    forceLowBudget = forceLowBlurBudget,
+                )
+                .background(blurSurfaceColor, shape)
+        } else if (backdrop != null) {
+            val blurRadiusPx = with(density) { 25.dp.toPx() }
+            val blurSurfaceColor = containerColor.copy(alpha = 0.65f)
+            val onDrawBlurSurface = remember(blurSurfaceColor) {
+                val block: DrawScope.() -> Unit = {
+                    drawRect(blurSurfaceColor)
+                }
+                block
             }
-            block
+            return baseModifier.drawBackdrop(
+                backdrop = backdrop,
+                shape = shapeBlock,
+                effects = {
+                    blur(blurRadiusPx, blurRadiusPx)
+                },
+                onDrawSurface = onDrawBlurSurface,
+            )
         }
-        return baseModifier.drawBackdrop(
-            backdrop = backdrop,
-            shape = shapeBlock,
-            effects = {
-                blur(blurRadiusPx, blurRadiusPx)
-            },
-            onDrawSurface = onDrawBlurSurface,
-        )
     }
 
     val baseHighlight = rememberBiliPaiGravityHighlight(extraDegrees = -45f)

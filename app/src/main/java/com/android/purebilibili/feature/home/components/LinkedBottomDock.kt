@@ -32,6 +32,7 @@ import com.android.purebilibili.core.ui.motion.iosMorphTween
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
 import com.android.purebilibili.feature.home.LocalHomeScrollOffset
 import kotlinx.coroutines.flow.collect
+import dev.chrisbanes.haze.HazeState
 import top.yukonga.miuix.kmp.blur.Backdrop
 
 private const val LINKED_DOCK_MERGE_DURATION_MILLIS = 280
@@ -58,6 +59,7 @@ internal fun LinkedBottomDock(
     nowPlayingContent: (@Composable (Modifier, Float, Float, Float) -> Unit)?,
     modifier: Modifier = Modifier,
     blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
     navigationContent: @Composable () -> Unit,
 ) {
     val hasAudio = nowPlayingContent != null
@@ -156,6 +158,7 @@ internal fun LinkedBottomDock(
                             shape = shape,
                             enabled = glassEnabled,
                             blurEnabled = blurEnabled,
+                            hazeState = hazeState,
                             liquidGlassTuning = liquidGlassTuning,
                         )
                 )
@@ -186,6 +189,7 @@ internal fun LinkedBottomDock(
                                     shape = shape,
                                     enabled = glassEnabled,
                                     blurEnabled = blurEnabled,
+                                    hazeState = hazeState,
                                     liquidGlassTuning = liquidGlassTuning,
                                 )
                         )
