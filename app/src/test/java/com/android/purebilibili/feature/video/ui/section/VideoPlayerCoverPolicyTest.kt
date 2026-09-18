@@ -480,7 +480,7 @@ class VideoPlayerCoverPolicyTest {
                 forceCoverDuringReturnAnimation = false,
             )
         )
-        assertFalse(
+        assertTrue(
             shouldLoadVideoPlayerCoverImage(
                 isVerticalVideo = true,
                 shouldKeepCoverForManualStart = true,

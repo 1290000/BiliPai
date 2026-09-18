@@ -389,6 +389,7 @@ fun SpaceScreen(
                 backdrop = spaceChromeBackdrop,
                 enabled = spaceProgressiveBlur,
                 headerBlurActive = spaceHeaderBlurActive,
+                opaqueBackgroundFallback = false,
                 modifier = Modifier.background(
                     if (spaceProgressiveBlur || spaceHeaderBlurActive) Color.Transparent
                     else com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.surface)
@@ -429,12 +430,8 @@ fun SpaceScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(
-                            alpha = pinnedTopChromeScrim
-                        ),
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(
-                            alpha = pinnedTopChromeScrim
-                        )
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
                     ),
                     actions = {
                         if (canSearch) {

@@ -107,16 +107,25 @@ private fun resolveMessageCommentNavigationAction(rawLink: String): MessageLinkN
         }
     }
 
+    val parsedTargetReplyId = queryMap.firstPositiveLong(
+        "comment_id",
+        "reply_id",
+        "rpid",
+        "target_id",
+        "anchor",
+        "source_id"
+    ).takeIf { it > 0L } ?: segments.getOrNull(4)?.toLongOrNull()?.takeIf { it > 0L } ?: 0L
+
     return when (val target = BilibiliNavigationTargetParser.parse(fallbackLink)) {
         is BilibiliNavigationTarget.Video -> MessageLinkNavigationAction.VideoComment(
             videoId = target.videoId,
             rootReplyId = rootReplyId,
-            targetReplyId = queryMap.firstPositiveLong("comment_id", "reply_id", "rpid", "target_id")
+            targetReplyId = parsedTargetReplyId
         )
         is BilibiliNavigationTarget.Dynamic -> MessageLinkNavigationAction.DynamicComment(
             dynamicId = target.dynamicId,
             rootReplyId = rootReplyId,
-            targetReplyId = queryMap.firstPositiveLong("comment_id", "reply_id", "rpid", "target_id")
+            targetReplyId = parsedTargetReplyId
         )
         is BilibiliNavigationTarget.Space -> MessageLinkNavigationAction.Space(target.mid)
         is BilibiliNavigationTarget.Live -> MessageLinkNavigationAction.Live(target.roomId)

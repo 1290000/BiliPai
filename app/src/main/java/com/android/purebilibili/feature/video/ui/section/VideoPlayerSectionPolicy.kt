@@ -1135,7 +1135,7 @@ internal fun shouldShowCoverImage(
 }
 
 /**
- * 竖屏视频进入播放页时任何情况下都不显示封面，改为黑屏。
+ * 竖屏视频进入播放页时不显示封面，改为黑屏起播；但返回转场仍必须允许封面承接，携带封面返回列表。
  */
 @Suppress("UNUSED_PARAMETER")
 internal fun shouldLoadVideoPlayerCoverImage(
@@ -1143,7 +1143,7 @@ internal fun shouldLoadVideoPlayerCoverImage(
     shouldKeepCoverForManualStart: Boolean,
     forceCoverDuringReturnAnimation: Boolean,
 ): Boolean {
-    if (isVerticalVideo) return false
+    if (isVerticalVideo) return forceCoverDuringReturnAnimation
     return forceCoverDuringReturnAnimation || !isVerticalVideo
 }
 
@@ -1306,7 +1306,11 @@ internal fun resolveVideoPlayerEntryPresentationSpec(
     val fillCoverViewport = !forceCoverDuringReturnAnimation &&
         (targetFillsViewport || shouldKeepCoverForManualStart || isVerticalVideo)
     return VideoPlayerEntryPresentationSpec(
-        coverUsesSharedBounds = !isVerticalVideo && (forceCoverDuringReturnAnimation || shouldKeepCoverForManualStart),
+        coverUsesSharedBounds = if (isVerticalVideo) {
+            forceCoverDuringReturnAnimation
+        } else {
+            forceCoverDuringReturnAnimation || shouldKeepCoverForManualStart
+        },
         fillCoverViewport = fillCoverViewport,
         showManualStartPlayButton = shouldKeepCoverForManualStart,
         enableManualStartCoverOverlay = shouldKeepCoverForManualStart,

@@ -1009,7 +1009,8 @@ fun AppNavigation(
         ) {
             val parsedKey = legacyRouteToBiliPaiNavKey(route)
             val videoKey = parsedKey as? BiliPaiNavKey.VideoDetail
-            if (!skipPortraitStoryResolution) {
+            val hasCommentJump = (videoKey?.commentRootRpid ?: 0L) > 0L || (videoKey?.commentTargetRpid ?: 0L) > 0L
+            if (!skipPortraitStoryResolution && !hasCommentJump) {
                 resolvePortraitStoryNavigationSeed(
                     directPortraitStoryEntry = playerInteractionSettings.directPortraitStoryEntry,
                     isVerticalVideo = videoKey?.initialVertical == true,
@@ -1667,7 +1668,10 @@ fun AppNavigation(
                     pushNavigation3Key(BiliPaiNavKey.ArticleDetail(action.articleId))
                 }
                 is MessageLinkNavigationAction.Web -> {
-                    pushNavigation3Key(BiliPaiNavKey.Web(action.url))
+                    val url = action.url.trim()
+                    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("bilibili://")) {
+                        pushNavigation3Key(BiliPaiNavKey.Web(url))
+                    }
                 }
             }
         }

@@ -3060,6 +3060,7 @@ internal fun VideoDetailScreenStateHolder(
     val localBackTarget = resolveVideoDetailLocalBackTarget(
         isLandscapeFullscreen = isFullscreenMode,
         isPortraitFullscreen = isPortraitFullscreen,
+        directPortraitEntry = directPortraitEntryFromRoute,
     )
     val localBackEventState = rememberNavigationEventState(NavigationEventInfo.None)
     NavigationBackHandler(
@@ -4314,7 +4315,6 @@ internal fun VideoDetailScreenStateHolder(
                             residentCoverSource?.decodeWidthPx,
                             residentCoverSource?.decodeHeightPx,
                         ) {
-                            if (isVerticalVideo) return@remember null
                             val source = residentCoverSource ?: return@remember null
                             coil3.request.ImageRequest.Builder(context)
                                 .data(source.url)
@@ -5096,7 +5096,13 @@ internal fun VideoDetailScreenStateHolder(
             engagementViewModel = engagementViewModel,
             sharedPlayer = if (useSharedPortraitPlayer) playerState.player else null,
             useTextureSurfaceForNavigation = useTextureSurfaceForNavigation,
-            onBack = { presentationState.setPortraitFullscreen(false) },
+            onBack = {
+                if (directPortraitEntryFromRoute) {
+                    handleBack()
+                } else {
+                    presentationState.setPortraitFullscreen(false)
+                }
+            },
             onHomeClick = {
                 presentationState.setPortraitFullscreen(false)
                 handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))

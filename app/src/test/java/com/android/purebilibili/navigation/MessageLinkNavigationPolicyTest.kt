@@ -87,4 +87,34 @@ class MessageLinkNavigationPolicyTest {
         val articleAction = assertIs<MessageLinkNavigationAction.Article>(action)
         assertEquals(34646640L, articleAction.articleId)
     }
+
+    @Test
+    fun resolveMessageLinkNavigationAction_routesAnchorParameterToTargetReplyId() {
+        val action = resolveMessageLinkNavigationAction(
+            "bilibili://comment/detail/17/832703053858603029/238686570016/?anchor=238686628816"
+        )
+
+        val dynamicAction = assertIs<MessageLinkNavigationAction.DynamicComment>(action)
+        assertEquals("832703053858603029", dynamicAction.dynamicId)
+        assertEquals(238686570016L, dynamicAction.rootReplyId)
+        assertEquals(238686628816L, dynamicAction.targetReplyId)
+    }
+
+    @Test
+    fun buildMessageFeedCommentNavigationLink_handlesQueryOnlyNativeUri() {
+        val link = com.android.purebilibili.feature.message.feed.buildMessageFeedCommentNavigationLink(
+            nativeUri = "?comment_id=238686628816",
+            uri = "https://www.bilibili.com/video/BV1xx411c7mD",
+            businessId = 1,
+            subjectId = 115391124741470L,
+            rootId = 238686570016L,
+            sourceId = 238686628816L,
+            targetId = 238686628816L,
+        )
+
+        assertEquals(
+            "bilibili://comment/detail/1/115391124741470/238686570016?comment_id=238686628816&enterUri=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1xx411c7mD",
+            link
+        )
+    }
 }
