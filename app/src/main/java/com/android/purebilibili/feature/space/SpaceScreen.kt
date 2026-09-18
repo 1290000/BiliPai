@@ -11,11 +11,16 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import com.android.purebilibili.core.ui.components.AppLiquidGlassBackToTopButton
+import com.android.purebilibili.core.ui.rememberBackToTopButtonEnabled
+import com.android.purebilibili.core.util.animateScrollToTop
+import com.android.purebilibili.core.util.shouldShowScrollToTop
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -280,6 +285,14 @@ fun SpaceScreen(
     val pinnedTopChromeScrim by remember {
         derivedStateOf {
             resolveSpacePinnedTopChromeScrim(
+                firstVisibleItemIndex = gridState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = gridState.firstVisibleItemScrollOffset,
+            )
+        }
+    }
+    val shouldShowBackToTop by remember(gridState) {
+        derivedStateOf {
+            shouldShowScrollToTop(
                 firstVisibleItemIndex = gridState.firstVisibleItemIndex,
                 firstVisibleItemScrollOffset = gridState.firstVisibleItemScrollOffset,
             )
@@ -735,6 +748,29 @@ fun SpaceScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = 16.dp)
+            )
+
+            val animatedBackToTopBottomPadding by animateDpAsState(
+                targetValue = if (shouldPromptToLocatePlayedVideo) 76.dp else 24.dp,
+                label = "space_back_to_top_bottom_padding",
+            )
+
+            AppLiquidGlassBackToTopButton(
+                visible = rememberBackToTopButtonEnabled() &&
+                    uiState is SpaceUiState.Success &&
+                    shouldShowBackToTop,
+                onClick = {
+                    coroutineScope.launch {
+                        gridState.animateScrollToTop()
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 24.dp,
+                        bottom = animatedBackToTopBottomPadding,
+                    ),
+                backdrop = spaceChromeBackdrop,
             )
         }
     }
