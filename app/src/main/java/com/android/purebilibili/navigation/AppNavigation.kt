@@ -4000,6 +4000,7 @@ fun AppNavigation(
                                     val playbackManager = miniPlayerManager ?: MiniPlayerManager.getInstance(context)
                                     AudioNowPlayingBar(
                                         state = AudioNowPlayingBarState(
+                                            bvid = audioNowPlayingItem.bvid,
                                             title = audioNowPlayingItem.title,
                                             artist = audioNowPlayingItem.owner,
                                             artistAvatarUrl = audioNowPlayingItem.ownerFace,
@@ -4007,15 +4008,24 @@ fun AppNavigation(
                                             isPlaying = playbackManager.isPlaying,
                                             playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                                         ),
+                                        sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
+                                        isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
+                                        returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
                                         onExpand = {
-                                            pushNavigation3Route(
-                                                resolveAudioNowPlayingBarExpandRoute(
-                                                    opensAudioMode = audioNowPlayingBarOpensAudioMode,
-                                                    bvid = audioNowPlayingItem.bvid,
-                                                    cid = audioNowPlayingItem.cid,
-                                                    coverUrl = audioNowPlayingItem.cover,
-                                                )
+                                            val expandRoute = resolveAudioNowPlayingBarExpandRoute(
+                                                opensAudioMode = audioNowPlayingBarOpensAudioMode,
+                                                bvid = audioNowPlayingItem.bvid,
+                                                cid = audioNowPlayingItem.cid,
+                                                coverUrl = audioNowPlayingItem.cover,
                                             )
+                                            if (audioNowPlayingBarOpensAudioMode) {
+                                                pushNavigation3Route(expandRoute)
+                                            } else {
+                                                navigateToVideoRouteInNavigation3(
+                                                    route = expandRoute,
+                                                    sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
+                                                )
+                                            }
                                         },
                                         onPlayPause = {
                                             if (!playbackManager.togglePlayPause()) {
@@ -4159,6 +4169,7 @@ fun AppNavigation(
                 val playbackManager = miniPlayerManager ?: MiniPlayerManager.getInstance(context)
                 AudioNowPlayingBar(
                     state = AudioNowPlayingBarState(
+                        bvid = audioNowPlayingItem.bvid,
                         title = audioNowPlayingItem.title,
                         artist = audioNowPlayingItem.owner,
                         artistAvatarUrl = audioNowPlayingItem.ownerFace,
@@ -4166,15 +4177,24 @@ fun AppNavigation(
                         isPlaying = playbackManager.isPlaying,
                         playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                     ),
+                    sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
+                    isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
+                    returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
                     onExpand = {
-                        pushNavigation3Route(
-                            resolveAudioNowPlayingBarExpandRoute(
-                                opensAudioMode = audioNowPlayingBarOpensAudioMode,
-                                bvid = audioNowPlayingItem.bvid,
-                                cid = audioNowPlayingItem.cid,
-                                coverUrl = audioNowPlayingItem.cover,
-                            )
+                        val expandRoute = resolveAudioNowPlayingBarExpandRoute(
+                            opensAudioMode = audioNowPlayingBarOpensAudioMode,
+                            bvid = audioNowPlayingItem.bvid,
+                            cid = audioNowPlayingItem.cid,
+                            coverUrl = audioNowPlayingItem.cover,
                         )
+                        if (audioNowPlayingBarOpensAudioMode) {
+                            pushNavigation3Route(expandRoute)
+                        } else {
+                            navigateToVideoRouteInNavigation3(
+                                route = expandRoute,
+                                sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
+                            )
+                        }
                     },
                     onPlayPause = {
                         if (!playbackManager.togglePlayPause()) {
