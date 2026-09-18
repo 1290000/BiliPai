@@ -236,9 +236,9 @@ internal fun StoryVideoCard(
     val sharedTransitionScope = LocalSharedTransitionScope.current
     val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
     val sharedTransitionSpeedSettings = LocalVideoSharedTransitionSpeedSettings.current
-    val effectiveTransitionEnabled = transitionEnabled && LocalSharedTransitionEnabled.current
+    val effectiveTransitionEnabled = transitionEnabled
     val coverSharedEnabled = shouldEnableVideoCoverSharedTransition(
-        transitionEnabled = effectiveTransitionEnabled,
+        transitionEnabled = effectiveTransitionEnabled && LocalSharedTransitionEnabled.current,
         hasSharedTransitionScope = sharedTransitionScope != null,
         hasAnimatedVisibilityScope = animatedVisibilityScope != null
     )

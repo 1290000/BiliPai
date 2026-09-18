@@ -939,9 +939,9 @@ internal fun ElegantVideoCard(
         val sharedTransitionSpeedSettings = LocalVideoSharedTransitionSpeedSettings.current
         val transitionAdaptiveInfo = com.android.purebilibili.core.ui.transition
             .LocalVideoTransitionAdaptiveInfo.current
-        val effectiveTransitionEnabled = transitionEnabled && LocalSharedTransitionEnabled.current
+        val effectiveTransitionEnabled = transitionEnabled
         val coverSharedEnabled = shouldEnableVideoCoverSharedTransition(
-            transitionEnabled = effectiveTransitionEnabled,
+            transitionEnabled = effectiveTransitionEnabled && LocalSharedTransitionEnabled.current,
             hasSharedTransitionScope = sharedTransitionScope != null,
             hasAnimatedVisibilityScope = animatedVisibilityScope != null
         )

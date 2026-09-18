@@ -102,7 +102,11 @@ internal fun Modifier.recordNativeVideoCardLayer(
                 bgState.isGestureRestoreInProgressProvider(),
         )
         if (!hide) {
-            drawLayer(layer)
+            if (freezeProvider() && isNativeVideoCardLayerDrawable(layer.size.width, layer.size.height)) {
+                drawLayer(layer)
+            } else {
+                drawContent()
+            }
         }
     }
 }
