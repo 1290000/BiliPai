@@ -39,6 +39,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,12 +109,12 @@ internal fun AudioNowPlayingBar(
         with(density) { configuration.screenHeightDp.dp.toPx() }
     }
 
-    val barCoordsRef = remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val coverCoordsRef = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val barCoordsRef = remember { arrayOfNulls<LayoutCoordinates>(1) }
+    val coverCoordsRef = remember { arrayOfNulls<LayoutCoordinates>(1) }
 
     val handleExpand = {
-        barCoordsRef.value?.takeIf { it.isAttached }?.boundsInRoot()?.let { bounds ->
-            val sourceCoverBounds = coverCoordsRef.value?.takeIf { it.isAttached }?.boundsInRoot()
+        barCoordsRef[0]?.takeIf { it.isAttached }?.boundsInRoot()?.let { bounds ->
+            val sourceCoverBounds = coverCoordsRef[0]?.takeIf { it.isAttached }?.boundsInRoot()
             if (state.bvid.isNotBlank()) {
                 CardPositionManager.recordVideoCardPosition(
                     bvid = state.bvid,
@@ -140,6 +142,8 @@ internal fun AudioNowPlayingBar(
     }
 
     val landingProgress = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+    var hasTriggeredForSession by remember { mutableStateOf(false) }
     val reduceMotion = rememberSystemReduceMotion()
     val landingMotionEnabled = resolveAudioNowPlayingBarLandingMotionEnabled(reduceMotion)
     val shouldTriggerLanding = resolveAudioNowPlayingBarShouldTriggerLanding(
@@ -150,17 +154,25 @@ internal fun AudioNowPlayingBar(
 
     LaunchedEffect(shouldTriggerLanding, landingMotionEnabled) {
         if (shouldTriggerLanding && landingMotionEnabled) {
-            delay(AUDIO_NOW_PLAYING_BAR_LANDING_DELAY_MS)
-            landingProgress.snapTo(0f)
-            landingProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = AUDIO_NOW_PLAYING_BAR_LANDING_DURATION_MS,
-                    easing = AudioNowPlayingBarLandingEasing
-                )
-            )
+            if (!hasTriggeredForSession) {
+                hasTriggeredForSession = true
+                coroutineScope.launch {
+                    delay(AUDIO_NOW_PLAYING_BAR_LANDING_DELAY_MS)
+                    landingProgress.snapTo(0f)
+                    landingProgress.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(
+                            durationMillis = AUDIO_NOW_PLAYING_BAR_LANDING_DURATION_MS,
+                            easing = AudioNowPlayingBarLandingEasing
+                        )
+                    )
+                }
+            }
         } else if (!shouldTriggerLanding) {
-            landingProgress.snapTo(1f)
+            hasTriggeredForSession = false
+            if (!landingProgress.isRunning && landingProgress.value != 1f) {
+                landingProgress.snapTo(1f)
+            }
         }
     }
 
@@ -198,17 +210,22 @@ internal fun AudioNowPlayingBar(
                 }
             )
             .onGloballyPositioned { coordinates ->
-                barCoordsRef.value = coordinates
+                barCoordsRef[0] = coordinates
             }
             .graphicsLayer {
                 val progress = landingProgress.value
-                val (scaleXVal, scaleYVal) = resolveAudioNowPlayingBarLandingScale(progress)
-                val offsetY = resolveAudioNowPlayingBarLandingOffsetY(progress)
-                val alphaVal = resolveAudioNowPlayingBarLandingAlpha(progress)
-                scaleX = scaleXVal
-                scaleY = scaleYVal
-                translationY = offsetY * density.density
-                alpha = alphaVal
+                if (progress == 1f) {
+                    scaleX = 1f
+                    scaleY = 1f
+                    translationY = 0f
+                    alpha = 1f
+                } else {
+                    // 无额外内存分配的高刷标量求值（resolveAudioNowPlayingBarLandingScale）：
+                    scaleX = resolveAudioNowPlayingBarLandingScaleX(progress)
+                    scaleY = resolveAudioNowPlayingBarLandingScaleY(progress)
+                    translationY = resolveAudioNowPlayingBarLandingOffsetY(progress) * density
+                    alpha = resolveAudioNowPlayingBarLandingAlpha(progress)
+                }
             }
             .clip(shape)
             .semantics { contentDescription = "当前视频：${state.title}，打开$expandDestinationLabel" }
@@ -244,7 +261,7 @@ internal fun AudioNowPlayingBar(
                 modifier = Modifier
                     .size((40f - 8f * mergeProgress).dp)
                     .onGloballyPositioned { coordinates ->
-                        coverCoordsRef.value = coordinates
+                        coverCoordsRef[0] = coordinates
                     }
                     .graphicsLayer { rotationZ = coverRotationDegrees() }
                     .clip(if (chrome.coverShapeIsCircle) CircleShape else AppShapes.container(ContainerLevel.Field)),
