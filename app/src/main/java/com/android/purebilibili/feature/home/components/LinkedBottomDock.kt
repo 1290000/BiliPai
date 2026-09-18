@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -56,6 +57,7 @@ internal fun LinkedBottomDock(
     navigationMinEdgePadding: androidx.compose.ui.unit.Dp,
     nowPlayingContent: (@Composable (Modifier, Float, Float, Float) -> Unit)?,
     modifier: Modifier = Modifier,
+    blurEnabled: Boolean = false,
     navigationContent: @Composable () -> Unit,
 ) {
     val hasAudio = nowPlayingContent != null
@@ -144,8 +146,19 @@ internal fun LinkedBottomDock(
             }
                 .then(if (phase != LinkedDockPhase.Expanded) Modifier.clickable(role = Role.Button) { expand() }
                     else Modifier.clearAndSetSemantics {}), contentAlignment = Alignment.Center) {
-                Box(Modifier.fillMaxSize().biliPaiFloatingDockShell(backdrop, containerColor, 0f, shape = shape,
-                    enabled = glassEnabled, liquidGlassTuning = liquidGlassTuning))
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .biliPaiFloatingDockShell(
+                            backdrop = backdrop,
+                            containerColor = containerColor,
+                            pressProgress = 0f,
+                            shape = shape,
+                            enabled = glassEnabled,
+                            blurEnabled = blurEnabled,
+                            liquidGlassTuning = liquidGlassTuning,
+                        )
+                )
                 if (merge.value > 0.001f) {
                     AppIcon(
                         imageVector = if (iconStyle == SharedFloatingBottomBarIconStyle.MIUIX) {
@@ -163,13 +176,29 @@ internal fun LinkedBottomDock(
             Box(contentAlignment = Alignment.Center) {
                 if (searchEnabled) {
                     Box(Modifier.fillMaxSize()) {
-                        Box(Modifier.fillMaxSize().biliPaiFloatingDockShell(backdrop, containerColor, 0f, shape = shape,
-                                enabled = glassEnabled, liquidGlassTuning = liquidGlassTuning))
-                        Box(Modifier.fillMaxSize().then(
-                            if (phase != LinkedDockPhase.Search) Modifier.clickable(role = Role.Button) {
-                                phase = LinkedDockPhase.Search
-                            } else Modifier
-                        )) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .biliPaiFloatingDockShell(
+                                    backdrop = backdrop,
+                                    containerColor = containerColor,
+                                    pressProgress = 0f,
+                                    shape = shape,
+                                    enabled = glassEnabled,
+                                    blurEnabled = blurEnabled,
+                                    liquidGlassTuning = liquidGlassTuning,
+                                )
+                        )
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .clip(shape)
+                                .then(
+                                    if (phase != LinkedDockPhase.Search) Modifier.clickable(role = Role.Button) {
+                                        phase = LinkedDockPhase.Search
+                                    } else Modifier
+                                )
+                        ) {
                             BiliPaiBottomBarSearchVisualContent(
                                 expanded = phase == LinkedDockPhase.Search,
                                 query = query,

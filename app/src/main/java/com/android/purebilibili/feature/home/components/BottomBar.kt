@@ -3245,6 +3245,7 @@ private fun BiliPaiFloatingBottomBar(
             onSearchKeywordSubmit = onSearchKeywordSubmit,
             containerColor = containerColor,
             backdrop = miuixBackdrop,
+            blurEnabled = blurEnabled,
             glassEnabled = glassEnabled && !forceLowBlurBudget,
             liquidGlassTuning = liquidGlassTuning,
             iconStyle = iconStyle,

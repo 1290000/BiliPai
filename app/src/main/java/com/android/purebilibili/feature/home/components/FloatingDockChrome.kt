@@ -145,17 +145,49 @@ internal fun Modifier.biliPaiFloatingDockShell(
     panelOffsetPx: Float = 0f,
     shape: Shape = CircleShape,
     enabled: Boolean = true,
+    blurEnabled: Boolean = false,
     drawLens: Boolean = true,
     lensIntensity: Float = 1f,
     liquidGlassTuning: LiquidGlassTuning = resolveLiquidGlassTuning(progress = 0.5f),
 ): Modifier {
-    if (!enabled || backdrop == null) {
-        return this
-            .graphicsLayer { translationX = panelOffsetPx }
-            .background(containerColor, shape)
-    }
     val isDark = isSystemInDarkTheme()
     val density = LocalDensity.current
+    val shapeBlock = remember(shape) { { shape } }
+    val baseModifier = this
+        .graphicsLayer { translationX = panelOffsetPx }
+        .dropShadow(
+            shape = shape,
+            shadow = Shadow(
+                radius = 10.dp,
+                color = Color.Black,
+                alpha = if (isDark) 0.2f else 0.1f,
+            ),
+        )
+
+    if (backdrop == null || (!enabled && !blurEnabled)) {
+        val opaqueColor = if (containerColor.alpha == 0f) containerColor else containerColor.copy(alpha = 1f)
+        return baseModifier.background(opaqueColor, shape)
+    }
+
+    if (!enabled && blurEnabled) {
+        val blurRadiusPx = with(density) { 25.dp.toPx() }
+        val blurSurfaceColor = containerColor.copy(alpha = 0.65f)
+        val onDrawBlurSurface = remember(blurSurfaceColor) {
+            val block: DrawScope.() -> Unit = {
+                drawRect(blurSurfaceColor)
+            }
+            block
+        }
+        return baseModifier.drawBackdrop(
+            backdrop = backdrop,
+            shape = shapeBlock,
+            effects = {
+                blur(blurRadiusPx, blurRadiusPx)
+            },
+            onDrawSurface = onDrawBlurSurface,
+        )
+    }
+
     val baseHighlight = rememberBiliPaiGravityHighlight(extraDegrees = -45f)
     val surfaceColor = containerColor.copy(alpha = liquidGlassTuning.surfaceAlpha)
     val readabilityScrimColor = if (isDark) Color.Black else Color.White
@@ -178,7 +210,6 @@ internal fun Modifier.biliPaiFloatingDockShell(
         0f
     }
     val scrimAlpha = liquidGlassTuning.contentReadabilityScrimAlpha
-    val shapeBlock = remember(shape) { { shape } }
     val effects = rememberFloatingDockBackdropEffects(
         blurRadiusPx = blurRadiusPx,
         saturation = liquidGlassTuning.saturation,
@@ -212,16 +243,7 @@ internal fun Modifier.biliPaiFloatingDockShell(
         }
         block
     }
-    return this
-        .graphicsLayer { translationX = panelOffsetPx }
-        .dropShadow(
-            shape = shape,
-            shadow = Shadow(
-                radius = 10.dp,
-                color = Color.Black,
-                alpha = if (isDark) 0.2f else 0.1f,
-            ),
-        )
+    return baseModifier
         .drawBackdrop(
             backdrop = backdrop,
             shape = shapeBlock,
