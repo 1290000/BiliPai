@@ -2386,6 +2386,8 @@ private fun SpaceContent(
                     }
                 }
             }
+        }
+    }
 
         // [新增] 双指缩放切换网格列数 HUD 胶囊 (自适应 MD3 / MIUIX)
         GridPinchColumnHudPill(
@@ -2395,8 +2397,6 @@ private fun SpaceContent(
                 .align(Alignment.TopCenter)
                 .padding(top = chromeTopInset + 16.dp)
         )
-        }
-        }
     }
 }
 
