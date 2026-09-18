@@ -40,23 +40,31 @@ internal object MessageNotificationSettingsStore {
 
     fun getSettings(context: Context): Flow<MessageNotificationSettings> =
         context.applicationContext.messageNotificationSettingsStore.data.map { prefs ->
-            // Legacy migration: the former single "msg_center" switch covered all five
-            // subcategories. If it was turned off before the split, propagate that opt-out
-            // to the new granular keys unless the user has since set any of them explicitly.
-            val legacyCenterOff = prefs[legacyMessageCenterKey] == false
-            val anySubcategorySet = privateMessagesKey in prefs || repliesKey in prefs ||
-                atMeKey in prefs || likesKey in prefs || systemNoticesKey in prefs
-            val migratedDefault = !legacyCenterOff || anySubcategorySet
+            // One-shot legacy migration: the former single "msg_center" switch covered
+            // all five subcategories. If it exists, propagate its value to every new
+            // granular key that hasn't been set yet, then delete the legacy key so the
+            // store never carries it again.
+            if (legacyMessageCenterKey in prefs) {
+                val legacyValue = prefs[legacyMessageCenterKey] != false
+                context.applicationContext.messageNotificationSettingsStore.edit { mutable ->
+                    if (privateMessagesKey !in mutable) mutable[privateMessagesKey] = legacyValue
+                    if (repliesKey !in mutable) mutable[repliesKey] = legacyValue
+                    if (atMeKey !in mutable) mutable[atMeKey] = legacyValue
+                    if (likesKey !in mutable) mutable[likesKey] = legacyValue
+                    if (systemNoticesKey !in mutable) mutable[systemNoticesKey] = legacyValue
+                    mutable.remove(legacyMessageCenterKey)
+                }
+            }
             MessageNotificationSettings(
                 enabled = prefs[enabledKey] ?: false,
                 mode = MessageNotificationMode.entries.firstOrNull { it.name == prefs[modeKey] }
                     ?: MessageNotificationMode.POWER_SAVING,
                 residentEnabled = prefs[residentKey] ?: false,
-                notifyPrivateMessages = prefs[privateMessagesKey] ?: migratedDefault,
-                notifyReplies = prefs[repliesKey] ?: migratedDefault,
-                notifyAtMe = prefs[atMeKey] ?: migratedDefault,
-                notifyLikes = prefs[likesKey] ?: migratedDefault,
-                notifySystemNotices = prefs[systemNoticesKey] ?: migratedDefault,
+                notifyPrivateMessages = prefs[privateMessagesKey] ?: true,
+                notifyReplies = prefs[repliesKey] ?: true,
+                notifyAtMe = prefs[atMeKey] ?: true,
+                notifyLikes = prefs[likesKey] ?: true,
+                notifySystemNotices = prefs[systemNoticesKey] ?: true,
                 notifyDynamicUpdates = prefs[dynamicKey] ?: true,
                 notifyLiveAlerts = prefs[liveKey] ?: true,
             )
