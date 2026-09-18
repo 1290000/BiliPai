@@ -1,7 +1,7 @@
 package com.android.purebilibili.feature.home
 
 import androidx.compose.ui.unit.Dp
-import com.android.purebilibili.core.theme.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppSpacingTokens
 
 fun resolveHomeTopTabsRevealDelayMs(
     isReturningFromDetail: Boolean,

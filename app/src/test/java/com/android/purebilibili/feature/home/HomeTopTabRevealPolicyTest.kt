@@ -1,7 +1,7 @@
 package com.android.purebilibili.feature.home
 
 import androidx.compose.ui.unit.dp
-import com.android.purebilibili.core.theme.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppSpacingTokens
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
