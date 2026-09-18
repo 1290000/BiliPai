@@ -65,7 +65,6 @@ import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.VideoStatRow
 import com.android.purebilibili.core.ui.feedContentTypography
 import com.android.purebilibili.core.ui.videoCardTitleMaxLines
-import com.android.purebilibili.core.util.CardPositionManager
 import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import com.android.purebilibili.core.ui.videoCardTitleOverflow
 import com.android.purebilibili.core.ui.transition.LocalMiuixVideoCardTransitionState
