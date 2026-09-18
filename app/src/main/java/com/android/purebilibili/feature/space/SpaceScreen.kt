@@ -2326,11 +2326,21 @@ private fun SpaceHeader(
     useExpandedLayout: Boolean = false,
 ) {
     val context = LocalContext.current
-    val topPhotoUrl = normalizeSpaceTopPhotoUrl(userInfo.topPhoto)
+    val isDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    val resolvedPhoto = if (isDarkTheme && userInfo.nightTopPhoto.isNotBlank()) {
+        userInfo.nightTopPhoto
+    } else {
+        userInfo.topPhoto
+    }
+    val topPhotoUrl = normalizeSpaceTopPhotoUrl(resolvedPhoto)
     val avatarPreviewEnabled = userInfo.face.isNotBlank()
-    val followLabel = if (userInfo.isFollowed) "已关注" else "关注"
     val isOwner = userInfo.mid > 0L &&
         userInfo.mid == com.android.purebilibili.core.store.TokenManager.midCache
+    val followLabel = resolveSpaceFollowActionLabel(
+        isOwner = isOwner,
+        relationStatus = userInfo.relationStatus,
+        isFollowed = userInfo.isFollowed,
+    )
     val officialBadge = remember(userInfo.official) {
         resolveOfficialVerifyBadge(
             type = userInfo.official.type,
@@ -2346,7 +2356,7 @@ private fun SpaceHeader(
     }
     val colorScheme = MaterialTheme.colorScheme
     val followButtonColors = resolveSpaceFollowButtonColors(
-        isFollowed = userInfo.isFollowed,
+        isFollowed = if (isOwner) false else userInfo.isFollowed,
         colorScheme = colorScheme
     )
 
@@ -2581,16 +2591,25 @@ private fun SpaceHeader(
                         }
                     }
 
-                    if (!isOwner) {
-                        SpaceHeaderRelationActions(
-                            followLabel = followLabel,
-                            isFollowed = userInfo.isFollowed,
-                            followButtonColors = followButtonColors,
-                            onMessageClick = onMessageClick,
-                            onFollowClick = onFollowClick,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                    SpaceHeaderRelationActions(
+                        followLabel = followLabel,
+                        isFollowed = userInfo.isFollowed,
+                        followButtonColors = followButtonColors,
+                        onMessageClick = onMessageClick,
+                        onFollowClick = {
+                            if (isOwner) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "可在「我的」页面编辑个人资料",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                onFollowClick()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        isOwner = isOwner,
+                    )
                 }
             }
         }
@@ -4459,35 +4478,38 @@ private fun SpaceHeaderRelationActions(
     followButtonColors: SpaceSelectionChipColors,
     onMessageClick: () -> Unit,
     onFollowClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOwner: Boolean = false,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        AppSurface(
-            onClick = onMessageClick,
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-            ),
-            modifier = Modifier
-                .heightIn(min = 36.dp)
-                .widthIn(min = 46.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+        if (!isOwner) {
+            AppSurface(
+                onClick = onMessageClick,
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                ),
+                modifier = Modifier
+                    .width(46.dp)
+                    .heightIn(min = 36.dp)
             ) {
-                AppIcon(
-                    imageVector = Icons.Outlined.Email,
-                    contentDescription = "私信",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AppIcon(
+                        imageVector = Icons.Outlined.Email,
+                        contentDescription = "私信",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
@@ -4495,7 +4517,7 @@ private fun SpaceHeaderRelationActions(
             onClick = onFollowClick,
             shape = RoundedCornerShape(18.dp),
             color = followButtonColors.backgroundColor,
-            border = if (isFollowed) {
+            border = if (isFollowed && !isOwner) {
                 BorderStroke(
                     1.dp,
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)

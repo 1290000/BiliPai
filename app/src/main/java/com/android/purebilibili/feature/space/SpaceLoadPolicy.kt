@@ -443,7 +443,10 @@ internal data class SpaceInitialSeed(
     val defaultContributionTabId: String
 )
 
-internal fun resolveSpaceAggregateTopPhoto(images: SpaceAggregateImages?): String {
+internal fun resolveSpaceAggregateTopPhoto(
+    images: SpaceAggregateImages?,
+    isDarkTheme: Boolean = false,
+): String {
     if (images == null) return ""
     val collectionTopItem = images.collectionTopSimple?.top?.result?.firstOrNull()
     val collectionPhoto = collectionTopItem?.item?.image?.defaultImage?.takeIf { it.isNotBlank() }
@@ -451,7 +454,11 @@ internal fun resolveSpaceAggregateTopPhoto(images: SpaceAggregateImages?): Strin
     if (!collectionPhoto.isNullOrBlank()) {
         return collectionPhoto
     }
-    return images.imgUrl.ifBlank { images.nightImgUrl }
+    return if (isDarkTheme && images.nightImgUrl.isNotBlank()) {
+        images.nightImgUrl
+    } else {
+        images.imgUrl.ifBlank { images.nightImgUrl }
+    }
 }
 
 internal fun resolveSpaceInitialSeedFromAggregate(
@@ -491,7 +498,9 @@ internal fun resolveSpaceInitialSeedFromAggregate(
             official = card.officialVerify,
             vip = card.vip,
             isFollowed = isFollowed,
+            relationStatus = relation.status,
             topPhoto = topPhoto,
+            nightTopPhoto = data.images?.nightImgUrl.orEmpty(),
             liveRoom = data.live
         ),
         relationStat = RelationStatData(

@@ -58,4 +58,17 @@ class SpaceHeaderPresentationPolicyTest {
             )
         )
     }
+
+    @Test
+    fun `resolveSpaceFollowActionLabel maps relations and owner matching PiliPlus`() {
+        assertEquals("编辑资料", resolveSpaceFollowActionLabel(isOwner = true))
+        assertEquals("关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 0, isFollowed = false))
+        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 0, isFollowed = true))
+        assertEquals("悄悄关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 1))
+        assertEquals("已关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 2))
+        assertEquals("已互关", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 4))
+        assertEquals("已互关", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 6))
+        assertEquals("移除黑名单", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = 128))
+        assertEquals("特别关注", resolveSpaceFollowActionLabel(isOwner = false, relationStatus = -10))
+    }
 }

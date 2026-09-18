@@ -30,8 +30,12 @@ data class SpaceUserInfo(
     val vip: SpaceVip = SpaceVip(),
     @SerialName("is_followed")
     val isFollowed: Boolean = false,
+    @SerialName("relation_status")
+    val relationStatus: Int = 0,
     @SerialName("top_photo")
     val topPhoto: String = "",
+    @SerialName("night_top_photo")
+    val nightTopPhoto: String = "",
     @SerialName("live_room")
     val liveRoom: SpaceLiveRoom? = null,
     @SerialName("live_place")
