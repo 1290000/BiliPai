@@ -500,6 +500,7 @@ internal class VideoContentCommentActions(
     val onSearchKeywordClick: (String) -> Unit,
     val onReportComment: (Long, Int) -> Unit,
     val onToggleTopComment: (ReplyItem) -> Unit,
+    val onCheckCommentFraud: (ReplyItem) -> Unit,
 )
 
 internal class VideoContentNoteActions(
@@ -606,8 +607,8 @@ internal fun VideoContentSection(
     val onCommentUrlClick = commentActions.onCommentUrlClick
     val onDescriptionUrlClick = commentActions.onDescriptionUrlClick
     val onSearchKeywordClick = commentActions.onSearchKeywordClick
-    val onReportComment = commentActions.onReportComment
     val onToggleTopComment = commentActions.onToggleTopComment
+    val onCheckCommentFraud = commentActions.onCheckCommentFraud
     val onRetryAiSummary = noteActions.onRetryAiSummary
     val onCreateNoteDraftFromAiSummary = noteActions.onCreateNoteDraftFromAiSummary
     val onOpenVideoNoteEditor = noteActions.onOpenVideoNoteEditor
@@ -990,6 +991,7 @@ internal fun VideoContentSection(
                         onCommentUrlClick = onCommentUrlClick,
                         onReportComment = onReportComment,
                         onToggleTopComment = onToggleTopComment,
+                        onCheckCommentFraud = onCheckCommentFraud,
                         showIdentityDecorations = showIdentityDecorations,
                         lightweightCommentRendering = lightweightCommentRendering,
                         sortMode = sortMode,
@@ -1408,8 +1410,8 @@ internal fun VideoCommentTab(
     likedComments: Set<Long>,
     hatedComments: Set<Long>,
     onCommentUrlClick: (String) -> Unit,
-    onReportComment: (Long, Int) -> Unit,
     onToggleTopComment: (ReplyItem) -> Unit,
+    onCheckCommentFraud: (ReplyItem) -> Unit,
     showIdentityDecorations: Boolean,
     lightweightCommentRendering: Boolean,
     sortMode: CommentSortMode = CommentSortMode.HOT,
@@ -1538,6 +1540,9 @@ internal fun VideoCommentTab(
                             // [新增] 仅当评论 mid 与当前登录用户 mid 一致时显示删除按钮
                             onDeleteClick = if (currentMid > 0 && reply.mid == currentMid) {
                                 { onDissolveStart(reply.rpid) }
+                            } else null,
+                            onCheckFraudClick = if (currentMid > 0 && reply.mid == currentMid) {
+                                { onCheckCommentFraud(reply) }
                             } else null,
                             // [新增] URL 点击跳转
                             onUrlClick = onCommentUrlClick,

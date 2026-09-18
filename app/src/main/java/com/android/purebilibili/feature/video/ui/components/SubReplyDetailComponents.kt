@@ -417,6 +417,7 @@ internal fun VideoInlineSubReplyDetailContent(
     onConversationBack: () -> Unit,
     onDissolveStart: (Long) -> Unit,
     onDeleteComment: (Long) -> Unit,
+    onCheckCommentFraud: (ReplyItem) -> Unit = {},
     onCommentLike: (Long) -> Unit,
     onCommentHate: (Long) -> Unit,
     onReportComment: (Long, Int) -> Unit,
@@ -750,9 +751,11 @@ internal fun SubReplyDetailContent(
                             showUpFlag = unusedShowUpFlag,
                             onTimestampClick = onTimestampClick,
                             onImagePreview = onImagePreview,
-                            onReplyClick = { onReplyClick?.invoke(rootReply) },
                             onDeleteClick = if (currentMid > 0 && rootReply.mid == currentMid) {
                                 { onDeleteComment?.invoke(rootReply.rpid) }
+                            } else null,
+                            onCheckFraudClick = if (currentMid > 0 && rootReply.mid == currentMid) {
+                                { onCheckCommentFraud?.invoke(rootReply) }
                             } else null,
                             onLikeClick = { onCommentLike?.invoke(rootReply.rpid) },
                             onHateClick = { onCommentHate?.invoke(rootReply.rpid) },
@@ -876,6 +879,9 @@ internal fun SubReplyDetailContent(
                             } else {
                                 null
                             },
+                            onCheckFraudClick = if (currentMid > 0 && item.mid == currentMid) {
+                                { onCheckCommentFraud?.invoke(item) }
+                            } else null,
                             onLikeClick = { onCommentLike?.invoke(item.rpid) },
                             onHateClick = { onCommentHate?.invoke(item.rpid) },
                             isLiked = item.action == 1 || item.rpid in likedComments,
@@ -968,6 +974,7 @@ private fun SubReplyDetailItem(
     onImagePreview: ((List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit)?,
     onReplyClick: () -> Unit,
     onDeleteClick: (() -> Unit)?,
+    onCheckFraudClick: (() -> Unit)? = null,
     onLikeClick: (() -> Unit)?,
     onHateClick: (() -> Unit)?,
     isLiked: Boolean,
@@ -1121,8 +1128,10 @@ private fun SubReplyDetailItem(
             onBlockUser = {
                 blockReplyUser()
             },
-            onReport = { showReportDialog = true },
             onToggleTop = {},
+            onCheckFraud = {
+                onCheckFraudClick?.invoke()
+            },
             onDelete = { onDeleteClick?.invoke() }
         )
     }

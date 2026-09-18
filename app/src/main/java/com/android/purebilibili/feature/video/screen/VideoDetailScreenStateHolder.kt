@@ -673,7 +673,8 @@ internal fun VideoDetailScreenStateHolder(
             likeComment = commentViewModel::likeComment,
             hateComment = commentViewModel::hateComment,
             reportComment = { rpid, reason -> commentViewModel.reportComment(rpid, reason) },
-            toggleTopComment = commentViewModel::toggleTopComment
+            toggleTopComment = commentViewModel::toggleTopComment,
+            checkCommentFraud = commentViewModel::checkCommentFraud
         )
     }
     VideoDetailDomainEffects(
@@ -3402,6 +3403,7 @@ internal fun VideoDetailScreenStateHolder(
                                         onConversationBack = commentActions.closeSubReplyConversation,
                                         onDissolveStart = commentActions.startSubDissolve,
                                         onDeleteComment = commentActions.deleteSubComment,
+                                        onCheckCommentFraud = commentActions.checkCommentFraud,
                                         onCommentLike = commentActions.likeComment,
                                         onCommentHate = commentActions.hateComment,
                                         onReportComment = commentActions.reportComment,
@@ -3640,6 +3642,7 @@ internal fun VideoDetailScreenStateHolder(
                                         onConversationBack = commentActions.closeSubReplyConversation,
                                         onDissolveStart = commentActions.startSubDissolve,
                                         onDeleteComment = commentActions.deleteSubComment,
+                                        onCheckCommentFraud = commentActions.checkCommentFraud,
                                         onCommentLike = commentActions.likeComment,
                                         onCommentHate = commentActions.hateComment,
                                         onReportComment = commentActions.reportComment,
