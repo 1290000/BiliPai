@@ -404,6 +404,10 @@ fun AppearanceSettingsContent(
     val backToTopButtonEnabled by BackToTopSettingsStore
         .isEnabled(context)
         .collectAsStateWithLifecycle(initialValue = DEFAULT_BACK_TO_TOP_BUTTON_ENABLED)
+    val backToTopCustomOffset by remember(context) {
+        BackToTopSettingsStore.getCustomOffsetDp(context)
+    }.collectAsStateWithLifecycle(initialValue = BackToTopSettingsStore.getCachedOffsetDp())
+    val hasCustomBackToTopOffset = backToTopCustomOffset.first != 0f || backToTopCustomOffset.second != 0f
     val dedicatedHomeWallpaperUri by SettingsManager
         .getHomeWallpaperUri(context)
         .collectAsStateWithLifecycle(initialValue = "")
@@ -1296,7 +1300,11 @@ fun AppearanceSettingsContent(
                         AppSwitchPreference(
                             icon = rememberSettingsSemanticIcon(SettingsIconRole.BACK_TO_TOP),
                             title = "显示一键回顶",
-                            subtitle = "搜索、列表、动态和评论区等长内容页统一跟随",
+                            subtitle = if (hasCustomBackToTopOffset) {
+                                "长内容页统一跟随（已记忆自定义位置，长按按钮可拖拽）"
+                            } else {
+                                "搜索、列表、动态和评论区等长内容页统一跟随；长按按钮可自由拖拽位置"
+                            },
                             checked = backToTopButtonEnabled,
                             onCheckedChange = {
                                 scope.launch {
@@ -1305,6 +1313,21 @@ fun AppearanceSettingsContent(
                             },
                             iconTint = iOSBlue,
                         )
+                        if (backToTopButtonEnabled && hasCustomBackToTopOffset) {
+                            AppPreferenceDivider(modifier = Modifier.padding(start = 16.dp))
+                            AppPreference(
+                                icon = rememberSettingsSemanticIcon(SettingsIconRole.BACK_TO_TOP),
+                                title = "重置回顶按钮位置",
+                                subtitle = "恢复回到默认右下角悬浮位置",
+                                onClick = {
+                                    scope.launch {
+                                        BackToTopSettingsStore.resetCustomOffset(context)
+                                        android.widget.Toast.makeText(context, "已恢复回顶按钮默认位置", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                iconTint = iOSBlue,
+                            )
+                        }
 
                         AppPreferenceDivider(modifier = Modifier.padding(start = 16.dp))
                         AppSwitchPreference(

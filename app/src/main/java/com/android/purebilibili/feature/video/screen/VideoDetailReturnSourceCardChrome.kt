@@ -429,7 +429,9 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
                                     shape = capsuleShape,
                                 )
                         } else {
-                            Modifier.background(baseContainer)
+                            val sourceCornerDp = (CardPositionManager.lastClickedVideoSourceCornerDp ?: 12).dp
+                            val cardShape = androidx.compose.foundation.shape.RoundedCornerShape(sourceCornerDp)
+                            Modifier.clip(cardShape).background(baseContainer, cardShape)
                         },
                     ),
             )
