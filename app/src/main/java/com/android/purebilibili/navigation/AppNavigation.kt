@@ -4041,6 +4041,7 @@ fun AppNavigation(
                                         sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
                                         isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
                                         returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
+                                        isSharedTransitionActive = sharedVideoCardTransitionEnabled,
                                         onExpand = {
                                             val expandRoute = resolveAudioNowPlayingBarExpandRoute(
                                                 opensAudioMode = audioNowPlayingBarOpensAudioMode,
@@ -4210,6 +4211,7 @@ fun AppNavigation(
                     sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
                     isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
                     returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
+                    isSharedTransitionActive = sharedVideoCardTransitionEnabled,
                     onExpand = {
                         val expandRoute = resolveAudioNowPlayingBarExpandRoute(
                             opensAudioMode = audioNowPlayingBarOpensAudioMode,

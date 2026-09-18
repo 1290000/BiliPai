@@ -92,6 +92,7 @@ internal fun AudioNowPlayingBar(
     sourceRoute: String? = null,
     isReturningFromDetail: Boolean = false,
     returningDetailBvid: String? = null,
+    isSharedTransitionActive: Boolean = false,
     glassEnabled: Boolean = LocalSettingsLiquidGlassEnabled.current,
     miuixBackdrop: MiuixBackdrop? = null,
     liquidGlassTuning: LiquidGlassTuning = LocalLiquidGlassRenderConfig.current.tuning,
@@ -145,31 +146,29 @@ internal fun AudioNowPlayingBar(
     }
 
     val landingProgress = remember { Animatable(1f) }
-    val coroutineScope = rememberCoroutineScope()
     var hasTriggeredForSession by remember { mutableStateOf(false) }
     val reduceMotion = rememberSystemReduceMotion()
     val landingMotionEnabled = resolveAudioNowPlayingBarLandingMotionEnabled(reduceMotion)
     val shouldTriggerLanding = resolveAudioNowPlayingBarShouldTriggerLanding(
         isReturningFromDetail = isReturningFromDetail,
         targetBvid = returningDetailBvid,
-        currentBvid = state.bvid
+        currentBvid = state.bvid,
+        isSharedTransitionActive = isSharedTransitionActive,
     )
 
     LaunchedEffect(shouldTriggerLanding, landingMotionEnabled) {
         if (shouldTriggerLanding && landingMotionEnabled) {
             if (!hasTriggeredForSession) {
                 hasTriggeredForSession = true
-                coroutineScope.launch {
-                    delay(AUDIO_NOW_PLAYING_BAR_LANDING_DELAY_MS)
-                    landingProgress.snapTo(0f)
-                    landingProgress.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(
-                            durationMillis = AUDIO_NOW_PLAYING_BAR_LANDING_DURATION_MS,
-                            easing = AudioNowPlayingBarLandingEasing
-                        )
+                delay(AUDIO_NOW_PLAYING_BAR_LANDING_DELAY_MS)
+                landingProgress.snapTo(0f)
+                landingProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = AUDIO_NOW_PLAYING_BAR_LANDING_DURATION_MS,
+                        easing = AudioNowPlayingBarLandingEasing
                     )
-                }
+                )
             }
         } else if (!shouldTriggerLanding) {
             hasTriggeredForSession = false

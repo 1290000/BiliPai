@@ -63,9 +63,10 @@ internal fun resolveAudioNowPlayingBarLandingAlpha(
 internal fun resolveAudioNowPlayingBarShouldTriggerLanding(
     isReturningFromDetail: Boolean,
     targetBvid: String?,
-    currentBvid: String
+    currentBvid: String,
+    isSharedTransitionActive: Boolean = false,
 ): Boolean {
-    if (!isReturningFromDetail || currentBvid.isBlank()) return false
+    if (!isReturningFromDetail || currentBvid.isBlank() || isSharedTransitionActive) return false
     return targetBvid.isNullOrBlank() || targetBvid == currentBvid
 }
 
