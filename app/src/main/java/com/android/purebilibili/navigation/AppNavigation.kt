@@ -1752,6 +1752,8 @@ fun AppNavigation(
                 ),
             com.android.purebilibili.core.ui.LocalFullVideoCardContentVisible provides
                 homeSettings.showFullVideoCardContent,
+            com.android.purebilibili.core.ui.LocalVideoCardLongPressEnabled provides
+                homeSettings.videoCardLongPressActionEnabled,
             com.android.purebilibili.core.ui.LocalMainHazeState provides mainHazeState,
             // 卡片标签 / 信息区实时玻璃效果已下线，不再为首页建立额外 Haze 录制树。
             com.android.purebilibili.core.ui.LocalWallpaperHazeState provides null,
@@ -4082,6 +4084,8 @@ fun AppNavigation(
                                             "视频详情页"
                                         },
                                         glassEnabled = effectiveHomeSettings.androidNativeLiquidGlassEnabled,
+                                        blurEnabled = isBottomBarBlurEnabled,
+                                        hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                         miuixBackdrop = bottomBarBackdrop,
                                         liquidGlassTuning = liquidGlassRenderConfig.tuning,
                                         liftAboveBottomBar = false,
@@ -4098,9 +4102,18 @@ fun AppNavigation(
                             dockAudioContent?.invoke(Modifier, 0f, 0f, 0f)
                         }
                         if (isBottomBarFloating) {
+                            val isBookPosture = appWindowAdaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Book
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (isBookPosture) {
+                                            Modifier.padding(start = 24.dp)
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
+                                contentAlignment = if (isBookPosture) Alignment.CenterStart else Alignment.Center
                             ) {
                                 FrostedBottomBar(
                                     nowPlayingContent = dockAudioContent,
@@ -4252,6 +4265,8 @@ fun AppNavigation(
                         "视频详情页"
                     },
                     glassEnabled = effectiveHomeSettings.androidNativeLiquidGlassEnabled,
+                    blurEnabled = isBottomBarBlurEnabled,
+                    hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                     miuixBackdrop = bottomBarBackdrop,
                     liquidGlassTuning = liquidGlassRenderConfig.tuning,
                     liftAboveBottomBar = false,

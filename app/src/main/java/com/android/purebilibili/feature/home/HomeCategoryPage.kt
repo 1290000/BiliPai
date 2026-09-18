@@ -45,6 +45,7 @@ import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import com.android.purebilibili.core.ui.components.UpBadgeName
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
 import com.android.purebilibili.core.util.responsiveContentWidth
+import kotlinx.collections.immutable.ImmutableSet
 import com.android.purebilibili.data.model.response.VideoItem
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.home.components.HomeHeroCarousel
@@ -143,8 +144,8 @@ internal fun HomeCategoryPageContent(
     gridState: LazyStaggeredGridState,
     gridColumns: Int,
     contentPadding: PaddingValues,
-    dissolvingVideos: Set<String>,
-    followingMids: Set<Long>,
+    dissolvingVideos: ImmutableSet<String>,
+    followingMids: ImmutableSet<Long>,
     showOnlineCount: Boolean,
     coverRequestSpec: HomeCoverRequestSpec,
     onVideoClick: (HomeVideoClickRequest) -> Unit,
@@ -156,7 +157,7 @@ internal fun HomeCategoryPageContent(
     onDismissVideo: (VideoItem) -> Unit,
     onWatchLater: (String, Long) -> Unit,
     onDissolveComplete: (String) -> Unit,
-    longPressCallback: (VideoItem) -> Unit, // [Feature] Long Press
+    longPressCallback: ((VideoItem) -> Unit)? = null, // [Feature] Long Press
     displayMode: Int,
     cardAnimationEnabled: Boolean,
     cardMotionTier: MotionTier = MotionTier.Normal,
@@ -344,7 +345,7 @@ internal fun HomeCategoryPageContent(
                     onUpClick = onUpClick,
                     showPublishTime = true,
                     onDismiss = { onDismissVideo(video) },
-                    onLongClick = if (isDynamicDetailCard) null else ({ longPressCallback(video) }),
+                    onLongClick = if (isDynamicDetailCard) null else longPressCallback?.let { cb -> { cb(video) } },
                     onClick = { bvid, cid ->
                         onVideoClick(
                             HomeVideoClickRequest(
@@ -395,7 +396,7 @@ internal fun HomeCategoryPageContent(
                     onWatchLater = if (isDynamicDetailCard) null else ({
                         onWatchLater(video.bvid, resolveWatchLaterAid(video))
                     }),
-                    onLongClick = if (isDynamicDetailCard) null else ({ longPressCallback(video) }),
+                    onLongClick = if (isDynamicDetailCard) null else longPressCallback?.let { cb -> { cb(video) } },
                     onClick = { bvid, cid ->
                         onVideoClick(
                             HomeVideoClickRequest(

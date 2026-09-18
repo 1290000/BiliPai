@@ -2226,8 +2226,7 @@ fun FrostedBottomBar(
     uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
     val foldPosture = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current.posture
-    val forceBottomNavigation = foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Book ||
-        foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
+    val forceBottomNavigation = foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
     // Fold posture decides whether navigation stays at the bottom; window size still owns the
     // dock geometry so a large foldable does not shrink to phone-sized icons and indicators.
     val isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
@@ -2428,12 +2427,65 @@ private fun MaterialBottomBar(
     )
 
     if (
-        !homeSettings.isBottomBarSearchEnabled && nowPlayingContent == null &&
         shouldUseOfficialMd3FloatingToolbar(
             isFloating = isFloating,
             liquidGlassEnabled = glassEnabled,
         )
     ) {
+        val searchEnabled = shouldReserveBottomBarSearchLayout(
+            bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+        )
+        if (searchEnabled || nowPlayingContent != null) {
+            LinkedBottomDock(
+                currentItem = currentItem,
+                firstItem = bottomBarVisibleItems.firstOrNull() ?: BottomNavItem.HOME,
+                firstLabel = resolveBottomNavItemLabel(
+                    bottomBarVisibleItems.firstOrNull() ?: BottomNavItem.HOME,
+                    itemLabels
+                ),
+                searchEnabled = searchEnabled,
+                isFeedScrollInProgress = isFeedScrollInProgress,
+                collapseRequested = collapseLinkedDock,
+                onSearchClick = onSearchClick,
+                onSearchKeywordSubmit = onSearchKeywordSubmit,
+                containerColor = containerColor,
+                backdrop = miuixBackdrop,
+                blurEnabled = blurEnabled,
+                hazeState = hazeState,
+                glassEnabled = false,
+                liquidGlassTuning = liquidGlassTuning,
+                iconStyle = SharedFloatingBottomBarIconStyle.MATERIAL,
+                navigationItemCount = bottomBarVisibleItems.size + if (isTablet && onToggleSidebar != null) 1 else 0,
+                navigationLabelMode = normalizedLabelMode,
+                navigationMinEdgePadding = androidNativeTuning.outerHorizontalPaddingDp.dp,
+                nowPlayingContent = nowPlayingContent,
+                modifier = modifier,
+                navigationContent = {
+                    OfficialMd3FloatingToolbarContent(
+                        currentItem = currentItem,
+                        onItemClick = onItemClick,
+                        visibleItems = bottomBarVisibleItems,
+                        itemLabels = itemLabels,
+                        onToggleSidebar = onToggleSidebar,
+                        dynamicUnreadCount = dynamicUnreadCount,
+                        isTablet = isTablet,
+                        showIcon = showIcon,
+                        showText = showText,
+                        haptic = haptic,
+                        modifier = Modifier.fillMaxSize(),
+                        blurEnabled = blurEnabled,
+                        hazeState = hazeState,
+                        backdrop = miuixBackdrop,
+                        containerColor = containerColor,
+                        motionTier = motionTier,
+                        isTransitionRunning = isTransitionRunning,
+                        forceLowBlurBudget = forceLowBlurBudget,
+                    )
+                }
+            )
+            return
+        }
+
         OfficialMd3FloatingBottomBar(
             currentItem = currentItem,
             onItemClick = onItemClick,
@@ -2445,11 +2497,14 @@ private fun MaterialBottomBar(
             isTablet = isTablet,
             showIcon = showIcon,
             showText = showText,
-            searchEnabled = shouldReserveBottomBarSearchLayout(
-                bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
-            ),
-            onSearchClick = onSearchClick,
             haptic = haptic,
+            blurEnabled = blurEnabled,
+            hazeState = hazeState,
+            backdrop = miuixBackdrop,
+            containerColor = containerColor,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
         )
         return
     }
@@ -2632,10 +2687,9 @@ private fun MaterialBottomBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OfficialMd3FloatingBottomBar(
+private fun OfficialMd3FloatingToolbarContent(
     currentItem: BottomNavItem,
     onItemClick: (BottomNavItem) -> Unit,
-    modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
     itemLabels: Map<String, String>,
     onToggleSidebar: (() -> Unit)?,
@@ -2643,10 +2697,38 @@ private fun OfficialMd3FloatingBottomBar(
     isTablet: Boolean,
     showIcon: Boolean,
     showText: Boolean,
-    searchEnabled: Boolean,
-    onSearchClick: () -> Unit,
     haptic: (HapticType) -> Unit,
+    modifier: Modifier = Modifier,
+    blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
+    backdrop: MiuixLayerBackdrop? = null,
+    containerColor: Color = Color.Unspecified,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false,
 ) {
+    val useBlur = blurEnabled && (hazeState != null || backdrop != null)
+    val toolbarShape = FloatingToolbarDefaults.ContainerShape
+    val toolbarColors = FloatingToolbarDefaults.standardFloatingToolbarColors(
+        toolbarContainerColor = if (useBlur) Color.Transparent else Color.Unspecified,
+    )
+    val toolbarModifier = if (useBlur) {
+        Modifier.biliPaiFloatingDockShell(
+            backdrop = backdrop,
+            containerColor = if (containerColor != Color.Unspecified) containerColor else MaterialTheme.colorScheme.surfaceContainer,
+            pressProgress = 0f,
+            shape = toolbarShape,
+            enabled = false,
+            blurEnabled = true,
+            hazeState = hazeState,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
+        )
+    } else {
+        Modifier
+    }
+
     val toolbarContent: @Composable RowScope.() -> Unit = {
         visibleItems.forEach { item ->
             val selected = currentItem == item
@@ -2705,6 +2787,42 @@ private fun OfficialMd3FloatingBottomBar(
     }
 
     Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            modifier = toolbarModifier,
+            colors = toolbarColors,
+            shape = toolbarShape,
+            content = toolbarContent,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OfficialMd3FloatingBottomBar(
+    currentItem: BottomNavItem,
+    onItemClick: (BottomNavItem) -> Unit,
+    modifier: Modifier = Modifier,
+    visibleItems: List<BottomNavItem>,
+    itemLabels: Map<String, String>,
+    onToggleSidebar: (() -> Unit)?,
+    dynamicUnreadCount: Int,
+    isTablet: Boolean,
+    showIcon: Boolean,
+    showText: Boolean,
+    haptic: (HapticType) -> Unit,
+    blurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
+    backdrop: MiuixLayerBackdrop? = null,
+    containerColor: Color = Color.Unspecified,
+    motionTier: MotionTier = MotionTier.Normal,
+    isTransitionRunning: Boolean = false,
+    forceLowBlurBudget: Boolean = false,
+) {
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(
@@ -2715,29 +2833,25 @@ private fun OfficialMd3FloatingBottomBar(
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        if (searchEnabled) {
-            HorizontalFloatingToolbar(
-                expanded = true,
-                floatingActionButton = {
-                    FloatingToolbarDefaults.StandardFloatingActionButton(
-                        onClick = {
-                            performMaterialBottomBarTap(haptic = haptic, onClick = onSearchClick)
-                        },
-                    ) {
-                        AppIcon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = stringResource(R.string.common_search),
-                        )
-                    }
-                },
-                content = toolbarContent,
-            )
-        } else {
-            HorizontalFloatingToolbar(
-                expanded = true,
-                content = toolbarContent,
-            )
-        }
+        OfficialMd3FloatingToolbarContent(
+            currentItem = currentItem,
+            onItemClick = onItemClick,
+            visibleItems = visibleItems,
+            itemLabels = itemLabels,
+            onToggleSidebar = onToggleSidebar,
+            dynamicUnreadCount = dynamicUnreadCount,
+            isTablet = isTablet,
+            showIcon = showIcon,
+            showText = showText,
+            haptic = haptic,
+            blurEnabled = blurEnabled,
+            hazeState = hazeState,
+            backdrop = backdrop,
+            containerColor = containerColor,
+            motionTier = motionTier,
+            isTransitionRunning = isTransitionRunning,
+            forceLowBlurBudget = forceLowBlurBudget,
+        )
     }
 }
 
@@ -3246,6 +3360,7 @@ private fun BiliPaiFloatingBottomBar(
             containerColor = containerColor,
             backdrop = miuixBackdrop,
             blurEnabled = blurEnabled,
+            hazeState = hazeState,
             glassEnabled = glassEnabled && !forceLowBlurBudget,
             liquidGlassTuning = liquidGlassTuning,
             iconStyle = iconStyle,

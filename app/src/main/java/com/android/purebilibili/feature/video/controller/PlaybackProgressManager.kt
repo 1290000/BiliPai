@@ -21,8 +21,6 @@ class PlaybackProgressManager {
     companion object {
         private const val TAG = "PlaybackProgressManager"
         private const val PREFS_NAME = "video_progress"
-        private const val MAX_CACHE_SIZE = 100
-        private const val MAX_NEGATIVE_CACHE_SIZE = 500
         private const val MIN_PROGRESS_TO_SAVE = 5000L // 5秒以上才保存
         private const val MAX_PERCENT_TO_RESTORE = 0.95f // 超过95%不恢复（已看完）
         
@@ -41,10 +39,8 @@ class PlaybackProgressManager {
     
     private var prefs: SharedPreferences? = null
     
-    // Memory cache for fast access
-    private val memoryCache = LinkedHashMap<String, Long>(MAX_CACHE_SIZE, 0.75f, true)
-    // Negative cache to prevent repeated disk queries for unviewed videos during scrolling
-    private val negativeCache = LinkedHashSet<String>()
+    // [性能优化] 使用 ConcurrentHashMap 保障主线程在滑动渲染热路径上的无锁极速读取（O(1) Lock-free）
+    private val memoryCache = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     private fun buildProgressKey(bvid: String, cid: Long): String {
         return if (cid > 0L) "$bvid#$cid" else bvid
@@ -57,7 +53,7 @@ class PlaybackProgressManager {
         if (prefs == null) {
             prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             loadFromPrefs()
-            Logger.d(TAG, "Initialized with ${synchronized(memoryCache) { memoryCache.size }} cached positions")
+            Logger.d(TAG, "Initialized with ${memoryCache.size} cached positions")
         }
     }
     
@@ -74,28 +70,10 @@ class PlaybackProgressManager {
             Logger.d(TAG, "Video $key completed (${positionMs}ms / ${durationMs}ms), cleared progress")
             return
         }
-        
-        synchronized(negativeCache) {
-            negativeCache.remove(key)
-            if (cid > 0L) {
-                negativeCache.remove(buildProgressKey(bvid, cid = 0L))
-            }
-        }
 
-        synchronized(memoryCache) {
-            // Remove oldest entry if cache is full
-            if (memoryCache.size >= MAX_CACHE_SIZE) {
-                val oldestKey = memoryCache.keys.firstOrNull()
-                if (oldestKey != null) {
-                    memoryCache.remove(oldestKey)
-                    prefs?.edit()?.remove(oldestKey)?.apply()
-                }
-            }
-            
-            memoryCache[key] = positionMs
-            if (cid > 0L) {
-                memoryCache[buildProgressKey(bvid, cid = 0L)] = positionMs
-            }
+        memoryCache[key] = positionMs
+        if (cid > 0L) {
+            memoryCache[buildProgressKey(bvid, cid = 0L)] = positionMs
         }
 
         prefs?.edit()?.apply {
@@ -121,38 +99,12 @@ class PlaybackProgressManager {
     
     /**
      * Get cached playback position
+     * [性能关键路径] 滑动列表热路径，严禁加锁、严禁同步读磁盘 SharedPreferences、严禁高频输出日志。
      */
     fun getCachedPosition(bvid: String, cid: Long): Long {
+        if (bvid.isEmpty()) return 0L
         val key = buildProgressKey(bvid, cid)
-        // First check memory cache
-        val memPos = synchronized(memoryCache) { memoryCache[key] }
-        if (memPos != null && memPos > 0L) {
-            Logger.d(TAG, "Retrieved position for $key: ${memPos}ms")
-            return memPos
-        }
-        
-        // Fast negative cache check
-        val isNegative = synchronized(negativeCache) { negativeCache.contains(key) }
-        if (isNegative) {
-            return 0L
-        }
-        
-        // If not in memory, check SharedPreferences
-        val prefsPos = prefs?.getLong(key, 0L) ?: 0L
-        if (prefsPos > 0L) {
-            synchronized(memoryCache) { memoryCache[key] = prefsPos }
-            Logger.d(TAG, "Retrieved position for $key: ${prefsPos}ms")
-            return prefsPos
-        } else {
-            synchronized(negativeCache) {
-                if (negativeCache.size >= MAX_NEGATIVE_CACHE_SIZE) {
-                    val oldest = negativeCache.iterator().let { if (it.hasNext()) it.next() else null }
-                    if (oldest != null) negativeCache.remove(oldest)
-                }
-                negativeCache.add(key)
-            }
-        }
-        return 0L
+        return memoryCache[key]?.takeIf { it > 0L } ?: 0L
     }
 
     fun getCachedPosition(bvid: String): Long {
@@ -164,18 +116,10 @@ class PlaybackProgressManager {
      */
     fun clearPosition(bvid: String, cid: Long) {
         val key = buildProgressKey(bvid, cid)
-        synchronized(memoryCache) {
-            memoryCache.remove(key)
-            if (cid > 0L) {
-                val bvidKey = buildProgressKey(bvid, cid = 0L)
-                memoryCache.remove(bvidKey)
-            }
-        }
-        synchronized(negativeCache) {
-            negativeCache.add(key)
-            if (cid > 0L) {
-                negativeCache.add(buildProgressKey(bvid, cid = 0L))
-            }
+        memoryCache.remove(key)
+        if (cid > 0L) {
+            val bvidKey = buildProgressKey(bvid, cid = 0L)
+            memoryCache.remove(bvidKey)
         }
         prefs?.edit()?.apply {
             remove(key)
@@ -195,8 +139,7 @@ class PlaybackProgressManager {
      * Clear all position caches
      */
     fun clearAll() {
-        synchronized(memoryCache) { memoryCache.clear() }
-        synchronized(negativeCache) { negativeCache.clear() }
+        memoryCache.clear()
         prefs?.edit()?.clear()?.apply()
         Logger.d(TAG, "Cleared all positions")
     }
@@ -216,7 +159,7 @@ class PlaybackProgressManager {
      * Get the number of cached positions
      */
     fun getCacheSize(): Int {
-        return synchronized(memoryCache) { memoryCache.size }
+        return memoryCache.size
     }
     
     /**
@@ -225,9 +168,7 @@ class PlaybackProgressManager {
     private fun loadFromPrefs() {
         prefs?.all?.forEach { (key, value) ->
             if (value is Long && value > 0) {
-                synchronized(memoryCache) {
-                    memoryCache[key] = value
-                }
+                memoryCache[key] = value
             }
         }
     }
