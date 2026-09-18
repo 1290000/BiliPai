@@ -2433,9 +2433,54 @@ private fun MaterialBottomBar(
             liquidGlassEnabled = glassEnabled,
         )
     ) {
+        val searchEnabled = shouldReserveBottomBarSearchLayout(
+            bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+        )
+        if (searchEnabled || nowPlayingContent != null) {
+            LinkedBottomDock(
+                currentItem = currentItem,
+                firstItem = bottomBarVisibleItems.firstOrNull() ?: BottomNavItem.HOME,
+                firstLabel = resolveBottomNavItemLabel(
+                    bottomBarVisibleItems.firstOrNull() ?: BottomNavItem.HOME,
+                    itemLabels
+                ),
+                searchEnabled = searchEnabled,
+                isFeedScrollInProgress = isFeedScrollInProgress,
+                collapseRequested = collapseLinkedDock,
+                onSearchClick = onSearchClick,
+                onSearchKeywordSubmit = onSearchKeywordSubmit,
+                containerColor = containerColor,
+                backdrop = miuixBackdrop,
+                blurEnabled = blurEnabled,
+                glassEnabled = false,
+                liquidGlassTuning = liquidGlassTuning,
+                iconStyle = SharedFloatingBottomBarIconStyle.MATERIAL,
+                navigationItemCount = bottomBarVisibleItems.size + if (isTablet && onToggleSidebar != null) 1 else 0,
+                navigationLabelMode = normalizedLabelMode,
+                navigationMinEdgePadding = androidNativeTuning.outerHorizontalPaddingDp.dp,
+                nowPlayingContent = nowPlayingContent,
+                modifier = modifier,
+                navigationContent = {
+                    OfficialMd3FloatingToolbarContent(
+                        currentItem = currentItem,
+                        onItemClick = onItemClick,
+                        visibleItems = bottomBarVisibleItems,
+                        itemLabels = itemLabels,
+                        onToggleSidebar = onToggleSidebar,
+                        dynamicUnreadCount = dynamicUnreadCount,
+                        isTablet = isTablet,
+                        showIcon = showIcon,
+                        showText = showText,
+                        haptic = haptic,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            )
+            return
+        }
+
         OfficialMd3FloatingBottomBar(
             currentItem = currentItem,
-            nowPlayingContent = nowPlayingContent,
             onItemClick = onItemClick,
             modifier = modifier,
             visibleItems = bottomBarVisibleItems,
@@ -2445,10 +2490,6 @@ private fun MaterialBottomBar(
             isTablet = isTablet,
             showIcon = showIcon,
             showText = showText,
-            searchEnabled = shouldReserveBottomBarSearchLayout(
-                bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
-            ),
-            onSearchClick = onSearchClick,
             haptic = haptic,
         )
         return
@@ -2632,11 +2673,9 @@ private fun MaterialBottomBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OfficialMd3FloatingBottomBar(
+private fun OfficialMd3FloatingToolbarContent(
     currentItem: BottomNavItem,
-    nowPlayingContent: (@Composable (Modifier, Float, Float, Float) -> Unit)? = null,
     onItemClick: (BottomNavItem) -> Unit,
-    modifier: Modifier = Modifier,
     visibleItems: List<BottomNavItem>,
     itemLabels: Map<String, String>,
     onToggleSidebar: (() -> Unit)?,
@@ -2644,9 +2683,8 @@ private fun OfficialMd3FloatingBottomBar(
     isTablet: Boolean,
     showIcon: Boolean,
     showText: Boolean,
-    searchEnabled: Boolean,
-    onSearchClick: () -> Unit,
     haptic: (HapticType) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val toolbarContent: @Composable RowScope.() -> Unit = {
         visibleItems.forEach { item ->
@@ -2706,6 +2744,32 @@ private fun OfficialMd3FloatingBottomBar(
     }
 
     Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            content = toolbarContent,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OfficialMd3FloatingBottomBar(
+    currentItem: BottomNavItem,
+    onItemClick: (BottomNavItem) -> Unit,
+    modifier: Modifier = Modifier,
+    visibleItems: List<BottomNavItem>,
+    itemLabels: Map<String, String>,
+    onToggleSidebar: (() -> Unit)?,
+    dynamicUnreadCount: Int,
+    isTablet: Boolean,
+    showIcon: Boolean,
+    showText: Boolean,
+    haptic: (HapticType) -> Unit,
+) {
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(
@@ -2716,44 +2780,18 @@ private fun OfficialMd3FloatingBottomBar(
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (nowPlayingContent != null) {
-                nowPlayingContent(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    0f,
-                    0f,
-                    0f,
-                )
-            }
-            if (searchEnabled) {
-                HorizontalFloatingToolbar(
-                    expanded = true,
-                    floatingActionButton = {
-                        FloatingToolbarDefaults.StandardFloatingActionButton(
-                            onClick = {
-                                performMaterialBottomBarTap(haptic = haptic, onClick = onSearchClick)
-                            },
-                        ) {
-                            AppIcon(
-                                imageVector = Icons.Outlined.Search,
-                                contentDescription = stringResource(R.string.common_search),
-                            )
-                        }
-                    },
-                    content = toolbarContent,
-                )
-            } else {
-                HorizontalFloatingToolbar(
-                    expanded = true,
-                    content = toolbarContent,
-                )
-            }
-        }
+        OfficialMd3FloatingToolbarContent(
+            currentItem = currentItem,
+            onItemClick = onItemClick,
+            visibleItems = visibleItems,
+            itemLabels = itemLabels,
+            onToggleSidebar = onToggleSidebar,
+            dynamicUnreadCount = dynamicUnreadCount,
+            isTablet = isTablet,
+            showIcon = showIcon,
+            showText = showText,
+            haptic = haptic,
+        )
     }
 }
 
