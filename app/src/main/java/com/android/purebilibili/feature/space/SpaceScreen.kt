@@ -4497,7 +4497,7 @@ private fun SpaceHeaderRelationActions(
                 ),
                 modifier = Modifier
                     .width(46.dp)
-                    .heightIn(min = 36.dp)
+                    .height(36.dp)
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -4525,7 +4525,7 @@ private fun SpaceHeaderRelationActions(
             } else null,
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 36.dp)
+                .height(36.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -4534,6 +4534,15 @@ private fun SpaceHeaderRelationActions(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
+                if (isFollowed && !isOwner) {
+                    AppIcon(
+                        imageVector = Icons.AutoMirrored.Outlined.Sort,
+                        contentDescription = null,
+                        tint = followButtonColors.textColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
                 AppText(
                     text = followLabel,
                     fontSize = 14.sp,
