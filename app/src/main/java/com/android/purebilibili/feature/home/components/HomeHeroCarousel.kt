@@ -93,6 +93,8 @@ import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
 import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpeedSettings
 import com.android.purebilibili.core.ui.transition.VideoCardSourceChromeSnapshot
+import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
+import com.android.purebilibili.core.ui.transition.rememberNativeVideoCardSnapshotController
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionMotionSpec
 import com.android.purebilibili.core.ui.transition.videoCardShellSharedBoundsOrEmpty
 import com.android.purebilibili.feature.home.components.cards.videoCardShellReturnChromeAlpha
@@ -324,6 +326,7 @@ private fun HomeHeroCarouselCard(
 
     val cardShape = AppShapes.container(ContainerLevel.Card)
     val cardCornerDp = AppShapes.containerCornerDp(ContainerLevel.Card)
+    val nativeCardSnapshot = rememberNativeVideoCardSnapshotController(video.bvid)
     val normalizedCoverUrl = remember(video.pic) { FormatUtils.fixImageUrl(video.pic) }
     val stationaryCoverRequest = remember(normalizedCoverUrl) {
         ImageRequest.Builder(context)
@@ -345,6 +348,8 @@ private fun HomeHeroCarouselCard(
                 screenHeight = screenHeightPx,
                 density = densityValue,
                 sourceCornerDp = cardCornerDp.value.roundToInt(),
+                isSingleColumn = true,
+                sourceLayout = VideoCardSourceLayout.COVER_ONLY,
                 coverBounds = bounds,
                 sourceChromeSnapshot = VideoCardSourceChromeSnapshot(
                     title = video.title,
@@ -363,6 +368,7 @@ private fun HomeHeroCarouselCard(
                 ),
                 sourceInstanceId = sharedSourceInstanceId,
             )
+            nativeCardSnapshot.capture()
         }
         onVideoClick()
     }
@@ -397,6 +403,7 @@ private fun HomeHeroCarouselCard(
                 clipShape = cardShape
             )
             .zIndex(transform.zIndex)
+            .then(nativeCardSnapshot.modifier)
             .graphicsLayer {
                 transformOrigin = TransformOrigin(transform.pivotFractionX, 0.5f)
                 translationX = transform.translationXFraction * size.width

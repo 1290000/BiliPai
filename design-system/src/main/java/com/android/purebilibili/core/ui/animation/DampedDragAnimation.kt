@@ -207,7 +207,8 @@ class DampedDragAnimationState internal constructor(
             Offset(value, 0f)
         )
         val targetVelocity = deformationVelocityTracker.calculateVelocity().x / valueRange
-        velocityJob = scope.launch {
+        velocityJob?.cancel()
+        velocityJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             velocityAnimation.animateTo(targetVelocity, velocityAnimationSpec)
         }
     }
