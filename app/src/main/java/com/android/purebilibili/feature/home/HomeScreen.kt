@@ -933,6 +933,11 @@ fun HomeScreen(
     }
     val baseIsBottomBarBlurEnabled = homeSettings.isBottomBarBlurEnabled
     val crashTrackingConsentShown = homeSettings.crashTrackingConsentShown
+    LaunchedEffect(effectiveHomeSettings.hideTopTabs) {
+        if (effectiveHomeSettings.hideTopTabs && pagerState.currentPage != 0) {
+            pagerState.scrollToPage(0)
+        }
+    }
     val baseCardAnimationEnabled = homeSettings.cardAnimationEnabled      //  卡片进场动画开关
     val baseCardTransitionEnabled = homeSettings.cardTransitionEnabled
     val baseIsDataSaverActive = remember(context) {
@@ -1482,22 +1487,30 @@ fun HomeScreen(
         resolveHomeTopPresetStyle(topChromePolicy, homeSettings.topTabLabelMode)
     }
     val searchBarHeightDp = homeTopPresetStyle.searchBarHeight
-    val tabRowHeightDp = if (topTabStyle.floating) {
-        homeTopPresetStyle.tabRowHeightFloating
-    } else {
-        homeTopPresetStyle.tabRowHeightDocked
-    }
+    val tabRowHeightDp = resolveEffectiveHomeTabRowHeight(
+        hideTopTabs = effectiveHomeSettings.hideTopTabs,
+        defaultTabRowHeight = if (topTabStyle.floating) {
+            homeTopPresetStyle.tabRowHeightFloating
+        } else {
+            homeTopPresetStyle.tabRowHeightDocked
+        }
+    )
     val searchCollapseDistanceDp = searchBarHeightDp +
-        homeTopPresetStyle.searchToTabsSpacing +
+        (if (effectiveHomeSettings.hideTopTabs) AppSpacingTokens.None else homeTopPresetStyle.searchToTabsSpacing) +
         homeTopPresetStyle.searchCollapseExtraSpacing
-    val floatingDockLift = resolveHomeTopTabYOffsetDp(topTabStyle.floating).dp
-    val chromeHeight = if (homeTopPresetStyle.useUnifiedPanel) {
-        searchBarHeightDp + tabRowHeightDp +
-            (homeTopPresetStyle.unifiedPanelInnerPadding * 2) +
-            homeTopPresetStyle.searchToTabsSpacing
+    val floatingDockLift = if (effectiveHomeSettings.hideTopTabs) {
+        AppSpacingTokens.None
     } else {
-        searchBarHeightDp + homeTopPresetStyle.searchToTabsSpacing + tabRowHeightDp
+        resolveHomeTopTabYOffsetDp(topTabStyle.floating).dp
     }
+    val chromeHeight = resolveEffectiveHomeTopChromeHeight(
+        hideTopTabs = effectiveHomeSettings.hideTopTabs,
+        useUnifiedPanel = homeTopPresetStyle.useUnifiedPanel,
+        searchBarHeight = searchBarHeightDp,
+        tabRowHeight = tabRowHeightDp,
+        unifiedPanelInnerPadding = homeTopPresetStyle.unifiedPanelInnerPadding,
+        searchToTabsSpacing = homeTopPresetStyle.searchToTabsSpacing
+    )
     // Android 12 (and older) may extend the legacy blur/glass fallback below its
     // measured bounds by a few pixels. Reserve a small safety gap so the first
     // content row cannot slide underneath the top dock on those devices.
@@ -1507,7 +1520,7 @@ fun HomeScreen(
         AppSpacingTokens.None
     }
     val listTopPadding = statusBarHeight + chromeHeight +
-        homeTopPresetStyle.tabsToContentSpacing + floatingDockLift +
+        (if (effectiveHomeSettings.hideTopTabs) AppSpacingTokens.Small else (homeTopPresetStyle.tabsToContentSpacing + floatingDockLift)) +
         legacyTopChromeSafetyGap
     
     // Pixels
@@ -1790,7 +1803,8 @@ fun HomeScreen(
                     )
                     // [Fix] Re-enabled default overscroll for better feedback
                         val homeTopPagerSwipeEnabled =
-                            shouldEnableHomeTopPagerUserScroll(isTopLevelActive)
+                            !effectiveHomeSettings.hideTopTabs &&
+                                shouldEnableHomeTopPagerUserScroll(isTopLevelActive)
                         HorizontalPager(
                             state = pagerState,
                             beyondViewportPageCount = 0,
@@ -2420,7 +2434,8 @@ fun HomeScreen(
                 isDelayedForCardSettle = delayTopTabsUntilCardSettled,
                 isForwardNavigatingToDetail = hideTopTabsForForwardDetailNav,
                 isReturningFromDetail = isReturningFromVideoDetail,
-                topTabsCollapsed = topTabsCollapsedForHeader
+                topTabsCollapsed = topTabsCollapsedForHeader,
+                hideTopTabs = effectiveHomeSettings.hideTopTabs
             ),
             topTabsCollapsed = topTabsCollapsedForHeader,
             onTopTabsCollapsedChange = {},

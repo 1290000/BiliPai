@@ -191,6 +191,8 @@ fun BottomBarSettingsContent(
     val visibleTabs by SettingsManager.getBottomBarVisibleTabs(context).collectAsStateWithLifecycle(initialValue = setOf("HOME", "DYNAMIC", "HISTORY", "LISTEN_VIDEO", "PROFILE"))
     val topTabOrder by SettingsManager.getTopTabOrder(context).collectAsStateWithLifecycle(initialValue = defaultTopTabIds)
     val topTabVisible by SettingsManager.getTopTabVisibleTabs(context).collectAsStateWithLifecycle(initialValue = defaultTopTabIds.toSet())
+    val hideTopTabs by SettingsManager.getHideTopTabs(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val topTabLabelMode by SettingsManager.getTopTabLabelMode(context)
         .collectAsStateWithLifecycle(initialValue = SettingsManager.TopTabLabelMode.TEXT_ONLY)
     val bottomBarLabelMode by SettingsManager.getBottomBarLabelMode(context)
@@ -421,6 +423,18 @@ fun BottomBarSettingsContent(
             item {
                 Box(modifier = Modifier.entrance()) {
                     AppPreferenceGroup {
+                        AppSwitchPreference(
+                            icon = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_visibility_off_24),
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue,
+                            title = "完全隐藏顶部标签",
+                            subtitle = "开启后首页不显示顶部标签栏，提供纯净沉浸浏览",
+                            checked = hideTopTabs,
+                            onCheckedChange = { hide ->
+                                scope.launch { SettingsManager.setHideTopTabs(context, hide) }
+                            },
+                        )
+                        if (!hideTopTabs) {
+                            AppPreferenceDivider()
                             SettingsSingleChoicePreference(
                                 icon = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_list_alt_24),
                                 iconTint = com.android.purebilibili.core.theme.iOSBlue,
@@ -435,23 +449,25 @@ fun BottomBarSettingsContent(
                                     scope.launch { SettingsManager.setTopTabLabelMode(context, mode) }
                                 },
                             )
-                            AppPreferenceDivider()
-                            SettingsSingleChoicePreference(
-                                icon = if (homeTopRightAction == HomeTopRightAction.INBOX) {
-                                    com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_mail_24)
-                                } else {
-                                    com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_settings_24)
-                                },
-                                iconTint = com.android.purebilibili.core.theme.iOSOrange,
-                                title = "首页右上角入口",
-                                options = HomeTopRightAction.entries.map { action ->
-                                    AppSegmentOption(action, action.label)
-                                },
-                                selectedValue = homeTopRightAction,
-                                onSelectionChange = { action ->
-                                    scope.launch { SettingsManager.setHomeTopRightAction(context, action) }
-                                },
-                            )
+                        }
+                        AppPreferenceDivider()
+                        SettingsSingleChoicePreference(
+                            icon = if (homeTopRightAction == HomeTopRightAction.INBOX) {
+                                com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_mail_24)
+                            } else {
+                                com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_settings_24)
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSOrange,
+                            title = "首页右上角入口",
+                            options = HomeTopRightAction.entries.map { action ->
+                                AppSegmentOption(action, action.label)
+                            },
+                            selectedValue = homeTopRightAction,
+                            onSelectionChange = { action ->
+                                scope.launch { SettingsManager.setHomeTopRightAction(context, action) }
+                            },
+                        )
+                        if (!hideTopTabs) {
                             AppPreferenceDivider()
                             SettingsSingleChoicePreference(
                                 icon = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_reorder_24),
@@ -465,8 +481,9 @@ fun BottomBarSettingsContent(
                                     scope.launch { SettingsManager.setHomeTopLayoutOrder(context, order) }
                                 },
                             )
-                            AppPreferenceDivider()
-                            SettingsSingleChoicePreference(
+                        }
+                        AppPreferenceDivider()
+                        SettingsSingleChoicePreference(
                                 icon = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_troubleshoot_24),
                                 iconTint = com.android.purebilibili.core.theme.iOSTeal,
                                 title = "全局顶栏显示",
@@ -490,6 +507,7 @@ fun BottomBarSettingsContent(
                                     scope.launch { SettingsManager.setHomeHeaderCollapseMode(context, mode) }
                                 },
                             )
+                        if (!hideTopTabs) {
                             AppHorizontalDivider()
                             Column(
                                 modifier = Modifier.padding(16.dp),
@@ -613,6 +631,7 @@ fun BottomBarSettingsContent(
                                     )
                                 }
                             }
+                        }
                         }
                     }
                 }

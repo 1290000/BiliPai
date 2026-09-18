@@ -675,6 +675,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         subtitle = "显示、隐藏和排序标签，并设置首页右上角按钮",
         section = "导航设置",
         aliases = listOf(
+            "完全隐藏顶部标签",
+            "隐藏顶部标签",
+            "隐藏标签",
             "顶部标签",
             "顶部标签样式",
             "顶部标签管理",

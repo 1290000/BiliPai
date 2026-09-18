@@ -27,6 +27,7 @@ class HomeSettingsMappingPolicyTest {
         assertTrue(result.isBottomBarFloating)
         assertEquals(0, result.bottomBarLabelMode)
         assertEquals(SettingsManager.TopTabLabelMode.TEXT_ONLY, result.topTabLabelMode)
+        assertFalse(result.hideTopTabs)
         assertEquals(HomeTopRightAction.SETTINGS, result.homeTopRightAction)
         assertEquals(HomeTopLayoutOrder.SEARCH_THEN_TABS, result.homeTopLayoutOrder)
         assertTrue(result.isHeaderBlurEnabled)
@@ -500,5 +501,18 @@ class HomeSettingsMappingPolicyTest {
         assertEquals(20, DEFAULT_HOME_REFRESH_COUNT)
         assertEquals(30, MAX_HOME_REFRESH_COUNT)
         assertEquals(30, normalizeHomeRefreshCount(999))
+    }
+
+    @Test
+    fun populatedPreferences_mapHideTopTabs() {
+        val prefsTrue = mutablePreferencesOf(
+            booleanPreferencesKey("hide_top_tabs") to true
+        )
+        val prefsFalse = mutablePreferencesOf(
+            booleanPreferencesKey("hide_top_tabs") to false
+        )
+
+        assertTrue(mapHomeSettingsFromPreferences(prefsTrue).hideTopTabs)
+        assertFalse(mapHomeSettingsFromPreferences(prefsFalse).hideTopTabs)
     }
 }
