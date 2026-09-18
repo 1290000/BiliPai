@@ -172,14 +172,76 @@ internal fun Modifier.biliPaiFloatingDockShell(
             ),
         )
 
-    val canBlur = (backdrop != null && enabled) || blurEnabled
-    val hasValidTarget = (backdrop != null) || (hazeState != null)
-    if (!canBlur || !hasValidTarget) {
-        val opaqueColor = if (containerColor.alpha == 0f) containerColor else containerColor.copy(alpha = 1f)
-        return baseModifier.background(opaqueColor, shape)
+    if (enabled && backdrop != null) {
+        val baseHighlight = rememberBiliPaiGravityHighlight(extraDegrees = -45f)
+        val surfaceColor = containerColor.copy(alpha = liquidGlassTuning.surfaceAlpha)
+        val readabilityScrimColor = if (isDark) Color.Black else Color.White
+        val resolvedLensIntensity = lensIntensity.coerceIn(0f, 1f) *
+            liquidGlassTuning.contentDistortionScale.coerceIn(0f, 1.8f)
+        val shouldDrawLens = drawLens && resolvedLensIntensity > 0.001f
+        val refractionHeightDp = liquidGlassTuning.refractionHeight * resolvedLensIntensity
+        val refractionAmountDp = liquidGlassTuning.refractionAmount * resolvedLensIntensity
+        val effectPaddingDp = resolveFloatingDockEffectPaddingDp(
+            refractionAmountDp = refractionAmountDp,
+            pressBloomDp = MIUIX_UPSTREAM_DOCK_PRESS_BLOOM_DP,
+        )
+        val blurRadiusPx = with(density) { liquidGlassTuning.backdropBlurRadius.dp.toPx() }
+        val refractionHeightPx = with(density) { refractionHeightDp.dp.toPx() }
+        val refractionAmountPx = with(density) { refractionAmountDp.dp.toPx() }
+        val effectPaddingPx = with(density) { effectPaddingDp.dp.toPx() }
+        val highlightAlpha = if (shouldDrawLens) {
+            (0.75f * resolvedLensIntensity).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+        val scrimAlpha = liquidGlassTuning.contentReadabilityScrimAlpha
+        val effects = rememberFloatingDockBackdropEffects(
+            blurRadiusPx = blurRadiusPx,
+            saturation = liquidGlassTuning.saturation,
+            shouldDrawLens = shouldDrawLens,
+            refractionHeightPx = refractionHeightPx,
+            refractionAmountPx = refractionAmountPx,
+            chromaticAberration = liquidGlassTuning.shellChromaticAberrationAmount,
+            effectPaddingPx = effectPaddingPx,
+        )
+        val highlightBlock = remember(baseHighlight, highlightAlpha) {
+            val block: BackdropEffectScope.() -> Highlight? = {
+                baseHighlight.value.copy(alpha = highlightAlpha)
+            }
+            block
+        }
+        val layerBlock = remember(pressProgress) {
+            val block: GraphicsLayerScope.() -> Unit = {
+                val width = size.width.coerceAtLeast(1f)
+                val s = lerp(1f, 1f + 16.dp.toPx() / width, pressProgress)
+                scaleX = s
+                scaleY = s
+            }
+            block
+        }
+        val onDrawSurface = remember(surfaceColor, readabilityScrimColor, scrimAlpha) {
+            val block: DrawScope.() -> Unit = {
+                drawRect(surfaceColor)
+                if (scrimAlpha > 0f) {
+                    drawRect(readabilityScrimColor.copy(alpha = scrimAlpha))
+                }
+            }
+            block
+        }
+        return baseModifier
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = shapeBlock,
+                effects = effects,
+                // Inline capsules (search/input) disable the shell lens and its rim highlight
+                // together; keeping the highlight alone leaves a one-pixel "shrimp line".
+                highlight = highlightBlock,
+                layerBlock = layerBlock,
+                onDrawSurface = onDrawSurface,
+            )
     }
 
-    if (!enabled && blurEnabled) {
+    if (blurEnabled) {
         if (hazeState != null) {
             val blurSurfaceColor = containerColor.copy(alpha = 0.65f)
             return baseModifier
@@ -213,72 +275,8 @@ internal fun Modifier.biliPaiFloatingDockShell(
         }
     }
 
-    val baseHighlight = rememberBiliPaiGravityHighlight(extraDegrees = -45f)
-    val surfaceColor = containerColor.copy(alpha = liquidGlassTuning.surfaceAlpha)
-    val readabilityScrimColor = if (isDark) Color.Black else Color.White
-    val resolvedLensIntensity = lensIntensity.coerceIn(0f, 1f) *
-        liquidGlassTuning.contentDistortionScale.coerceIn(0f, 1.8f)
-    val shouldDrawLens = drawLens && resolvedLensIntensity > 0.001f
-    val refractionHeightDp = liquidGlassTuning.refractionHeight * resolvedLensIntensity
-    val refractionAmountDp = liquidGlassTuning.refractionAmount * resolvedLensIntensity
-    val effectPaddingDp = resolveFloatingDockEffectPaddingDp(
-        refractionAmountDp = refractionAmountDp,
-        pressBloomDp = MIUIX_UPSTREAM_DOCK_PRESS_BLOOM_DP,
-    )
-    val blurRadiusPx = with(density) { liquidGlassTuning.backdropBlurRadius.dp.toPx() }
-    val refractionHeightPx = with(density) { refractionHeightDp.dp.toPx() }
-    val refractionAmountPx = with(density) { refractionAmountDp.dp.toPx() }
-    val effectPaddingPx = with(density) { effectPaddingDp.dp.toPx() }
-    val highlightAlpha = if (shouldDrawLens) {
-        (0.75f * resolvedLensIntensity).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
-    val scrimAlpha = liquidGlassTuning.contentReadabilityScrimAlpha
-    val effects = rememberFloatingDockBackdropEffects(
-        blurRadiusPx = blurRadiusPx,
-        saturation = liquidGlassTuning.saturation,
-        shouldDrawLens = shouldDrawLens,
-        refractionHeightPx = refractionHeightPx,
-        refractionAmountPx = refractionAmountPx,
-        chromaticAberration = liquidGlassTuning.shellChromaticAberrationAmount,
-        effectPaddingPx = effectPaddingPx,
-    )
-    val highlightBlock = remember(baseHighlight, highlightAlpha) {
-        val block: BackdropEffectScope.() -> Highlight? = {
-            baseHighlight.value.copy(alpha = highlightAlpha)
-        }
-        block
-    }
-    val layerBlock = remember(pressProgress) {
-        val block: GraphicsLayerScope.() -> Unit = {
-            val width = size.width.coerceAtLeast(1f)
-            val s = lerp(1f, 1f + 16.dp.toPx() / width, pressProgress)
-            scaleX = s
-            scaleY = s
-        }
-        block
-    }
-    val onDrawSurface = remember(surfaceColor, readabilityScrimColor, scrimAlpha) {
-        val block: DrawScope.() -> Unit = {
-            drawRect(surfaceColor)
-            if (scrimAlpha > 0f) {
-                drawRect(readabilityScrimColor.copy(alpha = scrimAlpha))
-            }
-        }
-        block
-    }
-    return baseModifier
-        .drawBackdrop(
-            backdrop = backdrop,
-            shape = shapeBlock,
-            effects = effects,
-            // Inline capsules (search/input) disable the shell lens and its rim highlight
-            // together; keeping the highlight alone leaves a one-pixel "shrimp line".
-            highlight = highlightBlock,
-            layerBlock = layerBlock,
-            onDrawSurface = onDrawSurface,
-        )
+    val opaqueColor = if (containerColor.alpha == 0f) containerColor else containerColor.copy(alpha = 1f)
+    return baseModifier.background(opaqueColor, shape)
 }
 
 /**
