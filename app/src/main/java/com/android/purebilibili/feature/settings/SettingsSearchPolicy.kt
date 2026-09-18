@@ -341,8 +341,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         target = SettingsSearchTarget.MESSAGE_NOTIFICATION,
         title = "消息通知",
         subtitle = "后台检查私信、互动消息、关注更新与开播提醒",
-        section = "隐私与安全",
-        aliases = listOf("消息通知", "后台通知", "私信通知", "开播提醒", "关注更新", "新消息提醒", "常驻后台", "后台消息", "通知")
+        aliases = listOf("消息通知", "后台通知", "私信通知", "私信", "回复我的", "@我", "收到的赞", "系统通知", "开播提醒", "关注更新", "新消息提醒", "常驻后台", "后台消息", "通知")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.BLOCKED_LIST,

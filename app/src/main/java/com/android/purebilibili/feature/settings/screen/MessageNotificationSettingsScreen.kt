@@ -40,7 +40,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.theme.iOSBlue
 import com.android.purebilibili.core.theme.iOSGreen
 import com.android.purebilibili.core.theme.iOSOrange
+import com.android.purebilibili.core.theme.iOSPink
 import com.android.purebilibili.core.theme.iOSPurple
+import com.android.purebilibili.core.theme.iOSRed
+import com.android.purebilibili.core.theme.iOSTeal
 import com.android.purebilibili.core.ui.components.AppChoiceOption
 import com.android.purebilibili.core.ui.components.AppPreference as SettingClickableItem
 import com.android.purebilibili.core.ui.components.AppPreferenceDivider
@@ -310,17 +313,77 @@ fun MessageNotificationSettingsScreen(onBack: () -> Unit) {
             SettingsCardGroup {
                 SettingSwitchItem(
                     icon = rememberSettingsSemanticIcon(SettingsIconRole.MESSAGE_NOTIFICATION),
-                    title = "消息中心",
-                    subtitle = "私信、回复、@我、收到的赞和系统通知；仅在总开关开启时生效",
-                    checked = settings.notifyMessageCenter,
+                    title = "私信",
+                    subtitle = "新私信消息；仅在总开关开启时生效",
+                    checked = settings.notifyPrivateMessages,
                     onCheckedChange = { enabled ->
                         scope.launch {
                             persistAndSync {
-                                MessageNotificationSettingsStore.setMessageCenterEnabled(context, enabled)
+                                MessageNotificationSettingsStore.setPrivateMessagesEnabled(context, enabled)
                             }
                         }
                     },
                     iconTint = iOSPurple,
+                )
+                AppPreferenceDivider()
+                SettingSwitchItem(
+                    icon = rememberSettingsSemanticIcon(SettingsIconRole.MESSAGE_NOTIFICATION),
+                    title = "回复我的",
+                    subtitle = "视频与动态评论回复；仅在总开关开启时生效",
+                    checked = settings.notifyReplies,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            persistAndSync {
+                                MessageNotificationSettingsStore.setRepliesEnabled(context, enabled)
+                            }
+                        }
+                    },
+                    iconTint = iOSBlue,
+                )
+                AppPreferenceDivider()
+                SettingSwitchItem(
+                    icon = rememberSettingsSemanticIcon(SettingsIconRole.MESSAGE_NOTIFICATION),
+                    title = "@我",
+                    subtitle = "评论与动态中提到我；仅在总开关开启时生效",
+                    checked = settings.notifyAtMe,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            persistAndSync {
+                                MessageNotificationSettingsStore.setAtMeEnabled(context, enabled)
+                            }
+                        }
+                    },
+                    iconTint = iOSTeal,
+                )
+                AppPreferenceDivider()
+                SettingSwitchItem(
+                    icon = rememberSettingsSemanticIcon(SettingsIconRole.MESSAGE_NOTIFICATION),
+                    title = "收到的赞",
+                    subtitle = "点赞与投币收藏等；仅在总开关开启时生效",
+                    checked = settings.notifyLikes,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            persistAndSync {
+                                MessageNotificationSettingsStore.setLikesEnabled(context, enabled)
+                            }
+                        }
+                    },
+                    iconTint = iOSPink,
+                )
+                AppPreferenceDivider()
+                SettingSwitchItem(
+                    icon = rememberSettingsSemanticIcon(SettingsIconRole.MESSAGE_NOTIFICATION),
+                    title = "系统通知",
+                    subtitle = "官方系统公告与通知；仅在总开关开启时生效",
+                    checked = settings.notifySystemNotices,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            persistAndSync {
+                                MessageNotificationSettingsStore.setSystemNoticesEnabled(context, enabled)
+                            }
+                        }
+                    },
+                    iconTint = iOSRed,
                 )
                 AppPreferenceDivider()
                 SettingSwitchItem(
