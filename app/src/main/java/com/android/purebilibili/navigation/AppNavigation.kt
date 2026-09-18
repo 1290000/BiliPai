@@ -1669,7 +1669,7 @@ fun AppNavigation(
                 }
                 is MessageLinkNavigationAction.Web -> {
                     val url = action.url.trim()
-                    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("bilibili://")) {
+                    if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
                         pushNavigation3Key(BiliPaiNavKey.Web(url))
                     }
                 }

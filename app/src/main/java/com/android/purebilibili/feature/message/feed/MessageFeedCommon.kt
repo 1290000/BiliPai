@@ -55,15 +55,11 @@ internal fun buildMessageFeedCommentNavigationLink(
     subjectId: Long,
     rootId: Long,
     sourceId: Long,
-    targetId: Long
+    targetId: Long,
+    business: String? = null
 ): String? {
     val trimmedNative = nativeUri?.trim().orEmpty()
     val trimmedUri = uri?.trim().orEmpty()
-
-    // If nativeUri is already a valid absolute URI (e.g. bilibili:// or https://)
-    if (trimmedNative.contains("://")) {
-        return trimmedNative
-    }
 
     // Extract any IDs from query if nativeUri or uri is a query string or has parameters
     val queryCandidate = when {
@@ -80,7 +76,7 @@ internal fun buildMessageFeedCommentNavigationLink(
 
     val queryRootId = listOf("comment_root_id", "root_reply_id", "root_id")
         .firstNotNullOfOrNull { key -> queryParams[key]?.toLongOrNull()?.takeIf { it > 0L } } ?: 0L
-    val queryTargetId = listOf("comment_id", "reply_id", "rpid", "target_id", "anchor", "source_id")
+    val queryTargetId = listOf("comment_secondary_id", "comment_id", "reply_id", "rpid", "target_id", "anchor", "source_id")
         .firstNotNullOfOrNull { key -> queryParams[key]?.toLongOrNull()?.takeIf { it > 0L } } ?: 0L
 
     val resolvedRootId = listOf(rootId, queryRootId, sourceId, targetId, queryTargetId)
@@ -88,20 +84,65 @@ internal fun buildMessageFeedCommentNavigationLink(
     val resolvedTargetId = listOf(targetId, queryTargetId, sourceId)
         .firstOrNull { it > 0L && it != resolvedRootId } ?: 0L
 
-    // If we have businessId, subjectId and rootReplyId, build the canonical comment deep link
-    if (businessId > 0 && subjectId > 0L && resolvedRootId > 0L) {
-        val targetQuery = if (resolvedTargetId > 0L) "?comment_id=$resolvedTargetId" else ""
-        val enterUriParam = if (trimmedUri.contains("://")) {
-            val sep = if (targetQuery.isEmpty()) "?" else "&"
-            val encodedEnterUri = runCatching {
-                java.net.URLEncoder.encode(trimmedUri, "UTF-8")
-            }.getOrDefault(trimmedUri)
-            "${sep}enterUri=$encodedEnterUri"
-        } else ""
-        return "bilibili://comment/detail/$businessId/$subjectId/$resolvedRootId$targetQuery$enterUriParam"
+    // If nativeUri is already a dedicated comment deep link or already contains comment parameters, prioritize it
+    val nativeIsAlreadyComment = trimmedNative.contains("comment") ||
+        trimmedNative.contains("comment_root_id") ||
+        trimmedNative.contains("root_reply_id")
+    if (trimmedNative.contains("://") && nativeIsAlreadyComment) {
+        return trimmedNative
     }
 
-    // If uri is an absolute web or scheme link (e.g. video page), fallback to it
+    val resolvedBusinessId = when {
+        businessId > 0 -> businessId
+        business?.contains("视频") == true || trimmedUri.contains("/video/") || trimmedNative.contains("/video/") -> 1
+        business?.contains("动态") == true || trimmedUri.contains("t.bilibili.com") || trimmedUri.contains("/opus/") || trimmedNative.contains("/opus/") -> 17
+        business?.contains("专栏") == true || trimmedUri.contains("/read/") || trimmedNative.contains("/read/") -> 12
+        else -> 0
+    }
+
+    // If we have businessId, subjectId and rootReplyId, build the canonical comment deep link
+    if (resolvedBusinessId > 0 && subjectId > 0L && resolvedRootId > 0L) {
+        val targetQuery = if (resolvedTargetId > 0L) "?comment_id=$resolvedTargetId" else ""
+        val enterCandidate = when {
+            trimmedNative.contains("://") -> trimmedNative
+            trimmedUri.contains("://") -> trimmedUri
+            else -> when (resolvedBusinessId) {
+                11, 16, 17 -> "bilibili://following/detail/$subjectId"
+                12 -> "bilibili://read/cv$subjectId"
+                else -> "bilibili://video/$subjectId"
+            }
+        }
+        val enterUriParam = if (enterCandidate.isNotBlank()) {
+            val sep = if (targetQuery.isEmpty()) "?" else "&"
+            val encodedEnterUri = runCatching {
+                java.net.URLEncoder.encode(enterCandidate, "UTF-8")
+            }.getOrDefault(enterCandidate)
+            "${sep}enterUri=$encodedEnterUri"
+        } else ""
+        return "bilibili://comment/detail/$resolvedBusinessId/$subjectId/$resolvedRootId$targetQuery$enterUriParam"
+    }
+
+    // If we have an absolute link and comment IDs, augment it with comment query parameters
+    val baseCandidate = when {
+        trimmedNative.contains("://") -> trimmedNative
+        trimmedUri.contains("://") -> trimmedUri
+        else -> null
+    }
+    if (baseCandidate != null && resolvedRootId > 0L) {
+        val sep = if (baseCandidate.contains("?")) "&" else "?"
+        val commentParams = buildString {
+            append("${sep}comment_root_id=$resolvedRootId")
+            if (resolvedTargetId > 0L) {
+                append("&comment_secondary_id=$resolvedTargetId")
+            }
+        }
+        return "$baseCandidate$commentParams"
+    }
+
+    // Fallback: if nativeUri or uri is an absolute web or scheme link, use it
+    if (trimmedNative.contains("://")) {
+        return trimmedNative
+    }
     if (trimmedUri.contains("://")) {
         return trimmedUri
     }

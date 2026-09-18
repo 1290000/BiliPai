@@ -62,7 +62,14 @@ internal fun resolveMessageLinkNavigationAction(rawLink: String): MessageLinkNav
         is BilibiliNavigationTarget.BangumiEpisode -> MessageLinkNavigationAction.BangumiEpisode(target.epId)
         is BilibiliNavigationTarget.Music -> MessageLinkNavigationAction.Music(target.musicId)
         is BilibiliNavigationTarget.Article -> MessageLinkNavigationAction.Article(target.articleId)
-        else -> MessageLinkNavigationAction.Web(rawLink)
+        else -> {
+            val trimmed = rawLink.trim()
+            if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+                MessageLinkNavigationAction.Web(trimmed)
+            } else {
+                MessageLinkNavigationAction.Web("")
+            }
+        }
     }
 }
 
@@ -75,39 +82,72 @@ private fun resolveMessageCommentNavigationAction(rawLink: String): MessageLinkN
     val uri = runCatching { java.net.URI(rawLink) }.getOrNull() ?: return null
     val scheme = uri.scheme?.lowercase().orEmpty()
     val host = uri.host?.lowercase().orEmpty()
+    val path = uri.path.orEmpty()
+    val queryMap = decodeQueryMap(uri.rawQuery)
+
+    // 1. Handle bilibili://browser/?url=...
+    if (scheme in setOf("bili", "bilibili") && host == "browser") {
+        val innerUrl = queryMap["url"]?.trim().orEmpty()
+        if (innerUrl.isNotBlank()) {
+            return resolveMessageLinkNavigationAction(innerUrl)
+        }
+        return null
+    }
+
+    // 2. Handle H5 / Web comment links:
+    // https://www.bilibili.com/h5/comment/sub?oid=...&pageType=...&root=...&comment_secondary_id=...
+    if ((scheme == "http" || scheme == "https") &&
+        host.contains("bilibili.com") &&
+        (path.contains("comment/sub") || path.contains("h5/comment"))
+    ) {
+        val oid = queryMap["oid"]?.toLongOrNull() ?: return null
+        val rootReplyId = queryMap["root"]?.toLongOrNull() ?: return null
+        val pageType = queryMap["pageType"]?.toIntOrNull() ?: 1
+        val targetReplyId = queryMap.firstPositiveLong(
+            "comment_secondary_id",
+            "comment_id",
+            "reply_id",
+            "rpid",
+            "target_id",
+            "anchor",
+            "source_id"
+        )
+        return when (pageType) {
+            1 -> MessageLinkNavigationAction.VideoComment(
+                videoId = "av$oid",
+                rootReplyId = rootReplyId,
+                targetReplyId = targetReplyId
+            )
+            11, 16, 17 -> MessageLinkNavigationAction.DynamicComment(
+                dynamicId = oid.toString(),
+                rootReplyId = rootReplyId,
+                targetReplyId = targetReplyId
+            )
+            12 -> MessageLinkNavigationAction.Article(articleId = oid)
+            else -> MessageLinkNavigationAction.VideoComment(
+                videoId = "av$oid",
+                rootReplyId = rootReplyId,
+                targetReplyId = targetReplyId
+            )
+        }
+    }
+
+    // 3. Handle bilibili://comment/detail/... and bilibili://comment/msg_fold/...
     if (scheme !in setOf("bili", "bilibili") || host != "comment") return null
 
-    val segments = uri.path
-        ?.split("/")
-        ?.filter { it.isNotBlank() }
-        .orEmpty()
+    val segments = path
+        .split("/")
+        .filter { it.isNotBlank() }
     if (segments.size < 4) return null
     if (segments.firstOrNull() !in setOf("detail", "msg_fold")) return null
 
     val businessId = segments.getOrNull(1)?.toIntOrNull() ?: return null
     val oid = segments.getOrNull(2)?.toLongOrNull() ?: return null
     val rootReplyId = segments.getOrNull(3)?.toLongOrNull() ?: 0L
-    val queryMap = uri.rawQuery
-        ?.split("&")
-        ?.mapNotNull { part ->
-            if (part.isBlank()) return@mapNotNull null
-            val pair = part.split("=", limit = 2)
-            val key = decodeUrlComponentCompat(pair[0])
-            val value = decodeUrlComponentCompat(pair.getOrElse(1) { "" })
-            key to value
-        }
-        ?.toMap()
-        .orEmpty()
 
-    val fallbackLink = queryMap["enterUri"].orEmpty().ifBlank {
-        when (businessId) {
-            11, 16, 17 -> "bilibili://following/detail/$oid"
-            12 -> "bilibili://read/cv$oid"
-            else -> "bilibili://video/$oid"
-        }
-    }
-
+    val enterUri = queryMap["enterUri"]?.trim().orEmpty()
     val parsedTargetReplyId = queryMap.firstPositiveLong(
+        "comment_secondary_id",
         "comment_id",
         "reply_id",
         "rpid",
@@ -116,28 +156,67 @@ private fun resolveMessageCommentNavigationAction(rawLink: String): MessageLinkN
         "source_id"
     ).takeIf { it > 0L } ?: segments.getOrNull(4)?.toLongOrNull()?.takeIf { it > 0L } ?: 0L
 
-    return when (val target = BilibiliNavigationTargetParser.parse(fallbackLink)) {
-        is BilibiliNavigationTarget.Video -> MessageLinkNavigationAction.VideoComment(
-            videoId = target.videoId,
+    // If oid is a large 18-digit number (dynamic ID), or businessId is dynamic (11, 16, 17)
+    if (oid >= 100_000_000_000_000_000L || businessId in setOf(11, 16, 17)) {
+        return MessageLinkNavigationAction.DynamicComment(
+            dynamicId = oid.toString(),
             rootReplyId = rootReplyId,
             targetReplyId = parsedTargetReplyId
         )
-        is BilibiliNavigationTarget.Dynamic -> MessageLinkNavigationAction.DynamicComment(
-            dynamicId = target.dynamicId,
-            rootReplyId = rootReplyId,
-            targetReplyId = parsedTargetReplyId
-        )
-        is BilibiliNavigationTarget.Space -> MessageLinkNavigationAction.Space(target.mid)
-        is BilibiliNavigationTarget.Live -> MessageLinkNavigationAction.Live(target.roomId)
-        is BilibiliNavigationTarget.BangumiSeason -> MessageLinkNavigationAction.BangumiSeason(
-            seasonId = target.seasonId,
-            mediaId = target.mediaId
-        )
-        is BilibiliNavigationTarget.BangumiEpisode -> MessageLinkNavigationAction.BangumiEpisode(target.epId)
-        is BilibiliNavigationTarget.Music -> MessageLinkNavigationAction.Music(target.musicId)
-        is BilibiliNavigationTarget.Article -> MessageLinkNavigationAction.Article(target.articleId)
-        else -> null
     }
+
+    if (businessId == 12) {
+        return MessageLinkNavigationAction.Article(articleId = oid)
+    }
+
+    if (businessId == 1) {
+        val videoId = if (enterUri.isNotBlank()) {
+            val parsedTarget = BilibiliNavigationTargetParser.parse(enterUri)
+            (parsedTarget as? BilibiliNavigationTarget.Video)?.videoId ?: "av$oid"
+        } else {
+            "av$oid"
+        }
+        return MessageLinkNavigationAction.VideoComment(
+            videoId = videoId,
+            rootReplyId = rootReplyId,
+            targetReplyId = parsedTargetReplyId
+        )
+    }
+
+    // Fallback: try parsing enterUri if provided
+    if (enterUri.isNotBlank()) {
+        val target = BilibiliNavigationTargetParser.parse(enterUri)
+        if (target != null) {
+            return when (target) {
+                is BilibiliNavigationTarget.Video -> MessageLinkNavigationAction.VideoComment(
+                    videoId = target.videoId,
+                    rootReplyId = rootReplyId,
+                    targetReplyId = parsedTargetReplyId
+                )
+                is BilibiliNavigationTarget.Dynamic -> MessageLinkNavigationAction.DynamicComment(
+                    dynamicId = target.dynamicId,
+                    rootReplyId = rootReplyId,
+                    targetReplyId = parsedTargetReplyId
+                )
+                is BilibiliNavigationTarget.Space -> MessageLinkNavigationAction.Space(target.mid)
+                is BilibiliNavigationTarget.Live -> MessageLinkNavigationAction.Live(target.roomId)
+                is BilibiliNavigationTarget.BangumiSeason -> MessageLinkNavigationAction.BangumiSeason(
+                    seasonId = target.seasonId,
+                    mediaId = target.mediaId
+                )
+                is BilibiliNavigationTarget.BangumiEpisode -> MessageLinkNavigationAction.BangumiEpisode(target.epId)
+                is BilibiliNavigationTarget.Music -> MessageLinkNavigationAction.Music(target.musicId)
+                is BilibiliNavigationTarget.Article -> MessageLinkNavigationAction.Article(target.articleId)
+                else -> null
+            }
+        }
+    }
+
+    return MessageLinkNavigationAction.VideoComment(
+        videoId = "av$oid",
+        rootReplyId = rootReplyId,
+        targetReplyId = parsedTargetReplyId
+    )
 }
 
 private fun resolveMessageCommentLocation(rawLink: String): MessageCommentLocation? {
@@ -149,10 +228,12 @@ private fun resolveMessageCommentLocation(rawLink: String): MessageCommentLocati
         "root_id"
     )
     val targetReplyId = queryMap.firstPositiveLong(
+        "comment_secondary_id",
         "comment_id",
         "reply_id",
         "rpid",
         "target_id",
+        "anchor",
         "source_id"
     ).takeIf { it > 0L } ?: resolveReplyIdFromFragment(uri.rawFragment)
     val resolvedRootReplyId = when {
