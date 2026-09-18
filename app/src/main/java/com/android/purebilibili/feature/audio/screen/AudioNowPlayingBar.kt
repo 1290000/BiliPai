@@ -37,9 +37,12 @@ import com.android.purebilibili.core.util.CardPositionManager
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -223,7 +226,7 @@ internal fun AudioNowPlayingBar(
                     // 无额外内存分配的高刷标量求值（resolveAudioNowPlayingBarLandingScale）：
                     scaleX = resolveAudioNowPlayingBarLandingScaleX(progress)
                     scaleY = resolveAudioNowPlayingBarLandingScaleY(progress)
-                    translationY = resolveAudioNowPlayingBarLandingOffsetY(progress) * density
+                    translationY = resolveAudioNowPlayingBarLandingOffsetY(progress) * density.density
                     alpha = resolveAudioNowPlayingBarLandingAlpha(progress)
                 }
             }
