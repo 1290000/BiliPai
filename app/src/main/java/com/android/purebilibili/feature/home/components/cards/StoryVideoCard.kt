@@ -258,7 +258,7 @@ internal fun StoryVideoCard(
         )
     }
     val coverCrossfadeEnabled = shouldEnableVideoCardCoverCrossfade(
-        isScrollInProgress = scrollLiteModeEnabled,
+        isScrollInProgress = false,
         isReturningFromDetail = isReturningFromVideoDetail,
         useCoverSharedBounds = useCardShellSharedBounds ||
             (LocalMiuixVideoCardTransitionState.current.enabled && isSharedReturnTarget),

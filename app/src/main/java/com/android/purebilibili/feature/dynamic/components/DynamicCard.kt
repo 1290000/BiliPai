@@ -17,6 +17,7 @@ import com.android.purebilibili.core.ui.AppSurfaceTokens
 
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
+import com.android.purebilibili.core.ui.transition.LocalDynamicImagePreviewTextVisible
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -200,8 +201,7 @@ fun DynamicCardV2(
     )
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    val dynamicPreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
-        .collectAsStateWithLifecycle(initialValue = true)
+    val dynamicPreviewTextVisible = LocalDynamicImagePreviewTextVisible.current
     val authorTimeText = remember(author?.pub_time, author?.pub_ts) {
         author?.let {
             resolveDynamicAuthorTimeText(

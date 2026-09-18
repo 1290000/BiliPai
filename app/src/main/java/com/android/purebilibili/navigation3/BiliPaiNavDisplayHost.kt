@@ -37,6 +37,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
+import com.android.purebilibili.core.ui.transition.LocalClickToPlayEnabled
+import com.android.purebilibili.core.ui.transition.LocalDynamicImagePreviewTextVisible
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
 import com.android.purebilibili.core.ui.transition.LocalMiuixVideoCardTransitionState
 import com.android.purebilibili.core.ui.transition.LocalVideoCardTransitionBackgroundState
@@ -604,6 +606,14 @@ internal fun BiliPaiNavDisplayHost(
     val interceptPredictiveBack =
         style == BiliPaiPredictiveBackAnimationStyle.NONE && backStack.size > 1
     val globalWallpaperVisible = LocalGlobalWallpaperBackdropVisible.current
+    val clickToPlayEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getClickToPlay(LocalContext.current)
+        .collectAsStateWithLifecycle(
+            initialValue = com.android.purebilibili.core.store.SettingsManager.getClickToPlaySync(LocalContext.current)
+        )
+    val dynamicImagePreviewTextVisible by com.android.purebilibili.core.store.SettingsManager
+        .getDynamicImagePreviewTextVisible(LocalContext.current)
+        .collectAsStateWithLifecycle(initialValue = true)
 
     Box(
         modifier = Modifier
@@ -665,6 +675,8 @@ internal fun BiliPaiNavDisplayHost(
                         LocalVideoCardTransitionBackgroundState provides transitionBackgroundState,
                         LocalMiuixVideoCardTransitionState provides miuixCardTransitionState,
                         LocalPredictiveBackBackgroundState provides predictiveBackBackgroundState,
+                        LocalClickToPlayEnabled provides clickToPlayEnabled,
+                        LocalDynamicImagePreviewTextVisible provides dynamicImagePreviewTextVisible,
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize().then(
