@@ -272,6 +272,19 @@ class BiliPaiNavKeyMappingPolicyTest {
     }
 
     @Test
+    fun commentDetailRoute_roundTripsThroughLegacyRoute() {
+        val key = BiliPaiNavKey.CommentDetail(
+            oid = 12345L,
+            rootId = 67890L,
+            targetId = 11111L,
+            type = 1,
+            enterUri = "bilibili://video/12345"
+        )
+        val route = key.toLegacyRoute()
+        assertEquals(key, legacyRouteToBiliPaiNavKey(route))
+    }
+
+    @Test
     fun cardReturnTargets_matchExistingSharedElementDestinations() {
         assertEquals(true, isCardReturnTargetNavKey(BiliPaiNavKey.MainHost))
         assertEquals(true, isCardReturnTargetNavKey(BiliPaiNavKey.Home))

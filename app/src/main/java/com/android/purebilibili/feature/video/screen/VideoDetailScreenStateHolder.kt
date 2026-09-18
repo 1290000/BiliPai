@@ -2965,6 +2965,19 @@ internal fun VideoDetailScreenStateHolder(
                 expectedReplyCount = info.stat.reply
             )
 
+            if (openCommentRootRpidFromRoute > 0L) {
+                selectedVideoContentTabIndex = 1
+                if (!hasHandledCommentRootFromRoute) {
+                    val openStarted = commentViewModel.openSubReplyFromRoute(
+                        rootReplyId = openCommentRootRpidFromRoute,
+                        targetReplyId = openCommentTargetRpidFromRoute
+                    )
+                    if (openStarted) {
+                        hasHandledCommentRootFromRoute = true
+                    }
+                }
+            }
+
             playerState.updateMediaMetadata(
                 title = info.title,
                 artist = info.owner.name,

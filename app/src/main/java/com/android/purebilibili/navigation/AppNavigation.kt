@@ -1618,6 +1618,17 @@ fun AppNavigation(
                 is MessageLinkNavigationAction.Video -> {
                     navigateToVideoInNavigation3(action.videoId, 0L, "")
                 }
+                is MessageLinkNavigationAction.CommentDetail -> {
+                    pushNavigation3Key(
+                        BiliPaiNavKey.CommentDetail(
+                            oid = action.oid,
+                            rootId = action.rootReplyId,
+                            targetId = action.targetReplyId,
+                            type = action.businessId,
+                            enterUri = action.enterUri
+                        )
+                    )
+                }
                 is MessageLinkNavigationAction.VideoComment -> {
                     navigateToVideoRouteInNavigation3(
                         route = VideoRoute.createRoute(
@@ -3730,6 +3741,19 @@ fun AppNavigation(
                                     }
                                 )
                             }
+                        BiliPaiNavEntryContentRole.COMMENT_DETAIL -> {
+                            val commentKey = key as BiliPaiNavKey.CommentDetail
+                            com.android.purebilibili.feature.comment.CommentDetailScreen(
+                                oid = commentKey.oid,
+                                rootId = commentKey.rootId,
+                                targetId = commentKey.targetId,
+                                type = commentKey.type,
+                                enterUri = commentKey.enterUri,
+                                onBack = { performSystemBackAction() },
+                                onOpenLink = ::openMessageLinkInNavigation3,
+                                onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) }
+                            )
+                        }
                         BiliPaiNavEntryContentRole.DYNAMIC_DETAIL -> {
                                 val dynamicKey = key as BiliPaiNavKey.DynamicDetail
                                 CompositionLocalProvider(

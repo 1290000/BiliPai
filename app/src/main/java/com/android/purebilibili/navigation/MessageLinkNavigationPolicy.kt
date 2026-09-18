@@ -17,6 +17,13 @@ internal sealed interface MessageLinkNavigationAction {
         val rootReplyId: Long,
         val targetReplyId: Long = 0L
     ) : MessageLinkNavigationAction
+    data class CommentDetail(
+        val oid: Long,
+        val rootReplyId: Long,
+        val targetReplyId: Long = 0L,
+        val businessId: Int = 1,
+        val enterUri: String = ""
+    ) : MessageLinkNavigationAction
     data class Space(val mid: Long) : MessageLinkNavigationAction
     data class Live(val roomId: Long) : MessageLinkNavigationAction
     data class BangumiSeason(val seasonId: Long, val mediaId: Long = 0L) : MessageLinkNavigationAction
@@ -33,22 +40,44 @@ internal fun resolveMessageLinkNavigationAction(rawLink: String): MessageLinkNav
     return when (val target = BilibiliNavigationTargetParser.parse(rawLink)) {
         is BilibiliNavigationTarget.Video -> {
             if (commentLocation != null) {
-                MessageLinkNavigationAction.VideoComment(
-                    videoId = target.videoId,
-                    rootReplyId = commentLocation.rootReplyId,
-                    targetReplyId = commentLocation.targetReplyId
-                )
+                val aid = target.videoId.removePrefix("av").removePrefix("AV").toLongOrNull()
+                if (aid != null && aid > 0L) {
+                    MessageLinkNavigationAction.CommentDetail(
+                        oid = aid,
+                        rootReplyId = commentLocation.rootReplyId,
+                        targetReplyId = commentLocation.targetReplyId,
+                        businessId = 1,
+                        enterUri = "bilibili://video/$aid"
+                    )
+                } else {
+                    MessageLinkNavigationAction.VideoComment(
+                        videoId = target.videoId,
+                        rootReplyId = commentLocation.rootReplyId,
+                        targetReplyId = commentLocation.targetReplyId
+                    )
+                }
             } else {
                 MessageLinkNavigationAction.Video(target.videoId)
             }
         }
         is BilibiliNavigationTarget.Dynamic -> {
             if (commentLocation != null) {
-                MessageLinkNavigationAction.DynamicComment(
-                    dynamicId = target.dynamicId,
-                    rootReplyId = commentLocation.rootReplyId,
-                    targetReplyId = commentLocation.targetReplyId
-                )
+                val dynId = target.dynamicId.toLongOrNull()
+                if (dynId != null && dynId > 0L) {
+                    MessageLinkNavigationAction.CommentDetail(
+                        oid = dynId,
+                        rootReplyId = commentLocation.rootReplyId,
+                        targetReplyId = commentLocation.targetReplyId,
+                        businessId = 17,
+                        enterUri = "bilibili://following/detail/$dynId"
+                    )
+                } else {
+                    MessageLinkNavigationAction.DynamicComment(
+                        dynamicId = target.dynamicId,
+                        rootReplyId = commentLocation.rootReplyId,
+                        targetReplyId = commentLocation.targetReplyId
+                    )
+                }
             } else {
                 MessageLinkNavigationAction.Dynamic(target.dynamicId)
             }
@@ -112,24 +141,20 @@ private fun resolveMessageCommentNavigationAction(rawLink: String): MessageLinkN
             "anchor",
             "source_id"
         )
-        return when (pageType) {
-            1 -> MessageLinkNavigationAction.VideoComment(
-                videoId = "av$oid",
-                rootReplyId = rootReplyId,
-                targetReplyId = targetReplyId
-            )
-            11, 16, 17 -> MessageLinkNavigationAction.DynamicComment(
-                dynamicId = oid.toString(),
-                rootReplyId = rootReplyId,
-                targetReplyId = targetReplyId
-            )
-            12 -> MessageLinkNavigationAction.Article(articleId = oid)
-            else -> MessageLinkNavigationAction.VideoComment(
-                videoId = "av$oid",
-                rootReplyId = rootReplyId,
-                targetReplyId = targetReplyId
-            )
+        val effectivePageType = if (oid >= 100_000_000_000_000_000L && pageType == 1) 17 else pageType
+        val enterUri = when (effectivePageType) {
+            1 -> "bilibili://video/$oid"
+            11, 16, 17 -> "bilibili://following/detail/$oid"
+            12 -> "bilibili://read/cv$oid"
+            else -> "bilibili://video/$oid"
         }
+        return MessageLinkNavigationAction.CommentDetail(
+            oid = oid,
+            rootReplyId = rootReplyId,
+            targetReplyId = targetReplyId,
+            businessId = effectivePageType,
+            enterUri = enterUri
+        )
     }
 
     // 3. Handle bilibili://comment/detail/... and bilibili://comment/msg_fold/...
@@ -156,66 +181,21 @@ private fun resolveMessageCommentNavigationAction(rawLink: String): MessageLinkN
         "source_id"
     ).takeIf { it > 0L } ?: segments.getOrNull(4)?.toLongOrNull()?.takeIf { it > 0L } ?: 0L
 
-    // If oid is a large 18-digit number (dynamic ID), or businessId is dynamic (11, 16, 17)
-    if (oid >= 100_000_000_000_000_000L || businessId in setOf(11, 16, 17)) {
-        return MessageLinkNavigationAction.DynamicComment(
-            dynamicId = oid.toString(),
-            rootReplyId = rootReplyId,
-            targetReplyId = parsedTargetReplyId
-        )
-    }
-
-    if (businessId == 12) {
-        return MessageLinkNavigationAction.Article(articleId = oid)
-    }
-
-    if (businessId == 1) {
-        val videoId = if (enterUri.isNotBlank()) {
-            val parsedTarget = BilibiliNavigationTargetParser.parse(enterUri)
-            (parsedTarget as? BilibiliNavigationTarget.Video)?.videoId ?: "av$oid"
-        } else {
-            "av$oid"
-        }
-        return MessageLinkNavigationAction.VideoComment(
-            videoId = videoId,
-            rootReplyId = rootReplyId,
-            targetReplyId = parsedTargetReplyId
-        )
-    }
-
-    // Fallback: try parsing enterUri if provided
-    if (enterUri.isNotBlank()) {
-        val target = BilibiliNavigationTargetParser.parse(enterUri)
-        if (target != null) {
-            return when (target) {
-                is BilibiliNavigationTarget.Video -> MessageLinkNavigationAction.VideoComment(
-                    videoId = target.videoId,
-                    rootReplyId = rootReplyId,
-                    targetReplyId = parsedTargetReplyId
-                )
-                is BilibiliNavigationTarget.Dynamic -> MessageLinkNavigationAction.DynamicComment(
-                    dynamicId = target.dynamicId,
-                    rootReplyId = rootReplyId,
-                    targetReplyId = parsedTargetReplyId
-                )
-                is BilibiliNavigationTarget.Space -> MessageLinkNavigationAction.Space(target.mid)
-                is BilibiliNavigationTarget.Live -> MessageLinkNavigationAction.Live(target.roomId)
-                is BilibiliNavigationTarget.BangumiSeason -> MessageLinkNavigationAction.BangumiSeason(
-                    seasonId = target.seasonId,
-                    mediaId = target.mediaId
-                )
-                is BilibiliNavigationTarget.BangumiEpisode -> MessageLinkNavigationAction.BangumiEpisode(target.epId)
-                is BilibiliNavigationTarget.Music -> MessageLinkNavigationAction.Music(target.musicId)
-                is BilibiliNavigationTarget.Article -> MessageLinkNavigationAction.Article(target.articleId)
-                else -> null
-            }
+    val effectiveBusinessId = if (oid >= 100_000_000_000_000_000L && businessId == 1) 17 else businessId
+    val resolvedEnterUri = enterUri.ifBlank {
+        when (effectiveBusinessId) {
+            11, 16, 17 -> "bilibili://following/detail/$oid"
+            12 -> "bilibili://read/cv$oid"
+            else -> "bilibili://video/$oid"
         }
     }
 
-    return MessageLinkNavigationAction.VideoComment(
-        videoId = "av$oid",
+    return MessageLinkNavigationAction.CommentDetail(
+        oid = oid,
         rootReplyId = rootReplyId,
-        targetReplyId = parsedTargetReplyId
+        targetReplyId = parsedTargetReplyId,
+        businessId = effectiveBusinessId,
+        enterUri = resolvedEnterUri
     )
 }
 

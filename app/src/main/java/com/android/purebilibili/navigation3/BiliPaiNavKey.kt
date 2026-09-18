@@ -409,6 +409,17 @@ internal sealed interface BiliPaiNavKey : NavKey {
     }
 
     @Serializable
+    data class CommentDetail(
+        val oid: Long,
+        val rootId: Long,
+        val targetId: Long = 0L,
+        val type: Int = 1,
+        val enterUri: String = ""
+    ) : BiliPaiNavKey {
+        override val routeBase: String = "comment_detail"
+    }
+
+    @Serializable
     data class Space(
         val mid: Long,
         val targetBvid: String = ""

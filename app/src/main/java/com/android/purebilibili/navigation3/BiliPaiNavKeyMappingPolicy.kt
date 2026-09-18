@@ -134,6 +134,8 @@ internal fun BiliPaiNavKey.toLegacyRoute(): String {
             commentRootRpid = commentRootRpid,
             commentTargetRpid = commentTargetRpid
         )
+        is BiliPaiNavKey.CommentDetail ->
+            "comment_detail/$oid/$rootId?targetId=$targetId&type=$type&enterUri=${encodeRouteValue(enterUri)}"
         is BiliPaiNavKey.Space -> ScreenRoutes.Space.createRoute(mid, targetBvid)
         is BiliPaiNavKey.Category -> ScreenRoutes.Category.createRoute(tid, name)
         is BiliPaiNavKey.Live -> ScreenRoutes.Live.createRoute(roomId, title, uname, siteId)
@@ -324,6 +326,15 @@ internal fun legacyRouteToBiliPaiNavKey(route: String?): BiliPaiNavKey {
                 dynamicId = decodeRouteValue(segments[1]),
                 commentRootRpid = query["commentRootRpid"]?.toLongOrNull() ?: 0L,
                 commentTargetRpid = query["commentTargetRpid"]?.toLongOrNull() ?: 0L
+            )
+        }
+        segments.firstOrNull() == "comment_detail" && segments.size >= 3 -> {
+            BiliPaiNavKey.CommentDetail(
+                oid = segments[1].toLongOrNull() ?: 0L,
+                rootId = segments[2].toLongOrNull() ?: 0L,
+                targetId = query["targetId"]?.toLongOrNull() ?: 0L,
+                type = query["type"]?.toIntOrNull() ?: 1,
+                enterUri = decodeRouteValue(query["enterUri"].orEmpty())
             )
         }
         segments.firstOrNull() == "space" && segments.size >= 2 -> {
