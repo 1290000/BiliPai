@@ -2091,7 +2091,16 @@ fun HomeScreen(
                                  }
                                  val onWatchLaterCallback = remember(viewModel) { { bvid: String, aid: Long -> viewModel.addToWatchLater(bvid, aid) } }
                                  val onDissolveCompleteCallback = remember(viewModel) { { bvid: String -> viewModel.completeVideoDissolve(bvid) } }
-                                 val onLongPressCallback = remember(targetVideoItemState) { { item: VideoItem -> targetVideoItemState.value = item } }
+                                  val onLongPressCallback = remember(
+                                      targetVideoItemState,
+                                      homeSettings.videoCardLongPressActionEnabled
+                                  ) {
+                                      if (homeSettings.videoCardLongPressActionEnabled) {
+                                          { item: VideoItem -> targetVideoItemState.value = item }
+                                      } else {
+                                          null
+                                      }
+                                  }
                                  val onLiveClickCallback = remember(onLiveClick) { onLiveClick }
                                  val onTodayWatchModeChange = remember(viewModel) { { mode: TodayWatchMode -> viewModel.switchTodayWatchMode(mode) } }
                                  val onTodayWatchCollapsedChange = remember(viewModel) { { collapsed: Boolean -> viewModel.setTodayWatchCollapsed(collapsed) } }

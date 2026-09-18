@@ -156,7 +156,7 @@ internal fun HomeCategoryPageContent(
     onDismissVideo: (VideoItem) -> Unit,
     onWatchLater: (String, Long) -> Unit,
     onDissolveComplete: (String) -> Unit,
-    longPressCallback: (VideoItem) -> Unit, // [Feature] Long Press
+    longPressCallback: ((VideoItem) -> Unit)? = null, // [Feature] Long Press
     displayMode: Int,
     cardAnimationEnabled: Boolean,
     cardMotionTier: MotionTier = MotionTier.Normal,
@@ -344,7 +344,7 @@ internal fun HomeCategoryPageContent(
                     onUpClick = onUpClick,
                     showPublishTime = true,
                     onDismiss = { onDismissVideo(video) },
-                    onLongClick = if (isDynamicDetailCard) null else ({ longPressCallback(video) }),
+                    onLongClick = if (isDynamicDetailCard) null else longPressCallback?.let { cb -> { cb(video) } },
                     onClick = { bvid, cid ->
                         onVideoClick(
                             HomeVideoClickRequest(
@@ -395,7 +395,7 @@ internal fun HomeCategoryPageContent(
                     onWatchLater = if (isDynamicDetailCard) null else ({
                         onWatchLater(video.bvid, resolveWatchLaterAid(video))
                     }),
-                    onLongClick = if (isDynamicDetailCard) null else ({ longPressCallback(video) }),
+                    onLongClick = if (isDynamicDetailCard) null else longPressCallback?.let { cb -> { cb(video) } },
                     onClick = { bvid, cid ->
                         onVideoClick(
                             HomeVideoClickRequest(

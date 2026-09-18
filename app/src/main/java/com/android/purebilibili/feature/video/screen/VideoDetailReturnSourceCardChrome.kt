@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.video.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -275,6 +276,23 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
 
     val nativeCardLayer = CardPositionManager.lastClickedNativeCardLayer
     if (nativeCardLayer != null) {
+        val baseContainer = AppSurfaceTokens.cardContainer()
+        val sourceCornerDp = (CardPositionManager.lastClickedVideoSourceCornerDp ?: 12).dp
+        val infoShape = when (layout.layout) {
+            VideoCardSourceLayout.SIDE_BY_SIDE -> RoundedCornerShape(
+                topStart = 0.dp,
+                bottomStart = 0.dp,
+                topEnd = sourceCornerDp,
+                bottomEnd = sourceCornerDp,
+            )
+            VideoCardSourceLayout.STACKED -> RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = sourceCornerDp,
+                bottomEnd = sourceCornerDp,
+            )
+            VideoCardSourceLayout.COVER_ONLY -> RoundedCornerShape(sourceCornerDp)
+        }
         val infoCropXPx = layout.coverOffsetXPx + layout.coverWidthPx
         val infoCropYPx = layout.coverOffsetYPx + layout.coverHeightPx
         fun Modifier.nativeInfoSlot(
@@ -294,7 +312,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
             val h = (heightPx * inverse.scaleY).roundToInt().coerceAtLeast(1)
             val placeable = measurable.measure(Constraints.fixed(w, h))
             layout(w, h) { placeable.place(0, 0) }
-        }.clipToBounds().graphicsLayer {
+        }.clip(infoShape).background(baseContainer, infoShape).clipToBounds().graphicsLayer {
             val phase = phaseProvider()
             val isReturnGestureInProgress = isReturnGestureInProgressProvider()
             alpha = resolveVideoDetailFlyingSourceChromeAlpha(

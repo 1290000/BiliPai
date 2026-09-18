@@ -4483,7 +4483,12 @@ internal fun VideoDetailScreenStateHolder(
                                         0.dp
                                     },
                                 )
-                                .background(Color.Black)
+                                .drawBehind {
+                                    val handoff = returnMediaHandoffProgressProvider()
+                                    if (landingLayoutForMedia == null || handoff <= 0f) {
+                                        drawRect(Color.Black)
+                                    }
+                                }
                                 //  [PiP修复] 捕获视频播放器在屏幕上的位置
                                 .onGloballyPositioned { layoutCoordinates ->
                                     // Morph height changes every frame. PiP and system-bar bounds only need
@@ -4563,6 +4568,7 @@ internal fun VideoDetailScreenStateHolder(
                                         },
                                         clipCornerDp = returnMediaClipCornerDp,
                                     )
+                                    .background(Color.Black)
                                     .zIndex(0f)
                                     .graphicsLayer {
                                         alpha = returnMediaFrameProvider().playerAlpha

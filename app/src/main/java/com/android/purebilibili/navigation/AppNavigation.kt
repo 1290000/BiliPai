@@ -1752,6 +1752,8 @@ fun AppNavigation(
                 ),
             com.android.purebilibili.core.ui.LocalFullVideoCardContentVisible provides
                 homeSettings.showFullVideoCardContent,
+            com.android.purebilibili.core.ui.LocalVideoCardLongPressEnabled provides
+                homeSettings.videoCardLongPressActionEnabled,
             com.android.purebilibili.core.ui.LocalMainHazeState provides mainHazeState,
             // 卡片标签 / 信息区实时玻璃效果已下线，不再为首页建立额外 Haze 录制树。
             com.android.purebilibili.core.ui.LocalWallpaperHazeState provides null,

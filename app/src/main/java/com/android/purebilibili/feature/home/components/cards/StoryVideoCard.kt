@@ -133,6 +133,7 @@ internal fun StoryVideoCard(
     )
     val haptic = rememberHapticFeedback()
     
+    val isLongPressEnabled = com.android.purebilibili.core.ui.LocalVideoCardLongPressEnabled.current
     val cardCornerRadius = AppShapes.containerCornerDp(ContainerLevel.ProminentCard)
     val cardShape = AppShapes.container(ContainerLevel.ProminentCard)
     val coverShape = cardShape
@@ -319,8 +320,8 @@ internal fun StoryVideoCard(
             .onGloballyPositioned { coordinates ->
                 cardBounds = coordinates.boundsInRoot()
             }
-            .pointerInput(onDismiss, onLongClick) {
-                 val hasLongPressAction = onDismiss != null || onLongClick != null
+            .pointerInput(isLongPressEnabled, onDismiss, onLongClick) {
+                 val hasLongPressAction = isLongPressEnabled && (onDismiss != null || onLongClick != null)
                  if (hasLongPressAction) {
                      detectTapGestures(
                          onLongPress = {
@@ -339,7 +340,7 @@ internal fun StoryVideoCard(
                  }
             }
             .then(
-                 if (onDismiss == null && onLongClick == null) {
+                 if (!isLongPressEnabled || (onDismiss == null && onLongClick == null)) {
                      Modifier.iOSCardTapEffect(
                          pressScale = 1f,
                          pressTranslationY = 0f,

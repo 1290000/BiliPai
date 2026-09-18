@@ -446,6 +446,9 @@ fun AppearanceSettingsContent(
     val fullVideoCardContentVisible by SettingsManager
         .getFullVideoCardContentVisible(context)
         .collectAsStateWithLifecycle(initialValue = false)
+    val videoCardLongPressActionEnabled by SettingsManager
+        .getVideoCardLongPressActionEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val homeDurationStyle by SettingsManager
         .getHomeDurationStyle(context)
         .collectAsStateWithLifecycle(initialValue = HomeDurationStyle.OUTSIDE_COVER)
@@ -1563,6 +1566,24 @@ fun AppearanceSettingsContent(
                             onCheckedChange = {
                                 scope.launch {
                                     SettingsManager.setFullVideoCardContentVisible(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+
+                        AppPreferenceDivider(modifier = Modifier.padding(start = 16.dp))
+                        AppSwitchPreference(
+                            icon = rememberSettingsSemanticIcon(SettingsIconRole.FULLSCREEN_GESTURE),
+                            title = "长按视频卡片",
+                            subtitle = if (videoCardLongPressActionEnabled) {
+                                "长按卡片显示快捷操作与预览"
+                            } else {
+                                "已关闭长按手势，避免误触（默认关闭）"
+                            },
+                            checked = videoCardLongPressActionEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    SettingsManager.setVideoCardLongPressActionEnabled(context, it)
                                 }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSBlue

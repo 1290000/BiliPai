@@ -679,6 +679,7 @@ data class HomeSettings(
     val showHomeUpBadges: Boolean = false, // 首页和相关推荐 UP 主标识显示(默认关闭,设置后全局生效)
     val showHomeUpAvatars: Boolean = false, // 首页视频卡片 UP 主头像显示(默认关闭,设置后全局生效)
     val showFullVideoCardContent: Boolean = false, // 视频卡片标题完整展示(默认关闭,设置后全局生效)
+    val videoCardLongPressActionEnabled: Boolean = false, // 长按视频卡片快捷操作与预览（默认关闭）
     val homeDurationStyle: HomeDurationStyle = HomeDurationStyle.OUTSIDE_COVER,
     val easterEggEnabled: Boolean = false, // 下拉刷新趣味提示开关
     //  [修复] 默认值改为 true，避免在 Flow 加载实际值之前错误触发弹窗
@@ -1549,6 +1550,8 @@ object SettingsManager {
     private val KEY_HOME_UP_AVATARS_VISIBLE = booleanPreferencesKey("home_up_avatars_visible")
     private val KEY_FULL_VIDEO_CARD_CONTENT_VISIBLE =
         booleanPreferencesKey("full_video_card_content_visible")
+    private val KEY_VIDEO_CARD_LONG_PRESS_ACTION_ENABLED =
+        booleanPreferencesKey("video_card_long_press_action_enabled")
     private val KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE =
         booleanPreferencesKey("home_video_duration_badges_visible")
     private val KEY_HOME_DURATION_STYLE = intPreferencesKey("home_duration_style")
@@ -1754,6 +1757,7 @@ object SettingsManager {
             showHomeUpBadges = preferences[KEY_HOME_UP_BADGES_VISIBLE] ?: false,
             showHomeUpAvatars = preferences[KEY_HOME_UP_AVATARS_VISIBLE] ?: false,
             showFullVideoCardContent = preferences[KEY_FULL_VIDEO_CARD_CONTENT_VISIBLE] ?: false,
+            videoCardLongPressActionEnabled = preferences[KEY_VIDEO_CARD_LONG_PRESS_ACTION_ENABLED] ?: false,
             homeDurationStyle = preferences[KEY_HOME_DURATION_STYLE]
                 ?.let(HomeDurationStyle::fromValue)
                 ?: if (preferences[KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE] ?: true) {
@@ -3288,6 +3292,15 @@ object SettingsManager {
     suspend fun setFullVideoCardContentVisible(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_FULL_VIDEO_CARD_CONTENT_VISIBLE] = value
+        }
+    }
+
+    fun getVideoCardLongPressActionEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_VIDEO_CARD_LONG_PRESS_ACTION_ENABLED] ?: false }
+
+    suspend fun setVideoCardLongPressActionEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_VIDEO_CARD_LONG_PRESS_ACTION_ENABLED] = value
         }
     }
 
@@ -7466,6 +7479,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_HOME_UP_BADGES_VISIBLE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HOME_UP_AVATARS_VISIBLE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_FULL_VIDEO_CARD_CONTENT_VISIBLE, SettingsShareSection.APPEARANCE),
+            BooleanShareablePreferenceDefinition(KEY_VIDEO_CARD_LONG_PRESS_ACTION_ENABLED, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_HOME_DURATION_STYLE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(KEY_SHOW_PROFILE_EDIT_BUTTON, SettingsShareSection.APPEARANCE),
