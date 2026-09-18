@@ -366,6 +366,7 @@ internal fun BiliPaiNavDisplayHost(
 
     val videoCardSnapshotHandle = rememberVideoCardTransitionSnapshotHandle()
     val transitionMotionTier = if (reduceMotion) MotionTier.Reduced else MotionTier.Normal
+    val effectiveRealtimeBlurEnabled = videoTransitionRealtimeBlurEnabled || miuixTransitionBlurEnabled
     val videoCardProgressProvider = remember(
         cardMorphAvailable,
         videoCardClock,
@@ -459,7 +460,7 @@ internal fun BiliPaiNavDisplayHost(
         videoCardSnapshotHandle,
         transitionMotionTier,
         isLightBackground,
-        videoTransitionRealtimeBlurEnabled,
+        effectiveRealtimeBlurEnabled,
     ) {
         VideoCardTransitionBackgroundState(
             progressProvider = videoCardProgressProvider,
@@ -475,7 +476,7 @@ internal fun BiliPaiNavDisplayHost(
             preferWholeCardReturnProvider = { latestPreferWholeCardReturn },
             motionTierProvider = { transitionMotionTier },
             isLightBackgroundProvider = { isLightBackground },
-            realtimeBlurEnabledProvider = { videoTransitionRealtimeBlurEnabled },
+            realtimeBlurEnabledProvider = { effectiveRealtimeBlurEnabled },
         )
     }
     val videoCardLayoutWidthProvider = remember(videoCardTransitionProgress) {
@@ -526,16 +527,11 @@ internal fun BiliPaiNavDisplayHost(
         currentBackTarget,
         transitionMotionTier,
         isLightBackground,
-        videoTransitionRealtimeBlurEnabled,
-        miuixTransitionBlurEnabled,
+        effectiveRealtimeBlurEnabled,
     ) {
         PredictiveBackBackgroundState(
             progressProvider = {
-                val blurEnabled = if (cardMorphAvailable) {
-                    videoTransitionRealtimeBlurEnabled
-                } else {
-                    miuixTransitionBlurEnabled
-                }
+                val blurEnabled = effectiveRealtimeBlurEnabled
                 if (!blurEnabled || !isCardMorphDestinationNavKey(currentKey)) {
                     0f
                 } else {
@@ -622,7 +618,7 @@ internal fun BiliPaiNavDisplayHost(
     ) {
         VideoCardTransitionHostDepthLayer(
             enabled = cardMorphAvailable &&
-                videoTransitionRealtimeBlurEnabled &&
+                effectiveRealtimeBlurEnabled &&
                 shouldUseHostOwnedVideoCardTransitionSnapshot(sourceMetadata.sourceRoute),
             snapshotHandle = videoCardSnapshotHandle,
             progressProvider = videoCardProgressProvider,
@@ -631,7 +627,7 @@ internal fun BiliPaiNavDisplayHost(
             isGestureRestoreInProgressProvider = { videoCardClock.gestureRestoreInProgress },
             motionTierProvider = { transitionMotionTier },
             isLightBackgroundProvider = { isLightBackground },
-            realtimeBlurEnabledProvider = { videoTransitionRealtimeBlurEnabled },
+            realtimeBlurEnabledProvider = { effectiveRealtimeBlurEnabled },
             sourceBoundsProvider = { sourceMetadata.sourceBounds },
         )
         VideoCardTransitionNavBackdrop(
