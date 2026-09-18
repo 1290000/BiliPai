@@ -13,6 +13,7 @@ import com.android.purebilibili.data.model.response.SeriesMeta
 import com.android.purebilibili.data.model.response.SpaceAggregateCard
 import com.android.purebilibili.data.model.response.SpaceAggregateData
 import com.android.purebilibili.data.model.response.SpaceAggregateImages
+import com.android.purebilibili.data.model.response.SpaceAggregateRelation
 import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
 import com.android.purebilibili.data.model.response.SpaceTopArcData
 import com.android.purebilibili.data.model.response.SpaceUserInfo

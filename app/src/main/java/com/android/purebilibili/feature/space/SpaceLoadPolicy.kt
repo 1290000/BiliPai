@@ -14,6 +14,7 @@ import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
 import com.android.purebilibili.data.model.response.SpaceAggregateData
 import com.android.purebilibili.data.model.response.SpaceAggregateFavoriteItem
 import com.android.purebilibili.data.model.response.SpaceAggregateImages
+import com.android.purebilibili.data.model.response.SpaceAggregateRelation
 import com.android.purebilibili.data.model.response.SpaceAudioItem
 import com.android.purebilibili.data.model.response.SpaceUserInfo
 import com.android.purebilibili.data.model.response.SpaceVideoItem
