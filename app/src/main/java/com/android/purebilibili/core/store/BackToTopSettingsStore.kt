@@ -21,6 +21,10 @@ object BackToTopSettingsStore {
     fun getCachedOffsetDp(): Pair<Float, Float> =
         cachedOffset ?: Pair(DEFAULT_BACK_TO_TOP_OFFSET_X_DP, DEFAULT_BACK_TO_TOP_OFFSET_Y_DP)
 
+    fun updateCachedOffset(offsetXDp: Float, offsetYDp: Float) {
+        cachedOffset = Pair(offsetXDp, offsetYDp)
+    }
+
     fun isEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences ->
             preferences[enabledKey] ?: DEFAULT_BACK_TO_TOP_BUTTON_ENABLED

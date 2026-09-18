@@ -95,7 +95,7 @@ fun AppLiquidGlassBackToTopButton(
     var isDragging by remember { mutableStateOf(false) }
     var dragJustFinished by remember { mutableStateOf(false) }
 
-    LaunchedEffect(persistedOffsetDp, isDragging) {
+    LaunchedEffect(persistedOffsetDp) {
         if (!isDragging) {
             dragOffsetPx = with(density) {
                 Offset(persistedOffsetDp.first.dp.toPx(), persistedOffsetDp.second.dp.toPx())
@@ -190,6 +190,7 @@ fun AppLiquidGlassBackToTopButton(
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         val finalXDp = with(density) { dragOffsetPx.x.toDp().value }
                                         val finalYDp = with(density) { dragOffsetPx.y.toDp().value }
+                                        BackToTopSettingsStore.updateCachedOffset(finalXDp, finalYDp)
                                         scope.launch(Dispatchers.IO) {
                                             BackToTopSettingsStore.setCustomOffsetDp(context, finalXDp, finalYDp)
                                         }
@@ -202,6 +203,7 @@ fun AppLiquidGlassBackToTopButton(
                                         isDragging = false
                                         val finalXDp = with(density) { dragOffsetPx.x.toDp().value }
                                         val finalYDp = with(density) { dragOffsetPx.y.toDp().value }
+                                        BackToTopSettingsStore.updateCachedOffset(finalXDp, finalYDp)
                                         scope.launch(Dispatchers.IO) {
                                             BackToTopSettingsStore.setCustomOffsetDp(context, finalXDp, finalYDp)
                                         }
