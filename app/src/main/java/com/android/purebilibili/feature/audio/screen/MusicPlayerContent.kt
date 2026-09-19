@@ -266,7 +266,7 @@ internal fun MusicPlayerContent(
     var showAudioQuality by remember { mutableStateOf(false) }
     var showLyricsSearch by remember { mutableStateOf(false) }
     var progressSeekRevision by remember { mutableIntStateOf(0) }
-    var lyricsControlsVisible by remember(state.title) { mutableStateOf(true) }
+    var lyricsControlsVisible by remember(state.title) { mutableStateOf(false) }
     var lyricSearchText by remember(state.title) { mutableStateOf(state.title) }
     val systemReduceMotion = remember(context) {
         Settings.Global.getFloat(
@@ -1978,37 +1978,54 @@ private fun LyricsPage(
             AnimatedVisibility(
                 visible = controlsVisible,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 8.dp, end = 24.dp),
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 20.dp, end = 20.dp),
                 enter = if (reduceMotion) EnterTransition.None else fadeIn() + slideInVertically { -it / 2 },
                 exit = if (reduceMotion) ExitTransition.None else fadeOut() + slideOutVertically { -it / 2 }
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    GlassTextButton(
-                        label = if (showTranslations) "译:开" else "译:关",
-                        glassEnabled = glassEnabled,
-                        miuixBackdrop = miuixBackdrop,
-                        onClick = { showTranslations = !showTranslations }
-                    )
-                    GlassTextButton(
-                        label = "搜索",
-                        glassEnabled = glassEnabled,
-                        miuixBackdrop = miuixBackdrop,
-                        onClick = onOpenLyricsSearch
-                    )
-                    GlassTextButton(
-                        label = "歌词设置",
-                        glassEnabled = glassEnabled,
-                        miuixBackdrop = miuixBackdrop,
-                        onClick = { showLyricsSettings = true }
-                    )
+                    if (isAutoFollowPaused) {
+                        GlassTextButton(
+                            label = "回到当前歌词",
+                            glassEnabled = glassEnabled,
+                            miuixBackdrop = miuixBackdrop,
+                            onClick = { isAutoFollowPaused = false }
+                        )
+                    } else {
+                        Spacer(Modifier.width(1.dp))
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        GlassTextButton(
+                            label = if (showTranslations) "译:开" else "译:关",
+                            glassEnabled = glassEnabled,
+                            miuixBackdrop = miuixBackdrop,
+                            onClick = { showTranslations = !showTranslations }
+                        )
+                        GlassTextButton(
+                            label = "搜索",
+                            glassEnabled = glassEnabled,
+                            miuixBackdrop = miuixBackdrop,
+                            onClick = onOpenLyricsSearch
+                        )
+                        GlassTextButton(
+                            label = "歌词设置",
+                            glassEnabled = glassEnabled,
+                            miuixBackdrop = miuixBackdrop,
+                            onClick = { showLyricsSettings = true }
+                        )
+                    }
                 }
             }
         }
-        if (isAutoFollowPaused && controlsVisible) {
+        if (showBottomControls && isAutoFollowPaused && controlsVisible) {
             GlassTextButton(
                 label = "回到当前歌词",
                 glassEnabled = glassEnabled,
