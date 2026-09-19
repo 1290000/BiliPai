@@ -162,17 +162,18 @@ internal fun SettingsPageScaffold(
     } else {
         null
     }
-    val progressiveBlurEnabled = (shouldUseBiliPaiProgressiveTopBlur(
+    val progressiveBlurEnabled = shouldUseBiliPaiProgressiveTopBlur(
         enabled = appThemeConfig.progressiveTopBlurEnabled && !headerBlurEnabled,
         hasBackdrop = true,
-    ) || (appThemeConfig.progressiveTopBlurEnabled && !headerBlurEnabled)) && !lowBlurBudget
+    ) && !lowBlurBudget
+    val fadeActive = appThemeConfig.progressiveTopFadeEnabled && !headerBlurEnabled
     val backdrop = if (progressiveBlurEnabled) rememberLayerBackdrop() else null
     val hazeState = if (
         headerBlurEnabled && !lowBlurBudget &&
         shouldAllowRenderEffectBackedHazeEffect(android.os.Build.VERSION.SDK_INT)
     ) rememberRecoverableHazeState().takeIf { recoverableBlurEnabled(it) } else null
     val hazeReady = hazeState != null
-    val topBarBlurActive = progressiveBlurEnabled || hazeReady
+    val topBarBlurActive = progressiveBlurEnabled || hazeReady || fadeActive
     val pageContainerColor = when (LocalAppUiStyle.current) {
         // Miuix page canvas is `background` / chromeBackground so the top bar, split
         // pane, and list share one tone. Cards stay on surfaceContainer.
@@ -196,6 +197,7 @@ internal fun SettingsPageScaffold(
                     enabled = progressiveBlurEnabled,
                     headerBlurActive = hazeReady,
                     surfaceColor = pageContainerColor,
+                    fadeEnabled = fadeActive,
                 ) {
                     AppTopBar(
                         title = title,

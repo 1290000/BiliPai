@@ -1149,10 +1149,11 @@ fun SearchScreen(
                 null
             }
             val searchChromeBackdrop = searchChromeSource?.takeIf { it.isReady }?.backdrop
-            val immersiveSearchChrome = (shouldUseBiliPaiProgressiveTopBlur(
+            val immersiveSearchChrome = shouldUseBiliPaiProgressiveTopBlur(
                 enabled = progressiveTopBlurEnabled && !headerBlurEnabled,
                 hasBackdrop = searchChromeBackdrop != null,
-            ) || (progressiveTopBlurEnabled && !headerBlurEnabled)) && !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
+            ) && !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
+            val searchFadeActive = appThemeConfig.progressiveTopFadeEnabled && !headerBlurEnabled
             // --- 列表内容层 ---
             if (state.showResults) {
                 AppScaffold(
@@ -1172,9 +1173,10 @@ fun SearchScreen(
                             enabled = immersiveSearchChrome,
                             headerBlurActive = shouldUseSearchTopBarBlur && !immersiveSearchChrome,
                             surfaceColor = searchChromeSurface,
+                            fadeEnabled = searchFadeActive,
                             extendBelowBounds = false,
                             modifier = Modifier.then(
-                                if (immersiveSearchChrome) {
+                                if (immersiveSearchChrome || searchFadeActive) {
                                     Modifier.background(Color.Transparent)
                                 } else if (shouldUseSearchTopBarBlur) {
                                     Modifier
