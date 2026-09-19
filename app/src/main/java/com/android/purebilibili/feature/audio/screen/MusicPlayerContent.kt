@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -165,17 +166,17 @@ import com.android.purebilibili.core.ui.blur.rememberChromeBackdropSource
 
 private val MusicFallbackColor = Color(0xFF342B42)
 
-private val LocalMusicContentColor = staticCompositionLocalOf { Color.White }
-private val LocalMusicAccentColor = staticCompositionLocalOf { Color.White }
+internal val LocalMusicContentColor = staticCompositionLocalOf { Color.White }
+internal val LocalMusicAccentColor = staticCompositionLocalOf { Color.White }
 
 /** 当前听视频页前景色（随封面色板明暗切换，保证可读）。 */
-private val MusicContentColor: Color
+internal val MusicContentColor: Color
     @Composable
     @ReadOnlyComposable
     get() = LocalMusicContentColor.current
 
 /** 与视频播放器一致的主题强调色（控件高亮、进度、选中态）。 */
-private val MusicAccentColor: Color
+internal val MusicAccentColor: Color
     @Composable
     @ReadOnlyComposable
     get() = LocalMusicAccentColor.current
@@ -593,6 +594,12 @@ internal fun MusicPlayerContent(
                                             miuixBackdrop = musicBackdrop,
                                             glassTintColor = backgroundColor,
                                             liquidGlassTuning = liquidGlassTuning,
+                                            isPlaying = state.isPlaying,
+                                            onPlayPause = onPlayPause,
+                                            onPrevious = onPrevious,
+                                            onNext = onNext,
+                                            isLiked = isLiked,
+                                            onLikeClick = onLikeClick,
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }
@@ -734,32 +741,77 @@ internal fun MusicPlayerContent(
     }
 
     if (showQueue) {
+        var isQueueCoverFlow by remember { mutableStateOf(true) }
         AppModalBottomSheet(
             onDismissRequest = { showQueue = false },
             containerColor = AppSurfaceTokens.surface(),
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {
-            AppText(
-                text = "待播清单",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-            )
-            LazyColumn(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(bottom = 12.dp)
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                itemsIndexed(state.queue, key = { _, item -> item.stableId }) { index, item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onQueueItemSelected(index)
-                                showQueue = false
-                            }
+                AppText(
+                    text = if (state.queue.isNotEmpty()) "待播清单 (${state.queue.size})" else "待播清单",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (state.queue.isNotEmpty()) {
+                    AppSurface(
+                        onClick = { isQueueCoverFlow = !isQueueCoverFlow },
+                        shape = AppShapes.container(ContainerLevel.Pill),
+                        color = MusicAccentColor.copy(alpha = 0.16f),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AppText(
+                                text = if (isQueueCoverFlow) "3D 唱片架" else "列表模式",
+                                color = MusicAccentColor,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+            if (isQueueCoverFlow && state.queue.isNotEmpty()) {
+                Music3DCoverFlow(
+                    queue = state.queue,
+                    currentIndex = state.currentQueueIndex,
+                    isPlaying = state.isPlaying,
+                    onItemClick = onQueueItemSelected,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    isLiked = isLiked,
+                    onLikeClick = onLikeClick,
+                    cardSizeDp = 150,
+                    modifier = Modifier
+                        .padding(vertical = 10.dp)
+                        .navigationBarsPadding()
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(bottom = 12.dp)
+                ) {
+                    itemsIndexed(state.queue, key = { _, item -> item.stableId }) { index, item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onQueueItemSelected(index)
+                                    showQueue = false
+                                }
                             .padding(horizontal = 24.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -2384,8 +2436,15 @@ private fun ExpandedQueuePane(
     miuixBackdrop: MiuixBackdrop?,
     glassTintColor: Color,
     liquidGlassTuning: LiquidGlassTuning,
+    isPlaying: Boolean = false,
+    onPlayPause: () -> Unit = {},
+    onPrevious: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
+    isLiked: Boolean = false,
+    onLikeClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var isCoverFlowView by remember { mutableStateOf(true) }
     val panelShape = AppShapes.borderedContainer(ContainerLevel.Card)
     val panelColor = resolveMusicImmersivePanelColor(glassTintColor)
     AppSurface(
@@ -2415,12 +2474,26 @@ private fun ExpandedQueuePane(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AppText(
-                    text = if (queue.isNotEmpty()) "待播清单 (${queue.size})" else "待播清单",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MusicContentColor
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppText(
+                        text = if (queue.isNotEmpty()) "待播清单 (${queue.size})" else "待播清单",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MusicContentColor
+                    )
+                    if (queue.isNotEmpty()) {
+                        GlassTextButton(
+                            label = if (isCoverFlowView) "3D 唱片架" else "列表",
+                            isSelected = true,
+                            glassEnabled = glassEnabled,
+                            miuixBackdrop = miuixBackdrop,
+                            onClick = { isCoverFlowView = !isCoverFlowView }
+                        )
+                    }
+                }
                 GlassTextButton(
                     label = "返回歌词",
                     glassEnabled = glassEnabled,
@@ -2437,6 +2510,25 @@ private fun ExpandedQueuePane(
                         text = "待播清单为空",
                         color = MusicContentColor.copy(alpha = 0.6f),
                         style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else if (isCoverFlowView) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Music3DCoverFlow(
+                        queue = queue,
+                        currentIndex = currentIndex,
+                        isPlaying = isPlaying,
+                        onItemClick = onItemClick,
+                        onPlayPause = onPlayPause,
+                        onPrevious = onPrevious,
+                        onNext = onNext,
+                        isLiked = isLiked,
+                        onLikeClick = onLikeClick,
+                        cardSizeDp = 180
                     )
                 }
             } else {

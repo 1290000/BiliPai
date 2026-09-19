@@ -161,6 +161,18 @@ class MusicPlayerContentStructureTest {
         assertTrue(!source.contains("indicatorIdleSurfaceColorOverride"))
     }
 
+    @Test
+    fun `queue exposes 3D cover flow view and switch`() {
+        val source = loadSource()
+        val coverFlowSource = loadSource("app/src/main/java/com/android/purebilibili/feature/audio/screen/Music3DCoverFlow.kt")
+
+        assertTrue(source.contains("Music3DCoverFlow("))
+        assertTrue(source.contains("3D 唱片架"))
+        assertTrue(coverFlowSource.contains("cameraDistance = 10 * density"))
+        assertTrue(coverFlowSource.contains("rotationY = (pageOffset * -36f).coerceIn(-60f, 60f)"))
+        assertTrue(coverFlowSource.contains("scaleY = -1f"))
+    }
+
     private fun loadSource(
         path: String = "app/src/main/java/com/android/purebilibili/feature/audio/screen/MusicPlayerContent.kt"
     ): String {
