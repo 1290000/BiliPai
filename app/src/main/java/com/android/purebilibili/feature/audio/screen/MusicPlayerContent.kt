@@ -926,7 +926,8 @@ internal fun MusicPlayerContent(
             }
         }
     }
-    } // CompositionLocalProvider
+    }
+    }
 }
 
 @Composable

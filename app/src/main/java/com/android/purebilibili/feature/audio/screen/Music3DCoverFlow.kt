@@ -49,11 +49,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.android.purebilibili.core.ui.AppIcon
-import com.android.purebilibili.core.ui.AppIconButton
-import com.android.purebilibili.core.ui.AppSurface
 import com.android.purebilibili.core.ui.AppSurfaceTokens
-import com.android.purebilibili.core.ui.AppText
+import com.android.purebilibili.core.ui.components.AppIcon
+import com.android.purebilibili.core.ui.components.AppIconButton
+import com.android.purebilibili.core.ui.components.AppSurface
+import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.feature.audio.player.MusicQueueItemUi
 import kotlinx.coroutines.launch
 import kotlin.math.abs
