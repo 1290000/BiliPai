@@ -1335,7 +1335,33 @@ class SpaceViewModel(
                     }
                 }
 
+                val fallbackLocation = if (currentState.headerState.userInfo?.ipLocation.isNullOrBlank()) {
+                    accumulated.firstNotNullOfOrNull { item ->
+                        item.modules.module_author?.pub_location_text?.takeIf { it.isNotBlank() }
+                    }
+                } else {
+                    null
+                }
+                val currentUserInfo = currentState.headerState.userInfo ?: currentState.userInfo
+                val (nextUserInfo, nextHeaderState) = if (!fallbackLocation.isNullOrBlank()) {
+                    val locationTitle = if (fallbackLocation.startsWith("IP属地")) fallbackLocation else "IP属地：$fallbackLocation"
+                    val updatedTags = if (currentUserInfo.spaceTags.none { it.type == "location" || it.title.contains("IP") }) {
+                        currentUserInfo.spaceTags + SpaceTagItem(type = "location", title = locationTitle)
+                    } else {
+                        currentUserInfo.spaceTags
+                    }
+                    val updatedUserInfo = currentUserInfo.copy(
+                        ipLocation = fallbackLocation,
+                        spaceTags = updatedTags
+                    )
+                    Pair(updatedUserInfo, currentState.headerState.copy(userInfo = updatedUserInfo))
+                } else {
+                    Pair(currentState.userInfo, currentState.headerState)
+                }
+
                 _uiState.value = currentState.copy(
+                    userInfo = nextUserInfo,
+                    headerState = nextHeaderState,
                     dynamics = accumulated,
                     dynamicOffset = offset,
                     hasMoreDynamics = hasMore,

@@ -2795,11 +2795,15 @@ private fun SpaceHeaderIdentityInfo(
                 )
             }
 
-            val ipLocationDisplay = resolveSpaceIpLocationDisplay(userInfo.ipLocation)
-            if (userInfo.mid > 0L || ipLocationDisplay != null) {
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+            val displayTags = remember(userInfo.spaceTags, userInfo.ipLocation) {
+                resolveSpaceDisplayTags(userInfo.spaceTags, userInfo.ipLocation)
+            }
+            if (userInfo.mid > 0L || displayTags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (userInfo.mid > 0L) {
@@ -2810,12 +2814,26 @@ private fun SpaceHeaderIdentityInfo(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    ipLocationDisplay?.let { locationText ->
+                    displayTags.forEach { tag ->
+                        val hasUri = tag.uri.isNotBlank()
+                        val tagModifier = if (hasUri) {
+                            Modifier
+                                .clickable {
+                                    runCatching { uriHandler.openUri(tag.uri) }
+                                }
+                                .copyOnLongPress(tag.title, tag.title)
+                        } else {
+                            Modifier.copyOnLongPress(tag.title, tag.title)
+                        }
                         AppText(
-                            text = locationText,
-                            modifier = Modifier.copyOnLongPress(locationText, "IP属地"),
+                            text = tag.title,
+                            modifier = tagModifier,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
+                            color = if (hasUri) {
+                                MaterialTheme.colorScheme.secondary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
+                            }
                         )
                     }
                 }

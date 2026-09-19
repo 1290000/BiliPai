@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.space
 
 import com.android.purebilibili.data.model.response.RelationStatData
+import com.android.purebilibili.data.model.response.SpaceTagItem
 import com.android.purebilibili.data.model.response.UpStatData
 
 internal data class SpaceHeaderMetricItem(
@@ -96,4 +97,37 @@ internal fun resolveSpaceIpLocationDisplay(rawIpLocation: String?): String? {
         .trim()
     if (clean.isBlank()) return null
     return "IP 属地 · $clean"
+}
+
+/**
+ * Resolves the tags displayed on the UP space header alongside the UID:
+ * Aligned with PiliPlus (`where((e) => ['location', 'real_name'].contains(e['type']))`):
+ * - IP location tag: extracted from spaceTags or fallback to ipLocation string.
+ * - Real name / verification tag: extracted from spaceTags.
+ * - Formats IP tag display to clean format (e.g. "IP 属地 · 广东").
+ */
+internal fun resolveSpaceDisplayTags(
+    spaceTags: List<SpaceTagItem>,
+    ipLocation: String? = null,
+): List<SpaceTagItem> {
+    val result = mutableListOf<SpaceTagItem>()
+    val locationTag = spaceTags.firstOrNull {
+        it.type == "location" || it.title.startsWith("IP属地") || it.title.contains("IP")
+    }
+    val otherTags = spaceTags.filter {
+        it !== locationTag && (it.type == "real_name" || it.title.isNotBlank())
+    }
+
+    val resolvedIp = locationTag?.title?.takeIf { it.isNotBlank() }
+        ?: ipLocation?.takeIf { it.isNotBlank() }
+
+    if (!resolvedIp.isNullOrBlank()) {
+        val displayTitle = resolveSpaceIpLocationDisplay(resolvedIp) ?: resolvedIp
+        result.add(
+            locationTag?.copy(title = displayTitle)
+                ?: SpaceTagItem(title = displayTitle, type = "location")
+        )
+    }
+    result.addAll(otherTags)
+    return result
 }

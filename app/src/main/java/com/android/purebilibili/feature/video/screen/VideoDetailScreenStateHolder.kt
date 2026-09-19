@@ -2019,6 +2019,13 @@ internal fun VideoDetailScreenStateHolder(
         entryPlaybackIntent = videoSharedPlaybackIntent,
         hasRenderableLiveFrame = hasRenderableLiveFrameForReturn,
     )
+    val currentLandingState =
+        com.android.purebilibili.core.ui.transition.LocalMiuixVideoCardTransitionState.current
+    val effectiveSourceLayout = if (currentLandingState.enabled) {
+        currentLandingState.sourceLayout
+    } else {
+        CardPositionManager.lastClickedVideoSourceLayout
+    }
     val candidateReturnCoverOwnership = resolveVideoDetailReturnCoverOwnership(
         transitionEnabled = transitionEnabled,
         sharedBoundsActive = sharedBoundsActive,
@@ -2028,6 +2035,7 @@ internal fun VideoDetailScreenStateHolder(
         hasResidentCover = hasResidentReturnCover,
         hasRenderableLiveFrame = hasRenderableLiveFrameForReturn,
         liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
+        sourceLayout = effectiveSourceLayout,
     )
     // 返回会话 ownership：可升 LIVE（保实时画面），禁止 LIVE 降级（防闪）。
     var lockedReturnCoverOwnership by remember(bvid) {

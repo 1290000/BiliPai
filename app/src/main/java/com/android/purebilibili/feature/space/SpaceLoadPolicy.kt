@@ -16,6 +16,7 @@ import com.android.purebilibili.data.model.response.SpaceAggregateFavoriteItem
 import com.android.purebilibili.data.model.response.SpaceAggregateImages
 import com.android.purebilibili.data.model.response.SpaceAggregateRelation
 import com.android.purebilibili.data.model.response.SpaceAudioItem
+import com.android.purebilibili.data.model.response.SpaceTagItem
 import com.android.purebilibili.data.model.response.SpaceUserInfo
 import com.android.purebilibili.data.model.response.SpaceVideoItem
 import com.android.purebilibili.data.model.response.Stat
@@ -560,8 +561,18 @@ internal fun resolveSpaceInitialSeedFromAggregate(
         defaultTab = data.defaultTab,
         contributionTabs = contributionTabs
     )
-    val resolvedIpLocation = data.card?.ipLocation?.takeIf { it.isNotBlank() }
+    val ipFromTag = card.spaceTag.firstOrNull {
+        it.type == "location" || it.title.startsWith("IP属地") || it.title.contains("IP")
+    }?.title
+    val resolvedIpLocation = ipFromTag
+        ?: data.card?.ipLocation?.takeIf { it.isNotBlank() }
         ?: cardIpLocation?.takeIf { it.isNotBlank() }
+    val resolvedSpaceTags = if (card.spaceTag.none { it.type == "location" || it.title.contains("IP") } && !resolvedIpLocation.isNullOrBlank()) {
+        val locationTitle = if (resolvedIpLocation.startsWith("IP属地")) resolvedIpLocation else "IP属地：$resolvedIpLocation"
+        card.spaceTag + SpaceTagItem(type = "location", title = locationTitle)
+    } else {
+        card.spaceTag
+    }
 
     return SpaceInitialSeed(
         userInfo = SpaceUserInfo(
@@ -580,7 +591,7 @@ internal fun resolveSpaceInitialSeedFromAggregate(
             nightTopPhoto = data.images?.nightImgUrl.orEmpty(),
             topImages = topImageItems,
             followingsFollowed = card.followingsFollowedUpper,
-            spaceTags = card.spaceTag,
+            spaceTags = resolvedSpaceTags,
             liveRoom = data.live,
             ipLocation = resolvedIpLocation,
         ),

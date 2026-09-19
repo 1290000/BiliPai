@@ -143,7 +143,17 @@ data class SpaceFollowingsFollowedItem(
 @Serializable
 data class SpaceTagItem(
     val title: String = "",
-    val uri: String = ""
+    val uri: String = "",
+    val type: String = "",
+    @SerialName("text_color")
+    val textColor: String = "",
+    @SerialName("night_text_color")
+    val nightTextColor: String = "",
+    @SerialName("background_color")
+    val backgroundColor: String = "",
+    @SerialName("night_background_color")
+    val nightBackgroundColor: String = "",
+    val icon: String = ""
 )
 
 @Serializable
@@ -674,7 +684,8 @@ data class SpaceDynamicAuthor(
     val name: String = "",
     val face: String = "",
     val pub_time: String = "",
-    val pub_ts: Long = 0
+    val pub_ts: Long = 0,
+    val pub_location_text: String = ""
 )
 
 @kotlinx.serialization.Serializable

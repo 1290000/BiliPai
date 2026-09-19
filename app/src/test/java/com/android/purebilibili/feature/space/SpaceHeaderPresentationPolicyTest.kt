@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.space
 
 import com.android.purebilibili.data.model.response.RelationStatData
+import com.android.purebilibili.data.model.response.SpaceTagItem
 import com.android.purebilibili.data.model.response.UpStatData
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -104,5 +105,34 @@ class SpaceHeaderPresentationPolicyTest {
         kotlin.test.assertNull(resolveSpaceIpLocationDisplay(""))
         kotlin.test.assertNull(resolveSpaceIpLocationDisplay("   "))
         kotlin.test.assertNull(resolveSpaceIpLocationDisplay("IP属地："))
+    }
+
+    @Test
+    fun `resolveSpaceDisplayTags extracts location and preserves real_name tags`() {
+        val tags = listOf(
+            SpaceTagItem(type = "location", title = "IP属地：广东"),
+            SpaceTagItem(type = "real_name", title = "已实名认证", uri = "https://www.bilibili.com/verify")
+        )
+        val result = resolveSpaceDisplayTags(tags)
+
+        assertEquals(2, result.size)
+        assertEquals("IP 属地 · 广东", result[0].title)
+        assertEquals("location", result[0].type)
+        assertEquals("已实名认证", result[1].title)
+        assertEquals("real_name", result[1].type)
+        assertEquals("https://www.bilibili.com/verify", result[1].uri)
+    }
+
+    @Test
+    fun `resolveSpaceDisplayTags falls back to ipLocation when spaceTag has no location`() {
+        val tags = listOf(
+            SpaceTagItem(type = "real_name", title = "已实名认证")
+        )
+        val result = resolveSpaceDisplayTags(tags, ipLocation = "北京")
+
+        assertEquals(2, result.size)
+        assertEquals("IP 属地 · 北京", result[0].title)
+        assertEquals("location", result[0].type)
+        assertEquals("已实名认证", result[1].title)
     }
 }
