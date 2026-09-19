@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 17 vendor builds have crashed inside ART's JIT inliner while compiling app code.
+      Safe mode keeps API 37 processes on the interpreter and prevents the JIT thread pool from
+      reaching that platform crash. Older Android releases retain their normal compiled runtime.
+    -->
+    <bool name="use_vm_safe_mode">true</bool>
+</resources>
