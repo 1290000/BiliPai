@@ -1531,14 +1531,14 @@ fun ReplyItemView(
                         onClick = { onReplyClick?.invoke() ?: onSubClick(item, 0L) }
                     )
 
-                    // [新增] 翻译按钮
+                    // [新增] 翻译按钮 (胶囊样式)
                     if (canTranslate) {
                         val isTranslated = translatedMessage != null
-                        val translateLabel = if (isTranslated) "原文" else "翻译"
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        val translateLabel = if (isTranslating) "翻译中" else if (isTranslated) "原文" else "翻译"
+                        AppSurface(
+                            shape = AppShapes.container(ContainerLevel.Pill),
+                            color = if (isTranslated) appearance.accentColor.copy(alpha = 0.14f) else appearance.actionTint.copy(alpha = 0.10f),
                             modifier = Modifier
-                                .heightIn(min = 32.dp)
                                 .clickable(enabled = !isTranslating) {
                                     if (isTranslated) {
                                         translatedMessage = null
@@ -1563,21 +1563,26 @@ fun ReplyItemView(
                                         }
                                     }
                                 }
-                                .padding(end = 8.dp)
                         ) {
-                            AppIcon(
-                                imageVector = Icons.Outlined.Translate,
-                                contentDescription = null,
-                                tint = if (isTranslated) appearance.accentColor else appearance.actionTint,
-                                modifier = Modifier.size(17.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            AppText(
-                                text = if (isTranslating) "翻译中" else translateLabel,
-                                fontSize = VideoCommentTypographyTokens.action,
-                                color = if (isTranslated) appearance.accentColor else appearance.actionTint
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                AppIcon(
+                                    imageVector = Icons.Outlined.Translate,
+                                    contentDescription = null,
+                                    tint = if (isTranslated) appearance.accentColor else appearance.actionTint,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                AppText(
+                                    text = translateLabel,
+                                    fontSize = VideoCommentTypographyTokens.action,
+                                    color = if (isTranslated) appearance.accentColor else appearance.actionTint
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     if (!specialLabelText.isNullOrEmpty()) {
