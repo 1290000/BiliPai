@@ -268,6 +268,25 @@ internal fun MusicPlayerContent(
     var progressSeekRevision by remember { mutableIntStateOf(0) }
     var lyricsControlsVisible by remember(state.title) { mutableStateOf(false) }
     var lyricSearchText by remember(state.title) { mutableStateOf(state.title) }
+    val effectiveQueue = remember(state.queue, state.title, state.coverUrl, state.artist) {
+        if (state.queue.isNotEmpty()) {
+            state.queue
+        } else {
+            listOf(
+                MusicQueueItemUi(
+                    stableId = "current",
+                    title = state.title.ifBlank { "正在播放" },
+                    artist = state.artist,
+                    coverUrl = state.coverUrl
+                )
+            )
+        }
+    }
+    val effectiveCurrentIndex = if (state.queue.isNotEmpty()) {
+        state.currentQueueIndex.coerceIn(0, state.queue.size - 1)
+    } else {
+        0
+    }
     val systemReduceMotion = remember(context) {
         Settings.Global.getFloat(
             context.contentResolver,
@@ -586,8 +605,8 @@ internal fun MusicPlayerContent(
                                     }
                                     ExpandedRightPaneTab.QUEUE -> {
                                         ExpandedQueuePane(
-                                            queue = state.queue,
-                                            currentIndex = state.currentQueueIndex,
+                                            queue = effectiveQueue,
+                                            currentIndex = effectiveCurrentIndex,
                                             onItemClick = onQueueItemSelected,
                                             onClose = { expandedRightPaneTab = ExpandedRightPaneTab.LYRICS },
                                             glassEnabled = glassEnabled,
@@ -657,11 +676,9 @@ internal fun MusicPlayerContent(
                     showAudioQuality = true
                 }
             }
-            if (state.queueControls.showQueue) {
-                MusicActionSheetItem("播放队列", contentColor = sheetContentColor) {
-                    showActions = false
-                    showQueue = true
-                }
+            MusicActionSheetItem("3D 唱片架 / 播放队列", contentColor = sheetContentColor) {
+                showActions = false
+                showQueue = true
             }
             onVideoModeClick?.let { action ->
                 MusicActionSheetItem("返回视频", contentColor = sheetContentColor) {
@@ -755,36 +772,34 @@ internal fun MusicPlayerContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AppText(
-                    text = if (state.queue.isNotEmpty()) "待播清单 (${state.queue.size})" else "待播清单",
+                    text = "待播清单 (${effectiveQueue.size})",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                if (state.queue.isNotEmpty()) {
-                    AppSurface(
-                        onClick = { isQueueCoverFlow = !isQueueCoverFlow },
-                        shape = AppShapes.container(ContainerLevel.Pill),
-                        color = MusicAccentColor.copy(alpha = 0.16f),
-                        modifier = Modifier.height(34.dp)
+                AppSurface(
+                    onClick = { isQueueCoverFlow = !isQueueCoverFlow },
+                    shape = AppShapes.container(ContainerLevel.Pill),
+                    color = MusicAccentColor.copy(alpha = 0.16f),
+                    modifier = Modifier.height(34.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AppText(
-                                text = if (isQueueCoverFlow) "3D 唱片架" else "列表模式",
-                                color = MusicAccentColor,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                        AppText(
+                            text = if (isQueueCoverFlow) "切换列表" else "3D 唱片架",
+                            color = MusicAccentColor,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
-            if (isQueueCoverFlow && state.queue.isNotEmpty()) {
+            if (isQueueCoverFlow) {
                 Music3DCoverFlow(
-                    queue = state.queue,
-                    currentIndex = state.currentQueueIndex,
+                    queue = effectiveQueue,
+                    currentIndex = effectiveCurrentIndex,
                     isPlaying = state.isPlaying,
                     onItemClick = onQueueItemSelected,
                     onPlayPause = onPlayPause,
@@ -804,7 +819,7 @@ internal fun MusicPlayerContent(
                         .navigationBarsPadding()
                         .padding(bottom = 12.dp)
                 ) {
-                    itemsIndexed(state.queue, key = { _, item -> item.stableId }) { index, item ->
+                    itemsIndexed(effectiveQueue, key = { _, item -> item.stableId }) { index, item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1214,7 +1229,7 @@ private fun PlayerPage(
             MusicSecondaryControls(
                 mode = state.playMode,
                 shuffleEnabled = state.shuffleEnabled,
-                showQueue = state.queueControls.showQueue,
+                showQueue = state.queueControls.showQueue || effectiveQueue.isNotEmpty(),
                 onPlayModeChange = onPlayModeChange,
                 onShuffleEnabledChange = onShuffleEnabledChange,
                 onCommentsClick = onCommentsClick,
