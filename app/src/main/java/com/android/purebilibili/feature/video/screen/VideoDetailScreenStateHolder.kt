@@ -2456,6 +2456,7 @@ internal fun VideoDetailScreenStateHolder(
         )
     }
     var lastPhoneAutoRotateLandscapeAppliedAtMs by remember { mutableStateOf<Long?>(null) }
+    var lastPhoneAutoRotatePortraitAppliedAtMs by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(
         autoRotateEnabled,
@@ -2499,15 +2500,20 @@ internal fun VideoDetailScreenStateHolder(
         val targetToApply = resolvePhoneAutoRotateTargetToApply(
             candidateOrientation = requestedOrientation,
             lastLandscapeAppliedAtMs = lastPhoneAutoRotateLandscapeAppliedAtMs,
-            nowMs = nowMs
+            nowMs = nowMs,
+            lastPortraitAppliedAtMs = lastPhoneAutoRotatePortraitAppliedAtMs,
         ) ?: return@LaunchedEffect
 
         activity?.applyPlayerRequestedOrientation(
             requestedOrientation = targetToApply,
             displayContext = displayContext,
         )
-        if (isLandscapeRequestedOrientation(targetToApply)) {
+        if (targetToApply == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+            lastPhoneAutoRotatePortraitAppliedAtMs = nowMs
+            lastPhoneAutoRotateLandscapeAppliedAtMs = null
+        } else if (isLandscapeRequestedOrientation(targetToApply)) {
             lastPhoneAutoRotateLandscapeAppliedAtMs = nowMs
+            lastPhoneAutoRotatePortraitAppliedAtMs = null
         }
         com.android.purebilibili.core.util.Logger.d(
             "VideoDetailScreen",
@@ -2530,6 +2536,7 @@ internal fun VideoDetailScreenStateHolder(
     ) {
         if (isFullscreenPlayerLocked) {
             lastPhoneAutoRotateLandscapeAppliedAtMs = null
+            lastPhoneAutoRotatePortraitAppliedAtMs = null
             return@LaunchedEffect
         }
         if (!shouldObservePhoneAutoRotate(
@@ -2546,6 +2553,7 @@ internal fun VideoDetailScreenStateHolder(
             )
         ) {
             lastPhoneAutoRotateLandscapeAppliedAtMs = null
+            lastPhoneAutoRotatePortraitAppliedAtMs = null
         }
     }
 
@@ -2608,14 +2616,21 @@ internal fun VideoDetailScreenStateHolder(
                 val targetToApply = resolvePhoneAutoRotateTargetToApply(
                     candidateOrientation = targetOrientation,
                     lastLandscapeAppliedAtMs = lastPhoneAutoRotateLandscapeAppliedAtMs,
-                    nowMs = nowMs
+                    nowMs = nowMs,
+                    lastPortraitAppliedAtMs = lastPhoneAutoRotatePortraitAppliedAtMs,
                 ) ?: return
                 hostActivity.applyPlayerRequestedOrientation(
                     requestedOrientation = targetToApply,
                     displayContext = displayContext,
                 )
-                lastPhoneAutoRotateLandscapeAppliedAtMs =
-                    if (isLandscapeRequestedOrientation(targetToApply)) nowMs else null
+                if (targetToApply == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                    userRequestedFullscreen = false
+                    lastPhoneAutoRotatePortraitAppliedAtMs = nowMs
+                    lastPhoneAutoRotateLandscapeAppliedAtMs = null
+                } else if (isLandscapeRequestedOrientation(targetToApply)) {
+                    lastPhoneAutoRotateLandscapeAppliedAtMs = nowMs
+                    lastPhoneAutoRotatePortraitAppliedAtMs = null
+                }
             }
         }
 
