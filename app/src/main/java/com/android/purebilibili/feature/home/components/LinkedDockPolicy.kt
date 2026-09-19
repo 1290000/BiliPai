@@ -42,6 +42,18 @@ fun resolveLinkedDockInitialPhase(
     }
 }
 
+fun shouldEnableLinkedDockBackHandler(
+    phase: LinkedDockPhase,
+    isTopLevelDestination: Boolean,
+): Boolean = isTopLevelDestination && phase == LinkedDockPhase.Search
+
+fun resolveLinkedDockPhaseOnSearchDismiss(
+    hasAudio: Boolean,
+): LinkedDockPhase = if (hasAudio) {
+    LinkedDockPhase.Playback
+} else {
+    LinkedDockPhase.Expanded
+}
 
 internal data class LinkedDockGeometry(
     val searchWidth: Int,

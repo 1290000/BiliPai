@@ -59,6 +59,7 @@ internal fun LinkedBottomDock(
     nowPlayingContent: (@Composable (Modifier, Float, Float, Float) -> Unit)?,
     dockPhase: LinkedDockPhase? = null,
     onDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
+    isTopLevelDestination: Boolean = true,
     modifier: Modifier = Modifier,
     blurEnabled: Boolean = false,
     hazeState: HazeState? = null,
@@ -83,9 +84,9 @@ internal fun LinkedBottomDock(
             internalPhase = newPhase
         }
     }
-    LaunchedEffect(hasAudio) {
-        if (!hasAudio && phase == LinkedDockPhase.Playback) {
-            updatePhase(LinkedDockPhase.Expanded)
+    LaunchedEffect(hasAudio, dockPhase) {
+        if (dockPhase == null && !hasAudio && internalPhase == LinkedDockPhase.Playback) {
+            internalPhase = LinkedDockPhase.Expanded
         }
     }
     var query by remember { mutableStateOf("") }
@@ -104,7 +105,7 @@ internal fun LinkedBottomDock(
                 accumulated = 0f
             } else {
                 accumulated = accumulateDockScroll(accumulated, delta)
-                if (offset <= 0f || accumulated <= -threshold) {
+                if ((offset <= 0f && delta < 0f) || accumulated <= -threshold) {
                     updatePhase(LinkedDockPhase.Expanded)
                     accumulated = 0f
                 } else if (hasAudio && accumulated >= threshold) {
@@ -123,7 +124,14 @@ internal fun LinkedBottomDock(
         focusManager.clearFocus()
         updatePhase(LinkedDockPhase.Expanded)
     }
-    BackHandler(phase != LinkedDockPhase.Expanded) { expand() }
+    val backEnabled = shouldEnableLinkedDockBackHandler(
+        phase = phase,
+        isTopLevelDestination = isTopLevelDestination,
+    )
+    BackHandler(enabled = backEnabled) {
+        focusManager.clearFocus()
+        updatePhase(resolveLinkedDockPhaseOnSearchDismiss(hasAudio))
+    }
     val reduceMotion = rememberSystemReduceMotion()
     val transition = updateTransition(targetState = phase, label = "linkedBottomDock")
     val merge = transition.animateFloat(

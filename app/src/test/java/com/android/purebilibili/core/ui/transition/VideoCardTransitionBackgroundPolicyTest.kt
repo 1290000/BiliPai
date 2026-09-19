@@ -568,9 +568,9 @@ class VideoCardTransitionBackgroundPolicyTest {
         assertEquals(0f, frame.blurRadiusPx % 2f)
         assertEquals(0.14f, frame.scrimAlpha)
         assertFalse(frame.useLightScrimTint)
-        assertEquals(0.96f, frame.contentScale, 0.0001f)
-        assertEquals(24f, frame.cornerRadiusPx, 0.0001f)
-        assertEquals(16f, frame.shadowElevationPx, 0.0001f)
+        assertEquals(1f, frame.contentScale, 0.0001f)
+        assertEquals(0f, frame.cornerRadiusPx, 0.0001f)
+        assertEquals(0f, frame.shadowElevationPx, 0.0001f)
     }
 
     @Test
@@ -994,11 +994,11 @@ class VideoCardTransitionBackgroundPolicyTest {
         assertTrue(start.scrimAlpha > middle.scrimAlpha)
         assertTrue(middle.scrimAlpha > 0f)
         assertEquals(0f, end.scrimAlpha)
-        assertEquals(0.96f, start.contentScale, 0.0001f)
-        assertEquals(0.98f, middle.contentScale, 0.0001f)
+        assertEquals(1f, start.contentScale, 0.0001f)
+        assertEquals(1f, middle.contentScale, 0.0001f)
         assertEquals(1f, end.contentScale, 0.0001f)
-        assertEquals(24f, start.cornerRadiusPx, 0.0001f)
-        assertEquals(12f, middle.cornerRadiusPx, 0.0001f)
+        assertEquals(0f, start.cornerRadiusPx, 0.0001f)
+        assertEquals(0f, middle.cornerRadiusPx, 0.0001f)
         assertEquals(0f, end.cornerRadiusPx, 0.0001f)
     }
 
@@ -1039,8 +1039,8 @@ class VideoCardTransitionBackgroundPolicyTest {
         assertEquals(12f, frame.blurRadiusPx)
         // HELD 保留与满进度开场一致的压暗，避免详情停留时景深断裂。
         assertEquals(0.14f, frame.scrimAlpha)
-        assertEquals(0.96f, frame.contentScale, 0.0001f)
-        assertEquals(24f, frame.cornerRadiusPx, 0.0001f)
+        assertEquals(1f, frame.contentScale, 0.0001f)
+        assertEquals(0f, frame.cornerRadiusPx, 0.0001f)
     }
 
     @Test
@@ -1058,8 +1058,8 @@ class VideoCardTransitionBackgroundPolicyTest {
             isGestureRestoreInProgress = true,
         )
 
-        assertEquals(0.96f, openingScale, 0.0001f)
-        assertEquals(0.98f, restoreScale, 0.002f)
+        assertEquals(1f, openingScale, 0.0001f)
+        assertEquals(1f, restoreScale, 0.0001f)
     }
 
     @Test
@@ -1091,12 +1091,12 @@ class VideoCardTransitionBackgroundPolicyTest {
 
         assertEquals(0f, opening.blurRadiusPx)
         assertTrue(opening.scrimAlpha > 0f)
-        assertEquals(0.96f, opening.contentScale, 0.0001f)
-        assertEquals(24f, opening.cornerRadiusPx, 0.0001f)
+        assertEquals(1f, opening.contentScale, 0.0001f)
+        assertEquals(0f, opening.cornerRadiusPx, 0.0001f)
         assertEquals(0f, returning.blurRadiusPx)
         assertTrue(returning.scrimAlpha > 0f)
-        assertEquals(0.96f, returning.contentScale, 0.0001f)
-        assertEquals(24f, returning.cornerRadiusPx, 0.0001f)
+        assertEquals(1f, returning.contentScale, 0.0001f)
+        assertEquals(0f, returning.cornerRadiusPx, 0.0001f)
     }
 
     @Test

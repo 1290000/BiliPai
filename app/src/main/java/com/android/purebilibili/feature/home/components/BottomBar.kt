@@ -2226,6 +2226,7 @@ fun FrostedBottomBar(
     uiSkinDecoration: BottomBarUiSkinDecoration? = null,
     linkedDockPhase: LinkedDockPhase? = null,
     onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
+    isTopLevelDestination: Boolean = true,
 ) {
     val foldPosture = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current.posture
     val forceBottomNavigation = foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
@@ -2283,6 +2284,7 @@ fun FrostedBottomBar(
                 sharedLiquidGlassEnabled = policy.liquidGlassEnabled,
                 linkedDockPhase = linkedDockPhase,
                 onLinkedDockPhaseChange = onLinkedDockPhaseChange,
+                isTopLevelDestination = isTopLevelDestination,
                 )
             },
             platformContent = { policy ->
@@ -2317,6 +2319,7 @@ fun FrostedBottomBar(
                 sharedLiquidGlassEnabled = policy.liquidGlassEnabled,
                 linkedDockPhase = linkedDockPhase,
                 onLinkedDockPhaseChange = onLinkedDockPhaseChange,
+                isTopLevelDestination = isTopLevelDestination,
                 )
             },
         )
@@ -2355,6 +2358,7 @@ private fun MaterialBottomBar(
     sharedLiquidGlassEnabled: Boolean,
     linkedDockPhase: LinkedDockPhase? = null,
     onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
+    isTopLevelDestination: Boolean = true,
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -2469,6 +2473,7 @@ private fun MaterialBottomBar(
                 nowPlayingContent = nowPlayingContent,
                 dockPhase = linkedDockPhase,
                 onDockPhaseChange = onLinkedDockPhaseChange,
+                isTopLevelDestination = isTopLevelDestination,
                 modifier = modifier,
                 navigationContent = {
                     OfficialMd3FloatingToolbarContent(
@@ -2921,6 +2926,7 @@ private fun MiuixBottomBar(
     sharedLiquidGlassEnabled: Boolean,
     linkedDockPhase: LinkedDockPhase? = null,
     onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
+    isTopLevelDestination: Boolean = true,
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -3372,6 +3378,7 @@ private fun BiliPaiFloatingBottomBar(
             firstLabel = resolveBottomNavItemLabel(visibleItems.firstOrNull() ?: BottomNavItem.HOME, itemLabels),
             dockPhase = linkedDockPhase,
             onDockPhaseChange = onLinkedDockPhaseChange,
+            isTopLevelDestination = isTopLevelDestination,
             searchEnabled = bottomBarSearchEnabled,
             isFeedScrollInProgress = isFeedScrollInProgress,
             collapseRequested = collapseLinkedDock,

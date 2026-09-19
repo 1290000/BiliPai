@@ -223,18 +223,25 @@ internal fun AudioNowPlayingBar(
                 barCoordsRef[0] = coordinates
             }
             .graphicsLayer {
-                val progress = landingProgress.value
-                if (progress == 1f) {
-                    scaleX = 1f
-                    scaleY = 1f
-                    translationY = 0f
-                    alpha = 1f
+                val isSourceInActiveReturn = isSharedTransitionActive &&
+                    isReturningFromDetail &&
+                    (returningDetailBvid == null || returningDetailBvid == state.bvid)
+                if (isSourceInActiveReturn) {
+                    alpha = 0f
                 } else {
-                    // 无额外内存分配的高刷标量求值（resolveAudioNowPlayingBarLandingScale）：
-                    scaleX = resolveAudioNowPlayingBarLandingScaleX(progress)
-                    scaleY = resolveAudioNowPlayingBarLandingScaleY(progress)
-                    translationY = resolveAudioNowPlayingBarLandingOffsetY(progress) * density.density
-                    alpha = resolveAudioNowPlayingBarLandingAlpha(progress)
+                    val progress = landingProgress.value
+                    if (progress == 1f) {
+                        scaleX = 1f
+                        scaleY = 1f
+                        translationY = 0f
+                        alpha = 1f
+                    } else {
+                        // 无额外内存分配的高刷标量求值（resolveAudioNowPlayingBarLandingScale）：
+                        scaleX = resolveAudioNowPlayingBarLandingScaleX(progress)
+                        scaleY = resolveAudioNowPlayingBarLandingScaleY(progress)
+                        translationY = resolveAudioNowPlayingBarLandingOffsetY(progress) * density.density
+                        alpha = resolveAudioNowPlayingBarLandingAlpha(progress)
+                    }
                 }
             }
             .clip(shape)

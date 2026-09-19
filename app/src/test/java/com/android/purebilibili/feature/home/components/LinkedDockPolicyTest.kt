@@ -201,6 +201,22 @@ class LinkedDockPolicyTest {
         assertEquals(-13f, accumulateDockScroll(-3f, -10f))
     }
 
+    @Test
+    fun backHandlerOnlyEnabledForSearchAtTopLevel() {
+        assertTrue(shouldEnableLinkedDockBackHandler(LinkedDockPhase.Search, isTopLevelDestination = true))
+        kotlin.test.assertFalse(shouldEnableLinkedDockBackHandler(LinkedDockPhase.Search, isTopLevelDestination = false))
+        kotlin.test.assertFalse(shouldEnableLinkedDockBackHandler(LinkedDockPhase.Playback, isTopLevelDestination = true))
+        kotlin.test.assertFalse(shouldEnableLinkedDockBackHandler(LinkedDockPhase.Playback, isTopLevelDestination = false))
+        kotlin.test.assertFalse(shouldEnableLinkedDockBackHandler(LinkedDockPhase.Expanded, isTopLevelDestination = true))
+        kotlin.test.assertFalse(shouldEnableLinkedDockBackHandler(LinkedDockPhase.Expanded, isTopLevelDestination = false))
+    }
+
+    @Test
+    fun searchDismissRestoresPlaybackIfAudioActiveElseExpanded() {
+        assertEquals(LinkedDockPhase.Playback, resolveLinkedDockPhaseOnSearchDismiss(hasAudio = true))
+        assertEquals(LinkedDockPhase.Expanded, resolveLinkedDockPhaseOnSearchDismiss(hasAudio = false))
+    }
+
     private fun geometry(merge: Float, search: Float) =
         resolveLinkedDockGeometry(336, 56, 64, 8, true, true, merge, search)
 }

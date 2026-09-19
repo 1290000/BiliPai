@@ -47,8 +47,9 @@ private const val VIDEO_CARD_TRANSITION_MAX_BLUR_RADIUS_DP = 12f
 private const val VIDEO_CARD_TRANSITION_BLUR_QUANTUM_PX = VideoHeroMotionTokens.OPEN_BLUR_QUANTUM_PX
 /** 返回消糊段更粗量化，降低 BlurEffect 每帧更新次数。 */
 internal const val VIDEO_CARD_TRANSITION_RETURN_BLUR_QUANTUM_PX = VideoHeroMotionTokens.RETURN_BLUR_QUANTUM_PX
-// 整页围绕屏幕中心微退至 96%，由外围漫反射阴影与底衬承接空间深度。
-internal const val VIDEO_CARD_TRANSITION_BACKGROUND_SCALE_REDUCTION = 0.04f
+// 保持全屏背景几何稳定（0% 缩放），杜绝状态栏脱节、四周边框黑边与底栏悬空；
+// 空间纵深由动态高斯模糊、柔和暗化与飞卡自身物理升降投影承担。
+internal const val VIDEO_CARD_TRANSITION_BACKGROUND_SCALE_REDUCTION = 0f
 private const val VIDEO_CARD_TRANSITION_RELATED_SCALE_REDUCTION =
     VIDEO_CARD_TRANSITION_BACKGROUND_SCALE_REDUCTION
 private const val VIDEO_CARD_TRANSITION_PARTITION_SCALE_REDUCTION =
@@ -260,7 +261,7 @@ internal fun resolveVideoCardTransitionBackgroundScalePivot(
     sourceBounds: Rect?,
     canvasWidth: Float,
     canvasHeight: Float,
-): Offset = Offset(0.5f, 0.5f)
+): Offset = Offset(0.5f, 0f)
 
 internal fun resolveVideoCardTransitionOverlayDepthPivot(
     sourceBounds: Rect?,

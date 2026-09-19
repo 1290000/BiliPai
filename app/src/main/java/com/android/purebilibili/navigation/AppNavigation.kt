@@ -3985,7 +3985,7 @@ fun AppNavigation(
             val isLandscapeNowPlaying =
                 androidx.compose.ui.platform.LocalConfiguration.current.orientation ==
                     android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            val effectiveAudioDockRoute = if (driveBottomBarByProgress) bottomBarMountRoute else currentRoute
+            val effectiveAudioDockRoute = bottomBarMountRoute ?: currentRoute
             val isPlayerNowPlayingDestination = isAudioNowPlayingPlayerDestination(effectiveAudioDockRoute)
             val showAudioNowPlayingInDock = resolveAudioNowPlayingVisible(
                 sessionActive = audioNowPlayingActive,
@@ -3996,7 +3996,9 @@ fun AppNavigation(
                 isLandscape = isLandscapeNowPlaying,
                 isPlayerDestination = isPlayerNowPlayingDestination
             )
-            val isPlayerIndependentDestination = isAudioNowPlayingPlayerDestination(currentRoute)
+            val isReturningSameAudioVideo = navigation3ReturnSession.isReturningFromDetail &&
+                navigation3ReturnSession.transitionSession?.bvid == audioNowPlayingItem?.bvid
+            val isPlayerIndependentDestination = isAudioNowPlayingPlayerDestination(currentRoute) || isReturningSameAudioVideo
             val showAudioNowPlayingIndependent = resolveAudioNowPlayingVisible(
                 sessionActive = audioNowPlayingActive,
                 isOnAudioModeScreen = currentNavigation3Key is BiliPaiNavKey.AudioMode,
@@ -4164,6 +4166,7 @@ fun AppNavigation(
                                     uiSkinDecoration = bottomBarUiSkinDecoration,
                                     linkedDockPhase = linkedDockPhase,
                                     onLinkedDockPhaseChange = { linkedDockPhase = it },
+                                    isTopLevelDestination = currentNavigation3Key == BiliPaiNavKey.MainHost,
                                     onToggleSidebar = if (tabletUseSidebar) {
                                         {
                                             coroutineScope.launch {
@@ -4211,6 +4214,7 @@ fun AppNavigation(
                                 uiSkinDecoration = bottomBarUiSkinDecoration,
                                 linkedDockPhase = linkedDockPhase,
                                 onLinkedDockPhaseChange = { linkedDockPhase = it },
+                                isTopLevelDestination = currentNavigation3Key == BiliPaiNavKey.MainHost,
                                 onToggleSidebar = if (tabletUseSidebar) {
                                     {
                                         coroutineScope.launch {
