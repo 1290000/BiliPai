@@ -176,14 +176,40 @@ internal fun AudioModeMusicPlayer(
     }
 
     val queue = if (playlist.isEmpty()) {
-        listOf(
-            MusicQueueItemUi(
+        if (info.pages.size > 1) {
+            info.pages.mapIndexed { index, page ->
+                MusicQueueItemUi(
+                    stableId = "video:${info.bvid}:${page.cid}",
+                    title = if (page.part.isNotBlank()) page.part else "${displayTitle} P${page.page}",
+                    artist = info.owner.name,
+                    coverUrl = FormatUtils.fixImageUrl(info.pic)
+                )
+            }
+        } else if (successState.related.isNotEmpty()) {
+            val currentItem = MusicQueueItemUi(
                 stableId = "video:${info.bvid}:${info.cid}",
                 title = displayTitle,
                 artist = info.owner.name,
                 coverUrl = FormatUtils.fixImageUrl(info.pic)
             )
-        )
+            listOf(currentItem) + successState.related.take(10).map { rel ->
+                MusicQueueItemUi(
+                    stableId = "video:${rel.bvid}:${rel.cid}",
+                    title = rel.title,
+                    artist = rel.owner.name,
+                    coverUrl = FormatUtils.fixImageUrl(rel.pic)
+                )
+            }
+        } else {
+            listOf(
+                MusicQueueItemUi(
+                    stableId = "video:${info.bvid}:${info.cid}",
+                    title = displayTitle,
+                    artist = info.owner.name,
+                    coverUrl = FormatUtils.fixImageUrl(info.pic)
+                )
+            )
+        }
     } else {
         playlist.mapIndexed { index, item ->
             MusicQueueItemUi(
@@ -194,7 +220,13 @@ internal fun AudioModeMusicPlayer(
             )
         }
     }
-    val currentIndex = playlistIndex.takeIf { it in queue.indices } ?: 0
+    val currentIndex = if (playlist.isNotEmpty()) {
+        playlistIndex.takeIf { it in queue.indices } ?: 0
+    } else if (info.pages.size > 1) {
+        info.pages.indexOfFirst { it.cid == info.cid }.takeIf { it >= 0 } ?: 0
+    } else {
+        0
+    }
     val coverUrl = queue.getOrNull(currentIndex)?.coverUrl ?: FormatUtils.fixImageUrl(info.pic)
     val audioNowPlayingBarEnabled by SettingsManager
         .getAudioNowPlayingBarEnabled(context)
@@ -274,12 +306,30 @@ internal fun AudioModeMusicPlayer(
         onPrevious = { viewModel.playPreviousAudioModeTrack() },
         onNext = { viewModel.playNextAudioModeTrack() },
         onQueueItemSelected = { index ->
-            PlaylistManager.playAt(index)?.let {
-                viewModel.loadVideo(
-                    bvid = it.bvid,
-                    cid = it.cid,
-                    autoPlay = resolveAudioModePageSwitchAutoPlay()
-                )
+            if (playlist.isNotEmpty()) {
+                PlaylistManager.playAt(index)?.let {
+                    viewModel.loadVideo(
+                        bvid = it.bvid,
+                        cid = it.cid,
+                        autoPlay = resolveAudioModePageSwitchAutoPlay()
+                    )
+                }
+            } else if (info.pages.size > 1) {
+                info.pages.getOrNull(index)?.let { page ->
+                    viewModel.loadVideo(
+                        bvid = info.bvid,
+                        cid = page.cid,
+                        autoPlay = resolveAudioModePageSwitchAutoPlay()
+                    )
+                }
+            } else if (index > 0) {
+                successState.related.getOrNull(index - 1)?.let { rel ->
+                    viewModel.loadVideo(
+                        bvid = rel.bvid,
+                        cid = rel.cid,
+                        autoPlay = resolveAudioModePageSwitchAutoPlay()
+                    )
+                }
             }
         },
         onPlayModeChange = PlaylistManager::setPlayMode,

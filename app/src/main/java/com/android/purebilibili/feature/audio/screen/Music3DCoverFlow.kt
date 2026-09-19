@@ -1,12 +1,11 @@
 package com.android.purebilibili.feature.audio.screen
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -29,11 +29,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,12 +42,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
-import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
@@ -60,13 +59,16 @@ import kotlin.math.abs
 
 /**
  * 3D 实体 CD 盒切歌转盘 / 唱片架 (Cover Flow)。
+ * 1:1 像素级复刻折叠屏半折悬停态 (Tabletop) 观赏级切歌体验。
  *
  * 核心视觉与交互特色：
- * 1. 纯原生 Compose 3D 透视：借助 graphicsLayer 中的 cameraDistance、rotationY、scale 与 translationX，
- *    实现高帧率硬件加速的 Y 轴 3D 偏转流动效果。
- * 2. 实体 CD 盒拟材质感：亚克力双层高光边框、左侧侧脊厚度高光（Spine）、斜向高光折射。
- * 3. 镜面地面倒影（Floor Reflection）：下方倒影垂直翻转并加渐变虚化消融，呈现桌面摆放沉浸感。
- * 4. 悬浮胶囊控制条：复刻底部一体化药丸切歌与播放控制 bar。
+ * 1. 原生 Compose 3D 透视：graphicsLayer 景深透视 (cameraDistance = 10 * density)、
+ *    Y 轴立体偏转 (rotationY = (pageOffset * -36f).coerceIn(-60f, 60f))、
+ *    层叠推拉 (translationX) 与 5 卡片全景并发渲染 (beyondViewportPageCount = 2)。
+ * 2. 实体 CD 盒质感：微圆角亚克力透光包边、左侧侧脊厚度高光（Jewel Case Spine）、
+ *    顶部/底部铰链卡扣、表面斜向光斑折射、右上角时间戳徽章 (04:24)。
+ * 3. 镜面地面倒影与接触阴影：垂直翻转 (scaleY = -1f) 渐变虚化消融倒影 + 底部柔和接触阴影。
+ * 4. 悬浮胶囊控制条 (Pill Bar)：底栏药丸型毛玻璃一体化控制栏 (歌名 - 歌手、红心点赞、上一曲、播放/暂停、下一曲)。
  */
 @Composable
 internal fun Music3DCoverFlow(
@@ -80,7 +82,8 @@ internal fun Music3DCoverFlow(
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     onLikeClick: (() -> Unit)? = null,
-    cardSizeDp: Int = 160
+    cardSizeDp: Int = 155,
+    durationLabel: String = "04:24"
 ) {
     if (queue.isEmpty()) return
 
@@ -91,255 +94,324 @@ internal fun Music3DCoverFlow(
     )
     val coroutineScope = rememberCoroutineScope()
 
-    // 监听当前曲目切换，联动 3D 唱片架滚动到居中位置
     LaunchedEffect(currentIndex) {
         if (currentIndex in queue.indices && pagerState.currentPage != currentIndex) {
             pagerState.animateScrollToPage(currentIndex)
         }
     }
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentAlignment = Alignment.Center
     ) {
-        // 3D 唱片架滚动舞台
-        HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 96.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height((cardSizeDp + 48).dp)
-        ) { page ->
-            val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
-            val item = queue[page]
-            val isPlayingThis = page == currentIndex
+        val containerWidth = maxWidth
+        val effectiveCardWidth = cardSizeDp.dp
+        // 动态计算 horizontal content padding 确保居中焦点卡片完全对称
+        val horizontalPadding = ((containerWidth - effectiveCardWidth) / 2).coerceAtLeast(36.dp)
 
-            Box(
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 3D 唱片架多卡滚动舞台（5 张卡片并发排布展台）
+            HorizontalPager(
+                state = pagerState,
+                contentPadding = PaddingValues(horizontal = horizontalPadding),
+                beyondViewportPageCount = 2,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        // 1. 设置透视摄像机距离（景深感）
-                        cameraDistance = 10 * density
+                    .fillMaxWidth()
+                    .height((cardSizeDp + 52).dp)
+            ) { page ->
+                val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                val item = queue[page]
+                val isCenter = abs(pageOffset) < 0.45f
 
-                        // 2. Y 轴 3D 旋转角度（偏转并限制最大角度，模拟实体唱片架折角）
-                        rotationY = (pageOffset * -36f).coerceIn(-60f, 60f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(10f - abs(pageOffset))
+                        .graphicsLayer {
+                            // 1. 设置透视摄像机距离（深邃景深）
+                            cameraDistance = 10 * density
 
-                        // 3. 缩放景深层次
-                        val scale = (1f - (abs(pageOffset) * 0.16f)).coerceIn(0.72f, 1f)
-                        scaleX = scale
-                        scaleY = scale
+                            // 2. Y 轴 3D 旋转角度（双向内旋折角，向中心聚拢呈弧形展台）
+                            rotationY = (pageOffset * -36f).coerceIn(-60f, 60f)
 
-                        // 4. 重叠排列（让两侧 CD 壳产生自然的堆叠遮挡感）
-                        translationX = pageOffset * -20.dp.toPx()
+                            // 3. 缩放景深层次：中心卡片 100%，近邻卡片 ~88%，次邻卡片 ~76%
+                            val scale = (1f - (abs(pageOffset) * 0.12f)).coerceIn(0.74f, 1f)
+                            scaleX = scale
+                            scaleY = scale
 
-                        // 5. 层次渐隐
-                        alpha = (1f - (abs(pageOffset) * 0.22f)).coerceIn(0.45f, 1f)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(page)
-                        }
-                        onItemClick(page)
-                    }
+                            // 4. 重叠排列（让两侧 CD 壳产生自然的堆叠遮挡感）
+                            translationX = pageOffset * -32.dp.toPx()
+
+                            // 5. 层次高保真可见度
+                            alpha = (1f - (abs(pageOffset) * 0.12f)).coerceIn(0.62f, 1f)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    // 实体 CD 盒主体
-                    Box(
-                        modifier = Modifier
-                            .size(cardSizeDp.dp)
-                            .shadow(
-                                elevation = if (abs(pageOffset) < 0.5f) 18.dp else 6.dp,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(
-                                width = 1.dp,
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.42f),
-                                        Color.White.copy(alpha = 0.08f)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(page)
+                            }
+                            onItemClick(page)
+                        }
                     ) {
-                        // 唱片封面
-                        AsyncImage(
-                            model = item.coverUrl,
-                            contentDescription = item.title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-
-                        // 实体 CD 盒左侧侧脊厚度高光（Jewel Case Spine）
+                        // 实体 CD 盒主体
                         Box(
                             modifier = Modifier
-                                .fillMaxHeight()
-                                .width(3.5.dp)
-                                .background(
-                                    Brush.horizontalGradient(
+                                .size(cardSizeDp.dp)
+                                .shadow(
+                                    elevation = if (isCenter) 20.dp else 8.dp,
+                                    shape = RoundedCornerShape(6.dp),
+                                    spotColor = Color.Black.copy(alpha = 0.85f)
+                                )
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(
+                                    width = 1.dp,
+                                    brush = Brush.linearGradient(
                                         listOf(
-                                            Color.White.copy(alpha = 0.60f),
-                                            Color.White.copy(alpha = 0.18f),
+                                            Color.White.copy(alpha = 0.52f),
+                                            Color.White.copy(alpha = 0.12f),
+                                            Color.White.copy(alpha = 0.38f),
+                                            Color.White.copy(alpha = 0.06f)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                        ) {
+                            // 唱片封面大图
+                            AsyncImage(
+                                model = item.coverUrl,
+                                contentDescription = item.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            // 实体 CD 盒左侧侧脊厚度与铰链卡扣（Jewel Case Spine & Hinges）
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(7.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.50f),
+                                                Color.Black.copy(alpha = 0.40f),
+                                                Color.White.copy(alpha = 0.22f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                            ) {
+                                // 顶部透明铰链卡扣
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(top = 4.dp, start = 1.dp)
+                                        .size(width = 3.dp, height = 7.dp)
+                                        .background(Color.White.copy(alpha = 0.45f), RoundedCornerShape(1.dp))
+                                )
+                                // 底部透明铰链卡扣
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(bottom = 4.dp, start = 1.dp)
+                                        .size(width = 3.dp, height = 7.dp)
+                                        .background(Color.White.copy(alpha = 0.45f), RoundedCornerShape(1.dp))
+                                )
+                            }
+
+                            // 亚克力塑料表面斜向光斑漫反射（Acrylic Sheen）
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            0.0f to Color.White.copy(alpha = 0.20f),
+                                            0.22f to Color.White.copy(alpha = 0.05f),
+                                            0.50f to Color.Transparent
+                                        )
+                                    )
+                            )
+
+                            // 右上角复古数码打标时间徽章（1:1 复刻截图 04:24 标签）
+                            if (isCenter) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(top = 8.dp, end = 8.dp)
+                                        .background(
+                                            color = Color.Black.copy(alpha = 0.68f),
+                                            shape = RoundedCornerShape(3.dp)
+                                        )
+                                        .border(
+                                            width = 0.6.dp,
+                                            color = Color.White.copy(alpha = 0.28f),
+                                            shape = RoundedCornerShape(3.dp)
+                                        )
+                                        .padding(horizontal = 4.dp, vertical = 1.5.dp)
+                                ) {
+                                    AppText(
+                                        text = durationLabel,
+                                        color = Color.White.copy(alpha = 0.92f),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // 地面微阴影接触线（Ground Contact Shadow）
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 2.dp)
+                                .width((cardSizeDp * 0.82f).dp)
+                                .height(6.dp)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            Color.Black.copy(alpha = 0.65f),
                                             Color.Transparent
                                         )
                                     )
                                 )
                         )
 
-                        // 亚克力塑料斜向光斑漫反射（Acrylic Sheen）
+                        // 地面镜面微弱倒影消隐（Floor Mirror Reflection）
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.linearGradient(
-                                        0.0f to Color.White.copy(alpha = 0.16f),
-                                        0.28f to Color.White.copy(alpha = 0.04f),
-                                        0.55f to Color.Transparent
-                                    )
-                                )
-                        )
-
-                        // 正在播放中的发光角标
-                        if (isPlayingThis) {
+                                .size(width = cardSizeDp.dp, height = 22.dp)
+                                .graphicsLayer {
+                                    scaleY = -1f // 倒影垂直反转
+                                }
+                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                        ) {
+                            AsyncImage(
+                                model = item.coverUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(cardSizeDp.dp)
+                                    .blur(2.dp),
+                                contentScale = ContentScale.Crop,
+                                alpha = 0.22f
+                            )
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .size(24.dp)
-                                    .background(MusicAccentColor.copy(alpha = 0.90f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AppIcon(
-                                    imageVector = if (isPlaying) Icons.Outlined.MusicNote else Icons.Filled.Pause,
-                                    contentDescription = if (isPlaying) "正在播放" else "已暂停",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // 地面镜面反射 (Floor Mirror Reflection)
-                    Box(
-                        modifier = Modifier
-                            .size(width = cardSizeDp.dp, height = 32.dp)
-                            .graphicsLayer {
-                                scaleY = -1f // 倒影垂直反转
-                            }
-                            .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
-                    ) {
-                        AsyncImage(
-                            model = item.coverUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(cardSizeDp.dp)
-                                .blur(2.dp),
-                            contentScale = ContentScale.Crop,
-                            alpha = 0.32f
-                        )
-                        // 渐变遮罩：让倒影向下迅速消隐进桌面背景
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.Transparent,
-                                            Color.Black.copy(alpha = 0.88f)
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.Transparent,
+                                                Color(0xFF140F0E).copy(alpha = 0.94f)
+                                            )
                                         )
                                     )
-                                )
-                        )
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
 
-        // 底部悬浮胶囊控制条（悬停观赏、优雅切歌）
-        val focusedItem = queue.getOrNull(pagerState.currentPage) ?: queue[validCurrentIndex]
-        AppSurface(
-            shape = RoundedCornerShape(24.dp),
-            color = AppSurfaceTokens.cardContainer(),
-            modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 4.dp)
-                .height(48.dp)
-        ) {
-            Row(
+            // 底部悬浮胶囊控制条（1:1 复刻截图：药丸容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
+            val focusedItem = queue.getOrNull(pagerState.currentPage) ?: queue[validCurrentIndex]
+            AppSurface(
+                shape = CircleShape,
+                color = Color(0x481E1917),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 24.dp, vertical = 6.dp)
+                    .widthIn(max = 440.dp)
+                    .height(46.dp)
+                    .border(
+                        width = 0.7.dp,
+                        color = Color.White.copy(alpha = 0.12f),
+                        shape = CircleShape
+                    )
             ) {
-                // 歌名 - 艺术家
-                AppText(
-                    text = "${focusedItem.title}  ·  ${focusedItem.artist.ifBlank { "未知艺术家" }}",
-                    color = MusicContentColor,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 18.dp, end = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 歌名 - 歌手（以 " - " 分隔）
+                    AppText(
+                        text = "${focusedItem.title} - ${focusedItem.artist.ifBlank { "未知艺术家" }}",
+                        color = Color.White.copy(alpha = 0.92f),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(10.dp))
 
-                // 点赞按钮
-                onLikeClick?.let { like ->
-                    AppIconButton(onClick = like, modifier = Modifier.size(36.dp)) {
+                    // 点赞按钮（未点赞薄线心，已点赞红粉心）
+                    onLikeClick?.let { like ->
+                        AppIconButton(
+                            onClick = like,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            AppIcon(
+                                imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = if (isLiked) "取消喜欢" else "喜欢",
+                                tint = if (isLiked) Color(0xFFFF3B5C) else Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
+
+                    // 上一首
+                    AppIconButton(
+                        onClick = onPrevious ?: {},
+                        enabled = onPrevious != null,
+                        modifier = Modifier.size(34.dp)
+                    ) {
                         AppIcon(
-                            imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (isLiked) "取消点赞" else "点赞",
-                            tint = if (isLiked) MaterialTheme.colorScheme.error else MusicContentColor.copy(alpha = 0.80f),
-                            modifier = Modifier.size(18.dp)
+                            imageVector = Icons.Filled.SkipPrevious,
+                            contentDescription = "上一首",
+                            tint = Color.White.copy(alpha = if (onPrevious != null) 0.88f else 0.28f),
+                            modifier = Modifier.size(19.dp)
                         )
                     }
-                }
 
-                // 上一首
-                AppIconButton(
-                    onClick = onPrevious ?: {},
-                    enabled = onPrevious != null,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    AppIcon(
-                        imageVector = Icons.Filled.SkipPrevious,
-                        contentDescription = "上一首",
-                        tint = MusicContentColor.copy(alpha = if (onPrevious != null) 0.92f else 0.28f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                    // 播放 / 暂停
+                    AppIconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlaying) "暂停" else "播放",
+                            tint = Color.White.copy(alpha = 0.95f),
+                            modifier = Modifier.size(21.dp)
+                        )
+                    }
 
-                // 播放 / 暂停
-                AppIconButton(
-                    onClick = onPlayPause,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    AppIcon(
-                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "暂停" else "播放",
-                        tint = MusicAccentColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-                // 下一首
-                AppIconButton(
-                    onClick = onNext ?: {},
-                    enabled = onNext != null,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    AppIcon(
-                        imageVector = Icons.Filled.SkipNext,
-                        contentDescription = "下一首",
-                        tint = MusicContentColor.copy(alpha = if (onNext != null) 0.92f else 0.28f),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // 下一首
+                    AppIconButton(
+                        onClick = onNext ?: {},
+                        enabled = onNext != null,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = Icons.Filled.SkipNext,
+                            contentDescription = "下一首",
+                            tint = Color.White.copy(alpha = if (onNext != null) 0.88f else 0.28f),
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
             }
         }
