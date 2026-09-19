@@ -166,31 +166,6 @@ internal fun BiliPaiImmersiveTopBar(
             )
             .then(modifier),
     ) {
-        if (solidFadeActive) {
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .layout { measurable, constraints ->
-                        val extension = resolveProgressiveTopBlurBottomExtension(
-                            enabled = extendBelowBounds,
-                            endFraction = BILIPAI_PROGRESSIVE_TOP_BLUR_DEFAULT_GRADIENT.endFraction,
-                        ).roundToPx()
-                        val extended = constraints.copy(
-                            minHeight = constraints.minHeight + extension,
-                            maxHeight = constraints.maxHeight + extension,
-                        )
-                        val placeable = measurable.measure(extended)
-                        layout(placeable.width, placeable.height - extension) {
-                            placeable.placeRelative(0, 0)
-                        }
-                    }
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colorStops = com.android.purebilibili.core.ui.blur.ProgressiveFadeDefaults.createStops(surfaceColor).toTypedArray(),
-                        )
-                    ),
-            )
-        }
         if (active) {
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
@@ -213,6 +188,31 @@ internal fun BiliPaiImmersiveTopBar(
                         backdrop = backdrop,
                         enabled = true,
                         shape = androidx.compose.ui.graphics.RectangleShape,
+                    ),
+            )
+        }
+        if (solidFadeActive) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .layout { measurable, constraints ->
+                        val extension = resolveProgressiveTopBlurBottomExtension(
+                            enabled = extendBelowBounds,
+                            endFraction = BILIPAI_PROGRESSIVE_TOP_BLUR_DEFAULT_GRADIENT.endFraction,
+                        ).roundToPx()
+                        val extended = constraints.copy(
+                            minHeight = constraints.minHeight + extension,
+                            maxHeight = constraints.maxHeight + extension,
+                        )
+                        val placeable = measurable.measure(extended)
+                        layout(placeable.width, placeable.height - extension) {
+                            placeable.placeRelative(0, 0)
+                        }
+                    }
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colorStops = com.android.purebilibili.core.ui.blur.ProgressiveFadeDefaults.createStops(surfaceColor).toTypedArray(),
+                        )
                     ),
             )
         }
