@@ -57,9 +57,21 @@ class MusicPlayerLayoutPolicyTest {
     }
 
     @Test
+    fun `foldable unfolded uses split layout`() {
+        assertEquals(
+            MusicPlayerLayout.EXPANDED_SPLIT,
+            resolveMusicPlayerLayout(widthDp = 600, isInPipMode = false)
+        )
+        assertEquals(
+            MusicPlayerLayout.EXPANDED_SPLIT,
+            resolveMusicPlayerLayout(widthDp = 720, isInPipMode = false)
+        )
+    }
+
+    @Test
     fun `compact artwork respects available height`() {
         assertEquals(
-            320,
+            288,
             resolveMusicArtworkSizeDp(
                 availableWidthDp = 393,
                 availableHeightDp = 720,
@@ -74,5 +86,33 @@ class MusicPlayerLayoutPolicyTest {
                 layout = MusicPlayerLayout.COMPACT_PAGER
             )
         )
+    }
+
+    @Test
+    fun `cover style cycles through card square and turntable`() {
+        assertEquals(
+            MusicCoverStyle.APPLE_MUSIC_SQUARE,
+            resolveNextCoverStyle(MusicCoverStyle.APPLE_MUSIC_CARD)
+        )
+        assertEquals(
+            MusicCoverStyle.TURNTABLE,
+            resolveNextCoverStyle(MusicCoverStyle.APPLE_MUSIC_SQUARE)
+        )
+        assertEquals(
+            MusicCoverStyle.APPLE_MUSIC_CARD,
+            resolveNextCoverStyle(MusicCoverStyle.TURNTABLE)
+        )
+        assertEquals("宽屏", resolveCoverStyleShortLabel(MusicCoverStyle.APPLE_MUSIC_CARD))
+        assertEquals("方图", resolveCoverStyleShortLabel(MusicCoverStyle.APPLE_MUSIC_SQUARE))
+        assertEquals("转盘", resolveCoverStyleShortLabel(MusicCoverStyle.TURNTABLE))
+    }
+
+    @Test
+    fun `large screen adaptive layout scales padding and gutters`() {
+        assertEquals(48, resolveLargeScreenGutterDp(widthDp = 900))
+        assertEquals(28, resolveLargeScreenGutterDp(widthDp = 700))
+        assertEquals(48, resolveLargeScreenHorizontalPaddingDp(widthDp = 900))
+        assertEquals(24, resolveLargeScreenHorizontalPaddingDp(widthDp = 700))
+        assertEquals(1200, LARGE_SCREEN_MAX_CONTENT_WIDTH_DP)
     }
 }

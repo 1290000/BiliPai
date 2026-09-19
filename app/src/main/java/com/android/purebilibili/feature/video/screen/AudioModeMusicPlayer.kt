@@ -27,6 +27,7 @@ import com.android.purebilibili.core.player.PlayerVolumeController
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.Page
+import com.android.purebilibili.feature.audio.lyrics.BiliSubtitleLyricsPolicy
 import com.android.purebilibili.feature.audio.player.AudioNowPlayingSession
 import com.android.purebilibili.feature.audio.player.MusicPlayerUiState
 import com.android.purebilibili.feature.audio.player.MusicLyricCandidateUi
@@ -221,6 +222,27 @@ internal fun AudioModeMusicPlayer(
         )
     }
 
+    val subtitleLyrics = remember(
+        successState.subtitlePrimaryCues,
+        successState.subtitleSecondaryCues,
+        successState.subtitlePrimaryLikelyAi,
+        successState.subtitlePrimaryLanguage
+    ) {
+        BiliSubtitleLyricsPolicy.convertSubtitlesToLyricDocument(
+            primaryCues = successState.subtitlePrimaryCues,
+            secondaryCues = successState.subtitleSecondaryCues,
+            isAiGenerated = successState.subtitlePrimaryLikelyAi,
+            languageLabel = successState.subtitlePrimaryLanguage
+        )
+    }
+
+    val effectiveLyrics = remember(lyricsState.lyricsDocument, subtitleLyrics) {
+        BiliSubtitleLyricsPolicy.resolveEffectiveLyrics(
+            musicLyrics = lyricsState.lyricsDocument,
+            subtitleLyrics = subtitleLyrics
+        )
+    }
+
     MusicPlayerContent(
         state = MusicPlayerUiState(
             title = displayTitle,
@@ -231,12 +253,12 @@ internal fun AudioModeMusicPlayer(
             isBuffering = playback.isBuffering,
             positionMs = playback.positionMs,
             durationMs = playback.durationMs.takeIf { it > 0L } ?: metadataDurationMs,
-            lyrics = lyricsState.lyricsDocument,
-            lyricsError = lyricsState.lyricsError,
+            lyrics = effectiveLyrics,
+            lyricsError = if (effectiveLyrics != null) null else lyricsState.lyricsError,
             lyricCandidates = lyricsState.lyricCandidates.map {
                 MusicLyricCandidateUi(it.title, it.artist, it.source.name)
             },
-            isLyricsSearching = lyricsState.isLyricsSearching,
+            isLyricsSearching = lyricsState.isLyricsSearching && effectiveLyrics == null,
             queue = queue,
             currentQueueIndex = currentIndex,
             playMode = playMode,
