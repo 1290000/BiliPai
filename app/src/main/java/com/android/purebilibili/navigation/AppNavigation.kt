@@ -1852,34 +1852,52 @@ fun AppNavigation(
                         pushNavigation3Key(BiliPaiNavKey.Login)
                     },
                     onSwitch = { mid ->
-                        coroutineScope.launch {
-                            if (!AccountSessionStore.activateAccount(context, mid)) {
-                                Toast.makeText(context, "切换账号失败", Toast.LENGTH_SHORT).show()
-                                return@launch
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val switched = AccountSessionStore.activateAccount(context, mid)
+                            withContext(Dispatchers.Main.immediate) {
+                                if (!switched) {
+                                    Toast.makeText(context, "切换账号失败", Toast.LENGTH_SHORT).show()
+                                    return@withContext
+                                }
+                                sidebarAccountSessionGeneration += 1
+                                accountSessionRefreshGeneration += 1
+                                homeViewModel.refresh()
+                                sidebarAccountSwitcherVisible = false
+                                Toast.makeText(context, "已切换账号", Toast.LENGTH_SHORT).show()
                             }
-                            sidebarAccountSessionGeneration += 1
-                            accountSessionRefreshGeneration += 1
-                            homeViewModel.refresh()
-                            sidebarAccountSwitcherVisible = false
-                            Toast.makeText(context, "已切换账号", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onSetPlayback = { mid ->
-                        if (AccountSessionStore.setPlaybackAccountMid(context, mid)) {
-                            sidebarAccountSessionGeneration += 1
-                        } else {
-                            Toast.makeText(context, "播放账号不可用，请重新登录后再试", Toast.LENGTH_SHORT)
-                                .show()
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val updated = AccountSessionStore.setPlaybackAccountMid(context, mid)
+                            withContext(Dispatchers.Main.immediate) {
+                                if (updated) {
+                                    sidebarAccountSessionGeneration += 1
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "播放账号不可用，请重新登录后再试",
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
                         }
                     },
                     onRemove = { mid ->
                         if (mid == sidebarActiveAccountMid) {
                             Toast.makeText(context, "请先切换到其他账号后再移除当前账号", Toast.LENGTH_SHORT)
                                 .show()
-                        } else if (AccountSessionStore.removeAccount(context, mid)) {
-                            sidebarAccountSessionGeneration += 1
                         } else {
-                            Toast.makeText(context, "移除账号失败", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch(Dispatchers.IO) {
+                                val removed = AccountSessionStore.removeAccount(context, mid)
+                                withContext(Dispatchers.Main.immediate) {
+                                    if (removed) {
+                                        sidebarAccountSessionGeneration += 1
+                                    } else {
+                                        Toast.makeText(context, "移除账号失败", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                         }
                     },
                 )
