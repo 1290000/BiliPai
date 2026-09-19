@@ -102,9 +102,10 @@ internal fun VideoDetailPipParamsEffect(
         lastPipBounds = playerBounds?.let(::Rect)
         lastPipModeEnabled = pipModeEnabled
         lastPipUpdateElapsedMs = now
-        val vs = latestPlayer.videoSize
+        val videoWidth = latestPlayer?.videoSize?.width ?: 0
+        val videoHeight = latestPlayer?.videoSize?.height ?: 0
         val params = android.app.PictureInPictureParams.Builder()
-            .setAspectRatio(resolveSafeAndroidPipRational(vs.width, vs.height))
+            .setAspectRatio(resolveSafeAndroidPipRational(videoWidth, videoHeight))
             .setActions(buildPipPlaybackRemoteActions(context, latestPlayer))
             .apply {
                 playerBounds?.let(::setSourceRectHint)
