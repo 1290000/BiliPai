@@ -1501,11 +1501,13 @@ fun HomeScreen(
     val topChromeMaterialMode = remember(
         isHeaderBlurEnabled,
         homePerformanceConfig.topBarLiquidGlassEnabled,
+        appThemeConfig.progressiveTopBlurEnabled,
     ) {
         resolveHomeTopChromeMaterialMode(
             isHeaderBlurEnabled = isHeaderBlurEnabled,
             isBottomBarBlurEnabled = false,
             isLiquidGlassEnabled = homePerformanceConfig.topBarLiquidGlassEnabled,
+            isProgressiveTopBlurEnabled = appThemeConfig.progressiveTopBlurEnabled,
         )
     }
     val homeTopPresetStyle = remember(topChromePolicy, homeSettings.topTabLabelMode) {

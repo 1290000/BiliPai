@@ -6,6 +6,7 @@ import com.android.purebilibili.core.ui.components.AppHorizontalDivider
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppTopChromePolicy
 import com.android.purebilibili.core.ui.blur.TopSolidProgressiveFadeOverlay
+import com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor
 import com.android.purebilibili.core.ui.AppTopTabPresentation
 import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.theme.LocalAppUiStyle
@@ -1370,6 +1371,7 @@ internal fun Modifier.homeTopChromeSurface(
     isTransitionRunning: Boolean,
     forceLowBlurBudget: Boolean,
     useProgressiveTopBlur: Boolean = false,
+    useProgressiveTopFade: Boolean = false,
     preferFlatGlass: Boolean = false,
     darkThemeWhiteOverlayMultiplier: Float = 0.86f
 ): Modifier = composed {
@@ -1378,7 +1380,7 @@ internal fun Modifier.homeTopChromeSurface(
     // Compact controls reuse the bottom-bar material. The full-width top slab deliberately keeps
     // the progressive blur path so its lower edge fades into content instead of becoming a clipped
     // glass-shell boundary.
-    if (isLiquidGlassMode && !useProgressiveTopBlur) {
+    if (isLiquidGlassMode && !useProgressiveTopBlur && !useProgressiveTopFade) {
         return@composed this.homeTopBottomBarMatchedSurface(
             renderMode = renderMode,
             shape = shape,
@@ -1414,7 +1416,7 @@ internal fun Modifier.homeTopChromeSurface(
                             ?: BILIPAI_PROGRESSIVE_TOP_BLUR_FALLOFF_CURVE,
                     ),
                 )
-                .background(if (useProgressiveTopBlur) Color.Transparent else surfaceColor, shape)
+                .background(if (useProgressiveTopBlur || useProgressiveTopFade) Color.Transparent else surfaceColor, shape)
         }
 
         HomeTopChromeRenderMode.BLUR -> {
@@ -1439,7 +1441,7 @@ internal fun Modifier.homeTopChromeSurface(
                                     ?: BILIPAI_PROGRESSIVE_TOP_BLUR_FALLOFF_CURVE,
                             ),
                         )
-                    } else if (hazeState != null) {
+                    } else if (hazeState != null && !useProgressiveTopFade) {
                         Modifier.unifiedBlur(
                             hazeState = hazeState,
                             shape = shape,
@@ -1453,11 +1455,11 @@ internal fun Modifier.homeTopChromeSurface(
                         Modifier
                     }
                 )
-                .background(if (isProgressiveBlurActive) Color.Transparent else surfaceColor, shape)
+                .background(if (isProgressiveBlurActive || useProgressiveTopFade) Color.Transparent else surfaceColor, shape)
         }
 
         HomeTopChromeRenderMode.PLAIN -> {
-            this.background(surfaceColor, shape)
+            this.background(if (useProgressiveTopFade) Color.Transparent else surfaceColor, shape)
         }
     }
 }
@@ -2086,16 +2088,22 @@ fun HomeHeader(
             AppSpacingTokens.None
         }
     }
+    val isProgressiveBlurRequested = progressiveTopBlurEnabled
+    val isProgressiveBlurActive = shouldUseBiliPaiProgressiveTopBlur(
+        enabled = isProgressiveBlurRequested && !isHeaderBlurEnabled,
+        hasBackdrop = miuixBackdrop != null,
+    ) && !forceLowBlurBudget
+    val isProgressiveFadeActive = progressiveTopFadeEnabled && !isHeaderBlurEnabled
+
     val pinnedChromeLayout = resolveHomeTopPinnedChromeLayout(
         statusBarHeight = statusBarHeight,
         visibleSearchHeight = currentSearchHeight,
         tabRowHeight = currentTabHeight,
         searchToTabsSpacing = currentTabToSearchSpacing,
-        renderMode = effectiveContinuousSlabRenderMode,
+        renderMode = if (isProgressiveBlurRequested || isProgressiveFadeActive) HomeTopChromeRenderMode.BLUR else effectiveContinuousSlabRenderMode,
         // 连续背景始终覆盖顶部 Dock；独立轨道只负责自身材质与前景可读性。
         includeTabInBlur = true,
     )
-    val isProgressiveBlurRequested = progressiveTopBlurEnabled
     val progressiveBlurBottomExtension = resolveProgressiveTopBlurBottomExtension(
         enabled = isProgressiveBlurRequested &&
             liquidGlassTuning.progressiveBlurRadius > 0.001f,
@@ -2238,10 +2246,7 @@ fun HomeHeader(
             chromePolicy = topChromePolicy
         )
         if (shouldUseOpaqueTopChromeBackground(
-                progressiveBlurActive = shouldUseBiliPaiProgressiveTopBlur(
-                    enabled = isProgressiveBlurRequested,
-                    hasBackdrop = miuixBackdrop != null,
-                ) && !forceLowBlurBudget,
+                progressiveBlurActive = isProgressiveBlurActive || isProgressiveFadeActive,
                 headerBlurActive = isHeaderBlurEnabled,
                 liquidGlassActive = isGlassEnabled || topChromeLiquidGlassEnabled,
             )
@@ -2253,13 +2258,16 @@ fun HomeHeader(
                     .background(MaterialTheme.colorScheme.background.copy(alpha = 1f))
             )
         }
-        if (effectiveContinuousSlabRenderMode != HomeTopChromeRenderMode.PLAIN) {
+        val shouldRenderContinuousSlab = effectiveContinuousSlabRenderMode != HomeTopChromeRenderMode.PLAIN ||
+            isProgressiveBlurActive ||
+            isProgressiveFadeActive
+        if (shouldRenderContinuousSlab) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(continuousSlabHeight)
                     .homeTopChromeSurface(
-                        renderMode = effectiveContinuousSlabRenderMode,
+                        renderMode = if (isProgressiveBlurActive || isProgressiveFadeActive) HomeTopChromeRenderMode.BLUR else effectiveContinuousSlabRenderMode,
                         shape = resolveHomeTopContinuousSlabShape(),
                         surfaceColor = resolveHomeTopContinuousSlabSurfaceColor(
                             baseColor = headerChromeColors.containerColor,
@@ -2277,18 +2285,13 @@ fun HomeHeader(
                         isTransitionRunning = topChromeMotionPolicy.isTransitionRunning,
                         forceLowBlurBudget = forceLowBlurBudget,
                         useProgressiveTopBlur = isProgressiveBlurRequested,
+                        useProgressiveTopFade = isProgressiveFadeActive,
                     )
             ) {
-                if (progressiveTopFadeEnabled && !isHeaderBlurEnabled) {
+                if (isProgressiveFadeActive) {
                     TopSolidProgressiveFadeOverlay(
-                        surfaceColor = resolveHomeTopContinuousSlabSurfaceColor(
-                            baseColor = headerChromeColors.containerColor,
-                            blurAlpha = 1f,
-                            usesNativeContainerTreatment = usesNativeContainerTreatment,
-                            renderMode = effectiveContinuousSlabRenderMode
-                        ),
+                        surfaceColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
                         fadeHeight = continuousSlabHeight,
-                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }

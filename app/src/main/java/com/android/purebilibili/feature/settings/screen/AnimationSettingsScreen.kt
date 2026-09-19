@@ -687,7 +687,7 @@ fun AnimationSettingsContent(
                         AppSwitchPreference(
                             icon = rememberSettingsSemanticIcon(SettingsIconRole.TOP_BAR_BLUR),
                             title = "顶部渐进模糊",
-                            subtitle = "在顶栏背后滚动时呈现 Miuix 渐进纹理模糊 (需 Android 13+)",
+                            subtitle = "在顶栏背后滚动时呈现材质渐进纹理模糊 (需 Android 13+)",
                             checked = state.progressiveTopBlurEnabled,
                             onCheckedChange = { viewModel.toggleProgressiveTopBlur(it) },
                             iconTint = iOSBlue
@@ -696,7 +696,7 @@ fun AnimationSettingsContent(
                         AppSwitchPreference(
                             icon = rememberSettingsSemanticIcon(SettingsIconRole.TOP_BAR_BLUR),
                             title = "顶部纯色渐进消隐",
-                            subtitle = "移植自 Telegram 的 5 阶非线性平滑纯色渐变消融",
+                            subtitle = "在状态栏与顶栏提供 5 阶非线性平滑纯色渐变消融过渡",
                             checked = state.progressiveTopFadeEnabled,
                             onCheckedChange = { viewModel.toggleProgressiveTopFade(it) },
                             iconTint = iOSBlue
