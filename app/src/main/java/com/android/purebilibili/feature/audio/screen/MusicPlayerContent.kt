@@ -229,9 +229,9 @@ internal fun resolveMusicGlassContainerColor(
     }
 } else {
     if (glassTintColor != Color.Unspecified) {
-        lerp(glassTintColor, Color.White, 0.72f).copy(alpha = 0.82f)
+        lerp(glassTintColor, Color.White, 0.40f).copy(alpha = 0.35f)
     } else {
-        Color.White.copy(alpha = 0.78f)
+        Color.White.copy(alpha = 0.38f)
     }
 }
 
@@ -1145,6 +1145,9 @@ private fun ImmersiveBottomQueueShelf(
                     onLikeClick = onLikeClick,
                     cardSizeDp = 150,
                     showTransportControls = true,
+                    glassEnabled = glassEnabled,
+                    miuixBackdrop = miuixBackdrop,
+                    liquidGlassTuning = liquidGlassTuning,
                     glassTintColor = glassTintColor,
                     isDarkEnvironment = isDarkEnvironment,
                     modifier = Modifier.padding(vertical = 8.dp)
@@ -1684,71 +1687,34 @@ private fun MusicArtwork(
                 )
                 .graphicsLayer { rotationZ = rotationDegrees() }
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            Color(0xFF2B2833),
-                            Color(0xFF19171E),
-                            Color(0xFF0F0E13),
-                            Color(0xFF09080B)
-                        )
-                    )
-                )
                 .border(
                     width = 1.dp,
-                    color = if (isDarkEnvironment) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.12f),
+                    color = if (isDarkEnvironment) Color.White.copy(alpha = 0.18f) else Color.Black.copy(alpha = 0.12f),
                     shape = CircleShape
                 )
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            // Vinyl grooves concentric sheen rings
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(0.88f)
-                    .clip(CircleShape)
-                    .border(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.08f),
-                        shape = CircleShape
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(0.76f)
-                    .clip(CircleShape)
-                    .border(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.05f),
-                        shape = CircleShape
-                    )
-            )
-            // Center circular album artwork label
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(0.64f)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(Color(0xFF615571), Color(0xFF27212F))
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    bitmap != null -> androidx.compose.foundation.Image(
-                        bitmap = bitmap,
-                        contentDescription = "专辑封面",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    coverUrl.isNotBlank() -> AsyncImage(
-                        model = coverUrl,
-                        contentDescription = "专辑封面",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    else -> AppIcon(
+            when {
+                bitmap != null -> androidx.compose.foundation.Image(
+                    bitmap = bitmap,
+                    contentDescription = "专辑封面",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                coverUrl.isNotBlank() -> AsyncImage(
+                    model = coverUrl,
+                    contentDescription = "专辑封面",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                else -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(if (isDarkEnvironment) Color(0xFF27212F) else Color(0xFFE8E5EC)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AppIcon(
                         Icons.Outlined.MusicNote,
                         contentDescription = null,
                         tint = MusicContentColor.copy(alpha = 0.78f),
@@ -1756,14 +1722,6 @@ private fun MusicArtwork(
                     )
                 }
             }
-            // Center spindle hole
-            Box(
-                modifier = Modifier
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF141318))
-                    .border(1.5.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-            )
         }
     } else {
         // Apple Music Style: 宽屏卡片（16:10，自适应视频比例）或经典方图（1:1），带弹簧呼吸缩放与氛围弥散阴影
@@ -1838,7 +1796,8 @@ private fun MusicProgress(
     onSeek: (Long) -> Unit,
     glassEnabled: Boolean,
     glassTintColor: Color = Color.Unspecified,
-    isDarkEnvironment: Boolean = true
+    isDarkEnvironment: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     val duration = state.durationMs.coerceAtLeast(1L)
     var draggedPosition by remember { mutableStateOf<Float?>(null) }
@@ -1870,39 +1829,41 @@ private fun MusicProgress(
             Color.Black.copy(alpha = 0.12f)
         }
     }
-    if (shouldUseNativeThemeMusicProgress(glassEnabled = glassEnabled, uiStyle = uiStyle)) {
-        AppSlider(
-            value = sliderValue,
-            onValueChange = onSliderChange,
-            onValueChangeFinished = onSliderChangeFinished,
-            valueRange = 0f..duration.toFloat(),
-            colors = AppSliderDefaults.colors(
-                thumbColor = MusicAccentColor,
-                activeTrackColor = MusicAccentColor,
-                inactiveTrackColor = inactiveTrackColor
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (shouldUseNativeThemeMusicProgress(glassEnabled = glassEnabled, uiStyle = uiStyle)) {
+            AppSlider(
+                value = sliderValue,
+                onValueChange = onSliderChange,
+                onValueChangeFinished = onSliderChangeFinished,
+                valueRange = 0f..duration.toFloat(),
+                colors = AppSliderDefaults.colors(
+                    thumbColor = MusicAccentColor,
+                    activeTrackColor = MusicAccentColor,
+                    inactiveTrackColor = inactiveTrackColor
+                )
             )
-        )
-    } else {
-        MusicWavySlider(
-            value = sliderValue,
-            onValueChange = onSliderChange,
-            onValueChangeFinished = onSliderChangeFinished,
-            valueRange = 0f..duration.toFloat(),
-            wavy = shouldUseMusicWavyProgress(
-                glassEnabled = glassEnabled,
-                uiStyle = uiStyle,
-                isPlaying = state.isPlaying,
-                isDragging = draggedPosition != null,
-                reduceMotion = reduceMotion
-            ),
-            activeColor = MusicAccentColor,
-            inactiveColor = inactiveTrackColor,
-            thumbColor = MusicAccentColor
-        )
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        AppText(formatMusicTime(state.positionMs), color = MusicContentColor.copy(alpha = 0.78f), fontSize = 12.sp)
-        AppText("-${formatMusicTime((state.durationMs - state.positionMs).coerceAtLeast(0L))}", color = MusicContentColor.copy(alpha = 0.78f), fontSize = 12.sp)
+        } else {
+            MusicWavySlider(
+                value = sliderValue,
+                onValueChange = onSliderChange,
+                onValueChangeFinished = onSliderChangeFinished,
+                valueRange = 0f..duration.toFloat(),
+                wavy = shouldUseMusicWavyProgress(
+                    glassEnabled = glassEnabled,
+                    uiStyle = uiStyle,
+                    isPlaying = state.isPlaying,
+                    isDragging = draggedPosition != null,
+                    reduceMotion = reduceMotion
+                ),
+                activeColor = MusicAccentColor,
+                inactiveColor = inactiveTrackColor,
+                thumbColor = MusicAccentColor
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            AppText(formatMusicTime(state.positionMs), color = MusicContentColor.copy(alpha = 0.78f), fontSize = 12.sp)
+            AppText("-${formatMusicTime((state.durationMs - state.positionMs).coerceAtLeast(0L))}", color = MusicContentColor.copy(alpha = 0.78f), fontSize = 12.sp)
+        }
     }
 }
 
@@ -2962,6 +2923,9 @@ private fun TabletopPlayerLayout(
                         isDarkEnvironment = isDarkEnvironment
                     )
                 },
+                glassEnabled = glassEnabled,
+                miuixBackdrop = musicBackdrop,
+                liquidGlassTuning = liquidGlassTuning,
                 glassTintColor = backgroundColor,
                 isDarkEnvironment = isDarkEnvironment,
                 modifier = Modifier
@@ -3091,6 +3055,9 @@ private fun ExpandedQueuePane(
                         onLikeClick = onLikeClick,
                         cardSizeDp = adaptiveCardSizeDp,
                         showTransportControls = false,
+                        glassEnabled = glassEnabled,
+                        miuixBackdrop = miuixBackdrop,
+                        liquidGlassTuning = liquidGlassTuning,
                         glassTintColor = glassTintColor,
                         isDarkEnvironment = isDarkEnvironment,
                         modifier = Modifier.fillMaxWidth()

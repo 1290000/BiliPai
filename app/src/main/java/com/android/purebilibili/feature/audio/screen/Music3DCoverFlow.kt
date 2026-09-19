@@ -56,6 +56,10 @@ import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.feature.audio.player.MusicQueueItemUi
+import com.android.purebilibili.feature.home.components.LiquidGlassTuning
+import com.android.purebilibili.feature.home.components.biliPaiFloatingDockShell
+import com.android.purebilibili.feature.home.components.resolveLiquidGlassTuning
+import top.yukonga.miuix.kmp.extra.Backdrop as MiuixBackdrop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -78,15 +82,18 @@ internal fun Music3DCoverFlow(
     currentIndex: Int,
     isPlaying: Boolean,
     onItemClick: (Int) -> Unit,
-    onPlayPause: () -> Unit,
-    onPrevious: (() -> Unit)?,
-    onNext: (() -> Unit)?,
+    onPlayPause: () -> Unit = {},
+    onPrevious: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     onLikeClick: (() -> Unit)? = null,
     cardSizeDp: Int = 155,
     showTransportControls: Boolean = true,
     progressContent: (@Composable () -> Unit)? = null,
+    glassEnabled: Boolean = false,
+    miuixBackdrop: MiuixBackdrop? = null,
+    liquidGlassTuning: LiquidGlassTuning = resolveLiquidGlassTuning(progress = 0.5f),
     glassTintColor: Color = Color.Unspecified,
     isDarkEnvironment: Boolean = true
 ) {
@@ -300,6 +307,7 @@ internal fun Music3DCoverFlow(
                 Box(
                     modifier = Modifier
                         .widthIn(max = 440.dp)
+                        .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
                     progress()
@@ -310,24 +318,8 @@ internal fun Music3DCoverFlow(
 
             // 底部悬浮胶囊控制条（药丸毛玻璃容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
             val focusedItem = queue.getOrNull(pagerState.currentPage) ?: queue[validCurrentIndex]
-            val pillContainerColor = if (isDarkEnvironment) {
-                if (glassTintColor != Color.Unspecified) {
-                    lerp(glassTintColor, Color.White, 0.14f).copy(alpha = 0.20f)
-                } else {
-                    Color.White.copy(alpha = 0.15f)
-                }
-            } else {
-                if (glassTintColor != Color.Unspecified) {
-                    lerp(glassTintColor, Color.White, 0.72f).copy(alpha = 0.80f)
-                } else {
-                    Color.White.copy(alpha = 0.75f)
-                }
-            }
-            val pillBorderColor = if (isDarkEnvironment) {
-                Color.White.copy(alpha = 0.25f)
-            } else {
-                Color.Black.copy(alpha = 0.12f)
-            }
+            val pillContainerColor = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
+            val pillBorderColor = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
             val pillContentColor = if (isDarkEnvironment) {
                 Color.White
             } else {
@@ -336,16 +328,24 @@ internal fun Music3DCoverFlow(
 
             AppSurface(
                 shape = CircleShape,
-                color = pillContainerColor,
+                color = if (glassEnabled && miuixBackdrop != null) Color.Transparent else pillContainerColor,
                 border = BorderStroke(
                     width = 0.8.dp,
                     color = pillBorderColor
                 ),
-                shadowElevation = 8.dp,
+                shadowElevation = if (glassEnabled && miuixBackdrop != null) 0.dp else 6.dp,
                 modifier = Modifier
                     .padding(horizontal = 24.dp, vertical = 6.dp)
                     .widthIn(max = 440.dp)
                     .height(46.dp)
+                    .biliPaiFloatingDockShell(
+                        backdrop = miuixBackdrop,
+                        containerColor = pillContainerColor,
+                        pressProgress = 0f,
+                        shape = CircleShape,
+                        enabled = glassEnabled && miuixBackdrop != null,
+                        liquidGlassTuning = liquidGlassTuning
+                    )
             ) {
                 Row(
                     modifier = Modifier
