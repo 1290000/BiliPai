@@ -83,7 +83,7 @@ internal fun Music3DCoverFlow(
     isLiked: Boolean = false,
     onLikeClick: (() -> Unit)? = null,
     cardSizeDp: Int = 155,
-    durationLabel: String = "04:24"
+    showTransportControls: Boolean = true
 ) {
     if (queue.isEmpty()) return
 
@@ -232,40 +232,10 @@ internal fun Music3DCoverFlow(
                                         Brush.linearGradient(
                                             0.0f to Color.White.copy(alpha = 0.20f),
                                             0.22f to Color.White.copy(alpha = 0.05f),
-                                            0.50f to Color.Transparent
+                                             0.50f to Color.Transparent
                                         )
                                     )
                             )
-
-                            // 右上角复古数码打标时间徽章（1:1 复刻截图 04:24 标签）
-                            if (isCenter) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(top = 8.dp, end = 8.dp)
-                                        .background(
-                                            color = Color.Black.copy(alpha = 0.68f),
-                                            shape = RoundedCornerShape(3.dp)
-                                        )
-                                        .border(
-                                            width = 0.6.dp,
-                                            color = Color.White.copy(alpha = 0.28f),
-                                            shape = RoundedCornerShape(3.dp)
-                                        )
-                                        .padding(horizontal = 4.dp, vertical = 1.5.dp)
-                                ) {
-                                    AppText(
-                                        text = durationLabel,
-                                        color = Color.White.copy(alpha = 0.92f),
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace,
-                                            letterSpacing = 0.5.sp
-                                        )
-                                    )
-                                }
-                            }
                         }
 
                         // 地面微阴影接触线（Ground Contact Shadow）
@@ -355,12 +325,69 @@ internal fun Music3DCoverFlow(
                         modifier = Modifier.weight(1f)
                     )
 
-                    Spacer(Modifier.width(10.dp))
+                    if (showTransportControls) {
+                        Spacer(Modifier.width(10.dp))
 
-                    // 点赞按钮（未点赞薄线心，已点赞红粉心）
-                    onLikeClick?.let { like ->
+                        // 点赞按钮（未点赞薄线心，已点赞红粉心）
+                        onLikeClick?.let { like ->
+                            AppIconButton(
+                                onClick = like,
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                AppIcon(
+                                    imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = if (isLiked) "取消喜欢" else "喜欢",
+                                    tint = if (isLiked) Color(0xFFFF3B5C) else Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                        }
+
+                        // 上一首
                         AppIconButton(
-                            onClick = like,
+                            onClick = onPrevious ?: {},
+                            enabled = onPrevious != null,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            AppIcon(
+                                imageVector = Icons.Filled.SkipPrevious,
+                                contentDescription = "上一首",
+                                tint = Color.White.copy(alpha = if (onPrevious != null) 0.88f else 0.28f),
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+
+                        // 播放 / 暂停
+                        AppIconButton(
+                            onClick = onPlayPause,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            AppIcon(
+                                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "暂停" else "播放",
+                                tint = Color.White.copy(alpha = 0.95f),
+                                modifier = Modifier.size(21.dp)
+                            )
+                        }
+
+                        // 下一首
+                        AppIconButton(
+                            onClick = onNext ?: {},
+                            enabled = onNext != null,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            AppIcon(
+                                imageVector = Icons.Filled.SkipNext,
+                                contentDescription = "下一首",
+                                tint = Color.White.copy(alpha = if (onNext != null) 0.88f else 0.28f),
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
+                    } else if (onLikeClick != null) {
+                        // 在大屏分屏下已由左侧主控切歌，此处仅保留单手快速点赞
+                        Spacer(Modifier.width(8.dp))
+                        AppIconButton(
+                            onClick = onLikeClick,
                             modifier = Modifier.size(34.dp)
                         ) {
                             AppIcon(
@@ -370,47 +397,6 @@ internal fun Music3DCoverFlow(
                                 modifier = Modifier.size(17.dp)
                             )
                         }
-                    }
-
-                    // 上一首
-                    AppIconButton(
-                        onClick = onPrevious ?: {},
-                        enabled = onPrevious != null,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        AppIcon(
-                            imageVector = Icons.Filled.SkipPrevious,
-                            contentDescription = "上一首",
-                            tint = Color.White.copy(alpha = if (onPrevious != null) 0.88f else 0.28f),
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-
-                    // 播放 / 暂停
-                    AppIconButton(
-                        onClick = onPlayPause,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        AppIcon(
-                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "暂停" else "播放",
-                            tint = Color.White.copy(alpha = 0.95f),
-                            modifier = Modifier.size(21.dp)
-                        )
-                    }
-
-                    // 下一首
-                    AppIconButton(
-                        onClick = onNext ?: {},
-                        enabled = onNext != null,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        AppIcon(
-                            imageVector = Icons.Filled.SkipNext,
-                            contentDescription = "下一首",
-                            tint = Color.White.copy(alpha = if (onNext != null) 0.88f else 0.28f),
-                            modifier = Modifier.size(19.dp)
-                        )
                     }
                 }
             }

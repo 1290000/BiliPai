@@ -2546,11 +2546,20 @@ private fun ExpandedQueuePane(
                     )
                 }
             } else if (isCoverFlowView) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 6.dp),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
+                    val availableWidth = maxWidth
+                    val availableHeight = maxHeight
+                    val adaptiveCardSizeDp = minOf(
+                        (availableWidth.value * 0.52f).toInt(),
+                        (availableHeight.value * 0.46f).toInt(),
+                        230
+                    ).coerceAtLeast(165)
+
                     Music3DCoverFlow(
                         queue = queue,
                         currentIndex = currentIndex,
@@ -2561,7 +2570,9 @@ private fun ExpandedQueuePane(
                         onNext = onNext,
                         isLiked = isLiked,
                         onLikeClick = onLikeClick,
-                        cardSizeDp = 180
+                        cardSizeDp = adaptiveCardSizeDp,
+                        showTransportControls = false,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             } else {
