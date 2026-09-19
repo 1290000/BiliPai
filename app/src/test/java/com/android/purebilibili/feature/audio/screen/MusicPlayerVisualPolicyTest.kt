@@ -164,9 +164,9 @@ class MusicPlayerVisualPolicyTest {
     }
 
     @Test
-    fun `apple music cover scales on play pause and respects reduce motion`() {
+    fun `apple music cover scale remains constant on play pause`() {
         assertEquals(1.0f, resolveAppleMusicCoverScale(isPlaying = true, reduceMotion = false))
-        assertEquals(0.88f, resolveAppleMusicCoverScale(isPlaying = false, reduceMotion = false))
+        assertEquals(1.0f, resolveAppleMusicCoverScale(isPlaying = false, reduceMotion = false))
         assertEquals(1.0f, resolveAppleMusicCoverScale(isPlaying = false, reduceMotion = true))
     }
 

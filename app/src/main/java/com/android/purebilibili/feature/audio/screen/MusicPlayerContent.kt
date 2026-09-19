@@ -20,7 +20,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
@@ -2033,28 +2032,15 @@ private fun MusicArtwork(
             }
         }
     } else {
-        // Apple Music Style: 宽屏卡片（16:10，自适应视频比例）或经典方图（1:1），带弹簧呼吸缩放与氛围弥散阴影
-        val targetScale = resolveAppleMusicCoverScale(isPlaying = isPlaying, reduceMotion = reduceMotion)
-        val animatedScale by animateFloatAsState(
-            targetValue = targetScale,
-            animationSpec = if (reduceMotion) snap() else spring<Float>(
-                dampingRatio = 0.72f,
-                stiffness = 380f
-            ),
-            label = "apple_music_cover_scale"
-        )
+        // Apple Music Style: 宽屏卡片（16:10，自适应视频比例）或经典方图（1:1）与氛围弥散阴影
         val isCard = coverStyle == MusicCoverStyle.APPLE_MUSIC_CARD
         val cardAspectRatio = if (isCard) (16f / 10f) else 1f
         val cornerRadius = if (isCard) APPLE_MUSIC_CARD_CORNER_RADIUS_DP.dp else APPLE_MUSIC_COVER_CORNER_RADIUS_DP.dp
         val cornerShape = RoundedCornerShape(cornerRadius)
-        val shadowElevation = if (isPlaying) 20.dp else 10.dp
+        val shadowElevation = APPLE_MUSIC_COVER_SHADOW_ELEVATION_DP.dp
         Box(
             modifier = modifier
                 .aspectRatio(cardAspectRatio)
-                .graphicsLayer {
-                    scaleX = animatedScale
-                    scaleY = animatedScale
-                }
                 .shadow(
                     elevation = shadowElevation,
                     shape = cornerShape,
