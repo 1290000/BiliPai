@@ -1229,7 +1229,7 @@ private fun PlayerPage(
             MusicSecondaryControls(
                 mode = state.playMode,
                 shuffleEnabled = state.shuffleEnabled,
-                showQueue = state.queueControls.showQueue || effectiveQueue.isNotEmpty(),
+                showQueue = state.queueControls.showQueue || state.queue.isNotEmpty(),
                 onPlayModeChange = onPlayModeChange,
                 onShuffleEnabledChange = onShuffleEnabledChange,
                 onCommentsClick = onCommentsClick,
