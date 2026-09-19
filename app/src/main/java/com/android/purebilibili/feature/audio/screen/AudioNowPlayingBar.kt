@@ -122,6 +122,11 @@ internal fun AudioNowPlayingBar(
     val handleExpand = {
         barCoordsRef[0]?.takeIf { it.isAttached }?.boundsInRoot()?.let { bounds ->
             val sourceCoverBounds = coverCoordsRef[0]?.takeIf { it.isAttached }?.boundsInRoot()
+            val effectiveSourceLayout = if (iconOnlyProgress >= 0.99f) {
+                VideoCardSourceLayout.COVER_ONLY
+            } else {
+                VideoCardSourceLayout.SIDE_BY_SIDE
+            }
             if (state.bvid.isNotBlank()) {
                 CardPositionManager.recordVideoCardPosition(
                     bvid = state.bvid,
@@ -132,7 +137,7 @@ internal fun AudioNowPlayingBar(
                     density = density.density,
                     sourceCornerDp = 28,
                     coverBounds = sourceCoverBounds,
-                    sourceLayout = VideoCardSourceLayout.SIDE_BY_SIDE,
+                    sourceLayout = effectiveSourceLayout,
                     sourceChromeSnapshot = VideoCardSourceChromeSnapshot(
                         title = state.title,
                         ownerName = state.artist,

@@ -48,6 +48,8 @@ import com.android.purebilibili.feature.audio.screen.AudioNowPlayingBarState
 import com.android.purebilibili.feature.audio.screen.ListenVideoRoute
 import com.android.purebilibili.feature.audio.screen.isAudioNowPlayingPlayerDestination
 import com.android.purebilibili.feature.audio.screen.resolveAudioNowPlayingVisible
+import com.android.purebilibili.feature.home.components.LinkedDockPhase
+import com.android.purebilibili.feature.home.components.resolveLinkedDockPhaseOnAudioChange
 import com.android.purebilibili.feature.home.HomeVideoClickRequest
 import com.android.purebilibili.feature.home.HomeVideoClickSource
 import com.android.purebilibili.feature.home.HomeScreen
@@ -1442,6 +1444,14 @@ fun AppNavigation(
         val audioPlaylist by PlaylistManager.playlist.collectAsStateWithLifecycle()
         val audioPlaylistIndex by PlaylistManager.currentIndex.collectAsStateWithLifecycle()
         val audioNowPlayingItem = audioPlaylist.getOrNull(audioPlaylistIndex)
+        var linkedDockPhase by rememberSaveable { mutableStateOf(LinkedDockPhase.Expanded) }
+        val hasActiveAudioPlayback = audioNowPlayingActive && audioNowPlayingItem != null && audioNowPlayingBarEnabled
+        LaunchedEffect(hasActiveAudioPlayback) {
+            val reconciled = resolveLinkedDockPhaseOnAudioChange(linkedDockPhase, hasActiveAudioPlayback)
+            if (reconciled != linkedDockPhase) {
+                linkedDockPhase = reconciled
+            }
+        }
         // Shared scroll position is also used by non-home destinations to drive the
         // linked playback dock without forcing the bottom bar itself to disappear.
         val scrollOffsetState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -3975,7 +3985,8 @@ fun AppNavigation(
             val isLandscapeNowPlaying =
                 androidx.compose.ui.platform.LocalConfiguration.current.orientation ==
                     android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            val isPlayerNowPlayingDestination = isAudioNowPlayingPlayerDestination(currentRoute)
+            val effectiveAudioDockRoute = if (driveBottomBarByProgress) bottomBarMountRoute else currentRoute
+            val isPlayerNowPlayingDestination = isAudioNowPlayingPlayerDestination(effectiveAudioDockRoute)
             val showAudioNowPlayingInDock = resolveAudioNowPlayingVisible(
                 sessionActive = audioNowPlayingActive,
                 isOnAudioModeScreen = currentNavigation3Key is BiliPaiNavKey.AudioMode,
@@ -3985,6 +3996,7 @@ fun AppNavigation(
                 isLandscape = isLandscapeNowPlaying,
                 isPlayerDestination = isPlayerNowPlayingDestination
             )
+            val isPlayerIndependentDestination = isAudioNowPlayingPlayerDestination(currentRoute)
             val showAudioNowPlayingIndependent = resolveAudioNowPlayingVisible(
                 sessionActive = audioNowPlayingActive,
                 isOnAudioModeScreen = currentNavigation3Key is BiliPaiNavKey.AudioMode,
@@ -3993,7 +4005,7 @@ fun AppNavigation(
                 barEnabled = audioNowPlayingBarEnabled,
                 isVideoDetailDestination = isVideoDetailDestination,
                 isLandscape = isLandscapeNowPlaying,
-                isPlayerDestination = isPlayerNowPlayingDestination
+                isPlayerDestination = isPlayerIndependentDestination
             )
 
             if (bottomBarCanMount) {
@@ -4150,6 +4162,8 @@ fun AppNavigation(
                                     isPagerScrollInProgressProvider =
                                         mainBottomPagerState.scrollInProgressProvider,
                                     uiSkinDecoration = bottomBarUiSkinDecoration,
+                                    linkedDockPhase = linkedDockPhase,
+                                    onLinkedDockPhaseChange = { linkedDockPhase = it },
                                     onToggleSidebar = if (tabletUseSidebar) {
                                         {
                                             coroutineScope.launch {
@@ -4195,6 +4209,8 @@ fun AppNavigation(
                                 isPagerScrollInProgressProvider =
                                     mainBottomPagerState.scrollInProgressProvider,
                                 uiSkinDecoration = bottomBarUiSkinDecoration,
+                                linkedDockPhase = linkedDockPhase,
+                                onLinkedDockPhaseChange = { linkedDockPhase = it },
                                 onToggleSidebar = if (tabletUseSidebar) {
                                     {
                                         coroutineScope.launch {

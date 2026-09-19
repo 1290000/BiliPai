@@ -57,20 +57,36 @@ internal fun LinkedBottomDock(
     navigationLabelMode: Int,
     navigationMinEdgePadding: androidx.compose.ui.unit.Dp,
     nowPlayingContent: (@Composable (Modifier, Float, Float, Float) -> Unit)?,
+    dockPhase: LinkedDockPhase? = null,
+    onDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
     modifier: Modifier = Modifier,
     blurEnabled: Boolean = false,
     hazeState: HazeState? = null,
     navigationContent: @Composable () -> Unit,
 ) {
     val hasAudio = nowPlayingContent != null
-    var phase by remember(currentItem, searchEnabled, hasAudio) {
+    var internalPhase by remember(currentItem, searchEnabled, hasAudio) {
         mutableStateOf(
-            if (currentItem == BottomNavItem.HOME) {
-                LinkedDockPhase.Expanded
-            } else {
-                resolveLinkedDockRestingPhase(collapseRequested, hasAudio)
-            }
+            resolveLinkedDockInitialPhase(
+                currentItem = currentItem,
+                collapseRequested = collapseRequested,
+                hasAudio = hasAudio,
+                savedPhase = dockPhase,
+            )
         )
+    }
+    val phase = dockPhase ?: internalPhase
+    val updatePhase: (LinkedDockPhase) -> Unit = { newPhase ->
+        if (dockPhase != null && onDockPhaseChange != null) {
+            onDockPhaseChange(newPhase)
+        } else {
+            internalPhase = newPhase
+        }
+    }
+    LaunchedEffect(hasAudio) {
+        if (!hasAudio && phase == LinkedDockPhase.Playback) {
+            updatePhase(LinkedDockPhase.Expanded)
+        }
     }
     var query by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
@@ -89,10 +105,10 @@ internal fun LinkedBottomDock(
             } else {
                 accumulated = accumulateDockScroll(accumulated, delta)
                 if (offset <= 0f || accumulated <= -threshold) {
-                    phase = LinkedDockPhase.Expanded
+                    updatePhase(LinkedDockPhase.Expanded)
                     accumulated = 0f
                 } else if (hasAudio && accumulated >= threshold) {
-                    phase = LinkedDockPhase.Playback
+                    updatePhase(LinkedDockPhase.Playback)
                     accumulated = 0f
                 }
             }
@@ -100,12 +116,12 @@ internal fun LinkedBottomDock(
     }
     LaunchedEffect(currentItem, collapseRequested, hasAudio) {
         if (currentItem != BottomNavItem.HOME && phase != LinkedDockPhase.Search) {
-            phase = resolveLinkedDockRestingPhase(collapseRequested, hasAudio)
+            updatePhase(resolveLinkedDockRestingPhase(collapseRequested, hasAudio))
         }
     }
     fun expand() {
         focusManager.clearFocus()
-        phase = LinkedDockPhase.Expanded
+        updatePhase(LinkedDockPhase.Expanded)
     }
     BackHandler(phase != LinkedDockPhase.Expanded) { expand() }
     val reduceMotion = rememberSystemReduceMotion()
@@ -199,7 +215,7 @@ internal fun LinkedBottomDock(
                                 .clip(shape)
                                 .then(
                                     if (phase != LinkedDockPhase.Search) Modifier.clickable(role = Role.Button) {
-                                        phase = LinkedDockPhase.Search
+                                        updatePhase(LinkedDockPhase.Search)
                                     } else Modifier
                                 )
                         ) {

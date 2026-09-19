@@ -2223,7 +2223,9 @@ fun FrostedBottomBar(
     collapseLinkedDock: Boolean = false,
     indicatorPositionProvider: (() -> Float)? = null,
     isPagerScrollInProgressProvider: () -> Boolean = { false },
-    uiSkinDecoration: BottomBarUiSkinDecoration? = null
+    uiSkinDecoration: BottomBarUiSkinDecoration? = null,
+    linkedDockPhase: LinkedDockPhase? = null,
+    onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
 ) {
     val foldPosture = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current.posture
     val forceBottomNavigation = foldPosture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
@@ -2279,6 +2281,8 @@ fun FrostedBottomBar(
                 isPagerScrollInProgressProvider = isPagerScrollInProgressProvider,
                 uiSkinDecoration = uiSkinDecoration,
                 sharedLiquidGlassEnabled = policy.liquidGlassEnabled,
+                linkedDockPhase = linkedDockPhase,
+                onLinkedDockPhaseChange = onLinkedDockPhaseChange,
                 )
             },
             platformContent = { policy ->
@@ -2311,6 +2315,8 @@ fun FrostedBottomBar(
                 isPagerScrollInProgressProvider = isPagerScrollInProgressProvider,
                 uiSkinDecoration = uiSkinDecoration,
                 sharedLiquidGlassEnabled = policy.liquidGlassEnabled,
+                linkedDockPhase = linkedDockPhase,
+                onLinkedDockPhaseChange = onLinkedDockPhaseChange,
                 )
             },
         )
@@ -2347,6 +2353,8 @@ private fun MaterialBottomBar(
     isPagerScrollInProgressProvider: () -> Boolean = { false },
     uiSkinDecoration: BottomBarUiSkinDecoration? = null,
     sharedLiquidGlassEnabled: Boolean,
+    linkedDockPhase: LinkedDockPhase? = null,
+    onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -2459,6 +2467,8 @@ private fun MaterialBottomBar(
                 navigationLabelMode = normalizedLabelMode,
                 navigationMinEdgePadding = androidNativeTuning.outerHorizontalPaddingDp.dp,
                 nowPlayingContent = nowPlayingContent,
+                dockPhase = linkedDockPhase,
+                onDockPhaseChange = onLinkedDockPhaseChange,
                 modifier = modifier,
                 navigationContent = {
                     OfficialMd3FloatingToolbarContent(
@@ -2543,7 +2553,9 @@ private fun MaterialBottomBar(
             collapseLinkedDock = collapseLinkedDock,
             indicatorPositionProvider = indicatorPositionProvider,
             isPagerScrollInProgressProvider = isPagerScrollInProgressProvider,
-            uiSkinDecoration = uiSkinDecoration
+            uiSkinDecoration = uiSkinDecoration,
+            linkedDockPhase = linkedDockPhase,
+            onLinkedDockPhaseChange = onLinkedDockPhaseChange,
         )
         return
     }
@@ -2907,6 +2919,8 @@ private fun MiuixBottomBar(
     isPagerScrollInProgressProvider: () -> Boolean = { false },
     uiSkinDecoration: BottomBarUiSkinDecoration? = null,
     sharedLiquidGlassEnabled: Boolean,
+    linkedDockPhase: LinkedDockPhase? = null,
+    onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
 ) {
     val haptic = rememberHapticFeedback()
     val normalizedLabelMode = normalizeBottomBarLabelMode(labelMode)
@@ -3013,7 +3027,9 @@ private fun MiuixBottomBar(
             collapseLinkedDock = collapseLinkedDock,
             indicatorPositionProvider = indicatorPositionProvider,
             isPagerScrollInProgressProvider = isPagerScrollInProgressProvider,
-            uiSkinDecoration = uiSkinDecoration
+            uiSkinDecoration = uiSkinDecoration,
+            linkedDockPhase = linkedDockPhase,
+            onLinkedDockPhaseChange = onLinkedDockPhaseChange,
         )
         return
     }
@@ -3345,13 +3361,17 @@ private fun BiliPaiFloatingBottomBar(
     collapseLinkedDock: Boolean = false,
     indicatorPositionProvider: (() -> Float)? = null,
     isPagerScrollInProgressProvider: () -> Boolean = { false },
-    uiSkinDecoration: BottomBarUiSkinDecoration? = null
+    uiSkinDecoration: BottomBarUiSkinDecoration? = null,
+    linkedDockPhase: LinkedDockPhase? = null,
+    onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null
 ) {
     if (bottomBarSearchEnabled || nowPlayingContent != null) {
         LinkedBottomDock(
             currentItem = currentItem,
             firstItem = visibleItems.firstOrNull() ?: BottomNavItem.HOME,
             firstLabel = resolveBottomNavItemLabel(visibleItems.firstOrNull() ?: BottomNavItem.HOME, itemLabels),
+            dockPhase = linkedDockPhase,
+            onDockPhaseChange = onLinkedDockPhaseChange,
             searchEnabled = bottomBarSearchEnabled,
             isFeedScrollInProgress = isFeedScrollInProgress,
             collapseRequested = collapseLinkedDock,
