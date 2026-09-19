@@ -2561,6 +2561,7 @@ private fun MaterialBottomBar(
             uiSkinDecoration = uiSkinDecoration,
             linkedDockPhase = linkedDockPhase,
             onLinkedDockPhaseChange = onLinkedDockPhaseChange,
+            isTopLevelDestination = isTopLevelDestination,
         )
         return
     }
@@ -3036,6 +3037,7 @@ private fun MiuixBottomBar(
             uiSkinDecoration = uiSkinDecoration,
             linkedDockPhase = linkedDockPhase,
             onLinkedDockPhaseChange = onLinkedDockPhaseChange,
+            isTopLevelDestination = isTopLevelDestination,
         )
         return
     }
@@ -3369,7 +3371,8 @@ private fun BiliPaiFloatingBottomBar(
     isPagerScrollInProgressProvider: () -> Boolean = { false },
     uiSkinDecoration: BottomBarUiSkinDecoration? = null,
     linkedDockPhase: LinkedDockPhase? = null,
-    onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null
+    onLinkedDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
+    isTopLevelDestination: Boolean = true
 ) {
     if (bottomBarSearchEnabled || nowPlayingContent != null) {
         LinkedBottomDock(
