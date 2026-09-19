@@ -149,6 +149,8 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
 import com.android.purebilibili.core.ui.blur.hazeSourceCompat
 import com.android.purebilibili.core.ui.blur.shouldAllowRuntimeShaderBackedHazeEffect
@@ -617,24 +619,19 @@ fun AppNavigation(
         var navigationHostOriginInRoot by remember { mutableStateOf(Offset.Zero) }
         var sidebarAccountSwitcherVisible by rememberSaveable { mutableStateOf(false) }
         var sidebarAccountSessionGeneration by remember { mutableIntStateOf(0) }
-        val sidebarAccounts = remember(
-            accountSessionRefreshGeneration,
-            sidebarAccountSessionGeneration,
+        val sidebarAccountSnapshot by produceState(
+            initialValue = com.android.purebilibili.core.store.AccountSessionSnapshot(),
+            key1 = context,
+            key2 = accountSessionRefreshGeneration,
+            key3 = sidebarAccountSessionGeneration,
         ) {
-            AccountSessionStore.getAccounts(context)
+            value = withContext(Dispatchers.IO) {
+                AccountSessionStore.readSnapshot(context)
+            }
         }
-        val sidebarActiveAccountMid = remember(
-            accountSessionRefreshGeneration,
-            sidebarAccountSessionGeneration,
-        ) {
-            AccountSessionStore.getActiveAccountMid(context)
-        }
-        val sidebarPlaybackAccountMid = remember(
-            accountSessionRefreshGeneration,
-            sidebarAccountSessionGeneration,
-        ) {
-            AccountSessionStore.getPlaybackAccountMid(context)
-        }
+        val sidebarAccounts = sidebarAccountSnapshot.accounts
+        val sidebarActiveAccountMid = sidebarAccountSnapshot.activeAccountMid
+        val sidebarPlaybackAccountMid = sidebarAccountSnapshot.playbackAccountMid
         val playerInteractionSettings by SettingsManager.getPlayerInteractionSettings(context)
             .collectAsStateWithLifecycle(
                 initialValue = com.android.purebilibili.core.store.PlayerInteractionSettings(),
