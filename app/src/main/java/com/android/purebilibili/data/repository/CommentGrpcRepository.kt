@@ -443,7 +443,8 @@ internal object CommentGrpcRepository {
             cardLabels = control.cardLabels,
             replyControl = control.replyControl,
             parent = parent,
-            replyType = if (type != 0L) type.toInt() else 1,
+            dialog = dialog,
+            replyType = if (type != 0L) type.toInt() else 1
         )
     }
 
