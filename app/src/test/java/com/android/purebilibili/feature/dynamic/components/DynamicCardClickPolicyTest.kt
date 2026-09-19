@@ -530,5 +530,69 @@ class DynamicCardClickPolicyTest {
         assertEquals(null, resolveDynamicHeadlineTitle(OpusMajor(title = "  "), ArticleMajor(title = "")))
         assertEquals(null, resolveDynamicHeadlineTitle(null, null))
     }
+
+    @Test
+    fun resolveDynamicAuthorClickMid_returnsNullForUgcSeasonWithoutOwnerMid() {
+        val item = DynamicItem(
+            type = "DYNAMIC_TYPE_UGC_SEASON",
+            modules = DynamicModules(
+                module_author = DynamicAuthorModule(mid = 123456L, name = "装机猿PC问答3"),
+                module_dynamic = DynamicContentModule(
+                    major = DynamicMajor(
+                        type = "MAJOR_TYPE_UGC_SEASON",
+                        ugc_season = UgcSeasonMajor(id = 123456L, title = "装机猿PC问答3", mid = 0L)
+                    )
+                )
+            )
+        )
+
+        val targetMid = resolveDynamicAuthorClickMid(item)
+
+        assertNull(targetMid)
+    }
+
+    @Test
+    fun resolveDynamicAuthorClickMid_returnsOwnerMidWhenUgcSeasonSuppliesMid() {
+        val item = DynamicItem(
+            type = "DYNAMIC_TYPE_UGC_SEASON",
+            modules = DynamicModules(
+                module_author = DynamicAuthorModule(mid = 9999L, name = "装机猿PC问答3"),
+                module_dynamic = DynamicContentModule(
+                    major = DynamicMajor(
+                        type = "MAJOR_TYPE_UGC_SEASON",
+                        ugc_season = UgcSeasonMajor(id = 9999L, title = "装机猿PC问答3", mid = 260882L)
+                    )
+                )
+            )
+        )
+
+        val targetMid = resolveDynamicAuthorClickMid(item)
+
+        assertEquals(260882L, targetMid)
+    }
+
+    @Test
+    fun resolveDynamicAuthorClickMid_returnsNullForPgcDynamic() {
+        val item = DynamicItem(
+            type = "DYNAMIC_TYPE_PGC",
+            modules = DynamicModules(
+                module_author = DynamicAuthorModule(mid = 111L, name = "哔哩哔哩番剧")
+            )
+        )
+
+        assertNull(resolveDynamicAuthorClickMid(item))
+    }
+
+    @Test
+    fun resolveDynamicAuthorClickMid_returnsAuthorMidForRegularUserDynamic() {
+        val item = DynamicItem(
+            type = "DYNAMIC_TYPE_AV",
+            modules = DynamicModules(
+                module_author = DynamicAuthorModule(mid = 260882L, name = "远古时代装机猿")
+            )
+        )
+
+        assertEquals(260882L, resolveDynamicAuthorClickMid(item))
+    }
 }
 

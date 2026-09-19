@@ -426,6 +426,24 @@ fun DynamicCardV2(
         
         //  用户头部（头像 + 名称 + 时间 + 更多）
         if (author != null) {
+            val authorClickMid = remember(item) { resolveDynamicAuthorClickMid(item) }
+            val ugcSeason = item.modules.module_dynamic?.major?.ugc_season
+            val onAuthorHeaderClick = {
+                if (authorClickMid != null) {
+                    dispatchDynamicCardPrimaryAction(
+                        action = DynamicCardPrimaryAction.OpenUser(authorClickMid),
+                        onVideoClick = onVideoClick,
+                        onBangumiClick = onBangumiClick,
+                        onArticleClick = onArticleClick,
+                        onDynamicDetailClick = openDynamicDetail,
+                        onUserClick = onUserClick,
+                        onLiveClick = onLiveClick
+                    )
+                } else if (ugcSeason != null && ugcSeason.id > 0L && onCollectionClick != null) {
+                    onCollectionClick(ugcSeason.id, ugcSeason.mid, ugcSeason.title, ugcSeason.jump_url)
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -436,16 +454,8 @@ fun DynamicCardV2(
                         .size(AppChromeSizeTokens.MinimumTouchTarget)
                         .clip(CircleShape)
                         .semantics { contentDescription = "查看${author.name}的个人主页" }
-                        .clickable(enabled = author.mid > 0) {
-                            dispatchDynamicCardPrimaryAction(
-                                action = DynamicCardPrimaryAction.OpenUser(author.mid),
-                                onVideoClick = onVideoClick,
-                                onBangumiClick = onBangumiClick,
-                                onArticleClick = onArticleClick,
-                                onDynamicDetailClick = openDynamicDetail,
-                                onUserClick = onUserClick,
-                                onLiveClick = onLiveClick
-                            )
+                        .clickable(enabled = authorClickMid != null || (ugcSeason != null && ugcSeason.id > 0L && onCollectionClick != null)) {
+                            onAuthorHeaderClick()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -469,7 +479,10 @@ fun DynamicCardV2(
                         author.name,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = MaterialTheme.typography.bodyMedium.fontSize,
-                        color = if (author.vip?.status == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        color = if (author.vip?.status == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.clickable(enabled = authorClickMid != null || (ugcSeason != null && ugcSeason.id > 0L && onCollectionClick != null)) {
+                            onAuthorHeaderClick()
+                        }
                     )
                     AppText(
                         authorTimeText,
@@ -2275,6 +2288,8 @@ fun DynamicCardCompact(
         ?: content?.major?.archive?.title 
         ?: "动态"
     
+    val authorClickMid = remember(item) { resolveDynamicAuthorClickMid(item) }
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2283,7 +2298,7 @@ fun DynamicCardCompact(
                 content?.major?.archive
                     ?.let(::resolveArchivePlayableBvid)
                     ?.let(onVideoClick)
-                    ?: author?.let { onUserClick(it.mid) }
+                    ?: authorClickMid?.let(onUserClick)
             }
             .padding(horizontal = AppSpacingTokens.Large, vertical = AppSpacingTokens.Medium),  //  优化间距
         verticalAlignment = Alignment.CenterVertically
@@ -2295,7 +2310,9 @@ fun DynamicCardCompact(
                     .size(AppChromeSizeTokens.MinimumTouchTarget)
                     .clip(CircleShape)
                     .semantics { contentDescription = "查看${author.name}的个人主页" }
-                    .clickable(enabled = author.mid > 0) { onUserClick(author.mid) },
+                    .clickable(enabled = authorClickMid != null) { 
+                        authorClickMid?.let(onUserClick) 
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(

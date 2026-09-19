@@ -143,14 +143,15 @@ fun ForwardedContent(
                     pubTs = author.pub_ts
                 )
             }
+            val origAuthorClickMid = remember(orig) { resolveDynamicAuthorClickMid(orig) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AppText(
                     "@${author.name}",
                     fontSize = MaterialTheme.typography.labelMedium.fontSize,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary, // 主题自适应颜色
-                    modifier = Modifier.clickable(enabled = author.mid > 0L) {
-                        onUserClick(author.mid)
+                    modifier = Modifier.clickable(enabled = origAuthorClickMid != null) {
+                        origAuthorClickMid?.let(onUserClick)
                     }
                 )
                 Spacer(modifier = Modifier.width(AppSpacingTokens.Small))
