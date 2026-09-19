@@ -13,6 +13,10 @@ class SpaceAggregateRequestPolicyTest {
 
         assertEquals("2", params["vmid"])
         assertEquals(AppSignUtils.ANDROID_APP_KEY, params["appkey"])
+        assertEquals(
+            "{\"appId\":1,\"platform\":3,\"version\":\"8.43.0\",\"abtest\":\"\"}",
+            params["statistics"]
+        )
         assertTrue(params["ts"].orEmpty().isNotBlank())
         assertTrue(params["sign"].orEmpty().isNotBlank())
         assertFalse(params.containsKey("access_key"))

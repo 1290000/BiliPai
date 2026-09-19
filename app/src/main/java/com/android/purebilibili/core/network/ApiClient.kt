@@ -2060,6 +2060,7 @@ internal fun buildSpaceAggregateParams(
         "mobi_app" to "android",
         "platform" to "android",
         "s_locale" to "zh_CN",
+        "statistics" to "{\"appId\":1,\"platform\":3,\"version\":\"8.43.0\",\"abtest\":\"\"}",
         "ts" to AppSignUtils.getTimestamp().toString(),
         "vmid" to mid.toString()
     )

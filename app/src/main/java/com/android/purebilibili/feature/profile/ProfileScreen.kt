@@ -1180,6 +1180,10 @@ private fun ProfileSpaceContent(
     }
 
     val hasWallpaper = user.topPhoto.isNotEmpty()
+    val tabletWallpaperRevealHeight = resolveProfileTabletWallpaperRevealHeightDp(
+        useSplitLayout = isTablet,
+        hasWallpaper = hasWallpaper
+    ).dp
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = colorScheme.surface.luminance() < 0.5f
@@ -1255,7 +1259,8 @@ private fun ProfileSpaceContent(
                         showEditProfileButton = showProfileEditButton,
                         onEditClick = { showEditDialog = true },
                         onWallpaperActionClick = { showWallpaperActionSheet = true },
-                        onFollowingClick = onFollowingClick
+                        onFollowingClick = onFollowingClick,
+                        modifier = Modifier.heightIn(min = tabletWallpaperRevealHeight)
                     )
                     ProfileQuickAccessDashboard(
                         favoriteFolderShortcuts = favoriteFolderShortcuts,
@@ -1290,7 +1295,10 @@ private fun ProfileSpaceContent(
                     onDynamicDeleteClick = onDynamicDeleteClick,
                     contentChrome = contentChrome,
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(bottom = 48.dp),
+                    contentPadding = PaddingValues(
+                        top = tabletWallpaperRevealHeight,
+                        bottom = 48.dp
+                    ),
                     listState = tabletFeedListState,
                 )
             }

@@ -15,6 +15,7 @@ import com.android.purebilibili.data.model.response.SpaceAggregateData
 import com.android.purebilibili.data.model.response.SpaceAggregateImages
 import com.android.purebilibili.data.model.response.SpaceAggregateRelation
 import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
+import com.android.purebilibili.data.model.response.SpaceTagItem
 import com.android.purebilibili.data.model.response.SpaceTopArcData
 import com.android.purebilibili.data.model.response.SpaceUserInfo
 import com.android.purebilibili.data.model.response.SpaceVideoItem
@@ -740,6 +741,28 @@ class SpaceLoadPolicyTest {
             "https://i0.hdslb.com/bfs/space/night-cover.jpg",
             seed?.userInfo?.topPhoto
         )
+    }
+
+    @Test
+    fun `resolveSpaceInitialSeedFromAggregate keeps PiliPlus space tag contract`() {
+        val seed = resolveSpaceInitialSeedFromAggregate(
+            data = SpaceAggregateData(
+                card = SpaceAggregateCard(
+                    mid = "42",
+                    spaceTag = listOf(
+                        SpaceTagItem(type = "location", title = "IP属地：广东"),
+                        SpaceTagItem(type = "real_name", title = "已实名认证"),
+                        SpaceTagItem(type = "other", title = "不应展示")
+                    )
+                )
+            )
+        )
+
+        assertEquals(
+            listOf("IP属地：广东", "已实名认证"),
+            seed?.userInfo?.spaceTags?.map { it.title }
+        )
+        assertEquals("IP属地：广东", seed?.userInfo?.ipLocation)
     }
 
     @Test
