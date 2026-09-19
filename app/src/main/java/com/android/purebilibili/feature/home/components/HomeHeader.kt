@@ -5,6 +5,7 @@ import com.android.purebilibili.core.ui.components.AppHorizontalDivider
 
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppTopChromePolicy
+import com.android.purebilibili.core.ui.blur.TopSolidProgressiveFadeOverlay
 import com.android.purebilibili.core.ui.AppTopTabPresentation
 import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.theme.LocalAppUiStyle
@@ -1566,6 +1567,7 @@ fun HomeHeader(
     
     val appThemeConfig = com.android.purebilibili.core.ui.LocalAppThemeConfig.current
     val progressiveTopBlurEnabled = appThemeConfig.progressiveTopBlurEnabled
+    val progressiveTopFadeEnabled = appThemeConfig.progressiveTopFadeEnabled
 
     // [Feature] Liquid Glass Logic
     val topChromeMaterialMode = resolveHomeTopChromeMaterialMode(
@@ -2275,8 +2277,21 @@ fun HomeHeader(
                         isTransitionRunning = topChromeMotionPolicy.isTransitionRunning,
                         forceLowBlurBudget = forceLowBlurBudget,
                         useProgressiveTopBlur = isProgressiveBlurRequested,
-                )
-            )
+                    )
+            ) {
+                if (progressiveTopFadeEnabled && !isHeaderBlurEnabled) {
+                    TopSolidProgressiveFadeOverlay(
+                        surfaceColor = resolveHomeTopContinuousSlabSurfaceColor(
+                            baseColor = headerChromeColors.containerColor,
+                            blurAlpha = 1f,
+                            usesNativeContainerTreatment = usesNativeContainerTreatment,
+                            renderMode = effectiveContinuousSlabRenderMode
+                        ),
+                        fadeHeight = continuousSlabHeight,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
         // The skin head artwork belongs to the complete pinned header, not only the
         // search/tabs panel. Drawing it here lets the same crop continue behind the
