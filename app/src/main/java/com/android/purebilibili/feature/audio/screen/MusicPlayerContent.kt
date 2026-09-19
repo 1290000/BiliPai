@@ -58,6 +58,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,6 +77,7 @@ import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppIconButtonDefaults
 import com.android.purebilibili.core.ui.components.AppLinearProgressIndicator
 import com.android.purebilibili.core.ui.components.AppSlider
+import com.android.purebilibili.core.ui.components.AppSliderDefaults
 import androidx.compose.material3.MaterialTheme
 import com.android.purebilibili.core.ui.AppModalBottomSheet
 import com.android.purebilibili.core.ui.components.AppOutlinedTextField
@@ -214,6 +216,42 @@ internal fun resolveMusicImmersivePanelColor(
     stop = Color.Black,
     fraction = darkOverlayFraction.coerceIn(0f, 1f),
 )
+
+/** Frosted glass container tint adapting to background color and dark/light environment. */
+internal fun resolveMusicGlassContainerColor(
+    glassTintColor: Color,
+    isDark: Boolean
+): Color = if (isDark) {
+    if (glassTintColor != Color.Unspecified) {
+        lerp(glassTintColor, Color.White, 0.14f).copy(alpha = 0.20f)
+    } else {
+        Color.White.copy(alpha = 0.16f)
+    }
+} else {
+    if (glassTintColor != Color.Unspecified) {
+        lerp(glassTintColor, Color.White, 0.72f).copy(alpha = 0.82f)
+    } else {
+        Color.White.copy(alpha = 0.78f)
+    }
+}
+
+/** Frosted glass subtle border adapting to dark/light environment. */
+internal fun resolveMusicGlassBorderColor(
+    glassTintColor: Color,
+    isDark: Boolean
+): Color = if (isDark) {
+    if (glassTintColor != Color.Unspecified) {
+        lerp(glassTintColor, Color.White, 0.35f).copy(alpha = 0.25f)
+    } else {
+        Color.White.copy(alpha = 0.25f)
+    }
+} else {
+    if (glassTintColor != Color.Unspecified) {
+        lerp(glassTintColor, Color.Black, 0.20f).copy(alpha = 0.12f)
+    } else {
+        Color.Black.copy(alpha = 0.12f)
+    }
+}
 
 /** 听视频强调色：直接使用应用主题 primary，与播放器一致。 */
 internal fun resolveMusicPlayerAccentColor(primary: Color): Color = primary
@@ -364,6 +402,14 @@ internal fun MusicPlayerContent(
         MaterialTheme.colorScheme.onSurface
     }
     val resolvedAccentColor = resolveMusicPlayerAccentColor(MaterialTheme.colorScheme.primary)
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkEnvironment = remember(backgroundColor, chromeSpec.usePaletteImmersiveBackdrop, isSystemDark) {
+        if (chromeSpec.usePaletteImmersiveBackdrop && backgroundColor != Color.Unspecified) {
+            backgroundColor.luminance() < 0.48f
+        } else {
+            isSystemDark
+        }
+    }
 
     CompositionLocalProvider(
         LocalMusicContentColor provides resolvedContentColor,
@@ -446,6 +492,7 @@ internal fun MusicPlayerContent(
                                     { showAudioQuality = true }
                                 },
                                 glassTintColor = backgroundColor,
+                                isDarkEnvironment = isDarkEnvironment,
                                 coverStyle = coverStyle,
                                 onToggleCoverStyle = {
                                     coverStyle = resolveNextCoverStyle(coverStyle)
@@ -475,6 +522,7 @@ internal fun MusicPlayerContent(
                                 blurEffectsEnabled = lyricsBlurEffectsEnabled,
                                 reduceMotion = effectiveReduceMotion,
                                 glassTintColor = backgroundColor,
+                                isDarkEnvironment = isDarkEnvironment,
                                 liquidGlassTuning = liquidGlassTuning,
                                 miuixBackdrop = musicBackdrop,
                                 progressSeekRevision = progressSeekRevision,
@@ -554,6 +602,7 @@ internal fun MusicPlayerContent(
                         onOpenLyricsSearch = { showLyricsSearch = true },
                         availableWidthDp = availableWidthDp,
                         availableHeightDp = availableHeightDp,
+                        isDarkEnvironment = isDarkEnvironment,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -611,6 +660,7 @@ internal fun MusicPlayerContent(
                                     { showAudioQuality = true }
                                 },
                                 glassTintColor = backgroundColor,
+                                isDarkEnvironment = isDarkEnvironment,
                                 coverStyle = coverStyle,
                                 onToggleCoverStyle = {
                                     coverStyle = resolveNextCoverStyle(coverStyle)
@@ -641,6 +691,7 @@ internal fun MusicPlayerContent(
                                                 blurEffectsEnabled = lyricsBlurEffectsEnabled,
                                                 reduceMotion = effectiveReduceMotion,
                                                 glassTintColor = backgroundColor,
+                                                isDarkEnvironment = isDarkEnvironment,
                                                 liquidGlassTuning = liquidGlassTuning,
                                                 miuixBackdrop = musicBackdrop,
                                                 progressSeekRevision = progressSeekRevision,
@@ -659,6 +710,7 @@ internal fun MusicPlayerContent(
                                                 glassEnabled = glassEnabled,
                                                 miuixBackdrop = musicBackdrop,
                                                 glassTintColor = backgroundColor,
+                                                isDarkEnvironment = isDarkEnvironment,
                                                 liquidGlassTuning = liquidGlassTuning,
                                                 isPlaying = state.isPlaying,
                                                 onPlayPause = onPlayPause,
@@ -725,6 +777,7 @@ internal fun MusicPlayerContent(
                     miuixBackdrop = musicBackdrop,
                     glassTintColor = backgroundColor,
                     liquidGlassTuning = liquidGlassTuning,
+                    isDarkEnvironment = isDarkEnvironment,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .widthIn(max = LARGE_SCREEN_MAX_CONTENT_WIDTH_DP.dp)
@@ -738,6 +791,8 @@ internal fun MusicPlayerContent(
                 glassEnabled = glassEnabled,
                 miuixBackdrop = musicBackdrop,
                 liquidGlassTuning = liquidGlassTuning,
+                glassTintColor = backgroundColor,
+                isDarkEnvironment = isDarkEnvironment,
                 onBack = onBack,
                 onMore = { showActions = true },
                 onToggleTabletop = if (layout == MusicPlayerLayout.EXPANDED_SPLIT) {
@@ -967,6 +1022,7 @@ private fun ImmersiveBottomQueueShelf(
     miuixBackdrop: MiuixBackdrop?,
     glassTintColor: Color,
     liquidGlassTuning: LiquidGlassTuning,
+    isDarkEnvironment: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val panelShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
@@ -976,7 +1032,7 @@ private fun ImmersiveBottomQueueShelf(
         shape = panelShape,
         color = if (glassEnabled) Color.Transparent else panelColor,
         contentColor = MusicContentColor,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        border = BorderStroke(1.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
         shadowElevation = 16.dp,
         modifier = modifier
             .clickable(
@@ -1032,7 +1088,8 @@ private fun ImmersiveBottomQueueShelf(
                         AppSurface(
                             onClick = onToggleQueueCoverFlow,
                             shape = AppShapes.container(ContainerLevel.Pill),
-                            color = MusicAccentColor.copy(alpha = 0.18f),
+                            color = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
+                            border = BorderStroke(0.8.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
                             modifier = Modifier.height(32.dp)
                         ) {
                             Box(
@@ -1088,6 +1145,8 @@ private fun ImmersiveBottomQueueShelf(
                     onLikeClick = onLikeClick,
                     cardSizeDp = 150,
                     showTransportControls = true,
+                    glassTintColor = glassTintColor,
+                    isDarkEnvironment = isDarkEnvironment,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
@@ -1241,6 +1300,7 @@ private fun PlayerPage(
     isDolbyAudioSelected: Boolean,
     onAudioQualityClick: (() -> Unit)?,
     glassTintColor: Color,
+    isDarkEnvironment: Boolean = true,
     coverStyle: MusicCoverStyle = MusicCoverStyle.APPLE_MUSIC_CARD,
     onToggleCoverStyle: () -> Unit = {},
     showLyricsPreview: Boolean = true,
@@ -1289,6 +1349,7 @@ private fun PlayerPage(
                     coverStyle = coverStyle,
                     isPlaying = state.isPlaying,
                     reduceMotion = reduceMotion,
+                    isDarkEnvironment = isDarkEnvironment,
                     onClick = onToggleCoverStyle
                 )
             }
@@ -1338,8 +1399,8 @@ private fun PlayerPage(
                             AppSurface(
                                 onClick = onAudioQualityClick,
                                 shape = RoundedCornerShape(6.dp),
-                                color = Color.White.copy(alpha = 0.12f),
-                                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.20f)),
+                                color = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
+                                border = BorderStroke(0.5.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
                                 modifier = Modifier.height(22.dp)
                             ) {
                                 Row(
@@ -1390,14 +1451,17 @@ private fun PlayerPage(
                                 label = audioQualityLabel,
                                 isHiResSelected = isHiResAudioSelected,
                                 isDolbySelected = isDolbyAudioSelected,
-                                onClick = onAudioQualityClick
+                                onClick = onAudioQualityClick,
+                                glassTintColor = glassTintColor,
+                                isDarkEnvironment = isDarkEnvironment
                             )
                         }
                     }
                     AppSurface(
                         onClick = onToggleCoverStyle,
                         shape = AppShapes.container(ContainerLevel.Dialog),
-                        color = MusicAccentColor.copy(alpha = 0.16f),
+                        color = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
+                        border = BorderStroke(0.8.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
                         modifier = Modifier.height(48.dp)
                     ) {
                         Box(
@@ -1415,7 +1479,7 @@ private fun PlayerPage(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            MusicProgress(state, onSeek, glassEnabled = chromeSpec.glassEnabled)
+            MusicProgress(state, onSeek, glassEnabled = chromeSpec.glassEnabled, glassTintColor = glassTintColor, isDarkEnvironment = isDarkEnvironment)
             Spacer(Modifier.height(8.dp))
             PlaybackControls(
                 state = state,
@@ -1423,7 +1487,9 @@ private fun PlayerPage(
                 skipButtonSizeDp = chromeSpec.skipButtonSizeDp,
                 onPlayPause = onPlayPause,
                 onPrevious = onPrevious,
-                onNext = onNext
+                onNext = onNext,
+                isDarkEnvironment = isDarkEnvironment,
+                glassTintColor = glassTintColor
             )
             Spacer(Modifier.height(10.dp))
             MusicSecondaryControls(
@@ -1445,14 +1511,21 @@ private fun MusicAudioQualityControl(
     label: String,
     isHiResSelected: Boolean,
     isDolbySelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    glassTintColor: Color = Color.Unspecified,
+    isDarkEnvironment: Boolean = true
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(AppShapes.container(ContainerLevel.Dialog))
-            .background(MusicAccentColor.copy(alpha = 0.16f))
+            .background(resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment))
+            .border(
+                0.8.dp,
+                resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment),
+                AppShapes.container(ContainerLevel.Dialog)
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1558,6 +1631,7 @@ private fun MusicArtwork(
     coverStyle: MusicCoverStyle = MusicCoverStyle.APPLE_MUSIC_CARD,
     isPlaying: Boolean = false,
     reduceMotion: Boolean = false,
+    isDarkEnvironment: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
     if (shape == RectangleShape) {
@@ -1605,8 +1679,8 @@ private fun MusicArtwork(
                 .shadow(
                     elevation = if (isPlaying) 18.dp else 10.dp,
                     shape = CircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.55f),
-                    spotColor = Color.Black.copy(alpha = 0.65f)
+                    ambientColor = if (isDarkEnvironment) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.20f),
+                    spotColor = if (isDarkEnvironment) Color.Black.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.25f)
                 )
                 .graphicsLayer { rotationZ = rotationDegrees() }
                 .clip(CircleShape)
@@ -1622,7 +1696,7 @@ private fun MusicArtwork(
                 )
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.14f),
+                    color = if (isDarkEnvironment) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.12f),
                     shape = CircleShape
                 )
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
@@ -1717,13 +1791,13 @@ private fun MusicArtwork(
                 .shadow(
                     elevation = shadowElevation,
                     shape = cornerShape,
-                    ambientColor = Color.Black.copy(alpha = 0.45f),
-                    spotColor = Color.Black.copy(alpha = 0.55f)
+                    ambientColor = if (isDarkEnvironment) Color.Black.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.15f),
+                    spotColor = if (isDarkEnvironment) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.20f)
                 )
                 .clip(cornerShape)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.12f),
+                    color = if (isDarkEnvironment) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
                     shape = cornerShape
                 )
                 .background(
@@ -1762,7 +1836,9 @@ private fun MusicArtwork(
 private fun MusicProgress(
     state: MusicPlayerUiState,
     onSeek: (Long) -> Unit,
-    glassEnabled: Boolean
+    glassEnabled: Boolean,
+    glassTintColor: Color = Color.Unspecified,
+    isDarkEnvironment: Boolean = true
 ) {
     val duration = state.durationMs.coerceAtLeast(1L)
     var draggedPosition by remember { mutableStateOf<Float?>(null) }
@@ -1781,12 +1857,30 @@ private fun MusicProgress(
         draggedPosition = null
     }
     val uiStyle = LocalAppUiStyle.current
+    val inactiveTrackColor = if (isDarkEnvironment) {
+        if (glassTintColor != Color.Unspecified) {
+            lerp(glassTintColor, Color.White, 0.2f).copy(alpha = 0.25f)
+        } else {
+            Color.White.copy(alpha = 0.25f)
+        }
+    } else {
+        if (glassTintColor != Color.Unspecified) {
+            lerp(glassTintColor, Color.Black, 0.2f).copy(alpha = 0.15f)
+        } else {
+            Color.Black.copy(alpha = 0.12f)
+        }
+    }
     if (shouldUseNativeThemeMusicProgress(glassEnabled = glassEnabled, uiStyle = uiStyle)) {
         AppSlider(
             value = sliderValue,
             onValueChange = onSliderChange,
             onValueChangeFinished = onSliderChangeFinished,
-            valueRange = 0f..duration.toFloat()
+            valueRange = 0f..duration.toFloat(),
+            colors = AppSliderDefaults.colors(
+                thumbColor = MusicAccentColor,
+                activeTrackColor = MusicAccentColor,
+                inactiveTrackColor = inactiveTrackColor
+            )
         )
     } else {
         MusicWavySlider(
@@ -1802,7 +1896,7 @@ private fun MusicProgress(
                 reduceMotion = reduceMotion
             ),
             activeColor = MusicAccentColor,
-            inactiveColor = MusicContentColor.copy(alpha = 0.28f),
+            inactiveColor = inactiveTrackColor,
             thumbColor = MusicAccentColor
         )
     }
@@ -1820,7 +1914,9 @@ private fun PlaybackControls(
     onNext: (() -> Unit)?,
     modifier: Modifier = Modifier,
     playButtonSizeDp: Int = 72,
-    skipButtonSizeDp: Int = 56
+    skipButtonSizeDp: Int = 56,
+    isDarkEnvironment: Boolean = true,
+    glassTintColor: Color = Color.Unspecified
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -1834,14 +1930,24 @@ private fun PlaybackControls(
             onClick = onPrevious ?: {},
             sizeDp = skipButtonSizeDp
         )
-        // 播放控制主按钮：高对比度纯白质感大圆键（Apple Music / Spotify 经典成熟设计）
+        // 播放控制主按钮：高对比度大圆键（深色环境用纯白底黑标，浅色环境用深底白标）
         // AppFilledIconButton(
+        val playButtonBg = if (isDarkEnvironment) {
+            Color.White
+        } else {
+            Color(0xFF1C1B1F)
+        }
+        val playButtonFg = if (isDarkEnvironment) {
+            Color.Black
+        } else {
+            Color.White
+        }
         AppSurface(
             onClick = onPlayPause,
             modifier = Modifier.size(playButtonSizeDp.dp),
             shape = CircleShape,
-            color = Color.White,
-            contentColor = Color.Black,
+            color = playButtonBg,
+            contentColor = playButtonFg,
             shadowElevation = 8.dp
         ) {
             Box(
@@ -1850,14 +1956,14 @@ private fun PlaybackControls(
             ) {
                 if (state.isBuffering) {
                     AppCircularProgressIndicator(
-                        color = Color.Black,
+                        color = playButtonFg,
                         modifier = Modifier.size((playButtonSizeDp * 0.45f).dp)
                     )
                 } else {
                     AppIcon(
                         imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (state.isPlaying) "暂停" else "播放",
-                        tint = Color.Black,
+                        tint = playButtonFg,
                         modifier = Modifier.size((playButtonSizeDp * 0.45f).dp)
                     )
                 }
@@ -2055,6 +2161,7 @@ private fun LyricsPage(
     controlsVisible: Boolean,
     onControlsVisibleChange: (Boolean) -> Unit,
     showBottomControls: Boolean = true,
+    isDarkEnvironment: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val document = state.lyrics
@@ -2114,16 +2221,20 @@ private fun LyricsPage(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     GlassTextButton(
-                        "重新匹配",
-                        glassEnabled,
-                        miuixBackdrop,
-                        onLyricsRetry
+                        label = "重新匹配",
+                        glassEnabled = glassEnabled,
+                        miuixBackdrop = miuixBackdrop,
+                        glassTintColor = glassTintColor,
+                        isDarkEnvironment = isDarkEnvironment,
+                        onClick = onLyricsRetry
                     )
                     GlassTextButton(
-                        "手动搜索",
-                        glassEnabled,
-                        miuixBackdrop,
-                        onOpenLyricsSearch
+                        label = "手动搜索",
+                        glassEnabled = glassEnabled,
+                        miuixBackdrop = miuixBackdrop,
+                        glassTintColor = glassTintColor,
+                        isDarkEnvironment = isDarkEnvironment,
+                        onClick = onOpenLyricsSearch
                     )
                 }
             }
@@ -2172,6 +2283,7 @@ private fun LyricsPage(
                     miuixBackdrop = miuixBackdrop,
                     glassTintColor = glassTintColor,
                     liquidGlassTuning = liquidGlassTuning,
+                    isDarkEnvironment = isDarkEnvironment,
                     onPlayPause = onPlayPause,
                     onSeek = onSeek,
                     onPrevious = onPrevious,
@@ -2209,6 +2321,8 @@ private fun LyricsPage(
                             label = "回到当前歌词",
                             glassEnabled = glassEnabled,
                             miuixBackdrop = miuixBackdrop,
+                            glassTintColor = glassTintColor,
+                            isDarkEnvironment = isDarkEnvironment,
                             onClick = { isAutoFollowPaused = false }
                         )
                     } else {
@@ -2222,18 +2336,24 @@ private fun LyricsPage(
                             label = if (showTranslations) "译:开" else "译:关",
                             glassEnabled = glassEnabled,
                             miuixBackdrop = miuixBackdrop,
+                            glassTintColor = glassTintColor,
+                            isDarkEnvironment = isDarkEnvironment,
                             onClick = { showTranslations = !showTranslations }
                         )
                         GlassTextButton(
                             label = "搜索",
                             glassEnabled = glassEnabled,
                             miuixBackdrop = miuixBackdrop,
+                            glassTintColor = glassTintColor,
+                            isDarkEnvironment = isDarkEnvironment,
                             onClick = onOpenLyricsSearch
                         )
                         GlassTextButton(
                             label = "歌词设置",
                             glassEnabled = glassEnabled,
                             miuixBackdrop = miuixBackdrop,
+                            glassTintColor = glassTintColor,
+                            isDarkEnvironment = isDarkEnvironment,
                             onClick = { showLyricsSettings = true }
                         )
                     }
@@ -2245,6 +2365,8 @@ private fun LyricsPage(
                 label = "回到当前歌词",
                 glassEnabled = glassEnabled,
                 miuixBackdrop = miuixBackdrop,
+                glassTintColor = glassTintColor,
+                isDarkEnvironment = isDarkEnvironment,
                 onClick = { isAutoFollowPaused = false },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -2286,6 +2408,7 @@ private fun LyricsPrimaryControls(
     miuixBackdrop: MiuixBackdrop?,
     glassTintColor: Color,
     liquidGlassTuning: LiquidGlassTuning,
+    isDarkEnvironment: Boolean = true,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onPrevious: (() -> Unit)?,
@@ -2324,6 +2447,7 @@ private fun LyricsPrimaryControls(
                 liquidGlassTuning = liquidGlassTuning,
             ),
         shape = panelShape,
+        // color = Color.Transparent
         color = if (glassEnabled) Color.Transparent else panelColor,
         contentColor = panelContentColor,
         tonalElevation = if (chromeSpec.uiStyle == com.android.purebilibili.core.theme.AppUiStyle.MATERIAL3 && !glassEnabled) {
@@ -2337,7 +2461,7 @@ private fun LyricsPrimaryControls(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                MusicProgress(state, onSeek, glassEnabled = glassEnabled)
+                MusicProgress(state, onSeek, glassEnabled = glassEnabled, glassTintColor = glassTintColor, isDarkEnvironment = isDarkEnvironment)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PlaybackControls(
                         state = state,
@@ -2346,7 +2470,9 @@ private fun LyricsPrimaryControls(
                         onNext = onNext,
                         modifier = Modifier.weight(1f),
                         playButtonSizeDp = chromeSpec.playButtonSizeDp,
-                        skipButtonSizeDp = chromeSpec.skipButtonSizeDp
+                        skipButtonSizeDp = chromeSpec.skipButtonSizeDp,
+                        isDarkEnvironment = isDarkEnvironment,
+                        glassTintColor = glassTintColor
                     )
                     AppTextButton(onClick = onOpenSettings, modifier = Modifier.height(48.dp)) {
                         AppText("歌词设置", color = MusicContentColor, fontSize = 12.sp)
@@ -2521,6 +2647,8 @@ private fun MusicTopBar(
     glassEnabled: Boolean,
     miuixBackdrop: MiuixBackdrop?,
     liquidGlassTuning: LiquidGlassTuning,
+    glassTintColor: Color = Color.Unspecified,
+    isDarkEnvironment: Boolean = true,
     onBack: () -> Unit,
     onMore: () -> Unit,
     modifier: Modifier = Modifier,
@@ -2532,31 +2660,37 @@ private fun MusicTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         GlassIconButton(
-            Icons.Outlined.KeyboardArrowDown,
-            "返回",
-            glassEnabled,
-            miuixBackdrop,
-            liquidGlassTuning,
-            onBack
+            icon = Icons.Outlined.KeyboardArrowDown,
+            description = "返回",
+            glassEnabled = glassEnabled,
+            miuixBackdrop = miuixBackdrop,
+            liquidGlassTuning = liquidGlassTuning,
+            glassTintColor = glassTintColor,
+            isDarkEnvironment = isDarkEnvironment,
+            onClick = onBack
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (onToggleTabletop != null) {
                 GlassIconButton(
-                    Icons.Outlined.QueueMusic,
-                    "切换布局",
-                    glassEnabled,
-                    miuixBackdrop,
-                    liquidGlassTuning,
-                    onToggleTabletop
+                    icon = Icons.Outlined.QueueMusic,
+                    description = "切换布局",
+                    glassEnabled = glassEnabled,
+                    miuixBackdrop = miuixBackdrop,
+                    liquidGlassTuning = liquidGlassTuning,
+                    glassTintColor = glassTintColor,
+                    isDarkEnvironment = isDarkEnvironment,
+                    onClick = onToggleTabletop
                 )
             }
             GlassIconButton(
-                Icons.Outlined.MoreHoriz,
-                "更多操作",
-                glassEnabled,
-                miuixBackdrop,
-                liquidGlassTuning,
-                onMore
+                icon = Icons.Outlined.MoreHoriz,
+                description = "更多操作",
+                glassEnabled = glassEnabled,
+                miuixBackdrop = miuixBackdrop,
+                liquidGlassTuning = liquidGlassTuning,
+                glassTintColor = glassTintColor,
+                isDarkEnvironment = isDarkEnvironment,
+                onClick = onMore
             )
         }
     }
@@ -2569,6 +2703,8 @@ private fun GlassIconButton(
     glassEnabled: Boolean,
     miuixBackdrop: MiuixBackdrop?,
     liquidGlassTuning: LiquidGlassTuning,
+    glassTintColor: Color = Color.Unspecified,
+    isDarkEnvironment: Boolean = true,
     onClick: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -2624,7 +2760,7 @@ private fun GlassIconButton(
             }
             .biliPaiFloatingDockShell(
                 backdrop = miuixBackdrop,
-                containerColor = Color.White.copy(alpha = 0.15f),
+                containerColor = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
                 pressProgress = 0f,
                 shape = CircleShape,
                 enabled = glassEnabled,
@@ -2632,7 +2768,7 @@ private fun GlassIconButton(
             )
             .border(
                 width = 0.5.dp,
-                color = Color.White.copy(alpha = 0.22f),
+                color = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment),
                 shape = CircleShape
             )
     ) {
@@ -2651,13 +2787,20 @@ private fun GlassTextButton(
     miuixBackdrop: MiuixBackdrop?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSelected: Boolean = false
+    isSelected: Boolean = false,
+    glassTintColor: Color = Color.Unspecified,
+    isDarkEnvironment: Boolean = true
 ) {
     val shape = CircleShape
     val containerColor = if (isSelected) {
         MusicAccentColor.copy(alpha = 0.26f)
     } else {
-        Color.White.copy(alpha = 0.15f)
+        resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
+    }
+    val borderColor = if (isSelected) {
+        MusicAccentColor.copy(alpha = 0.40f)
+    } else {
+        resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
     }
     val textColor = if (isSelected) {
         MusicAccentColor
@@ -2668,7 +2811,7 @@ private fun GlassTextButton(
         modifier = modifier
             .height(38.dp)
             .background(containerColor, shape)
-            .border(0.8.dp, Color.White.copy(alpha = 0.24f), shape)
+            .border(0.8.dp, borderColor, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
@@ -2708,6 +2851,7 @@ private fun TabletopPlayerLayout(
     onOpenLyricsSearch: () -> Unit,
     availableWidthDp: Int,
     availableHeightDp: Int,
+    isDarkEnvironment: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -2747,6 +2891,7 @@ private fun TabletopPlayerLayout(
                     playbackSpeed = state.playbackSpeed,
                     coverStyle = MusicCoverStyle.TURNTABLE,
                     shape = CircleShape,
+                    isDarkEnvironment = isDarkEnvironment,
                     onClick = onToggleCoverStyle,
                     modifier = Modifier.size(turntableSize.dp)
                 )
@@ -2771,6 +2916,7 @@ private fun TabletopPlayerLayout(
                     blurEffectsEnabled = lyricsBlurEffectsEnabled,
                     reduceMotion = reduceMotion,
                     glassTintColor = backgroundColor,
+                    isDarkEnvironment = isDarkEnvironment,
                     liquidGlassTuning = liquidGlassTuning,
                     miuixBackdrop = musicBackdrop,
                     progressSeekRevision = progressSeekRevision,
@@ -2811,9 +2957,13 @@ private fun TabletopPlayerLayout(
                     MusicProgress(
                         state = state,
                         onSeek = onSeek,
-                        glassEnabled = glassEnabled
+                        glassEnabled = glassEnabled,
+                        glassTintColor = backgroundColor,
+                        isDarkEnvironment = isDarkEnvironment
                     )
                 },
+                glassTintColor = backgroundColor,
+                isDarkEnvironment = isDarkEnvironment,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp)
@@ -2831,6 +2981,7 @@ private fun ExpandedQueuePane(
     glassEnabled: Boolean,
     miuixBackdrop: MiuixBackdrop?,
     glassTintColor: Color,
+    isDarkEnvironment: Boolean = true,
     liquidGlassTuning: LiquidGlassTuning,
     isPlaying: Boolean = false,
     onPlayPause: () -> Unit = {},
@@ -2847,6 +2998,7 @@ private fun ExpandedQueuePane(
         shape = panelShape,
         color = if (glassEnabled) Color.Transparent else panelColor,
         contentColor = MusicContentColor,
+        border = BorderStroke(1.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
         modifier = modifier
             .fillMaxSize()
             .biliPaiFloatingDockShell(
@@ -2886,6 +3038,8 @@ private fun ExpandedQueuePane(
                             isSelected = true,
                             glassEnabled = glassEnabled,
                             miuixBackdrop = miuixBackdrop,
+                            glassTintColor = glassTintColor,
+                            isDarkEnvironment = isDarkEnvironment,
                             onClick = { isCoverFlowView = !isCoverFlowView }
                         )
                     }
@@ -2894,6 +3048,8 @@ private fun ExpandedQueuePane(
                     label = "返回歌词",
                     glassEnabled = glassEnabled,
                     miuixBackdrop = miuixBackdrop,
+                    glassTintColor = glassTintColor,
+                    isDarkEnvironment = isDarkEnvironment,
                     onClick = onClose
                 )
             }
@@ -2935,6 +3091,8 @@ private fun ExpandedQueuePane(
                         onLikeClick = onLikeClick,
                         cardSizeDp = adaptiveCardSizeDp,
                         showTransportControls = false,
+                        glassTintColor = glassTintColor,
+                        isDarkEnvironment = isDarkEnvironment,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

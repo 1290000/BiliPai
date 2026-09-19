@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -85,7 +86,9 @@ internal fun Music3DCoverFlow(
     onLikeClick: (() -> Unit)? = null,
     cardSizeDp: Int = 155,
     showTransportControls: Boolean = true,
-    progressContent: (@Composable () -> Unit)? = null
+    progressContent: (@Composable () -> Unit)? = null,
+    glassTintColor: Color = Color.Unspecified,
+    isDarkEnvironment: Boolean = true
 ) {
     if (queue.isEmpty()) return
 
@@ -307,12 +310,36 @@ internal fun Music3DCoverFlow(
 
             // 底部悬浮胶囊控制条（药丸毛玻璃容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
             val focusedItem = queue.getOrNull(pagerState.currentPage) ?: queue[validCurrentIndex]
+            val pillContainerColor = if (isDarkEnvironment) {
+                if (glassTintColor != Color.Unspecified) {
+                    lerp(glassTintColor, Color.White, 0.14f).copy(alpha = 0.20f)
+                } else {
+                    Color.White.copy(alpha = 0.15f)
+                }
+            } else {
+                if (glassTintColor != Color.Unspecified) {
+                    lerp(glassTintColor, Color.White, 0.72f).copy(alpha = 0.80f)
+                } else {
+                    Color.White.copy(alpha = 0.75f)
+                }
+            }
+            val pillBorderColor = if (isDarkEnvironment) {
+                Color.White.copy(alpha = 0.25f)
+            } else {
+                Color.Black.copy(alpha = 0.12f)
+            }
+            val pillContentColor = if (isDarkEnvironment) {
+                Color.White
+            } else {
+                Color(0xFF1C1B1F)
+            }
+
             AppSurface(
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.15f),
+                color = pillContainerColor,
                 border = BorderStroke(
                     width = 0.8.dp,
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = pillBorderColor
                 ),
                 shadowElevation = 8.dp,
                 modifier = Modifier
@@ -329,7 +356,7 @@ internal fun Music3DCoverFlow(
                     // 歌名 - 歌手（以 " - " 分隔）
                     AppText(
                         text = "${focusedItem.title} - ${focusedItem.artist.ifBlank { "未知艺术家" }}",
-                        color = Color.White.copy(alpha = 0.95f),
+                        color = pillContentColor.copy(alpha = 0.95f),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
@@ -351,7 +378,7 @@ internal fun Music3DCoverFlow(
                                 AppIcon(
                                     imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                     contentDescription = if (isLiked) "取消喜欢" else "喜欢",
-                                    tint = if (isLiked) Color(0xFFFF3B5C) else Color.White.copy(alpha = 0.85f),
+                                    tint = if (isLiked) Color(0xFFFF3B5C) else pillContentColor.copy(alpha = 0.82f),
                                     modifier = Modifier.size(17.dp)
                                 )
                             }
@@ -366,7 +393,7 @@ internal fun Music3DCoverFlow(
                             AppIcon(
                                 imageVector = Icons.Filled.SkipPrevious,
                                 contentDescription = "上一首",
-                                tint = Color.White.copy(alpha = if (onPrevious != null) 0.88f else 0.28f),
+                                tint = pillContentColor.copy(alpha = if (onPrevious != null) 0.88f else 0.28f),
                                 modifier = Modifier.size(19.dp)
                             )
                         }
@@ -379,7 +406,7 @@ internal fun Music3DCoverFlow(
                             AppIcon(
                                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 contentDescription = if (isPlaying) "暂停" else "播放",
-                                tint = Color.White.copy(alpha = 0.95f),
+                                tint = pillContentColor.copy(alpha = 0.95f),
                                 modifier = Modifier.size(21.dp)
                             )
                         }
@@ -393,7 +420,7 @@ internal fun Music3DCoverFlow(
                             AppIcon(
                                 imageVector = Icons.Filled.SkipNext,
                                 contentDescription = "下一首",
-                                tint = Color.White.copy(alpha = if (onNext != null) 0.88f else 0.28f),
+                                tint = pillContentColor.copy(alpha = if (onNext != null) 0.88f else 0.28f),
                                 modifier = Modifier.size(19.dp)
                             )
                         }
@@ -407,7 +434,7 @@ internal fun Music3DCoverFlow(
                             AppIcon(
                                 imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = if (isLiked) "取消喜欢" else "喜欢",
-                                tint = if (isLiked) Color(0xFFFF3B5C) else Color.White.copy(alpha = 0.85f),
+                                tint = if (isLiked) Color(0xFFFF3B5C) else pillContentColor.copy(alpha = 0.82f),
                                 modifier = Modifier.size(17.dp)
                             )
                         }
