@@ -365,3 +365,16 @@ private fun resolveLivePrimaryAction(
         uname = uname
     )
 }
+
+/**
+ * Resolves headline title for Opus or Article dynamic items.
+ * Guaranteed to be rendered at the very top of dynamic content (above body text and media).
+ */
+internal fun resolveDynamicHeadlineTitle(
+    opus: OpusMajor?,
+    article: ArticleMajor?
+): String? {
+    return opus?.title?.trim()?.takeIf { it.isNotEmpty() }
+        ?: article?.title?.trim()?.takeIf { it.isNotEmpty() }
+}
+

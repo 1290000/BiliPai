@@ -509,4 +509,26 @@ class DynamicCardClickPolicyTest {
             )
         )
     }
+
+    @Test
+    fun resolveDynamicHeadlineTitle_prefersOpusTitle() {
+        val opus = OpusMajor(title = "Opus专栏文章标题")
+        val article = ArticleMajor(title = "旧专栏标题")
+
+        assertEquals("Opus专栏文章标题", resolveDynamicHeadlineTitle(opus, article))
+    }
+
+    @Test
+    fun resolveDynamicHeadlineTitle_fallsBackToArticleTitle() {
+        val article = ArticleMajor(title = "文章专栏标题")
+
+        assertEquals("文章专栏标题", resolveDynamicHeadlineTitle(null, article))
+    }
+
+    @Test
+    fun resolveDynamicHeadlineTitle_returnsNullWhenBlankOrMissing() {
+        assertEquals(null, resolveDynamicHeadlineTitle(OpusMajor(title = "  "), ArticleMajor(title = "")))
+        assertEquals(null, resolveDynamicHeadlineTitle(null, null))
+    }
 }
+
