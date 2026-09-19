@@ -341,11 +341,18 @@ class SpaceViewModel(
         )
         val resolvedIpLocation = userInfoRaw.ipLocation?.takeIf { it.isNotBlank() }
             ?: userCardVisuals.ipLocation?.takeIf { it.isNotBlank() }
+        val resolvedSpaceTags = if (!resolvedIpLocation.isNullOrBlank()) {
+            val locationTitle = if (resolvedIpLocation.startsWith("IP属地")) resolvedIpLocation else "IP属地：$resolvedIpLocation"
+            listOf(SpaceTagItem(type = "location", title = locationTitle))
+        } else {
+            emptyList()
+        }
         val userInfo = userInfoRaw.copy(
             topPhoto = resolvedTopPhoto,
             isFollowed = followStatus,
             relationStatus = if (followStatus) 2 else 0,
-            ipLocation = resolvedIpLocation
+            ipLocation = resolvedIpLocation,
+            spaceTags = resolvedSpaceTags
         )
         currentPage = videosResult?.resolvedPage ?: 1
         val videoData = videosResult?.data
@@ -494,6 +501,12 @@ class SpaceViewModel(
                 val resolvedIpLocation = info.ipLocation?.takeIf { it.isNotBlank() }
                     ?: userCardVisuals.ipLocation?.takeIf { it.isNotBlank() }
                     ?: currentState.userInfo.ipLocation
+                val updatedTags = if (currentState.userInfo.spaceTags.none { it.type == "location" || it.title.contains("IP") } && !resolvedIpLocation.isNullOrBlank()) {
+                    val locationTitle = if (resolvedIpLocation.startsWith("IP属地")) resolvedIpLocation else "IP属地：$resolvedIpLocation"
+                    currentState.userInfo.spaceTags + SpaceTagItem(type = "location", title = locationTitle)
+                } else {
+                    currentState.userInfo.spaceTags
+                }
                 val mergedUserInfo = currentState.userInfo.copy(
                     name = info.name.ifBlank { currentState.userInfo.name },
                     sex = info.sex.ifBlank { currentState.userInfo.sex },
@@ -509,7 +522,8 @@ class SpaceViewModel(
                     topPhoto = resolvedTopPhoto,
                     liveRoom = info.liveRoom ?: currentState.userInfo.liveRoom,
                     livePlace = info.livePlace ?: currentState.userInfo.livePlace,
-                    ipLocation = resolvedIpLocation
+                    ipLocation = resolvedIpLocation,
+                    spaceTags = updatedTags
                 )
 
                 _uiState.value = currentState.copy(
@@ -629,7 +643,7 @@ class SpaceViewModel(
                 }
 
                 val currentState = _uiState.value as? SpaceUiState.Success ?: return@launch
-                _uiState.value = applySpaceSupplementalData(
+                val updatedSupplementalState = applySpaceSupplementalData(
                     state = currentState,
                     seasons = seasons,
                     series = series,
@@ -638,6 +652,29 @@ class SpaceViewModel(
                     seasonArchives = seasonArchives,
                     seriesArchives = seriesArchives
                 )
+                val currentInfo = updatedSupplementalState.userInfo
+                if (currentInfo.spaceTags.none { it.type == "location" || it.title.contains("IP") } && currentInfo.ipLocation.isNullOrBlank()) {
+                    val dynamicResp = runCatching { spaceApi.getSpaceDynamic(hostMid = mid) }.getOrNull()
+                    val dynamicIp = dynamicResp?.data?.items?.firstNotNullOfOrNull { item ->
+                        item.modules.module_author?.pub_location_text?.takeIf { it.isNotBlank() }
+                    }
+                    if (!dynamicIp.isNullOrBlank() && shouldApplySpaceLoadResult(mid, currentMid, requestGeneration, activeSpaceLoadGeneration)) {
+                        val locationTitle = if (dynamicIp.startsWith("IP属地")) dynamicIp else "IP属地：$dynamicIp"
+                        val updatedTags = currentInfo.spaceTags + SpaceTagItem(type = "location", title = locationTitle)
+                        val updatedUserInfo = currentInfo.copy(
+                            ipLocation = dynamicIp,
+                            spaceTags = updatedTags
+                        )
+                        _uiState.value = updatedSupplementalState.copy(
+                            userInfo = updatedUserInfo,
+                            headerState = updatedSupplementalState.headerState.copy(userInfo = updatedUserInfo)
+                        )
+                    } else {
+                        _uiState.value = updatedSupplementalState
+                    }
+                } else {
+                    _uiState.value = updatedSupplementalState
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

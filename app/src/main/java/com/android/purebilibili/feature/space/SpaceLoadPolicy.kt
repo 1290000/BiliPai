@@ -567,11 +567,12 @@ internal fun resolveSpaceInitialSeedFromAggregate(
     val resolvedIpLocation = ipFromTag
         ?: data.card?.ipLocation?.takeIf { it.isNotBlank() }
         ?: cardIpLocation?.takeIf { it.isNotBlank() }
-    val resolvedSpaceTags = if (card.spaceTag.none { it.type == "location" || it.title.contains("IP") } && !resolvedIpLocation.isNullOrBlank()) {
+    val filteredTags = card.spaceTag.filter { it.type in setOf("location", "real_name") || it.title.contains("IP") }
+    val resolvedSpaceTags = if (filteredTags.none { it.type == "location" || it.title.contains("IP") } && !resolvedIpLocation.isNullOrBlank()) {
         val locationTitle = if (resolvedIpLocation.startsWith("IP属地")) resolvedIpLocation else "IP属地：$resolvedIpLocation"
-        card.spaceTag + SpaceTagItem(type = "location", title = locationTitle)
+        filteredTags + SpaceTagItem(type = "location", title = locationTitle)
     } else {
-        card.spaceTag
+        filteredTags
     }
 
     return SpaceInitialSeed(

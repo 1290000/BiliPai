@@ -1980,6 +1980,7 @@ private fun VideoContentTabBar(
                     selectedValue = selectedTabIndex,
                     onSelectionChange = onTabSelected,
                     modifier = Modifier.fillMaxWidth(),
+                    compactMiuixWhenTwoOptions = false,
                     height = liquidChromeSpec.segmentedControlHeightDp.dp,
                     indicatorHeight = liquidChromeSpec.segmentedControlIndicatorHeightDp.dp,
                     labelFontSize = liquidChromeSpec.labelFontSizeSp.sp,
