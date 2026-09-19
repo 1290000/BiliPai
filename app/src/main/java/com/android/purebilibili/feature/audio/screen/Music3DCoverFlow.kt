@@ -84,7 +84,8 @@ internal fun Music3DCoverFlow(
     isLiked: Boolean = false,
     onLikeClick: (() -> Unit)? = null,
     cardSizeDp: Int = 155,
-    showTransportControls: Boolean = true
+    showTransportControls: Boolean = true,
+    progressContent: (@Composable () -> Unit)? = null
 ) {
     if (queue.isEmpty()) return
 
@@ -290,16 +291,27 @@ internal fun Music3DCoverFlow(
                 }
             }
 
-            Spacer(Modifier.height(6.dp))
+            progressContent?.let { progress ->
+                Spacer(Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 440.dp)
+                        .padding(horizontal = 24.dp)
+                ) {
+                    progress()
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
 
             // 底部悬浮胶囊控制条（药丸毛玻璃容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
             val focusedItem = queue.getOrNull(pagerState.currentPage) ?: queue[validCurrentIndex]
             AppSurface(
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.12f),
+                color = Color.White.copy(alpha = 0.15f),
                 border = BorderStroke(
                     width = 0.8.dp,
-                    color = Color.White.copy(alpha = 0.22f)
+                    color = Color.White.copy(alpha = 0.25f)
                 ),
                 shadowElevation = 8.dp,
                 modifier = Modifier
@@ -316,7 +328,7 @@ internal fun Music3DCoverFlow(
                     // 歌名 - 歌手（以 " - " 分隔）
                     AppText(
                         text = "${focusedItem.title} - ${focusedItem.artist.ifBlank { "未知艺术家" }}",
-                        color = Color.White.copy(alpha = 0.92f),
+                        color = Color.White.copy(alpha = 0.95f),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
