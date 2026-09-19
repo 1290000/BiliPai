@@ -23,7 +23,9 @@ internal fun resolveMusicPlayerChromeSpec(
     return MusicPlayerChromeSpec(
         uiStyle = uiStyle,
         glassEnabled = glassEnabled,
-        usePaletteImmersiveBackdrop = glassEnabled,
+        // The artwork-derived backdrop is the screen identity. Disabling liquid refraction
+        // switches chrome to frosted glass, but must not replace the backdrop with a theme fill.
+        usePaletteImmersiveBackdrop = true,
         coverShapeIsCircle = true,
         horizontalPaddingDp = tokens.denseHorizontalSpacingDp,
         playButtonSizeDp = if (uiStyle == AppUiStyle.MIUIX) 72 else 80,

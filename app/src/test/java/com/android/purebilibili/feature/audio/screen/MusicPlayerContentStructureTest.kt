@@ -109,13 +109,13 @@ class MusicPlayerContentStructureTest {
         assertTrue(lyricsPage.contains("bottom = 260.dp"))
         assertTrue(lyricsPage.contains("歌词加载失败"))
         assertTrue(lyricsPage.contains("未找到匹配歌词"))
-        assertTrue(lyricsControls.contains("AppSurfaceTokens.surfaceContainer()"))
-        assertTrue(lyricsControls.contains("resolveMusicImmersivePanelColor(glassTintColor)"))
-        assertTrue(lyricsControls.contains("if (glassEnabled) Color.Transparent else panelColor"))
+        assertTrue(!lyricsControls.contains("AppSurfaceTokens.surfaceContainer()"))
+        assertTrue(lyricsControls.contains("resolveMusicImmersivePanelColor(glassTintColor, MaterialTheme.colorScheme.surface)"))
+        assertTrue(lyricsControls.contains("if (miuixBackdrop != null) Color.Transparent else panelColor"))
         assertTrue(lyricsControls.contains("val panelShape = AppShapes.borderedContainer(ContainerLevel.Card)"))
         assertTrue(lyricsControls.contains(".biliPaiFloatingDockShell("))
         assertTrue(lyricsControls.contains("color = Color.Transparent"))
-        assertTrue(lyricsControls.contains("LocalMusicContentColor provides panelContentColor"))
+        assertTrue(lyricsControls.contains("LocalMusicPlayerMaterial provides panelMaterial"))
         assertTrue(topBar.contains("Icons.Outlined.KeyboardArrowDown"))
         assertTrue(topBar.contains("Icons.Outlined.MoreHoriz"))
         assertTrue(!source.contains("BottomBarMatchedReusableLiquidDock("))
@@ -149,6 +149,7 @@ class MusicPlayerContentStructureTest {
         assertTrue(topButtons.contains(".biliPaiFloatingDockShell("))
         assertTrue(topButtons.contains("backdrop = miuixBackdrop"))
         assertTrue(topButtons.contains("enabled = glassEnabled"))
+        assertTrue(topButtons.contains("blurEnabled = !glassEnabled"))
         assertTrue(topButtons.contains("liquidGlassTuning = liquidGlassTuning"))
         assertTrue(source.contains("homeSettings.liquidGlassProgress"))
         assertTrue(source.contains("homeSettings.liquidGlassAdvancedSettings"))
@@ -159,6 +160,9 @@ class MusicPlayerContentStructureTest {
         assertTrue(!source.contains("forceLiquidChrome = true"))
         assertTrue(!source.contains("containerColorOverride"))
         assertTrue(!source.contains("indicatorIdleSurfaceColorOverride"))
+        assertTrue(source.contains("MusicGlassMaterialMode.FROSTED"))
+        assertTrue(source.contains("LocalMusicPlayerMaterial provides musicMaterial"))
+        assertTrue(source.contains("blurEnabled = !glassEnabled"))
     }
 
     @Test
@@ -168,9 +172,15 @@ class MusicPlayerContentStructureTest {
 
         assertTrue(source.contains("Music3DCoverFlow("))
         assertTrue(source.contains("3D 唱片架"))
-        assertTrue(coverFlowSource.contains("cameraDistance = 10 * density"))
-        assertTrue(coverFlowSource.contains("rotationY = (pageOffset * -36f).coerceIn(-60f, 60f)"))
+        assertTrue(coverFlowSource.contains("cameraDistance = (cardSizeDp * 0.075f).coerceIn(8f, 14f) * density"))
+        assertTrue(coverFlowSource.contains("rotationY = (pageOffset * -32f).coerceIn(-52f, 52f)"))
         assertTrue(coverFlowSource.contains("scaleY = -1f"))
+        assertTrue(coverFlowSource.contains("BlendMode.DstIn"))
+        assertTrue(coverFlowSource.contains("rememberSaveable { mutableStateOf(false) }"))
+        assertTrue(coverFlowSource.contains("AppMotionTokens.emphasizedSpec<Float>()"))
+        assertTrue(coverFlowSource.contains("if (reduceMotion) 0f else"))
+        assertTrue(!source.contains("preview_p2"))
+        assertTrue(!source.contains("(Remix)"))
     }
 
     private fun loadSource(

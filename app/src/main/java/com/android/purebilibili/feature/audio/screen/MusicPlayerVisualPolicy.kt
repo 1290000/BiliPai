@@ -80,8 +80,8 @@ internal fun resolveMusicLyricFocusStyle(
     val distance = abs(lineIndex - currentIndex)
     val alphaPercent = when (distance) {
         0 -> 100
-        1 -> 46
-        2 -> 30
+        1 -> 62
+        2 -> 40
         else -> 20
     }
     val blurRadiusDp = if (!blurEnabled) {
@@ -89,8 +89,8 @@ internal fun resolveMusicLyricFocusStyle(
     } else {
         when (distance) {
             0 -> 0
-            1 -> 2
-            2 -> 4
+            1 -> 1
+            2 -> 3
             else -> 7
         }
     }
@@ -109,6 +109,18 @@ internal fun resolveMusicLiquidGlassEnabled(
         !reduceMotion
 }
 
+internal fun resolveMusicCoverFlowItemEntranceProgress(
+    overallProgress: Float,
+    distanceFromCenter: Float,
+): Float {
+    val delayFraction = (distanceFromCenter.coerceAtLeast(0f) * 0.16f).coerceAtMost(0.32f)
+    return ((overallProgress.coerceIn(0f, 1f) - delayFraction) / (1f - delayFraction))
+        .coerceIn(0f, 1f)
+}
+
+internal fun resolveMusicCoverFlowShadowEntranceProgress(overallProgress: Float): Float =
+    ((overallProgress.coerceIn(0f, 1f) - 0.58f) / 0.42f).coerceIn(0f, 1f)
+
 internal const val APPLE_MUSIC_COVER_SCALE_PLAYING = 1.0f
 internal const val APPLE_MUSIC_COVER_SCALE_PAUSED = 0.88f
 internal const val APPLE_MUSIC_COVER_CORNER_RADIUS_DP = 20
@@ -121,4 +133,11 @@ internal fun resolveAppleMusicCoverScale(
 ): Float {
     if (reduceMotion) return 1.0f
     return if (isPlaying) APPLE_MUSIC_COVER_SCALE_PLAYING else APPLE_MUSIC_COVER_SCALE_PAUSED
+}
+
+// Fade out beyond the second neighbor instead of leaving an opaque wall of covers.
+internal fun resolveMusicCoverFlowItemAlpha(distanceFromCenter: Float): Float {
+    val distance = distanceFromCenter.coerceAtLeast(0f)
+    return if (distance <= 2f) 1f - distance * 0.18f
+    else (3f - distance).coerceIn(0f, 1f) * 0.64f
 }

@@ -3694,6 +3694,27 @@ internal fun VideoDetailScreenStateHolder(
                     // Full-viewport host for Miuix landing chrome (stacked home + side-by-side
                     // related). Anchors are entry-space; never nest under the player column.
                     Box(modifier = Modifier.fillMaxSize()) {
+                    // Shared movable player content for tablet and large screen.
+                    // onPortraitFullscreen = { enterPortraitFullscreen() }
+                    val continuousPlayerSlot: @Composable (Modifier) -> Unit = remember(
+                        continuousPlayerContent,
+                        continuousPlayerUnitState,
+                    ) {
+                        { playerModifier ->
+                            BoxWithConstraints(modifier = playerModifier) {
+                                continuousPlayerContent(
+                                    ContinuousPlayerHostLayout(
+                                        modifier = Modifier.fillMaxSize(),
+                                        viewportWidth = maxWidth,
+                                        alpha = continuousPlayerUnitState,
+                                        scale = continuousPlayerUnitState,
+                                        isFullscreen = false,
+                                        contentTopInset = 0.dp,
+                                    )
+                                )
+                            }
+                        }
+                    }
                     //  📐 [大屏适配] 根据设备类型选择布局
                     if (useTabletLayout) {
                         if (
@@ -3764,6 +3785,7 @@ internal fun VideoDetailScreenStateHolder(
                                 videoAiSummaryEntryEnabled = videoAiSummaryEntryEnabled,
                                 videoNoteEnabled = videoNoteEnabled,
                                 videoNoteDefaultCollapsed = videoNoteDefaultCollapsed,
+                                playerContent = continuousPlayerSlot,
                             )
                         } else {
                             LargeScreenVideoLayout(
@@ -3835,6 +3857,7 @@ internal fun VideoDetailScreenStateHolder(
                             videoAiSummaryEntryEnabled = videoAiSummaryEntryEnabled,
                             videoNoteEnabled = videoNoteEnabled,
                             videoNoteDefaultCollapsed = videoNoteDefaultCollapsed,
+                            playerContent = continuousPlayerSlot,
                             )
                         }
                     } else {
@@ -4592,89 +4615,16 @@ internal fun VideoDetailScreenStateHolder(
                                         alpha = returnMediaFrameProvider().playerAlpha
                                     }
                             ) {
-                            if (continuousFullscreenTransitionEnabled) {
                                 continuousPlayerContent(
                                     ContinuousPlayerHostLayout(
                                         modifier = Modifier.align(Alignment.TopCenter),
-                                        viewportWidth = screenWidthDp,
+                                        viewportWidth = if (continuousFullscreenTransitionEnabled) screenWidthDp else inlineViewportWidth,
                                         alpha = inlinePlayerAlpha,
                                         scale = inlinePlayerScale,
                                         isFullscreen = false,
                                         contentTopInset = playerTopInset,
                                     )
                                 )
-                            } else {
-                            PortraitInlineVideoPlayerHost(
-                                modifier = Modifier.align(Alignment.TopCenter),
-                                animatedViewportWidth = inlineViewportWidth,
-                                contentTopInset = playerTopInset,
-                                inlinePlayerAlpha = inlinePlayerAlpha,
-                                inlinePlayerScale = inlinePlayerScale,
-                                playerState = playerState,
-                                uiState = uiState,
-                                isPipMode = isPipMode,
-                                transitionEnabled = detailChildTransitionEnabled,
-                                transitionChromeAlphaProvider =
-                                    videoCardDetailChromeAlphaProvider,
-                                danmakuHostActive = !hasCommittedRelatedVideoNavigation,
-                                onToggleFullscreen = { toggleFullscreen() },
-                                playbackActions = playbackActions,
-                                onDoubleTapLike = engagementViewModel::toggleLike,
-                                onBack = handleBack,
-                                onHomeClick = {
-                                    handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
-                                },
-                                endDrawerRequestKey = collapsedPlayerMoreRequestKey,
-                                videoPlayerSectionTarget = videoPlayerSectionTarget,
-                                residentCoverSource = residentCoverSource,
-                                sponsorSegment = sponsorSegment,
-                                showSponsorSkipButton = showSponsorSkipButton,
-                                sponsorContributionState = sponsorContributionState,
-                                sleepTimerMinutes = sleepTimerMinutes,
-                                viewPoints = viewPoints,
-                                pbpProgressData = visiblePbpProgressData,
-                                sponsorProgressMarkers = sponsorProgressMarkers,
-                                isVerticalVideo = isVerticalVideo,
-                                onPortraitFullscreen = {
-                                    when (
-                                        resolvePortraitFullscreenButtonAction(
-                                            useOfficialInlinePortraitDetailExperience = useOfficialInlinePortraitDetailExperience
-                                        )
-                                    ) {
-                                        PortraitFullscreenButtonAction.ENTER_PORTRAIT_FULLSCREEN -> {
-                                            enterPortraitFullscreen()
-                                        }
-                                    }
-                                },
-                                isPortraitFullscreen = isPortraitFullscreen,
-                                onPipClick = handlePipClick,
-                                codecPreference = codecPreference,
-                                secondCodecPreference = secondCodecPreference,
-                                audioQualityPreference = audioQualityPreference,
-                                onNavigateToAudioMode = {
-                                    viewModel.setAudioMode(true)
-                                    presentationState.markNavigatingToAudioMode()
-                                    onNavigateToAudioMode()
-                                },
-                                forceCoverOnly = forceCoverOnlyForLiveSafeReturn ||
-                                    shouldForceBackPreviewPlayerCover(
-                                        keepLoadedContentForBackPreview = keepLoadedContentForBackPreview,
-                                        bindLivePlayerForBackPreview = bindLivePlayerForBackPreview
-                                    ),
-                                preserveCurrentFrameOnFullscreenChange = preserveCurrentFrameOnFullscreenChange,
-                                liveBackPreview = bindLivePlayerForBackPreview,
-                                useTextureSurfaceForNavigation = useTextureSurfaceForNavigation,
-                                predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
-                                allowLivePlayerSharedElement = allowLivePlayerSharedElement,
-                                sourceRouteForSharedElement = sourceRouteForSharedElement,
-                                preserveSourceCardCornerDuringSharedReturn =
-                                    detailShellSharedBoundsEnabled &&
-                                        useReturningVideoDetailVisualState,
-                                suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
-                                subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
-                                onSubtitleDisplayModePreferenceOverrideChange = { subtitleDisplayModeOverride = it }
-                            )
-                            }
                             }
                             if (
                                 miuixVisualAssetsActive &&
