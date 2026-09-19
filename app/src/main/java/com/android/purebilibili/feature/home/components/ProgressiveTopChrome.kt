@@ -152,7 +152,8 @@ internal fun BiliPaiImmersiveTopBar(
 ) {
     val active = shouldUseBiliPaiProgressiveTopBlur(enabled, backdrop != null) &&
         !isLowBlurBudgetForced()
-    val solidFadeActive = enabled && !headerBlurActive
+    val solidFadeActive = enabled && !headerBlurActive &&
+        com.android.purebilibili.core.ui.LocalAppThemeConfig.current.progressiveTopFadeEnabled
     val opaqueBackground = opaqueBackgroundFallback && shouldUseOpaqueTopChromeBackground(
         progressiveBlurActive = (active || solidFadeActive),
         headerBlurActive = headerBlurActive,
