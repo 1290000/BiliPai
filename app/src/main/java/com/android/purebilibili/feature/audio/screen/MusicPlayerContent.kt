@@ -17,14 +17,19 @@ import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -261,6 +266,7 @@ internal fun MusicPlayerContent(
     var paletteColor by remember { mutableStateOf(MusicFallbackColor) }
     var artworkBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showQueue by remember { mutableStateOf(false) }
+    var isQueueCoverFlow by remember { mutableStateOf(true) }
     var showActions by remember { mutableStateOf(false) }
     var expandedRightPaneTab by remember { mutableStateOf(ExpandedRightPaneTab.LYRICS) }
     var showAudioQuality by remember { mutableStateOf(false) }
@@ -424,7 +430,8 @@ internal fun MusicPlayerContent(
                                 isLiked = isLiked,
                                 onLikeClick = onLikeClick,
                                 onCommentsClick = onCommentsClick,
-                                onQueueClick = { showQueue = true },
+                                onQueueClick = { showQueue = !showQueue },
+                                isQueueActive = showQueue,
                                 miuixBackdrop = musicBackdrop,
                                 audioQualityLabel = audioQualityLabel,
                                 isHiResAudioSelected = isHiResAudioSelected,
@@ -630,6 +637,61 @@ internal fun MusicPlayerContent(
             }
         }
 
+        // 沉浸式悬浮待播唱片架 / 待播列表 (非弹窗式，浮于底部)
+        AnimatedVisibility(
+            visible = showQueue && layout == MusicPlayerLayout.COMPACT_PAGER && !isInPipMode,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ) + fadeIn(animationSpec = tween(250)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(220)
+            ) + fadeOut(animationSpec = tween(200)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // 点击上半部分透明区域收起待播架，完全无暗色遮罩 scrim
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            showQueue = false
+                        }
+                )
+
+                // 悬浮于底部的沉浸式唱片架面板
+                ImmersiveBottomQueueShelf(
+                    queue = effectiveQueue,
+                    currentIndex = effectiveCurrentIndex,
+                    isPlaying = state.isPlaying,
+                    isLiked = isLiked,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    onLikeClick = onLikeClick,
+                    onQueueItemSelected = onQueueItemSelected,
+                    onClose = { showQueue = false },
+                    isQueueCoverFlow = isQueueCoverFlow,
+                    onToggleQueueCoverFlow = { isQueueCoverFlow = !isQueueCoverFlow },
+                    glassEnabled = glassEnabled,
+                    miuixBackdrop = musicBackdrop,
+                    glassTintColor = backgroundColor,
+                    liquidGlassTuning = liquidGlassTuning,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .widthIn(max = LARGE_SCREEN_MAX_CONTENT_WIDTH_DP.dp)
+                        .fillMaxWidth()
+                )
+            }
+        }
+
         if (!isInPipMode) {
             MusicTopBar(
                 glassEnabled = glassEnabled,
@@ -757,116 +819,6 @@ internal fun MusicPlayerContent(
         )
     }
 
-    if (showQueue) {
-        var isQueueCoverFlow by remember { mutableStateOf(true) }
-        AppModalBottomSheet(
-            onDismissRequest = { showQueue = false },
-            containerColor = AppSurfaceTokens.surface(),
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AppText(
-                    text = "待播清单 (${effectiveQueue.size})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                AppSurface(
-                    onClick = { isQueueCoverFlow = !isQueueCoverFlow },
-                    shape = AppShapes.container(ContainerLevel.Pill),
-                    color = MusicAccentColor.copy(alpha = 0.16f),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AppText(
-                            text = if (isQueueCoverFlow) "切换列表" else "3D 唱片架",
-                            color = MusicAccentColor,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-            if (isQueueCoverFlow) {
-                Music3DCoverFlow(
-                    queue = effectiveQueue,
-                    currentIndex = effectiveCurrentIndex,
-                    isPlaying = state.isPlaying,
-                    onItemClick = onQueueItemSelected,
-                    onPlayPause = onPlayPause,
-                    onPrevious = onPrevious,
-                    onNext = onNext,
-                    isLiked = isLiked,
-                    onLikeClick = onLikeClick,
-                    cardSizeDp = 150,
-                    modifier = Modifier
-                        .padding(vertical = 10.dp)
-                        .navigationBarsPadding()
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(bottom = 12.dp)
-                ) {
-                    itemsIndexed(effectiveQueue, key = { _, item -> item.stableId }) { index, item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onQueueItemSelected(index)
-                                    showQueue = false
-                                }
-                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = item.coverUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(AppShapes.container(ContainerLevel.Field)),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            AppText(
-                                text = item.title,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = if (index == state.currentQueueIndex) FontWeight.Bold else FontWeight.Normal
-                            )
-                            AppText(
-                                text = item.artist,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        if (index == state.currentQueueIndex) {
-                            AppIcon(
-                                Icons.Outlined.MusicNote,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     if (showLyricsSearch) {
         AppModalBottomSheet(
             onDismissRequest = { showLyricsSearch = false },
@@ -942,6 +894,216 @@ internal fun MusicPlayerContent(
         }
     }
     }
+}
+
+/**
+ * 沉浸式悬浮待播唱片架 / 待播列表（非弹窗式，浮于底部）。
+ *
+ * 核心设计：
+ * 1. 悬浮浮层：浮于播放器底层舞台之上，无全屏暗色遮罩 (scrim)，保持上半部封面与歌词通透沉浸。
+ * 2. 质感材质：RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp) + biliPaiFloatingDockShell 流体毛玻璃。
+ * 3. 极简导览：待播清单 (数量) + [切换列表 / 3D 唱片架] 模式胶囊 + [v] 优雅下推收起按钮，支持顶部下推手势收起。
+ * 4. 模式无缝切换：3D 实体 CD 唱片架 (Cover Flow) 与 高级毛玻璃清单双模态切换。
+ */
+@Composable
+private fun ImmersiveBottomQueueShelf(
+    queue: List<MusicQueueItemUi>,
+    currentIndex: Int,
+    isPlaying: Boolean,
+    isLiked: Boolean,
+    onPlayPause: () -> Unit,
+    onPrevious: (() -> Unit)?,
+    onNext: (() -> Unit)?,
+    onLikeClick: (() -> Unit)?,
+    onQueueItemSelected: (Int) -> Unit,
+    onClose: () -> Unit,
+    isQueueCoverFlow: Boolean,
+    onToggleQueueCoverFlow: () -> Unit,
+    glassEnabled: Boolean,
+    miuixBackdrop: MiuixBackdrop?,
+    glassTintColor: Color,
+    liquidGlassTuning: LiquidGlassTuning,
+    modifier: Modifier = Modifier
+) {
+    val panelShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    val panelColor = resolveMusicImmersivePanelColor(glassTintColor).copy(alpha = 0.92f)
+
+    AppSurface(
+        shape = panelShape,
+        color = if (glassEnabled) Color.Transparent else panelColor,
+        contentColor = MusicContentColor,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        shadowElevation = 16.dp,
+        modifier = modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {}
+            .biliPaiFloatingDockShell(
+                backdrop = miuixBackdrop,
+                containerColor = panelColor,
+                pressProgress = 0f,
+                shape = panelShape,
+                enabled = glassEnabled,
+                liquidGlassTuning = liquidGlassTuning
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp)
+        ) {
+            // 顶栏：待播清单 (数量) + 模式切换 + 收起按钮（支持下拉手势快速收起）
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            if (dragAmount > 12f) {
+                                onClose()
+                            }
+                        }
+                    }
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppText(
+                        text = if (queue.isNotEmpty()) "待播清单 (${queue.size})" else "待播清单",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MusicContentColor
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (queue.isNotEmpty()) {
+                        AppSurface(
+                            onClick = onToggleQueueCoverFlow,
+                            shape = AppShapes.container(ContainerLevel.Pill),
+                            color = MusicAccentColor.copy(alpha = 0.18f),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AppText(
+                                    text = if (isQueueCoverFlow) "切换列表" else "3D 唱片架",
+                                    color = MusicAccentColor,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                    AppIconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = "收起待播清单",
+                            tint = MusicContentColor.copy(alpha = 0.72f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            if (queue.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AppText(
+                        text = "待播清单为空",
+                        color = MusicContentColor.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else if (isQueueCoverFlow) {
+                Music3DCoverFlow(
+                    queue = queue,
+                    currentIndex = currentIndex,
+                    isPlaying = isPlaying,
+                    onItemClick = onQueueItemSelected,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    isLiked = isLiked,
+                    onLikeClick = onLikeClick,
+                    cardSizeDp = 150,
+                    showTransportControls = true,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    itemsIndexed(queue, key = { _, item -> item.stableId }) { index, item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    onQueueItemSelected(index)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = item.coverUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                AppText(
+                                    text = item.title,
+                                    color = if (index == currentIndex) MusicAccentColor else MusicContentColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = if (index == currentIndex) FontWeight.Bold else FontWeight.Normal,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                AppText(
+                                    text = item.artist,
+                                    color = MusicContentColor.copy(alpha = 0.65f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            if (index == currentIndex) {
+                                AppIcon(
+                                    Icons.Outlined.MusicNote,
+                                    contentDescription = null,
+                                    tint = MusicAccentColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
