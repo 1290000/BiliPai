@@ -142,7 +142,7 @@ fun BangumiScreen(
         headerBlurRequested = headerBlurRequested,
         progressiveBlurRequested = progressiveRequested,
         hazeAvailable = hazeReady,
-        progressiveAvailable = chromeBackdrop != null,
+        progressiveAvailable = chromeBackdrop != null || progressiveRequested,
     )
     val hazeActive = renderMode == TopChromeRenderMode.HAZE
     val progressiveActive = renderMode == TopChromeRenderMode.PROGRESSIVE
@@ -157,6 +157,7 @@ fun BangumiScreen(
                 backdrop = chromeBackdrop.takeIf { progressiveActive },
                 enabled = progressiveActive,
                 headerBlurActive = hazeActive,
+                surfaceColor = globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.background),
                 extendBelowBounds = false,
                 modifier = Modifier.background(
                     if (chromeActive) Color.Transparent

@@ -394,10 +394,10 @@ fun SpaceScreen(
     val blockUserLabel = stringResource(R.string.space_block_user)
     val unblockUserLabel = stringResource(R.string.space_unblock_user)
 
-    val spaceProgressiveBlur = shouldUseBiliPaiProgressiveTopBlur(
+    val spaceProgressiveBlur = (shouldUseBiliPaiProgressiveTopBlur(
         enabled = spaceThemeConfig.progressiveTopBlurEnabled && !spaceThemeConfig.headerBlurEnabled,
         hasBackdrop = true,
-    ) && !isLowBlurBudgetForced()
+    ) || (spaceThemeConfig.progressiveTopBlurEnabled && !spaceThemeConfig.headerBlurEnabled)) && !isLowBlurBudgetForced()
     val spaceChromeSource = if (spaceProgressiveBlur) {
         com.android.purebilibili.core.ui.blur.rememberChromeBackdropSource()
     } else {
@@ -415,6 +415,7 @@ fun SpaceScreen(
                 backdrop = spaceChromeBackdrop,
                 enabled = spaceProgressiveBlur,
                 headerBlurActive = spaceHeaderBlurActive,
+                surfaceColor = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(MaterialTheme.colorScheme.surface),
                 opaqueBackgroundFallback = false,
                 modifier = Modifier.background(
                     if (spaceProgressiveBlur || spaceHeaderBlurActive) Color.Transparent

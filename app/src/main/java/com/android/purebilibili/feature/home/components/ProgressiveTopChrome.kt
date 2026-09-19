@@ -145,14 +145,16 @@ internal fun BiliPaiImmersiveTopBar(
     headerBlurActive: Boolean = false,
     liquidGlassActive: Boolean = false,
     modifier: Modifier = Modifier,
+    surfaceColor: Color = MaterialTheme.colorScheme.background,
     extendBelowBounds: Boolean = false,
     opaqueBackgroundFallback: Boolean = true,
     content: @androidx.compose.runtime.Composable () -> Unit,
 ) {
     val active = shouldUseBiliPaiProgressiveTopBlur(enabled, backdrop != null) &&
         !isLowBlurBudgetForced()
+    val solidFadeActive = enabled && !headerBlurActive
     val opaqueBackground = opaqueBackgroundFallback && shouldUseOpaqueTopChromeBackground(
-        progressiveBlurActive = active,
+        progressiveBlurActive = (active || solidFadeActive),
         headerBlurActive = headerBlurActive,
         liquidGlassActive = liquidGlassActive,
     )
@@ -164,6 +166,31 @@ internal fun BiliPaiImmersiveTopBar(
             )
             .then(modifier),
     ) {
+        if (solidFadeActive) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .layout { measurable, constraints ->
+                        val extension = resolveProgressiveTopBlurBottomExtension(
+                            enabled = extendBelowBounds,
+                            endFraction = BILIPAI_PROGRESSIVE_TOP_BLUR_DEFAULT_GRADIENT.endFraction,
+                        ).roundToPx()
+                        val extended = constraints.copy(
+                            minHeight = constraints.minHeight + extension,
+                            maxHeight = constraints.maxHeight + extension,
+                        )
+                        val placeable = measurable.measure(extended)
+                        layout(placeable.width, placeable.height - extension) {
+                            placeable.placeRelative(0, 0)
+                        }
+                    }
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colorStops = com.android.purebilibili.core.ui.blur.ProgressiveFadeDefaults.createStops(surfaceColor).toTypedArray(),
+                        )
+                    ),
+            )
+        }
         if (active) {
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
@@ -191,7 +218,7 @@ internal fun BiliPaiImmersiveTopBar(
         }
         androidx.compose.runtime.CompositionLocalProvider(
             com.android.purebilibili.core.ui.LocalImmersiveTopChromeActive provides
-                (active || headerBlurActive),
+                ((active || headerBlurActive) || solidFadeActive),
             content = content,
         )
     }

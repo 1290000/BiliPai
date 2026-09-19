@@ -133,9 +133,11 @@ fun SettingsTabletShell(
                     .background(AppSurfaceTokens.groupedListContainer()),
             ) {
                 val config = LocalAppThemeConfig.current
-                val progressive = shouldUseBiliPaiProgressiveTopBlur(
-                    enabled = config.progressiveTopBlurEnabled && !config.headerBlurEnabled,
-                    hasBackdrop = true,
+                val progressive = (
+                    shouldUseBiliPaiProgressiveTopBlur(
+                        enabled = config.progressiveTopBlurEnabled && !config.headerBlurEnabled,
+                        hasBackdrop = true,
+                    ) || (config.progressiveTopBlurEnabled && !config.headerBlurEnabled)
                 ) && !isLowBlurBudgetForced()
                 val tabletChromeBackdrop = if (progressive) rememberLayerBackdrop() else null
                 val tabletHazeState = if (
@@ -147,6 +149,7 @@ fun SettingsTabletShell(
                     backdrop = tabletChromeBackdrop,
                     enabled = progressive,
                     headerBlurActive = tabletHazeReady,
+                    surfaceColor = AppSurfaceTokens.groupedListContainer(),
                 ) {
                     AppTopBar(
                         title = stringResource(R.string.settings_title),

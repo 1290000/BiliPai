@@ -678,9 +678,11 @@ fun WatchLaterScreen(
         null
     }
     val watchLaterChromeBackdrop = watchLaterChromeSource?.takeIf { !state.isLoading && it.isReady }?.backdrop
-    val progressiveChromeActive = shouldUseBiliPaiProgressiveTopBlur(
-        enabled = appThemeConfig.progressiveTopBlurEnabled && !appThemeConfig.headerBlurEnabled,
-        hasBackdrop = watchLaterChromeBackdrop != null,
+    val progressiveChromeActive = (
+        shouldUseBiliPaiProgressiveTopBlur(
+            enabled = appThemeConfig.progressiveTopBlurEnabled && !appThemeConfig.headerBlurEnabled,
+            hasBackdrop = watchLaterChromeBackdrop != null,
+        ) || (appThemeConfig.progressiveTopBlurEnabled && !appThemeConfig.headerBlurEnabled)
     ) && !com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced()
     val headerBlurActive = appThemeConfig.headerBlurEnabled &&
         hazeState?.let { recoverableBlurEnabled(it) } == true &&
@@ -739,6 +741,7 @@ fun WatchLaterScreen(
                 backdrop = watchLaterChromeBackdrop,
                 enabled = progressiveChromeActive,
                 headerBlurActive = headerBlurActive,
+                surfaceColor = AppSurfaceTokens.groupedListContainer(),
                 extendBelowBounds = false,
                 modifier = Modifier.fillMaxWidth().then(
                     if (progressiveChromeActive) {

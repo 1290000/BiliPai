@@ -907,7 +907,7 @@ fun CommonListScreen(
         headerCollapseEnabled = commonListHeaderCollapseEnabled,
         captureScrollableContent = progressiveHeaderRequested,
     )
-    val topBarBackgroundModifier = if (useProgressiveHeaderBlur) {
+    val topBarBackgroundModifier = if (useProgressiveHeaderBlur || (isProgressiveTopBlurEnabled && !isHeaderBlurEnabled)) {
         Modifier.fillMaxWidth()
     } else if (historyUsesFloatingLiquidDocks) {
         // 悬浮 Dock 必须直接采样下方列表；整块顶栏背景会把动态折射退化成纯色壳。
@@ -1338,8 +1338,9 @@ fun CommonListScreen(
             // 2. 顶层：悬浮顶栏 (使用 onGloballyPositioned 测量高度)
             BiliPaiImmersiveTopBar(
                 backdrop = commonListChromeBackdrop,
-                enabled = useProgressiveHeaderBlur,
+                enabled = useProgressiveHeaderBlur || (isProgressiveTopBlurEnabled && !isHeaderBlurEnabled),
                 headerBlurActive = headerBlurActive,
+                surfaceColor = headerBackgroundColor,
                 extendBelowBounds = false,
                 modifier = Modifier
                     .zIndex(1f)

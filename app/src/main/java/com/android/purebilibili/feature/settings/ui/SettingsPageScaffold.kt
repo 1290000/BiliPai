@@ -162,10 +162,10 @@ internal fun SettingsPageScaffold(
     } else {
         null
     }
-    val progressiveBlurEnabled = shouldUseBiliPaiProgressiveTopBlur(
+    val progressiveBlurEnabled = (shouldUseBiliPaiProgressiveTopBlur(
         enabled = appThemeConfig.progressiveTopBlurEnabled && !headerBlurEnabled,
         hasBackdrop = true,
-    ) && !lowBlurBudget
+    ) || (appThemeConfig.progressiveTopBlurEnabled && !headerBlurEnabled)) && !lowBlurBudget
     val backdrop = if (progressiveBlurEnabled) rememberLayerBackdrop() else null
     val hazeState = if (
         headerBlurEnabled && !lowBlurBudget &&
@@ -195,6 +195,7 @@ internal fun SettingsPageScaffold(
                     backdrop = backdrop,
                     enabled = progressiveBlurEnabled,
                     headerBlurActive = hazeReady,
+                    surfaceColor = pageContainerColor,
                 ) {
                     AppTopBar(
                         title = title,
