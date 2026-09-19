@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -279,7 +280,7 @@ internal fun Music3DCoverFlow(
                                         Brush.verticalGradient(
                                             listOf(
                                                 Color.Transparent,
-                                                Color(0xFF140F0E).copy(alpha = 0.94f)
+                                                Color.Black.copy(alpha = 0.75f)
                                             )
                                         )
                                     )
@@ -291,20 +292,20 @@ internal fun Music3DCoverFlow(
 
             Spacer(Modifier.height(6.dp))
 
-            // 底部悬浮胶囊控制条（1:1 复刻截图：药丸容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
+            // 底部悬浮胶囊控制条（药丸毛玻璃容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
             val focusedItem = queue.getOrNull(pagerState.currentPage) ?: queue[validCurrentIndex]
             AppSurface(
                 shape = CircleShape,
-                color = Color(0x481E1917),
+                color = Color.White.copy(alpha = 0.12f),
+                border = BorderStroke(
+                    width = 0.8.dp,
+                    color = Color.White.copy(alpha = 0.22f)
+                ),
+                shadowElevation = 8.dp,
                 modifier = Modifier
                     .padding(horizontal = 24.dp, vertical = 6.dp)
                     .widthIn(max = 440.dp)
                     .height(46.dp)
-                    .border(
-                        width = 0.7.dp,
-                        color = Color.White.copy(alpha = 0.12f),
-                        shape = CircleShape
-                    )
             ) {
                 Row(
                     modifier = Modifier

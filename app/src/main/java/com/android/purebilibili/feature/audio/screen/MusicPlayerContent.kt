@@ -208,7 +208,7 @@ internal fun resolveMusicPlayerContentColor(
 /** Bottom controls inherit the artwork palette while staying on the dark immersive floor. */
 internal fun resolveMusicImmersivePanelColor(
     backgroundColor: Color,
-    darkOverlayFraction: Float = 0.62f,
+    darkOverlayFraction: Float = 0.45f,
 ): Color = lerp(
     start = backgroundColor,
     stop = Color.Black,
@@ -1148,9 +1148,9 @@ private fun MusicArtworkBackground(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                backgroundColor.copy(alpha = 0.35f),
-                                Color(0xFF121016).copy(alpha = 0.50f),
-                                Color(0xFF0C0A10).copy(alpha = 0.58f)
+                                Color.Transparent,
+                                backgroundColor.copy(alpha = 0.20f),
+                                Color.Black.copy(alpha = 0.42f)
                             )
                         )
                     )
@@ -1162,8 +1162,9 @@ private fun MusicArtworkBackground(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                backgroundColor.copy(alpha = 0.55f),
-                                Color(0xFF100E14).copy(alpha = 0.70f)
+                                Color.Transparent,
+                                backgroundColor.copy(alpha = 0.35f),
+                                Color.Black.copy(alpha = 0.55f)
                             )
                         )
                     )
@@ -1205,9 +1206,9 @@ private fun PlayerPage(
     isQueueActive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val topPadding = if (isExpandedLayout) 8.dp else 64.dp
-    val bottomPadding = if (isExpandedLayout) 8.dp else 12.dp
-    val horizontalPadding = if (isExpandedLayout) 8.dp else chromeSpec.horizontalPaddingDp.dp
+    val topPadding = if (isExpandedLayout) 12.dp else 64.dp
+    val bottomPadding = if (isExpandedLayout) 12.dp else 12.dp
+    val horizontalPadding = if (isExpandedLayout) 16.dp else chromeSpec.horizontalPaddingDp.dp
 
     Column(
         modifier = modifier
@@ -1220,15 +1221,11 @@ private fun PlayerPage(
                 bottom = bottomPadding
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = if (isExpandedLayout) Arrangement.Center else Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // 上半部：封面展示与实时歌词空间（大屏居中紧凑对齐，手机端弹性居中给歌词留空间）
+        // 上半部：封面展示与实时歌词空间（弹性居中占满可用剩余空间，绝不挤压底部控制栏）
         Column(
-            modifier = if (isExpandedLayout) {
-                Modifier.wrapContentHeight().fillMaxWidth()
-            } else {
-                Modifier.weight(1f).fillMaxWidth()
-            },
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -1261,11 +1258,7 @@ private fun PlayerPage(
             }
         }
 
-        if (isExpandedLayout) {
-            Spacer(Modifier.height(20.dp))
-        }
-
-        // 下半部：歌曲信息与控制组件区
+        // 下半部：歌曲信息与控制组件区（始终稳定坐落于底端，完整展示播放/暂停与切歌）
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -1277,13 +1270,13 @@ private fun PlayerPage(
                 Column(Modifier.weight(1f)) {
                     AppText(
                         text = state.title,
-                        color = MusicAccentColor,
-                        style = MaterialTheme.typography.headlineSmall,
+                        color = MusicContentColor,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(3.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -1291,8 +1284,8 @@ private fun PlayerPage(
                     ) {
                         AppText(
                             text = state.artist.ifBlank { "未知艺术家" },
-                            color = MusicContentColor.copy(alpha = 0.82f),
-                            style = MaterialTheme.typography.titleMedium,
+                            color = MusicContentColor.copy(alpha = 0.68f),
+                            style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -1301,8 +1294,9 @@ private fun PlayerPage(
                             AppSurface(
                                 onClick = onAudioQualityClick,
                                 shape = RoundedCornerShape(6.dp),
-                                color = MusicAccentColor.copy(alpha = 0.16f),
-                                modifier = Modifier.height(24.dp)
+                                color = Color.White.copy(alpha = 0.12f),
+                                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.20f)),
+                                modifier = Modifier.height(22.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -1311,9 +1305,9 @@ private fun PlayerPage(
                                 ) {
                                     AppText(
                                         text = audioQualityLabel.ifBlank { "音质" },
-                                        color = MusicAccentColor,
+                                        color = MusicContentColor.copy(alpha = 0.90f),
                                         style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.Medium
                                     )
                                     if (isHiResAudioSelected) {
                                         HiResBadge()
@@ -1334,7 +1328,7 @@ private fun PlayerPage(
                         AppIcon(
                             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = if (isLiked) "取消点赞" else "点赞",
-                            tint = if (isLiked) MaterialTheme.colorScheme.error else MusicContentColor
+                            tint = if (isLiked) Color(0xFFFF3B5C) else MusicContentColor.copy(alpha = 0.72f)
                         )
                     }
                 }
@@ -1796,15 +1790,15 @@ private fun PlaybackControls(
             onClick = onPrevious ?: {},
             sizeDp = skipButtonSizeDp
         )
-        // 播放控制主按钮：改为完全圆形（Apple Music 风格）
+        // 播放控制主按钮：高对比度纯白质感大圆键（Apple Music / Spotify 经典成熟设计）
         // AppFilledIconButton(
         AppSurface(
             onClick = onPlayPause,
             modifier = Modifier.size(playButtonSizeDp.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shadowElevation = 6.dp
+            color = Color.White,
+            contentColor = Color.Black,
+            shadowElevation = 8.dp
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -1812,14 +1806,14 @@ private fun PlaybackControls(
             ) {
                 if (state.isBuffering) {
                     AppCircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color.Black,
                         modifier = Modifier.size((playButtonSizeDp * 0.45f).dp)
                     )
                 } else {
                     AppIcon(
                         imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (state.isPlaying) "暂停" else "播放",
-                        tint = MaterialTheme.colorScheme.onPrimary,
+                        tint = Color.Black,
                         modifier = Modifier.size((playButtonSizeDp * 0.45f).dp)
                     )
                 }

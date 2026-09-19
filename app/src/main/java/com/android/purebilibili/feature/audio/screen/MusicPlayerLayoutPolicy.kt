@@ -72,8 +72,8 @@ internal fun resolveMusicArtworkSizeDp(
         )
         MusicPlayerLayout.EXPANDED_SPLIT -> minOf(
             (availableWidthDp / 2 - 48).coerceAtLeast(0),
-            (availableHeightDp - 140).coerceAtLeast(0),
-            360
+            (availableHeightDp - 240).coerceAtLeast(100),
+            340
         )
         MusicPlayerLayout.PIP_ARTWORK -> minOf(availableWidthDp, availableHeightDp)
     }
