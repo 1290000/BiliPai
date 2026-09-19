@@ -4697,7 +4697,7 @@ private fun SpaceHeaderStat(
         AppText(
             text = label,
             fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

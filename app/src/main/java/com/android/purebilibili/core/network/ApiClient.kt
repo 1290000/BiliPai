@@ -2043,16 +2043,21 @@ interface SpaceApi {
 suspend fun SpaceApi.getSpaceAggregate(
     mid: Long
 ): com.android.purebilibili.data.model.response.SpaceAggregateResponse {
-    return getSpaceAggregate(buildSpaceAggregateParams(mid, TokenManager.accessTokenCache))
+    return getSpaceAggregate(
+        buildSpaceAggregateParams(
+            mid = mid,
+            accessToken = TokenManager.accessTokenCache,
+            accessTokenPlatform = TokenManager.accessTokenPlatformCache
+        )
+    )
 }
 
 internal fun buildSpaceAggregateParams(
     mid: Long,
-    accessToken: String?
+    accessToken: String?,
+    accessTokenPlatform: String = TokenManager.ACCESS_TOKEN_PLATFORM_ANDROID
 ): Map<String, String> {
     val params = linkedMapOf(
-        "actionKey" to "appkey",
-        "appkey" to AppSignUtils.ANDROID_APP_KEY,
         "build" to "8430300",
         "version" to "8.43.0",
         "c_locale" to "zh_CN",
@@ -2065,7 +2070,14 @@ internal fun buildSpaceAggregateParams(
         "vmid" to mid.toString()
     )
     accessToken?.takeIf { it.isNotBlank() }?.let { params["access_key"] = it }
-    return AppSignUtils.signForAndroidApi(params)
+    return if (
+        !accessToken.isNullOrBlank() &&
+        accessTokenPlatform == TokenManager.ACCESS_TOKEN_PLATFORM_TV
+    ) {
+        AppSignUtils.signForTvApi(params)
+    } else {
+        AppSignUtils.signForAndroidHdLogin(params)
+    }
 }
 
 //  [新增] 番剧/影视 API
