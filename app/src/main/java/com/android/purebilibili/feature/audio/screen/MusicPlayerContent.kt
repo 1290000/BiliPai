@@ -2132,10 +2132,10 @@ private fun LyricsPage(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 28.dp,
-                    top = if (showBottomControls) 120.dp else 40.dp,
-                    end = 28.dp,
-                    bottom = if (showBottomControls) 260.dp else 80.dp
+                    start = if (showBottomControls) 28.dp else 12.dp,
+                    top = if (showBottomControls) 120.dp else 24.dp,
+                    end = if (showBottomControls) 28.dp else 16.dp,
+                    bottom = 260.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
@@ -2715,29 +2715,29 @@ private fun TabletopPlayerLayout(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(top = 48.dp)
+            .padding(top = 40.dp, bottom = 4.dp)
     ) {
         // 上半部分（观赏区）：左侧黑胶唱盘 + 右侧滚动歌词
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1.05f)
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧黑胶唱盘
+            // 左侧黑胶唱盘（靠右微调，紧贴右侧歌词，减小中间空隙）
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.CenterEnd
             ) {
                 val turntableSize = minOf(
-                    (availableWidthDp * 0.36f).toInt(),
-                    ((availableHeightDp * 0.42f)).toInt(),
-                    260
-                ).coerceAtLeast(140)
+                    (availableWidthDp * 0.38f).toInt(),
+                    ((availableHeightDp * 0.44f)).toInt(),
+                    285
+                ).coerceAtLeast(150)
 
                 MusicArtwork(
                     coverUrl = state.coverUrl,
@@ -2755,7 +2755,7 @@ private fun TabletopPlayerLayout(
             // 右侧歌词
             Box(
                 modifier = Modifier
-                    .weight(1.2f)
+                    .weight(1.15f)
                     .fillMaxHeight()
             ) {
                 LyricsPage(
@@ -2782,18 +2782,18 @@ private fun TabletopPlayerLayout(
             }
         }
 
-        // 下半部分（优雅切歌台）：3D 唱片架 + 进度条 + 底部胶囊控制条
+        // 下半部分（优雅切歌台）：3D 唱片架 + 进度条 + 底部胶囊控制条（垂直居中聚拢，拉近上下半屏距离）
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = Alignment.Center
         ) {
             val cardSizeDp = minOf(
-                (availableWidthDp * 0.22f).toInt(),
-                ((availableHeightDp * 0.23f)).toInt(),
-                175
-            ).coerceAtLeast(130)
+                (availableWidthDp * 0.23f).toInt(),
+                ((availableHeightDp * 0.25f)).toInt(),
+                180
+            ).coerceAtLeast(135)
 
             Music3DCoverFlow(
                 queue = queue,
@@ -2816,7 +2816,7 @@ private fun TabletopPlayerLayout(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .padding(bottom = 6.dp)
             )
         }
     }

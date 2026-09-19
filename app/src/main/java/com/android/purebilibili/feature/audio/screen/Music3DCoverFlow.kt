@@ -144,8 +144,9 @@ internal fun Music3DCoverFlow(
                             scaleX = scale
                             scaleY = scale
 
-                            // 4. 重叠排列（让两侧 CD 壳产生自然的堆叠遮挡感）
-                            translationX = pageOffset * -32.dp.toPx()
+                            // 4. 紧密重叠排列（聚拢展开，呈现 44% 自然错落重叠的精致 3D 展台）
+                            val overlapShiftPx = (cardSizeDp * 0.44f).dp.toPx()
+                            translationX = pageOffset * -overlapShiftPx
 
                             // 5. 层次高保真可见度
                             alpha = (1f - (abs(pageOffset) * 0.12f)).coerceIn(0.62f, 1f)
