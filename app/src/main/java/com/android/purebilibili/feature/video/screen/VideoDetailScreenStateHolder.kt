@@ -1219,6 +1219,7 @@ internal fun VideoDetailScreenStateHolder(
                 windowWidthDp = configuration.screenWidthDp.toFloat(),
                 windowHeightDp = configuration.screenHeightDp.toFloat(),
                 horizontalAdaptationEnabled = true,
+                isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
             )
         )
 
