@@ -80,3 +80,20 @@ internal fun resolveSpaceBannerColorFilter(
         )
     }
 }
+
+/**
+ * Resolves the IP location display text on the UP space header, aligned with PiliPlus / Bilibili:
+ * - Strips redundant prefixes such as "IP属地：" or "IP 属地：".
+ * - Returns clean "IP 属地 · $cleanLocation" or null if empty/blank.
+ */
+internal fun resolveSpaceIpLocationDisplay(rawIpLocation: String?): String? {
+    if (rawIpLocation.isNullOrBlank()) return null
+    val clean = rawIpLocation
+        .replace("IP属地：", "")
+        .replace("IP 属地：", "")
+        .replace("IP属地:", "")
+        .replace("IP 属地:", "")
+        .trim()
+    if (clean.isBlank()) return null
+    return "IP 属地 · $clean"
+}

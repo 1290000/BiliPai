@@ -221,7 +221,7 @@ class SpaceViewModel(
                 val cardTopPhotoDeferred = async { fetchUserCardSpaceTopPhoto(mid) }
                 val aggregateDeferred = async { fetchSpaceAggregate(mid) }
                 val keysDeferred = async { fetchWbiKeys() }
-                val userCardTopPhoto = cardTopPhotoDeferred.await()
+                val userCardVisuals = cardTopPhotoDeferred.await()
                 if (!shouldApplySpaceLoadResult(mid, currentMid, requestGeneration, activeSpaceLoadGeneration)) {
                     return@launch
                 }
@@ -229,8 +229,9 @@ class SpaceViewModel(
                 val aggregateSeed = aggregateDeferred.await()?.let { aggregate ->
                     resolveSpaceInitialSeedFromAggregate(
                         data = aggregate,
-                        cardLargePhoto = userCardTopPhoto.first,
-                        cardSmallPhoto = userCardTopPhoto.second
+                        cardLargePhoto = userCardVisuals.largePhoto,
+                        cardSmallPhoto = userCardVisuals.smallPhoto,
+                        cardIpLocation = userCardVisuals.ipLocation,
                     )
                 }
 
@@ -262,7 +263,7 @@ class SpaceViewModel(
                         loadSpaceLegacyProfileVisuals(
                             mid = mid,
                             requestGeneration = requestGeneration,
-                            userCardTopPhoto = userCardTopPhoto
+                            userCardVisuals = userCardVisuals
                         )
                         hydrateInitialContributionVideos(mid = mid, requestGeneration = requestGeneration)
                         ensureSelectedContributionContentLoaded()
@@ -284,7 +285,7 @@ class SpaceViewModel(
                 cachedImgKey = keys.first
                 cachedSubKey = keys.second
 
-                if (!loadSpaceInfoLegacy(mid, requestGeneration, userCardTopPhoto)) {
+                if (!loadSpaceInfoLegacy(mid, requestGeneration, userCardVisuals)) {
                     if (shouldApplySpaceLoadResult(mid, currentMid, requestGeneration, activeSpaceLoadGeneration)) {
                         _uiState.value = SpaceUiState.Error("获取用户信息失败")
                     }
@@ -305,7 +306,7 @@ class SpaceViewModel(
     private suspend fun loadSpaceInfoLegacy(
         mid: Long,
         requestGeneration: Long,
-        userCardTopPhoto: Pair<String, String>
+        userCardVisuals: SpaceUserCardVisuals
     ): Boolean = coroutineScope {
         val infoDeferred = async { fetchSpaceInfo(mid, cachedImgKey, cachedSubKey) }
         // The space info endpoint is not consistent about including `is_followed`.
@@ -335,13 +336,16 @@ class SpaceViewModel(
 
         val resolvedTopPhoto = resolveSpaceTopPhoto(
             topPhoto = userInfoRaw.topPhoto,
-            cardLargePhoto = userCardTopPhoto.first,
-            cardSmallPhoto = userCardTopPhoto.second
+            cardLargePhoto = userCardVisuals.largePhoto,
+            cardSmallPhoto = userCardVisuals.smallPhoto
         )
+        val resolvedIpLocation = userInfoRaw.ipLocation?.takeIf { it.isNotBlank() }
+            ?: userCardVisuals.ipLocation?.takeIf { it.isNotBlank() }
         val userInfo = userInfoRaw.copy(
             topPhoto = resolvedTopPhoto,
             isFollowed = followStatus,
-            relationStatus = if (followStatus) 2 else 0
+            relationStatus = if (followStatus) 2 else 0,
+            ipLocation = resolvedIpLocation
         )
         currentPage = videosResult?.resolvedPage ?: 1
         val videoData = videosResult?.data
@@ -470,7 +474,7 @@ class SpaceViewModel(
     private fun loadSpaceLegacyProfileVisuals(
         mid: Long,
         requestGeneration: Long,
-        userCardTopPhoto: Pair<String, String>
+        userCardVisuals: SpaceUserCardVisuals
     ) {
         viewModelScope.launch {
             try {
@@ -483,10 +487,13 @@ class SpaceViewModel(
                 val resolvedTopPhoto = currentState.userInfo.topPhoto.ifBlank {
                     resolveSpaceTopPhoto(
                         topPhoto = info.topPhoto,
-                        cardLargePhoto = userCardTopPhoto.first,
-                        cardSmallPhoto = userCardTopPhoto.second
+                        cardLargePhoto = userCardVisuals.largePhoto,
+                        cardSmallPhoto = userCardVisuals.smallPhoto
                     )
                 }
+                val resolvedIpLocation = info.ipLocation?.takeIf { it.isNotBlank() }
+                    ?: userCardVisuals.ipLocation?.takeIf { it.isNotBlank() }
+                    ?: currentState.userInfo.ipLocation
                 val mergedUserInfo = currentState.userInfo.copy(
                     name = info.name.ifBlank { currentState.userInfo.name },
                     sex = info.sex.ifBlank { currentState.userInfo.sex },
@@ -502,7 +509,7 @@ class SpaceViewModel(
                     topPhoto = resolvedTopPhoto,
                     liveRoom = info.liveRoom ?: currentState.userInfo.liveRoom,
                     livePlace = info.livePlace ?: currentState.userInfo.livePlace,
-                    ipLocation = info.ipLocation ?: currentState.userInfo.ipLocation
+                    ipLocation = resolvedIpLocation
                 )
 
                 _uiState.value = currentState.copy(
@@ -817,17 +824,23 @@ class SpaceViewModel(
         }
     }
 
-    private suspend fun fetchUserCardSpaceTopPhoto(mid: Long): Pair<String, String> {
+    private suspend fun fetchUserCardSpaceTopPhoto(mid: Long): SpaceUserCardVisuals {
         return try {
             val response = NetworkModule.api.getUserCard(mid = mid, photo = true)
             if (response.code == 0) {
                 val space = response.data?.space
-                Pair(space?.l_img.orEmpty(), space?.s_img.orEmpty())
+                val rawIpLocation = response.data?.card?.ipLocation?.takeIf { it.isNotBlank() }
+                    ?: response.data?.ipLocation?.takeIf { it.isNotBlank() }
+                SpaceUserCardVisuals(
+                    largePhoto = space?.l_img.orEmpty(),
+                    smallPhoto = space?.s_img.orEmpty(),
+                    ipLocation = rawIpLocation
+                )
             } else {
-                Pair("", "")
+                SpaceUserCardVisuals()
             }
         } catch (_: Exception) {
-            Pair("", "")
+            SpaceUserCardVisuals()
         }
     }
     

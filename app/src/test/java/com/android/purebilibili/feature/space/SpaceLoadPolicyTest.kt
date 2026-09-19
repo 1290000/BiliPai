@@ -490,8 +490,18 @@ class SpaceLoadPolicyTest {
             windowWidthDp = 393f,
             windowHeightDp = 851f,
         )
-        assertTrue(phoneBanner.cropToFill)
-        assertEquals(SPACE_HEADER_HEIGHT_DP, phoneBanner.heightDp, 0.01f)
+        assertFalse(phoneBanner.cropToFill)
+        assertEquals(393f / SPACE_BANNER_ASPECT_RATIO, phoneBanner.heightDp, 0.01f)
+        assertEquals(393f / SPACE_BANNER_ASPECT_RATIO, phoneBanner.heroHeightDp, 0.01f)
+        val phoneBannerWithInset = resolveSpaceBannerMetrics(
+            renderedBannerWidthDp = 393f,
+            windowWidthDp = 393f,
+            windowHeightDp = 851f,
+            topInsetDp = 104f,
+        )
+        assertFalse(phoneBannerWithInset.cropToFill)
+        assertEquals(393f / SPACE_BANNER_ASPECT_RATIO + 104f, phoneBannerWithInset.heightDp, 0.01f)
+        assertEquals(393f / SPACE_BANNER_ASPECT_RATIO, phoneBannerWithInset.heroHeightDp, 0.01f)
         val landscapeTabletBanner = resolveSpaceBannerMetrics(
             renderedBannerWidthDp = 1280f,
             windowWidthDp = 1280f,
@@ -504,7 +514,8 @@ class SpaceLoadPolicyTest {
             windowWidthDp = 421f,
             windowHeightDp = 616f,
         )
-        assertTrue(compactCover.cropToFill)
+        assertFalse(compactCover.cropToFill)
+        assertEquals(421f / SPACE_BANNER_ASPECT_RATIO, compactCover.heightDp, 0.01f)
         assertEquals(
             7,
             resolveSpaceContentGridColumnCount(

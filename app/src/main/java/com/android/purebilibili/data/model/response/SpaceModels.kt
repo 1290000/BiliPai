@@ -166,7 +166,9 @@ data class SpaceAggregateCard(
     @SerialName("followings_followed_upper")
     val followingsFollowedUpper: SpaceFollowingsFollowedUpper? = null,
     @SerialName("space_tag")
-    val spaceTag: List<SpaceTagItem> = emptyList()
+    val spaceTag: List<SpaceTagItem> = emptyList(),
+    @SerialName("ip_location")
+    val ipLocation: String? = null
 )
 
 @Serializable

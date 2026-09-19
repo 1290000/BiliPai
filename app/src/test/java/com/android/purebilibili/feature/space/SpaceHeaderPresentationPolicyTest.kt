@@ -92,4 +92,17 @@ class SpaceHeaderPresentationPolicyTest {
         kotlin.test.assertNotNull(resolveSpaceBannerColorFilter(isLight = true, hasFilter = true))
         kotlin.test.assertNotNull(resolveSpaceBannerColorFilter(isLight = false, hasFilter = true))
     }
+
+    @Test
+    fun `resolveSpaceIpLocationDisplay normalizes prefixes and filters blanks`() {
+        assertEquals("IP 属地 · 广东", resolveSpaceIpLocationDisplay("IP属地：广东"))
+        assertEquals("IP 属地 · 广东", resolveSpaceIpLocationDisplay("IP 属地：广东"))
+        assertEquals("IP 属地 · 广东", resolveSpaceIpLocationDisplay("IP属地: 广东"))
+        assertEquals("IP 属地 · 广东", resolveSpaceIpLocationDisplay("广东"))
+        assertEquals("IP 属地 · 日本", resolveSpaceIpLocationDisplay("IP属地：日本"))
+        kotlin.test.assertNull(resolveSpaceIpLocationDisplay(null))
+        kotlin.test.assertNull(resolveSpaceIpLocationDisplay(""))
+        kotlin.test.assertNull(resolveSpaceIpLocationDisplay("   "))
+        kotlin.test.assertNull(resolveSpaceIpLocationDisplay("IP属地："))
+    }
 }

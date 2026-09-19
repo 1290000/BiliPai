@@ -2478,16 +2478,17 @@ private fun SpaceHeader(
             renderedBannerWidth,
             windowSizeClass.widthDp,
             windowSizeClass.heightDp,
+            chromeTopInset,
         ) {
             resolveSpaceBannerMetrics(
                 renderedBannerWidthDp = renderedBannerWidth.value,
                 windowWidthDp = windowSizeClass.widthDp.value,
                 windowHeightDp = windowSizeClass.heightDp.value,
+                topInsetDp = chromeTopInset.value,
             )
         }
         val bannerTotalHeightDp = bannerMetrics.heightDp.dp
-        val heroHeight = (bannerTotalHeightDp - chromeTopInset.coerceAtLeast(0.dp))
-            .coerceAtLeast(0.dp)
+        val heroHeight = bannerMetrics.heroHeightDp.dp
         val avatarTopPadding = (heroHeight - avatarBannerOverlap).coerceAtLeast(0.dp)
 
         Column(
@@ -2507,7 +2508,7 @@ private fun SpaceHeader(
                         val topInsetPx = chromeTopInset.coerceAtLeast(0.dp).roundToPx()
                         val targetWidth = constraints.maxWidth + horizontalInsetPx * 2
                         val bannerTotalHeightPx = bannerTotalHeightDp.roundToPx()
-                        val visibleHeightPx = (bannerTotalHeightPx - topInsetPx).coerceAtLeast(0)
+                        val visibleHeightPx = heroHeight.roundToPx()
                         val placeable = measurable.measure(
                             constraints.copy(
                                 minWidth = targetWidth,
@@ -2794,8 +2795,8 @@ private fun SpaceHeaderIdentityInfo(
                 )
             }
 
-            val ipLocation = userInfo.ipLocation?.takeIf { it.isNotBlank() }
-            if (userInfo.mid > 0L || ipLocation != null) {
+            val ipLocationDisplay = resolveSpaceIpLocationDisplay(userInfo.ipLocation)
+            if (userInfo.mid > 0L || ipLocationDisplay != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2809,9 +2810,10 @@ private fun SpaceHeaderIdentityInfo(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    ipLocation?.let { location ->
+                    ipLocationDisplay?.let { locationText ->
                         AppText(
-                            text = "IP 属地 · $location",
+                            text = locationText,
+                            modifier = Modifier.copyOnLongPress(locationText, "IP属地"),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f)
                         )

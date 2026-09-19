@@ -305,6 +305,13 @@ internal const val SPACE_WIDE_BANNER_MIN_HEIGHT_DP = 120f
 internal data class SpaceBannerMetrics(
     val heightDp: Float,
     val cropToFill: Boolean,
+    val heroHeightDp: Float = heightDp,
+)
+
+internal data class SpaceUserCardVisuals(
+    val largePhoto: String = "",
+    val smallPhoto: String = "",
+    val ipLocation: String? = null,
 )
 
 /**
@@ -336,10 +343,12 @@ internal fun resolveSpaceBannerMetrics(
     renderedBannerWidthDp: Float,
     windowWidthDp: Float,
     windowHeightDp: Float,
+    topInsetDp: Float = 0f,
 ): SpaceBannerMetrics {
     val landscape = windowHeightDp > 0f && windowWidthDp > windowHeightDp
     val useDesktopHeader = windowWidthDp >= 600f || landscape
-    val height = if (useDesktopHeader) {
+    val naturalHeroHeight = renderedBannerWidthDp.coerceAtLeast(0f) / SPACE_BANNER_ASPECT_RATIO
+    val heroHeight = if (useDesktopHeader) {
         if (windowHeightDp > 0f) {
             (windowHeightDp * 0.22f).coerceIn(
                 SPACE_WIDE_BANNER_MIN_HEIGHT_DP,
@@ -349,11 +358,13 @@ internal fun resolveSpaceBannerMetrics(
             SPACE_WIDE_BANNER_MAX_HEIGHT_DP
         }
     } else {
-        SPACE_HEADER_HEIGHT_DP
+        naturalHeroHeight
     }
+    val totalHeight = heroHeight + topInsetDp
     return SpaceBannerMetrics(
-        heightDp = height,
-        cropToFill = true,
+        heightDp = totalHeight,
+        cropToFill = useDesktopHeader,
+        heroHeightDp = heroHeight,
     )
 }
 
@@ -522,7 +533,8 @@ internal fun resolveSpaceRelationState(
 internal fun resolveSpaceInitialSeedFromAggregate(
     data: SpaceAggregateData,
     cardLargePhoto: String = "",
-    cardSmallPhoto: String = ""
+    cardSmallPhoto: String = "",
+    cardIpLocation: String? = null,
 ): SpaceInitialSeed? {
     val card = data.card ?: return null
     val userMid = card.mid.toLongOrNull()?.takeIf { it > 0L } ?: return null
@@ -548,6 +560,8 @@ internal fun resolveSpaceInitialSeedFromAggregate(
         defaultTab = data.defaultTab,
         contributionTabs = contributionTabs
     )
+    val resolvedIpLocation = data.card?.ipLocation?.takeIf { it.isNotBlank() }
+        ?: cardIpLocation?.takeIf { it.isNotBlank() }
 
     return SpaceInitialSeed(
         userInfo = SpaceUserInfo(
@@ -567,7 +581,8 @@ internal fun resolveSpaceInitialSeedFromAggregate(
             topImages = topImageItems,
             followingsFollowed = card.followingsFollowedUpper,
             spaceTags = card.spaceTag,
-            liveRoom = data.live
+            liveRoom = data.live,
+            ipLocation = resolvedIpLocation,
         ),
         relationStat = RelationStatData(
             mid = userMid,
