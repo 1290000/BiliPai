@@ -463,6 +463,7 @@ internal fun VideoDetailScreenStateHolder(
     miniPlayerManager: MiniPlayerManager? = null,
     isInPipMode: Boolean = false,
     isVisible: Boolean = true,
+    isPlaybackSessionActive: Boolean = isVisible,
     onImmersivePlaybackChanged: (Boolean) -> Unit = {},
     viewModel: VideoPlaybackViewModel = viewModel(),
     engagementViewModel: VideoEngagementViewModel = viewModel(),
@@ -1938,7 +1939,7 @@ internal fun VideoDetailScreenStateHolder(
     var portraitPendingSelectionBvid by rememberSaveable { mutableStateOf<String?>(null) }
     // 返回 morph 中栈已 pop 时 isVisible=false，仍须保活 surface，避免壳缩前半段黑掉。
     val playbackSessionActiveForMorph = shouldKeepPlaybackSessionActiveForSharedReturnMorph(
-        isVisible = isVisible,
+        isVisible = isPlaybackSessionActive,
         sharedBoundsActive = sharedBoundsActive,
         isExitTransitionInProgress = isExitTransitionInProgress,
     )

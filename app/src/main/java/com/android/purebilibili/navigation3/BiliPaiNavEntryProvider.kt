@@ -8,7 +8,6 @@ import top.yukonga.miuix.kmp.nav.transition.NavTransition
 internal fun NavEntryBuilder.biliPaiNavEntries(
     swipeBackDirection: NavSwipeDirection,
     predictiveBackExcludedTransition: NavTransition,
-    audioModeTransition: NavTransition,
     videoCardTransition: NavTransition,
     fullscreenVideoCardTransition: NavTransition,
     content: @Composable (BiliPaiNavKey) -> Unit,
@@ -89,7 +88,7 @@ internal fun NavEntryBuilder.biliPaiNavEntries(
         content = content,
     )
     entry<BiliPaiNavKey.AudioMode>(
-        transition = audioModeTransition,
+        transition = predictiveBackExcludedTransition,
         swipeDismiss = NavSwipeDirection.None,
         content = content,
     )

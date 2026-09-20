@@ -23,6 +23,12 @@ class AudioModeNavigationStructureTest {
         assertTrue(audioModeBranch.contains("previousVideoKey?.let(videoDetailViewModelOwners::get)"))
         assertTrue(audioModeBranch.contains("viewModel(viewModelStoreOwner = sharedVideoOwner)"))
         assertTrue(audioModeBranch.contains("viewModel.uiState.value is"))
+        assertTrue(videoDetailBranch.contains("isPlaybackSessionActive = videoDetailPlaybackSessionActive"))
+        assertTrue(
+            videoDetailBranch.contains(
+                "navigation3BackStack.lastOrNull() !is BiliPaiNavKey.AudioMode"
+            )
+        )
     }
 
     private fun loadSource(path: String): String {

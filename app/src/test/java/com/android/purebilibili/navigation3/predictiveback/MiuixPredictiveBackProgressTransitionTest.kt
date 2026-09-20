@@ -125,6 +125,7 @@ class MiuixPredictiveBackProgressTransitionTest {
             "JsPluginContent",
             "ExternalMedia",
             "OfflineVideoPlayer",
+            "AudioMode",
             "BangumiPlayer",
             "MusicDetail",
             "NativeMusic",
@@ -139,11 +140,6 @@ class MiuixPredictiveBackProgressTransitionTest {
                 "$keyName must not use the limited predictive-back transition",
             )
         }
-        assertTrue(
-            source.substringAfter("entry<BiliPaiNavKey.AudioMode>(")
-                .substringBefore("content = content")
-                .contains("transition = audioModeTransition"),
-        )
         assertTrue(
             source.substringAfter("entry<BiliPaiNavKey.VideoDetail>(")
                 .substringBefore("content = content")

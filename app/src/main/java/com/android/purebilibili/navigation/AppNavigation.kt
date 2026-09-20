@@ -2749,6 +2749,13 @@ fun AppNavigation(
                             val activateVideoBackPreviewPlayback =
                                 bindVideoBackPreviewPlayer &&
                                     navigation3ReturnSession.isReturningFromDetail
+                            val videoDetailPlaybackSessionActive =
+                                shouldActivateVideoDetailPlaybackSession(
+                                    currentKey = navigation3BackStack.lastOrNull(),
+                                    detailKey = videoKey,
+                                    isImmediateBackPreview = isImmediateVideoBackPreview,
+                                    activateBackPreviewPlayback = activateVideoBackPreviewPlayback,
+                                )
                             val latestNavTopIsVideo by rememberUpdatedState(
                                 navigation3BackStack.lastOrNull() is BiliPaiNavKey.VideoDetail
                             )
@@ -2793,13 +2800,9 @@ fun AppNavigation(
                                 },
                                 miniPlayerManager = miniPlayerManager,
                                 isInPipMode = isInPipMode,
-                                isVisible = shouldActivateVideoDetailPlaybackSession(
-                                    currentKey = navigation3BackStack.lastOrNull(),
-                                    detailKey = videoKey,
-                                    isImmediateBackPreview = isImmediateVideoBackPreview,
-                                    activateBackPreviewPlayback =
-                                        activateVideoBackPreviewPlayback,
-                                ),
+                                isVisible = videoDetailPlaybackSessionActive &&
+                                    navigation3BackStack.lastOrNull() !is BiliPaiNavKey.AudioMode,
+                                isPlaybackSessionActive = videoDetailPlaybackSessionActive,
                                 startInFullscreen = videoKey.fullscreen,
                                 startAudioFromRoute = videoKey.startAudio,
                                 autoEnterPortraitFromRoute = videoKey.autoPortrait,

@@ -234,21 +234,6 @@ internal fun BiliPaiNavDisplayHost(
             globalTransition
         }
     }
-    val audioModeTransition = remember(
-        style,
-        predictiveBackExitDirection,
-        isLightBackground,
-    ) {
-        // Both sides are render-heavy player destinations. Preserve the selected Miuix motion,
-        // but avoid an extra full-screen RenderEffect while revealing the detail player Surface.
-        biliPaiMiuixNavTransition(
-            animation = style,
-            exitDirection = predictiveBackExitDirection,
-            isLightBackground = isLightBackground,
-            miuixTransitionBlurEnabled = false,
-            miuixPredictiveBackProgressEnabled = false,
-        )
-    }
     // A restored parent session must not keep the departed child's scope at depth -1.
     val videoCardTransitionProgress = remember(sourceMetadata.sourceKey) { MiuixVideoCardTransitionProgress() }
     val videoFallbackTransition = if (cardTransitionEnabled) {
@@ -672,7 +657,6 @@ internal fun BiliPaiNavDisplayHost(
             biliPaiNavEntries(
                 swipeBackDirection = swipeBackDirection,
                 predictiveBackExcludedTransition = predictiveBackExcludedTransition,
-                audioModeTransition = audioModeTransition,
                 videoCardTransition = videoCardTransition,
                 fullscreenVideoCardTransition = fullscreenVideoCardTransition,
             ) { key ->
