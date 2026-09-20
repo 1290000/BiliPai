@@ -3415,7 +3415,9 @@ internal fun VideoDetailScreenStateHolder(
                             onCommentHate = commentActions.hateComment,
                             hatedComments = commentState.hatedComments,
                             onCommentUrlClick = openCommentUrl,
-                            onReportComment = commentActions.reportComment, onToggleTopComment = commentActions.toggleTopComment,
+                            onReportComment = commentActions.reportComment,
+                            onToggleTopComment = commentActions.toggleTopComment,
+                            onCheckCommentFraud = commentActions.checkCommentFraud,
                             onTimestampClick = { position -> seekPlayerFromUserAction(playerState.player, position) },
                             onDismiss = {
                                 commentActions.closeSubReply()
@@ -3655,6 +3657,7 @@ internal fun VideoDetailScreenStateHolder(
                             onCommentUrlClick = openCommentUrl,
                             onReportComment = commentActions.reportComment,
                             onToggleTopComment = commentActions.toggleTopComment,
+                            onCheckCommentFraud = commentActions.checkCommentFraud,
                             onTimestampClick = { position -> seekPlayerFromUserAction(playerState.player, position) },
                             onDismiss = {
                                 commentActions.closeSubReply()
