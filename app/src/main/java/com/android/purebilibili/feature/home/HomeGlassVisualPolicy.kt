@@ -140,6 +140,43 @@ data class HomeCardInfoSurfaceAppearance(
     val useRealtimeLiquidGlass: Boolean = false
 )
 
+internal enum class HomeCardWallpaperSurfaceMode {
+    STANDARD,
+    LIGHTWEIGHT_TINT,
+    REALTIME_FROSTED,
+}
+
+/**
+ * Select the card-info material without reading frame-rate state during composition. The
+ * caller supplies source readiness and the current performance budget as stable inputs; scroll
+ * position is resolved by the backdrop draw node itself.
+ */
+internal fun resolveHomeCardWallpaperSurfaceMode(
+    dynamicTintEnabled: Boolean,
+    wallpaperVisible: Boolean,
+    wallpaperIsStatic: Boolean,
+    backdropReady: Boolean,
+    blurEnabled: Boolean,
+    isDataSaverActive: Boolean,
+    lowBlurBudgetForced: Boolean,
+    sdkInt: Int,
+): HomeCardWallpaperSurfaceMode {
+    if (!dynamicTintEnabled || !wallpaperVisible) {
+        return HomeCardWallpaperSurfaceMode.STANDARD
+    }
+    if (
+        wallpaperIsStatic &&
+            backdropReady &&
+            blurEnabled &&
+            !isDataSaverActive &&
+            !lowBlurBudgetForced &&
+            sdkInt >= 31
+    ) {
+        return HomeCardWallpaperSurfaceMode.REALTIME_FROSTED
+    }
+    return HomeCardWallpaperSurfaceMode.LIGHTWEIGHT_TINT
+}
+
 internal fun resolveHomeGlassChromeStyle(
     glassEnabled: Boolean,
     blurEnabled: Boolean

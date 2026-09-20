@@ -203,6 +203,11 @@ val LocalHomeScrollChannel = compositionLocalOf<Channel<HomeScrollRequest>?> { n
 /** Home feed LayerBackdrop for card info liquid glass (sibling capture, not nested SO). */
 val LocalHomeMiuixBackdrop = staticCompositionLocalOf<MiuixBackdrop?> { null }
 
+/** Wallpaper-only LayerBackdrop used by video-card info surfaces. */
+val LocalHomeWallpaperBackdrop = staticCompositionLocalOf<MiuixBackdrop?> { null }
+val LocalHomeWallpaperBackdropReady = staticCompositionLocalOf { false }
+val LocalHomeWallpaperIsStatic = staticCompositionLocalOf { false }
+
 // [New] Global Scroll Offset for Liquid Glass Effect
 // Used to pass scroll position from HomeScreen to BottomBar without causing recomposition
 val LocalHomeScrollOffset = compositionLocalOf { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -1045,6 +1050,14 @@ fun HomeScreen(
             splashWallpaperUri = splashWallpaperUri
         )
     }
+    LaunchedEffect(homeWallpaperUri) {
+        com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.loadWallpaperPalette(
+            context = context,
+            uri = homeWallpaperUri,
+            scope = this
+        )
+    }
+    val wallpaperPalette by com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.currentPalette.collectAsStateWithLifecycle()
 
     val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsStateWithLifecycle(initialValue = AppNavigationSettings(),
         context = kotlin.coroutines.EmptyCoroutineContext
@@ -1272,6 +1285,20 @@ fun HomeScreen(
             isDataSaverActive = isDataSaverActive
         )
     }
+    val shouldCaptureHomeWallpaperBackdrop =
+        homeSettings.homeCardDynamicTintEnabled &&
+            homeWallpaperBackdropAppearance.visible &&
+            homeWallpaperUri.isNotBlank() &&
+            isStaticHomeWallpaperUri(homeWallpaperUri) &&
+            !isDataSaverActive
+    val homeWallpaperBackdropSource = if (shouldCaptureHomeWallpaperBackdrop) {
+        // Key the recorder by URI so a wallpaper replacement cannot briefly reuse the old
+        // backdrop while the new image is being recorded.
+        key(homeWallpaperUri) { rememberChromeBackdropSource() }
+    } else {
+        null
+    }
+    val readyHomeWallpaperBackdrop = homeWallpaperBackdropSource?.takeIf { it.isReady }?.backdrop
     
     if (!view.isInEditMode && shouldApplyHomeSystemBars(isTopLevelActive)) {
         SideEffect {
@@ -1805,7 +1832,16 @@ fun HomeScreen(
                    // [Refactor] Use Box to allow overlay and proper blur nesting
                    // [新增] Video Preview State (Long Press)
 
-                    CompositionLocalProvider(LocalHomeMiuixBackdrop provides homeMiuixBackdrop) {
+                    CompositionLocalProvider(
+                        LocalHomeMiuixBackdrop provides homeMiuixBackdrop,
+                        LocalHomeWallpaperBackdrop provides readyHomeWallpaperBackdrop,
+                        LocalHomeWallpaperBackdropReady provides (readyHomeWallpaperBackdrop != null),
+                        LocalHomeWallpaperIsStatic provides (
+                            homeWallpaperUri.isNotBlank() && isStaticHomeWallpaperUri(homeWallpaperUri)
+                        ),
+                        com.android.purebilibili.feature.home.components.cards.LocalWallpaperPalette provides wallpaperPalette,
+                        com.android.purebilibili.feature.home.components.cards.LocalHomeCardDynamicTintEnabled provides homeSettings.homeCardDynamicTintEnabled
+                    ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1826,7 +1862,8 @@ fun HomeScreen(
                         playbackEnabled = isTopLevelActive,
                         appearance = homeWallpaperBackdropAppearance,
                         baseColor = AppSurfaceTokens.chromeBackground(),
-                        isDataSaverActive = isDataSaverActive
+                        isDataSaverActive = isDataSaverActive,
+                        modifier = homeWallpaperBackdropSource?.modifier ?: Modifier
                     )
                     // [Fix] Re-enabled default overscroll for better feedback
                         val homeTopPagerSwipeEnabled =

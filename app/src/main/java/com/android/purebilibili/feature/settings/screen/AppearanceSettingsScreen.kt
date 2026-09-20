@@ -456,6 +456,9 @@ fun AppearanceSettingsContent(
     val videoCardLongPressActionEnabled by SettingsManager
         .getVideoCardLongPressActionEnabled(context)
         .collectAsStateWithLifecycle(initialValue = false)
+    val homeCardDynamicTintEnabled by SettingsManager
+        .getHomeCardDynamicTintEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = true)
     val homeDurationStyle by SettingsManager
         .getHomeDurationStyle(context)
         .collectAsStateWithLifecycle(initialValue = HomeDurationStyle.OUTSIDE_COVER)
@@ -1610,6 +1613,24 @@ fun AppearanceSettingsContent(
                             onCheckedChange = {
                                 scope.launch {
                                     SettingsManager.setVideoCardLongPressActionEnabled(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+
+                        AppPreferenceDivider(modifier = Modifier.padding(start = 16.dp))
+                        AppSwitchPreference(
+                            icon = rememberSettingsSemanticIcon(SettingsIconRole.HOME_INFO_GLASS),
+                            title = "卡片毛玻璃与动态取色",
+                            subtitle = if (homeCardDynamicTintEnabled) {
+                                "卡片底部跟随壁纸局部颜色实时磨砂；不支持时使用轻量效果"
+                            } else {
+                                "卡片使用传统实色底板，关闭动态色彩联动"
+                            },
+                            checked = homeCardDynamicTintEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    SettingsManager.setHomeCardDynamicTintEnabled(context, it)
                                 }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSBlue
