@@ -44,21 +44,25 @@ internal fun buildBangumiPlayUrlParams(
     bvid: String? = null,
     seasonId: Long? = null,
     aid: Long = 0L,
-    tryLook: Boolean = true
+    tryLook: Boolean = true,
+    isCourse: Boolean = false
 ): Map<String, String> {
-    val params = linkedMapOf(
-        "ep_id" to epId.toString(),
-        "cid" to cid.toString(),
-        "qn" to qn.toString(),
-        // DASH + HDR + 4K + Dolby + 8K + AV1 + smart-repair capabilities.
-        "fnval" to "12240",
-        "fnver" to "0",
-        "fourk" to "1",
-        "voice_balance" to "1",
-        "gaia_source" to "pre-load",
-        "isGaiaAvoided" to "true",
-        "web_location" to "1315873"
-    )
+    val params = linkedMapOf<String, String>()
+    if (epId > 0L) {
+        params["ep_id"] = epId.toString()
+    }
+    if (cid > 0L) {
+        params["cid"] = cid.toString()
+    }
+    params["qn"] = qn.toString()
+    // For courses/PUGV, fnval=4048 (aligned with PiliPlus), whereas PGC uses 12240
+    params["fnval"] = if (isCourse) "4048" else "12240"
+    params["fnver"] = "0"
+    params["fourk"] = "1"
+    params["voice_balance"] = "1"
+    params["gaia_source"] = "pre-load"
+    params["isGaiaAvoided"] = "true"
+    params["web_location"] = "1315873"
     if (seasonId != null && seasonId > 0L) {
         params["season_id"] = seasonId.toString()
     }
@@ -86,11 +90,12 @@ internal fun buildBangumiPlayUrlParams(
 
 internal fun signBangumiPlayUrlParams(
     params: Map<String, String>,
-    wbiKeys: Pair<String, String>?
+    wbiKeys: Pair<String, String>?,
+    includeRiskFingerprint: Boolean = false
 ): Map<String, String> {
     val (imgKey, subKey) = wbiKeys ?: return params
     if (imgKey.isBlank() || subKey.isBlank()) return params
-    return WbiUtils.sign(params, imgKey, subKey)
+    return WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = includeRiskFingerprint)
 }
 
 internal fun decodeBangumiPlayUrlPayload(
@@ -105,9 +110,16 @@ internal fun decodeBangumiPlayUrlPayload(
     val message = root["message"]?.jsonPrimitive?.contentOrNull.orEmpty()
     val resultObject = root["result"] as? JsonObject
     val dataObject = root["data"] as? JsonObject
-    val videoInfoElement = resultObject?.get("video_info") ?: resultObject ?: (dataObject?.get("video_info") ?: dataObject)
+    val videoInfoElement = resultObject?.get("video_info")
+        ?: dataObject?.get("video_info")
+        ?: dataObject
+        ?: resultObject
     val videoInfo = videoInfoElement?.let {
-        runCatching { json.decodeFromString<BangumiVideoInfo>(it.toString()) }.getOrNull()
+        runCatching {
+            json.decodeFromString<BangumiVideoInfo>(it.toString())
+        }.onFailure { e ->
+            android.util.Log.w("BangumiRepo", "decodeBangumiPlayUrlPayload videoInfo parse failed: ${e.message}")
+        }.getOrNull()
     }
     return BangumiPlayUrlPayload(
         code = code,
@@ -423,13 +435,15 @@ object BangumiRepository {
                 qn = qn,
                 bvid = bvid,
                 seasonId = seasonId,
-                aid = aid
+                aid = aid,
+                isCourse = isCourse
             )
             val wbiKeys = WbiKeyManager.getWbiKeys().getOrNull()
                 ?: WbiKeyManager.refreshKeys().getOrNull()
             val signedParams = signBangumiPlayUrlParams(
                 params = baseParams,
-                wbiKeys = wbiKeys
+                wbiKeys = wbiKeys,
+                includeRiskFingerprint = isCourse
             )
             android.util.Log.d(
                 "BangumiRepo",

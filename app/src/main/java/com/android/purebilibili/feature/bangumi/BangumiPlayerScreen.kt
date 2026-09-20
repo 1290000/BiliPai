@@ -57,6 +57,24 @@ import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.android.purebilibili.core.util.FormatUtils
 import androidx.compose.material.icons.Icons
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.lerp
+import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
+import com.android.purebilibili.feature.bangumi.ui.player.BangumiCollapsedPlayerBar
+import com.android.purebilibili.feature.video.policy.reduceVideoDetailPostScroll
+import com.android.purebilibili.feature.video.policy.reduceVideoDetailPreScroll
+import com.android.purebilibili.feature.video.screen.rememberInlinePortraitPlayerCollapseState
+import com.android.purebilibili.feature.video.screen.shouldAutoPauseOnPlayerCollapse
+import com.android.purebilibili.feature.video.screen.shouldAutoResumeOnPlayerExpand
+import kotlin.math.abs
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppText
@@ -346,13 +364,15 @@ fun BangumiPlayerScreen(
         CommentSortMode.fromApiMode(defaultCommentSortMode)
     }
 
-    LaunchedEffect(currentAid, currentEpisodeIdForDebug, preferredCommentSortMode, successState?.seasonDetail?.stat?.reply) {
-        val isPugv = successState?.seasonDetail?.let { it.seasonType == 10 || it.seasonTypeName == "课堂" } == true
+    LaunchedEffect(currentEpisodeIdForDebug, currentAid, preferredCommentSortMode, successState?.seasonDetail?.stat?.reply) {
+        val isPugv = isCourse || successState?.seasonDetail?.let { it.seasonType == 10 || it.seasonTypeName == "课堂" } == true
         val targetOid = if (isPugv) (successState?.currentEpisode?.id ?: currentEpisodeIdForDebug) else currentAid
         val targetType = if (isPugv) 33 else 1
+        val targetUpMid = successState?.seasonDetail?.upInfo?.mid ?: 0L
         if (targetOid > 0L) {
             commentViewModel.init(
                 aid = targetOid,
+                upMid = targetUpMid,
                 preferredSortMode = preferredCommentSortMode,
                 expectedReplyCount = successState?.seasonDetail?.stat?.reply?.toInt() ?: 0,
                 commentType = targetType
@@ -771,15 +791,112 @@ fun BangumiPlayerScreen(
             }
         }
         
+        // 播放器折叠状态（对齐 PiliPlus 下滑收起播放器）
+        val inlinePlayerCollapseState = rememberInlinePortraitPlayerCollapseState("bangumi:$seasonId:$currentEpisodeIdForDebug")
+        val portraitPlayerCollapseMode by com.android.purebilibili.core.store.SettingsManager
+            .getPortraitPlayerCollapseMode(context)
+            .collectAsStateWithLifecycle(initialValue = PortraitPlayerCollapseMode.BOTH)
+        val pauseOnPlayerCollapseEnabled by com.android.purebilibili.core.store.SettingsManager
+            .getPauseOnPlayerCollapseEnabled(context)
+            .collectAsStateWithLifecycle(initialValue = true)
+
+        val inlineCollapseEnabled = !isFullscreen && portraitPlayerCollapseMode != PortraitPlayerCollapseMode.OFF
+
+        val density = LocalDensity.current
+        val screenWidthDp = configuration.screenWidthDp.dp
+        val playerHeight = screenWidthDp * 2f / 3f
+        val collapsedPlayerHeight = 56.dp
+        val collapseRangePx = remember(playerHeight, density) {
+            with(density) { (playerHeight - collapsedPlayerHeight).toPx().coerceAtLeast(0f) }
+        }
+
+        // 换集时展开播放器
+        LaunchedEffect(currentEpisodeIdForDebug) {
+            inlinePlayerCollapseState.reset()
+        }
+
+        val rawCollapseProgress = remember(inlinePlayerCollapseState.offsetPx, collapseRangePx) {
+            if (collapseRangePx <= 0f) 0f else (abs(inlinePlayerCollapseState.offsetPx) / collapseRangePx).coerceIn(0f, 1f)
+        }
+
+        val animatedCollapseProgress by animateFloatAsState(
+            targetValue = if (inlineCollapseEnabled) rawCollapseProgress else 0f,
+            animationSpec = if (inlinePlayerCollapseState.restoreRequested) {
+                tween(durationMillis = 280, easing = FastOutSlowInEasing)
+            } else {
+                snap()
+            },
+            label = "bangumi_player_collapse_progress"
+        )
+
+        // 折叠自动暂停 / 展开自动恢复
+        var autoPausedByPlayerCollapse by remember(currentEpisodeIdForDebug) { mutableStateOf(false) }
+        val isPlayerCollapsed = animatedCollapseProgress >= 0.98f
+        LaunchedEffect(isPlayerCollapsed, pauseOnPlayerCollapseEnabled, isFullscreen, currentEpisodeIdForDebug) {
+            val player = exoPlayer ?: return@LaunchedEffect
+            if (shouldAutoPauseOnPlayerCollapse(
+                autoPauseEnabled = pauseOnPlayerCollapseEnabled,
+                isPlayerCollapsed = isPlayerCollapsed,
+                isPlaying = player.isPlaying,
+                isPortraitFullscreen = isFullscreen,
+            )) {
+                player.pause()
+                autoPausedByPlayerCollapse = true
+            } else if (shouldAutoResumeOnPlayerExpand(
+                autoPauseEnabled = pauseOnPlayerCollapseEnabled,
+                isPlayerCollapsed = isPlayerCollapsed,
+                wasAutoPausedByCollapse = autoPausedByPlayerCollapse,
+                isPortraitFullscreen = isFullscreen,
+            )) {
+                autoPausedByPlayerCollapse = false
+                player.play()
+            } else if (!isPlayerCollapsed) {
+                autoPausedByPlayerCollapse = false
+            }
+        }
+
+        val nestedScrollConnection = remember(inlineCollapseEnabled, isFullscreen, collapseRangePx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (available.y != 0f) inlinePlayerCollapseState.beginScroll()
+                    val scrollUpdate = reduceVideoDetailPreScroll(
+                        currentOffsetPx = inlinePlayerCollapseState.offsetPx,
+                        deltaPx = available.y,
+                        minOffsetPx = -collapseRangePx,
+                        inlinePortraitScrollEnabled = inlineCollapseEnabled,
+                        isPortraitFullscreen = isFullscreen
+                    ) ?: return Offset.Zero
+                    inlinePlayerCollapseState.updateOffset(scrollUpdate.nextOffsetPx)
+                    return Offset(0f, scrollUpdate.consumedDeltaPx)
+                }
+
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    if (available.y != 0f) inlinePlayerCollapseState.beginScroll()
+                    val scrollUpdate = reduceVideoDetailPostScroll(
+                        currentOffsetPx = inlinePlayerCollapseState.offsetPx,
+                        deltaPx = available.y,
+                        minOffsetPx = -collapseRangePx,
+                        inlinePortraitScrollEnabled = inlineCollapseEnabled,
+                        isPortraitFullscreen = isFullscreen
+                    ) ?: return Offset.Zero
+                    inlinePlayerCollapseState.updateOffset(scrollUpdate.nextOffsetPx)
+                    return Offset(0f, scrollUpdate.consumedDeltaPx)
+                }
+            }
+        }
+
         if (isFullscreen) {
             // 全屏播放
             playerContentView(true)
         } else {
-            // 竖屏：播放器 + 内容
-            Column(modifier = Modifier.fillMaxSize()) {
-                //  播放器区域 - 放大为 2:3 比例
-                val screenWidthDp = configuration.screenWidthDp.dp
-                val playerHeight = screenWidthDp * 2f / 3f
+            // 竖屏：播放器 + 内容 (支持下滑收起播放器)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection)
+            ) {
+                // 播放器区域 - 动态高度计算
+                val currentViewportHeight = lerp(playerHeight, collapsedPlayerHeight, animatedCollapseProgress)
 
                 Spacer(
                     modifier = Modifier
@@ -791,13 +908,31 @@ fun BangumiPlayerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(playerHeight)
+                        .height(currentViewportHeight)
                         .background(Color.Black)
                 ) {
                     playerContentView(false)
+
+                    if (animatedCollapseProgress > 0f) {
+                        BangumiCollapsedPlayerBar(
+                            scrollRatio = animatedCollapseProgress,
+                            topInset = 0.dp,
+                            isPlaying = exoPlayer?.isPlaying == true,
+                            isCompleted = exoPlayer?.playbackState == androidx.media3.common.Player.STATE_ENDED,
+                            hasPlayed = (exoPlayer?.currentPosition ?: 0L) > 0L,
+                            onBack = onBack,
+                            onPlayClick = {
+                                inlinePlayerCollapseState.restore()
+                                if (exoPlayer?.isPlaying == true) {
+                                    exoPlayer?.pause()
+                                } else {
+                                    exoPlayer?.play()
+                                }
+                            },
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
                 }
-                
-                // 内容区域（进度条已集成到播放器控制层内）
                 
                 // 内容区域
                 Box(

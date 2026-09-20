@@ -520,12 +520,42 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📹 DURL: segments=${durlSegmentUrls.size}, first=${videoUrl.take(60)}...")
                 } else {
                     com.android.purebilibili.core.util.Logger.e("BangumiPlayerVM", "❌ No dash or durl in response!")
+                    if (isCourse) {
+                        _uiState.value = BangumiPlayerState.Success(
+                            seasonDetail = detail,
+                            currentEpisode = episode,
+                            currentEpisodeIndex = episodeIndex,
+                            playUrl = null,
+                            audioUrl = null,
+                            quality = 0,
+                            acceptQuality = emptyList(),
+                            acceptDescription = emptyList(),
+                            cachedDash = null,
+                            playbackErrorMessage = "该课程需购买后观看"
+                        )
+                        return
+                    }
                     _uiState.value = BangumiPlayerState.Error("无法获取播放地址：服务器未返回视频流")
                     return
                 }
             }
             
             if (videoUrl.isNullOrEmpty()) {
+                if (isCourse) {
+                    _uiState.value = BangumiPlayerState.Success(
+                        seasonDetail = detail,
+                        currentEpisode = episode,
+                        currentEpisodeIndex = episodeIndex,
+                        playUrl = null,
+                        audioUrl = null,
+                        quality = 0,
+                        acceptQuality = emptyList(),
+                        acceptDescription = emptyList(),
+                        cachedDash = null,
+                        playbackErrorMessage = "该课程需购买后观看"
+                    )
+                    return
+                }
                 _uiState.value = BangumiPlayerState.Error("无法获取播放地址")
                 return
             }
@@ -724,12 +754,15 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         val currentPos = getPlayerCurrentPosition()
         
         viewModelScope.launch {
+            val isCourse = currentState.seasonDetail.seasonType == 10 || currentState.seasonDetail.seasonTypeName == "课堂"
             val playUrlResult = BangumiRepository.getBangumiPlayUrl(
                 epId = currentState.currentEpisode.id,
                 qn = qualityId,
                 cid = currentState.currentEpisode.cid,
                 bvid = currentState.currentEpisode.bvid,
-                seasonId = currentState.seasonDetail.seasonId
+                seasonId = currentState.seasonDetail.seasonId,
+                aid = currentState.currentEpisode.aid,
+                isCourse = isCourse
             )
             
             playUrlResult.onSuccess { playData ->

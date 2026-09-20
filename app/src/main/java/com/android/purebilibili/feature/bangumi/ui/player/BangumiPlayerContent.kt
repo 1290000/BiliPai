@@ -480,13 +480,14 @@ fun BangumiPlayerContent(
                 }
 
                 1 -> {
-                    if (currentEpisode.aid > 0L) {
+                    val hasComments = if (isCourse) (currentEpisode.id > 0L || currentEpisode.aid > 0L) else currentEpisode.aid > 0L
+                    if (hasComments) {
                         VideoCommentMainList(
                             viewModel = commentViewModel,
                             showIdentityDecorations = false,
-                            onRootCommentClick = {},
+                            onRootCommentClick = { rootReply -> commentViewModel.openSubReply(rootReply) },
                             onReplyClick = {},
-                            onUserClick = {},
+                            onUserClick = onUserClick ?: {},
                             onCommentUrlClick = {},
                             onTimestampClick = null,
                             maxTimestampMs = currentEpisode.duration.takeIf { it > 0L },

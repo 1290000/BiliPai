@@ -324,8 +324,9 @@ class VideoCommentViewModel : ViewModel() {
         viewModelScope.launch {
             val pageToLoad = currentState.nextPage
             //  使用当前排序模式
-            val result = CommentRepository.getComments(
-                aid = requestSubject.oid,
+            val result = CommentRepository.getCommentsForSubject(
+                oid = requestSubject.oid,
+                type = requestSubject.type,
                 page = pageToLoad, 
                 ps = 20,
                 mode = currentState.sortMode.apiMode,
@@ -901,7 +902,13 @@ class VideoCommentViewModel : ViewModel() {
             // parent 总是回复目标的 ID (如果没有回复目标，则是 0)
             val parent = replyTarget?.rpid ?: 0
             
-            val result = CommentRepository.addComment(currentAid, message, root, parent)
+            val result = CommentRepository.addCommentForSubject(
+                oid = currentSubject.oid,
+                type = currentSubject.type,
+                message = message,
+                root = root,
+                parent = parent
+            )
             
             result.onSuccess { newReply ->
                 android.util.Log.d("CommentVM", " sendComment success: newReply=${newReply?.rpid}, root=$root, parent=$parent")
@@ -914,8 +921,8 @@ class VideoCommentViewModel : ViewModel() {
                     viewModelScope.launch {
                         com.android.purebilibili.data.repository.CommentFraudRepository.saveRecord(
                             rpid = rpidToCheck,
-                            oid = currentAid,
-                            type = 1,
+                            oid = currentSubject.oid,
+                            type = currentSubject.type,
                             root = root,
                             message = message,
                             status = com.android.purebilibili.data.model.CommentFraudStatus.NORMAL
@@ -1033,7 +1040,12 @@ class VideoCommentViewModel : ViewModel() {
         )
         
         viewModelScope.launch {
-            CommentRepository.likeComment(currentAid, rpid, !isCurrentlyLiked).onFailure {
+            CommentRepository.likeCommentForSubject(
+                oid = currentSubject.oid,
+                type = currentSubject.type,
+                rpid = rpid,
+                like = !isCurrentlyLiked
+            ).onFailure {
                 _commentState.value = _commentState.value.copy(likedComments = currentState.likedComments, hatedComments = currentState.hatedComments)
             }
         }
@@ -1050,7 +1062,12 @@ class VideoCommentViewModel : ViewModel() {
         )
         
         viewModelScope.launch {
-            CommentRepository.hateComment(currentAid, rpid, !isCurrentlyHated).onFailure {
+            CommentRepository.hateCommentForSubject(
+                oid = currentSubject.oid,
+                type = currentSubject.type,
+                rpid = rpid,
+                hate = !isCurrentlyHated
+            ).onFailure {
                 _commentState.value = _commentState.value.copy(likedComments = currentState.likedComments, hatedComments = currentState.hatedComments)
             }
         }
@@ -1059,16 +1076,25 @@ class VideoCommentViewModel : ViewModel() {
 
     
     fun reportComment(rpid: Long, reason: Int, content: String = "") {
-        viewModelScope.launch { CommentRepository.reportComment(currentAid, rpid, reason, content) }
+        viewModelScope.launch {
+            CommentRepository.reportCommentForSubject(
+                oid = currentSubject.oid,
+                type = currentSubject.type,
+                rpid = rpid,
+                reason = reason,
+                content = content
+            )
+        }
     }
 
     fun toggleTopComment(reply: ReplyItem) {
-        if (currentAid <= 0L || reply.rpid <= 0L) return
+        if (currentSubject.oid <= 0L || reply.rpid <= 0L) return
         val current = _commentState.value
         val isCurrentlyTop = reply.rpid in current.pinnedReplyIds || reply.replyControl?.isUpTop == true
         viewModelScope.launch {
-            CommentRepository.setCommentTop(
-                aid = currentAid,
+            CommentRepository.setCommentTopForSubject(
+                oid = currentSubject.oid,
+                type = currentSubject.type,
                 rpid = reply.rpid,
                 isCurrentlyTop = isCurrentlyTop
             ).onSuccess {
@@ -1170,7 +1196,11 @@ class VideoCommentViewModel : ViewModel() {
 
         // 发起网络请求
         viewModelScope.launch {
-            CommentRepository.deleteComment(currentAid, rpid).onFailure { e ->
+            CommentRepository.deleteCommentForSubject(
+                oid = currentSubject.oid,
+                type = currentSubject.type,
+                rpid = rpid
+            ).onFailure { e ->
                 // 如果删除失败，可能需要恢复? 暂时只需提示
                 // 实际场景中很少失败，除非网络极差
                 // 若要严格一致性，可以在这里重新加载评论列表
@@ -1204,7 +1234,11 @@ class VideoCommentViewModel : ViewModel() {
         // 发起网络删除请求（使用 rootReply 的 oid）
         val oid = currentSubject.oid.takeIf { it > 0L } ?: return
         viewModelScope.launch {
-            CommentRepository.deleteComment(oid, rpid).onFailure { e ->
+            CommentRepository.deleteCommentForSubject(
+                oid = oid,
+                type = currentSubject.type,
+                rpid = rpid
+            ).onFailure { e ->
                 android.util.Log.e("CommentVM", "Delete sub-comment failed for $rpid: ${e.message}")
             }
         }

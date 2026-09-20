@@ -159,4 +159,30 @@ class BangumiPlaybackUrlPolicyTest {
 
         assertEquals(listOf("https://cdn-1/video-2.m4s"), urls)
     }
+
+    @Test
+    fun `course pugv playurl params use fnval 4048 and omit zero ids`() {
+        val params = com.android.purebilibili.data.repository.buildBangumiPlayUrlParams(
+            epId = 0L,
+            cid = 2002L,
+            qn = 80,
+            isCourse = true
+        )
+        assertFalse(params.containsKey("ep_id"))
+        assertEquals("2002", params["cid"])
+        assertEquals("4048", params["fnval"])
+    }
+
+    @Test
+    fun `course pugv playurl params include ep_id when positive`() {
+        val params = com.android.purebilibili.data.repository.buildBangumiPlayUrlParams(
+            epId = 5555L,
+            cid = 0L,
+            qn = 80,
+            isCourse = true
+        )
+        assertEquals("5555", params["ep_id"])
+        assertFalse(params.containsKey("cid"))
+        assertEquals("4048", params["fnval"])
+    }
 }

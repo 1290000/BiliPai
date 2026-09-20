@@ -487,6 +487,8 @@ data class BangumiVideoInfo(
     val quality: Int = 0,
     val format: String = "",
     val timelength: Long = 0,
+    @SerialName("time_length")
+    val timeLengthAlt: Long = 0L,
     @SerialName("accept_format")
     val acceptFormat: String = "",
     @SerialName("accept_quality")
@@ -870,6 +872,8 @@ data class PugvProgress(
 @Serializable
 data class PugvEpisode(
     val id: Long = 0L,
+    @SerialName("ep_id")
+    val epId: Long = 0L,
     val aid: Long = 0L,
     val cid: Long = 0L,
     val title: String = "",
@@ -893,8 +897,9 @@ fun PugvSeasonData.toBangumiDetail(): BangumiDetail {
             else -> "付费"
         }
         val durationMs = if (ep.duration > 10000L) ep.duration else ep.duration * 1000L
+        val effectiveEpId = if (ep.id > 0L) ep.id else ep.epId
         BangumiEpisode(
-            id = ep.id,
+            id = effectiveEpId,
             aid = ep.aid,
             bvid = if (ep.aid > 0L) IdUtils.av2bv(ep.aid) else "",
             cid = ep.cid,
