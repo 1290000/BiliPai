@@ -203,16 +203,19 @@ sealed class ScreenRoutes(val route: String) {
     }
     
     //  [新增] 番剧播放页面
-    object BangumiPlayer : ScreenRoutes("bangumi/play/{seasonId}/{epId}?resumePositionMs={resumePositionMs}") {
+    object BangumiPlayer : ScreenRoutes("bangumi/play/{seasonId}/{epId}?resumePositionMs={resumePositionMs}&preferredAid={preferredAid}&isCourse={isCourse}") {
         fun createRoute(
             seasonId: Long,
             epId: Long,
-            resumePositionMs: Long = 0L
+            resumePositionMs: Long = 0L,
+            preferredAid: Long = 0L,
+            isCourse: Boolean = false
         ): String {
             val route = "bangumi/play/$seasonId/$epId"
             val resumePosition = resumePositionMs.coerceAtLeast(0L)
-            return if (resumePosition > 0L) {
-                "$route?resumePositionMs=$resumePosition"
+            val aid = preferredAid.coerceAtLeast(0L)
+            return if (resumePosition > 0L || aid > 0L || isCourse) {
+                "$route?resumePositionMs=$resumePosition&preferredAid=$aid&isCourse=$isCourse"
             } else {
                 route
             }

@@ -3699,9 +3699,13 @@ fun AppNavigation(
                                     epId = playerKey.epId,
                                     resumePositionMs = playerKey.resumePositionMs,
                                     isCourse = playerKey.isCourse,
+                                    preferredAid = playerKey.preferredAid,
                                     onBack = { performSystemBackAction() },
                                     onNavigateToLogin = { pushNavigation3Key(BiliPaiNavKey.Login) },
-                                    onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) }
+                                    onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) },
+                                    onOpenBilibiliLink = { url ->
+                                        pushNavigation3Key(BiliPaiNavKey.Web(url = url))
+                                    }
                                 )
                             }
                         BiliPaiNavEntryContentRole.MUSIC_DETAIL -> {
@@ -4034,7 +4038,11 @@ fun AppNavigation(
                                         pushNavigation3Key(
                                             BiliPaiNavKey.BangumiPlayer(
                                                 seasonId = actionSeasonId,
-                                                epId = episode.id
+                                                epId = episode.id,
+                                                preferredAid = episode.aid,
+                                                isCourse = episode.from == "pugv" ||
+                                                    episode.playable ||
+                                                    episode.episodeCanView
                                             )
                                         )
                                     },

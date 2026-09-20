@@ -97,9 +97,11 @@ fun BangumiPlayerScreen(
     epId: Long,
     resumePositionMs: Long = 0L,
     isCourse: Boolean = false,
+    preferredAid: Long = 0L,
     onBack: () -> Unit,
     onNavigateToLogin: () -> Unit = {},
     onUserClick: (Long) -> Unit = {},
+    onOpenBilibiliLink: ((String) -> Unit)? = null,
     viewModel: BangumiPlayerViewModel = viewModel(),
     commentViewModel: VideoCommentViewModel = viewModel()
 ) {
@@ -274,11 +276,17 @@ fun BangumiPlayerScreen(
     
     // 附加播放器到 ViewModel 并加载番剧
     // 使用同一个 LaunchedEffect 确保顺序执行，避免竞态条件
-    LaunchedEffect(exoPlayer, seasonId, epId, resumePositionMs, isCourse) {
+    LaunchedEffect(exoPlayer, seasonId, epId, resumePositionMs, isCourse, preferredAid) {
         // 先附加播放器
         viewModel.attachPlayer(exoPlayer)
         // 然后加载番剧
-        viewModel.loadBangumiPlay(seasonId, epId, resumePositionMs, isCourse = isCourse)
+        viewModel.loadBangumiPlay(
+            seasonId,
+            epId,
+            resumePositionMs,
+            isCourse = isCourse,
+            preferredAid = preferredAid
+        )
     }
 
     LaunchedEffect(viewModel, context) {
@@ -968,7 +976,8 @@ fun BangumiPlayerScreen(
                                 commentViewModel = commentViewModel,
                                 onEpisodeClick = { viewModel.switchEpisode(it) },
                                 onFollowStatusSelect = { viewModel.updateFollowStatus(it) },
-                                onUserClick = onUserClick
+                                onUserClick = onUserClick,
+                                onCommentUrlClick = onOpenBilibiliLink
                             )
                         }
                     }
@@ -1080,4 +1089,3 @@ private fun BangumiPlayNoticeOverlay(
         }
     }
 }
-

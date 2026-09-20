@@ -170,6 +170,8 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     private var currentEpId: Long = 0
     private var isCourseMode: Boolean = false
     private var bangumiHeartbeatJob: Job? = null
+    /** Only the latest episode request may update the player state. */
+    private var playbackLoadJob: Job? = null
     private var openingSkippedEpisodeId: Long = 0L
     private var endingSkippedEpisodeId: Long = 0L
     private var progressManager: PlaybackProgressManager? = null
@@ -286,11 +288,12 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         seasonId: Long,
         epId: Long,
         resumePositionMs: Long = 0L,
-        isCourse: Boolean = false
+        isCourse: Boolean = false,
+        preferredAid: Long = 0L
     ) {
         isCourseMode = isCourse
         val startPositionMs = resumePositionMs.coerceAtLeast(0L)
-        com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📥 loadBangumiPlay: seasonId=$seasonId, epId=$epId, resume=${startPositionMs}ms, isCourse=$isCourse, exoPlayer=${exoPlayer?.hashCode()}")
+        com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📥 loadBangumiPlay: seasonId=$seasonId, epId=$epId, aid=$preferredAid, resume=${startPositionMs}ms, isCourse=$isCourse, exoPlayer=${exoPlayer?.hashCode()}")
         val cachedState = _uiState.value as? BangumiPlayerState.Success
         if (seasonId == currentSeasonId && epId == currentEpId && cachedState != null) {
             com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "♻️ loadBangumiPlay: restore cached detail")
@@ -338,8 +341,8 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         
         currentSeasonId = seasonId
         currentEpId = epId
-        
-        viewModelScope.launch {
+        playbackLoadJob?.cancel()
+        playbackLoadJob = viewModelScope.launch {
             _uiState.value = BangumiPlayerState.Loading
             
             // 1. 获取番剧/课程详情（包含剧集列表）
@@ -357,8 +360,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             }
             
             detailResult.onSuccess { detail ->
-                val resumeTarget = resolveBangumiAutoResumeTarget(
+                val resumeTarget = resolveBangumiInitialEpisode(
                     detail = detail,
+                    preferredAid = preferredAid,
                     routeEpId = epId,
                     autoResumeEnabled = true
                 )
@@ -370,7 +374,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 }
 
                 // 找到当前剧集 (优先 targetEpId，否则首集)
-                val episode = (if (targetEpId > 0L) detail.episodes?.find { it.id == targetEpId } else null)
+                val episode = detail.episodes?.find { it.id == targetEpId }
                     ?: detail.episodes?.firstOrNull()
                 
                 if (episode == null) {
@@ -718,6 +722,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         if (episode.id == currentState.currentEpisode.id && currentState.playUrl != null) return
         
         flushBangumiPlaybackHeartbeat()
+        playbackLoadJob?.cancel()
         currentEpId = episode.id
         val newIndex = currentState.seasonDetail.episodes?.indexOfFirst { it.id == episode.id } ?: 0
         
@@ -731,7 +736,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         exoPlayer?.stop()
         exoPlayer?.clearMediaItems()
 
-        viewModelScope.launch {
+        playbackLoadJob = viewModelScope.launch {
             fetchPlayUrl(currentState.seasonDetail, episode, newIndex)
         }
     }
@@ -741,7 +746,8 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
      */
     fun reloadCurrentEpisode() {
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
-        viewModelScope.launch {
+        playbackLoadJob?.cancel()
+        playbackLoadJob = viewModelScope.launch {
             fetchPlayUrl(currentState.seasonDetail, currentState.currentEpisode, currentState.currentEpisodeIndex)
         }
     }

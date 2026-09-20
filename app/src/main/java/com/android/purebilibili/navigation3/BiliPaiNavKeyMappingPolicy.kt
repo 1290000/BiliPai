@@ -112,7 +112,13 @@ internal fun BiliPaiNavKey.toLegacyRoute(): String {
             ownerName = ownerName
         )
         is BiliPaiNavKey.Bangumi -> ScreenRoutes.Bangumi.createRoute(initialType)
-        is BiliPaiNavKey.BangumiPlayer -> ScreenRoutes.BangumiPlayer.createRoute(seasonId, epId, resumePositionMs)
+        is BiliPaiNavKey.BangumiPlayer -> ScreenRoutes.BangumiPlayer.createRoute(
+            seasonId,
+            epId,
+            resumePositionMs,
+            preferredAid,
+            isCourse
+        )
         is BiliPaiNavKey.MusicDetail -> ScreenRoutes.MusicDetail.createRoute(sid)
         is BiliPaiNavKey.NativeMusic -> ScreenRoutes.NativeMusic.createRoute(title, bvid, cid)
         is BiliPaiNavKey.VideoDetail -> VideoRoute.createRoute(
@@ -271,7 +277,9 @@ internal fun legacyRouteToBiliPaiNavKey(route: String?): BiliPaiNavKey {
             BiliPaiNavKey.BangumiPlayer(
                 seasonId = segments[2].toLongOrNull() ?: 0L,
                 epId = segments[3].toLongOrNull() ?: 0L,
-                resumePositionMs = query["resumePositionMs"]?.toLongOrNull() ?: 0L
+                resumePositionMs = query["resumePositionMs"]?.toLongOrNull() ?: 0L,
+                preferredAid = query["preferredAid"]?.toLongOrNull() ?: 0L,
+                isCourse = query["isCourse"]?.toBooleanStrictOrNull() ?: false
             )
         }
         routeBase == "bangumi" -> {

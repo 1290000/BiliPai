@@ -281,7 +281,11 @@ data class BangumiDetail(
     val subtitle: String = "",
     @SerialName("up_info")
     val upInfo: PugvUpInfo? = null,
-    val briefImgs: List<PugvBriefImg>? = null
+    val briefImgs: List<PugvBriefImg>? = null,
+    /** PUGV may expose several instructors/cooperators instead of one up_info. */
+    val cooperators: List<PugvCooperator> = emptyList(),
+    /** True when the current account has paid for this course. */
+    val hasPaid: Boolean = false
 )
 
 @Serializable
@@ -325,6 +329,12 @@ data class BangumiEpisode(
     @SerialName("badge_type")
     val badgeType: Int = 0,
     val status: Int = 0,              // 状态
+    /** PUGV access flags are kept on the episode so the UI does not infer access from text. */
+    val playable: Boolean = false,
+    @SerialName("episode_can_view")
+    val episodeCanView: Boolean = false,
+    val playCount: Long = 0L,
+    val from: String = "",
     @SerialName("pub_time")
     val pubTime: Long = 0,
     val skip: EpisodeSkip? = null     // 跳过片头片尾信息
@@ -896,7 +906,9 @@ fun PugvSeasonData.toBangumiDetail(): BangumiDetail {
             ep.playable || ep.episodeCanView -> "试看"
             else -> "付费"
         }
-        val durationMs = if (ep.duration > 10000L) ep.duration else ep.duration * 1000L
+        // PUGV episode duration is expressed in seconds (matching PiliPlus' EpisodeItem).
+        // Keep the conversion explicit so a short episode is not accidentally treated as ms.
+        val durationMs = ep.duration.coerceAtLeast(0L).coerceAtMost(Long.MAX_VALUE / 1000L) * 1000L
         val effectiveEpId = if (ep.id > 0L) ep.id else ep.epId
         BangumiEpisode(
             id = effectiveEpId,
@@ -908,7 +920,11 @@ fun PugvSeasonData.toBangumiDetail(): BangumiDetail {
             cover = ep.cover.ifBlank { cover },
             duration = durationMs,
             badge = resolvedBadge,
-            status = ep.status
+            status = ep.status,
+            playable = ep.playable,
+            episodeCanView = ep.episodeCanView,
+            playCount = ep.play,
+            from = ep.from
         )
     }
     val desc = evaluate?.takeIf { it.isNotBlank() }
@@ -944,7 +960,8 @@ fun PugvSeasonData.toBangumiDetail(): BangumiDetail {
         seasonTitle = title,
         subtitle = subtitle.orEmpty(),
         upInfo = upInfo,
-        briefImgs = brief?.img
+        briefImgs = brief?.img,
+        cooperators = cooperators.orEmpty(),
+        hasPaid = userStatus?.payed == 1
     )
 }
-

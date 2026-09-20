@@ -1,11 +1,16 @@
 package com.android.purebilibili.feature.video.viewmodel
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.data.model.CommentFraudStatus
 import com.android.purebilibili.data.model.response.ReplyData
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.data.model.response.ReplyPage
+import com.android.purebilibili.data.model.response.ReplyPicture
 import com.android.purebilibili.data.repository.CommentRepository
 import com.android.purebilibili.data.repository.CommentFraudRepository
 import com.android.purebilibili.data.repository.shouldStartCommentFraudDetection
@@ -15,6 +20,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -877,9 +884,11 @@ class VideoCommentViewModel : ViewModel() {
     
     fun sendComment(
         message: String,
+        imageUris: List<Uri> = emptyList(),
+        syncToDynamic: Boolean = false,
         fraudDetectionEnabled: Boolean = true
     ) {
-        if (message.isBlank()) return
+        if (message.isBlank() && imageUris.isEmpty()) return
         val currentState = _commentState.value
         if (currentState.isSending) return
         
@@ -902,12 +911,22 @@ class VideoCommentViewModel : ViewModel() {
             // parent 总是回复目标的 ID (如果没有回复目标，则是 0)
             val parent = replyTarget?.rpid ?: 0
             
+            val picturesResult = uploadCommentPictures(imageUris)
+            val pictures = picturesResult.getOrElse { error ->
+                _commentState.value = _commentState.value.copy(
+                    isSending = false,
+                    sendError = error.message ?: "图片上传失败"
+                )
+                return@launch
+            }
             val result = CommentRepository.addCommentForSubject(
                 oid = currentSubject.oid,
                 type = currentSubject.type,
                 message = message,
                 root = root,
-                parent = parent
+                parent = parent,
+                pictures = pictures,
+                syncToDynamic = syncToDynamic
             )
             
             result.onSuccess { newReply ->
@@ -1019,6 +1038,43 @@ class VideoCommentViewModel : ViewModel() {
                 _commentState.value = _commentState.value.copy(isSending = false, sendError = e.message)
             }
         }
+    }
+
+    private suspend fun uploadCommentPictures(imageUris: List<Uri>): Result<List<ReplyPicture>> {
+        if (imageUris.isEmpty()) return Result.success(emptyList())
+        val context = NetworkModule.appContext ?: return Result.failure(Exception("应用上下文不可用"))
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                imageUris.take(9).mapIndexed { index, uri ->
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: error("无法读取图片文件")
+                    require(bytes.isNotEmpty()) { "图片内容为空" }
+                    require(bytes.size <= 15 * 1024 * 1024) { "图片过大（单张最大 15MB）" }
+                    val fileName = queryDisplayName(context, uri)
+                        ?: "comment_${System.currentTimeMillis()}_${index + 1}.jpg"
+                    CommentRepository.uploadCommentImage(
+                        fileName = fileName,
+                        mimeType = context.contentResolver.getType(uri) ?: "image/jpeg",
+                        bytes = bytes
+                    ).getOrElse { throw it }
+                }
+            }
+        }
+    }
+
+    private fun queryDisplayName(context: Context, uri: Uri): String? {
+        return runCatching {
+            context.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+            }
+        }.getOrNull()
     }
     
     fun replyTo(reply: ReplyItem) {
