@@ -1042,6 +1042,7 @@ internal fun VideoCommentMainList(
                 viewModel.openSubReply(rootReply)
             },
             onDismiss = { showCommentSearchSheet = false },
+            miuixBackdrop = commentChromeBackdrop,
         )
     }
 }

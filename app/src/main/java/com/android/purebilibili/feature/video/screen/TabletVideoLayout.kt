@@ -1121,6 +1121,8 @@ internal fun TabletSecondaryContent(
                                     commentActions.openSubReply(rootReply, 0L)
                                 },
                                 onDismiss = { showCommentSearchSheet = false },
+                                miuixBackdrop = commentChromeBackdrop,
+                                liquidGlassEffectsEnabled = LocalAppThemeConfig.current.liquidGlassEnabled,
                             )
                         }
 

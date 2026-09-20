@@ -1214,6 +1214,8 @@ internal fun VideoContentSection(
                     onSubReplyClick(rootReply, 0L)
                 },
                 onDismiss = { showCommentSearchSheet = false },
+                miuixBackdrop = videoContentMiuixBackdrop,
+                liquidGlassEffectsEnabled = liquidGlassEnabled,
             )
         }
     }

@@ -1425,6 +1425,7 @@ private fun CinemaCommentsPane(
                         commentActions.openSubReply(rootReply, 0L)
                     },
                     onDismiss = { showCommentSearchSheet = false },
+                    miuixBackdrop = commentChromeBackdrop,
                 )
             }
 

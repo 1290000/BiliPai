@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,14 +57,18 @@ import coil3.request.crossfade
 import com.android.purebilibili.core.ui.AppModalBottomSheet
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppOutlinedTextField
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.ReplyItem
+import com.android.purebilibili.feature.home.components.biliPaiFloatingDockShell
+import top.yukonga.miuix.kmp.blur.Backdrop
 
 /**
  * 评论区搜索排序模式
@@ -95,6 +100,8 @@ fun CommentSearchSheet(
     onCommentClick: (ReplyItem) -> Unit,
     onSubReplyClick: (ReplyItem) -> Unit = {},
     onDismiss: () -> Unit,
+    miuixBackdrop: Backdrop? = null,
+    liquidGlassEffectsEnabled: Boolean? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -136,230 +143,279 @@ fun CommentSearchSheet(
     }
 
     val listState = rememberLazyListState()
+    val liquidGlassEnabled = liquidGlassEffectsEnabled
+        ?: LocalAppThemeConfig.current.liquidGlassEnabled
+    val glassActive = liquidGlassEnabled && !isLowBlurBudgetForced()
+    val panelShape = RoundedCornerShape(24.dp)
+    val panelColor = AppSurfaceTokens.surfaceContainer()
 
     AppModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier,
     ) {
-        Column(
+        AppSurface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp)
+                .biliPaiFloatingDockShell(
+                    backdrop = miuixBackdrop,
+                    containerColor = panelColor,
+                    pressProgress = 0f,
+                    shape = panelShape,
+                    enabled = glassActive,
+                    blurEnabled = glassActive && miuixBackdrop == null,
+                ),
+            shape = panelShape,
+            color = if (glassActive) Color.Transparent else panelColor,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = if (glassActive) {
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.28f))
+            } else {
+                null
+            },
         ) {
-            // 顶栏：标题 + 关闭按钮
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppText(
-                        text = "搜索评论",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (searchQuery.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        AppText(
-                            text = "找到 ${filteredResults.size} 条",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                AppIconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    AppIcon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "关闭",
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-
-            // 搜索输入框
-            AppOutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                placeholder = {
-                    AppText(
-                        text = "搜索本视频评论内容或作者昵称...",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    )
-                },
-                leadingIcon = {
-                    AppIcon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "搜索",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        AppIconButton(
-                            onClick = { searchQuery = "" },
-                            modifier = Modifier.size(28.dp),
-                        ) {
-                            AppIcon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "清空",
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
-            )
-
-            // 筛选标签栏 (全部 / 只看UP主 / 排序)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // UP 主筛选开关
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CommentSearchFilterChip(
-                        selected = !onlyUp,
-                        label = "全部评论",
-                        onClick = { onlyUp = false },
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    CommentSearchFilterChip(
-                        selected = onlyUp,
-                        label = "只看UP主",
-                        onClick = { onlyUp = true },
-                    )
-                }
-
-                // 排序模式切换
+                // 顶栏：标题 + 关闭按钮
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(AppSurfaceTokens.surfaceContainerHigh())
-                        .padding(2.dp),
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CommentSearchSortMode.entries.forEach { mode ->
-                        val isSelected = mode == sortMode
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary
-                                    else Color.Transparent
-                                )
-                                .clickable { sortMode = mode }
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppText(
+                            text = "搜索评论",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (searchQuery.isNotBlank()) {
+                            Spacer(modifier = Modifier.width(8.dp))
                             AppText(
-                                text = mode.label,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = "找到 ${filteredResults.size} 条",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // 列表或提示
-            if (searchQuery.isBlank()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    AppIconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(36.dp),
+                    ) {
                         AppIcon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = null,
-                            modifier = Modifier.size(42.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "关闭",
+                            modifier = Modifier.size(20.dp),
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                }
+
+                // 搜索输入框
+                AppOutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    placeholder = {
                         AppText(
-                            text = "输入关键词搜索已加载的评论",
+                            text = "搜索本视频评论内容或作者昵称...",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AppText(
-                            text = "支持搜索主评论、楼中楼及作者名称",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                    },
+                    leadingIcon = {
+                        AppIcon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "搜索",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                }
-            } else if (filteredResults.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        AppText(
-                            text = "未找到包含「$searchQuery」的评论",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        AppText(
-                            text = "可滚动评论区加载更多评论后再试",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(420.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(
-                        items = filteredResults,
-                        key = { "${it.reply.rpid}_${it.isSubReply}" }
-                    ) { entry ->
-                        CommentSearchResultRow(
-                            entry = entry,
-                            searchQuery = searchQuery,
-                            isUp = entry.reply.member.mid == upMid.toString(),
-                            onClick = {
-                                onDismiss()
-                                if (entry.isSubReply && entry.rootReply != null) {
-                                    onSubReplyClick(entry.rootReply)
-                                } else {
-                                    onCommentClick(entry.reply)
-                                }
-                            },
-                            onCopy = {
-                                clipboardManager.setText(AnnotatedString(entry.reply.content.message))
-                                Toast.makeText(context, "评论已复制", Toast.LENGTH_SHORT).show()
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            AppIconButton(
+                                onClick = { searchQuery = "" },
+                                modifier = Modifier.size(28.dp),
+                            ) {
+                                AppIcon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "清空",
+                                    modifier = Modifier.size(16.dp),
+                                )
                             }
+                        }
+                    },
+                    singleLine = true,
+                )
+
+                // 筛选标签栏 (全部 / 只看UP主 / 排序)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // UP 主筛选开关
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CommentSearchFilterChip(
+                            selected = !onlyUp,
+                            label = "全部评论",
+                            onClick = { onlyUp = false },
+                            miuixBackdrop = miuixBackdrop,
+                            liquidGlassEnabled = glassActive,
                         )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        CommentSearchFilterChip(
+                            selected = onlyUp,
+                            label = "只看UP主",
+                            onClick = { onlyUp = true },
+                            miuixBackdrop = miuixBackdrop,
+                            liquidGlassEnabled = glassActive,
+                        )
+                    }
+
+                    // 排序模式切换
+                    val sortShape = RoundedCornerShape(8.dp)
+                    Row(
+                        modifier = Modifier
+                            .then(
+                                if (glassActive) {
+                                    Modifier.biliPaiFloatingDockShell(
+                                        backdrop = miuixBackdrop,
+                                        containerColor = AppSurfaceTokens.surfaceContainerHigh(),
+                                        pressProgress = 0f,
+                                        shape = sortShape,
+                                        enabled = miuixBackdrop != null,
+                                        blurEnabled = miuixBackdrop == null,
+                                    )
+                                } else {
+                                    Modifier.background(
+                                        AppSurfaceTokens.surfaceContainerHigh(),
+                                        sortShape,
+                                    )
+                                }
+                            )
+                            .clip(sortShape)
+                            .padding(2.dp),
+                    ) {
+                        CommentSearchSortMode.entries.forEach { mode ->
+                            val isSelected = mode == sortMode
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary
+                                        else Color.Transparent
+                                    )
+                                    .clickable { sortMode = mode }
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                AppText(
+                                    text = mode.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 列表或提示
+                if (searchQuery.isBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            AppIcon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(42.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            AppText(
+                                text = "输入关键词搜索已加载的评论",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            AppText(
+                                text = "支持搜索主评论、楼中楼及作者名称",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                            )
+                        }
+                    }
+                } else if (filteredResults.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            AppText(
+                                text = "未找到包含「$searchQuery」的评论",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            AppText(
+                                text = "可滚动评论区加载更多评论后再试",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(420.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(
+                            items = filteredResults,
+                            key = { "${it.reply.rpid}_${it.isSubReply}" }
+                        ) { entry ->
+                            CommentSearchResultRow(
+                                entry = entry,
+                                searchQuery = searchQuery,
+                                isUp = entry.reply.member.mid == upMid.toString(),
+                                miuixBackdrop = miuixBackdrop,
+                                liquidGlassEnabled = glassActive,
+                                onClick = {
+                                    onDismiss()
+                                    if (entry.isSubReply && entry.rootReply != null) {
+                                        onSubReplyClick(entry.rootReply)
+                                    } else {
+                                        onCommentClick(entry.reply)
+                                    }
+                                },
+                                onCopy = {
+                                    clipboardManager.setText(AnnotatedString(entry.reply.content.message))
+                                    Toast.makeText(context, "评论已复制", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -372,14 +428,32 @@ private fun CommentSearchFilterChip(
     selected: Boolean,
     label: String,
     onClick: () -> Unit,
+    miuixBackdrop: Backdrop? = null,
+    liquidGlassEnabled: Boolean = false,
 ) {
+    val shape = RoundedCornerShape(8.dp)
+    val chipColor = if (selected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+    } else {
+        AppSurfaceTokens.surfaceContainerHigh()
+    }
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-                else AppSurfaceTokens.surfaceContainerHigh()
+            .then(
+                if (liquidGlassEnabled) {
+                    Modifier.biliPaiFloatingDockShell(
+                        backdrop = miuixBackdrop,
+                        containerColor = chipColor,
+                        pressProgress = 0f,
+                        shape = shape,
+                        enabled = miuixBackdrop != null,
+                        blurEnabled = miuixBackdrop == null,
+                    )
+                } else {
+                    Modifier.background(chipColor, shape)
+                }
             )
+            .clip(shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
@@ -399,6 +473,8 @@ private fun CommentSearchResultRow(
     entry: CommentSearchEntry,
     searchQuery: String,
     isUp: Boolean,
+    miuixBackdrop: Backdrop? = null,
+    liquidGlassEnabled: Boolean = false,
     onClick: () -> Unit,
     onCopy: () -> Unit,
 ) {
@@ -409,9 +485,23 @@ private fun CommentSearchResultRow(
     AppSurface(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (liquidGlassEnabled) {
+                    Modifier.biliPaiFloatingDockShell(
+                        backdrop = miuixBackdrop,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        pressProgress = 0f,
+                        shape = AppShapes.container(ContainerLevel.Card),
+                        enabled = miuixBackdrop != null,
+                        blurEnabled = miuixBackdrop == null,
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .clickable(onClick = onClick),
         shape = AppShapes.container(ContainerLevel.Card),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        color = if (liquidGlassEnabled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
             modifier = Modifier
