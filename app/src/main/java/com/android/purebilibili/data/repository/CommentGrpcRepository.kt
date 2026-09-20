@@ -25,6 +25,8 @@ import com.android.purebilibili.data.model.response.ReplyTop
 import com.android.purebilibili.data.model.response.ReplyUpper
 import com.android.purebilibili.data.model.response.ReplyVipInfo
 import com.android.purebilibili.data.model.response.ReplyVote
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 
 internal object CommentGrpcRepository {
@@ -187,12 +189,12 @@ internal object CommentGrpcRepository {
      * 翻译评论 (gRPC TranslateReply)。
      * 返回翻译后的消息文本，失败返回 null。
      */
-    fun translateReply(
+    suspend fun translateReply(
         type: Long,
         oid: Long,
         rpid: Long
-    ): Result<String?> {
-        return runCatching {
+    ): Result<String?> = withContext(Dispatchers.IO) {
+        runCatching {
             val request = ProtoWire.message(
                 ProtoWire.int64(1, type),
                 ProtoWire.int64(2, oid),
