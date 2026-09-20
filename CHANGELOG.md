@@ -5,7 +5,7 @@
 2026-09-20
 
 版本号：`0.2.3-beta.42`
-versionCode：`373`
+versionCode：`374`
 
 ## 课堂与课程
 
