@@ -1675,6 +1675,7 @@ open class MainActivity : AppCompatActivity() {
                         isInPipMode = isInPipMode,
                         hasCurrentItem = audioNowPlayingItem != null,
                         barEnabled = audioNowPlayingBarEnabled,
+                        isInMiniMode = miniPlayerManager.isMiniMode,
                         isVideoDetailDestination = isInVideoDetail
                     )
                     val playbackOverlayState = remember(

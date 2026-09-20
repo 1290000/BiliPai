@@ -4149,6 +4149,7 @@ fun AppNavigation(
                 isInPipMode = isInPipMode,
                 hasCurrentItem = audioNowPlayingItem != null,
                 barEnabled = audioNowPlayingBarEnabled,
+                isInMiniMode = miniPlayerManager?.isMiniMode == true,
                 isLandscape = isLandscapeNowPlaying,
                 isPlayerDestination = isPlayerNowPlayingDestination
             )
@@ -4161,6 +4162,7 @@ fun AppNavigation(
                 isInPipMode = isInPipMode,
                 hasCurrentItem = audioNowPlayingItem != null,
                 barEnabled = audioNowPlayingBarEnabled,
+                isInMiniMode = miniPlayerManager?.isMiniMode == true,
                 isVideoDetailDestination = isVideoDetailDestination,
                 isLandscape = isLandscapeNowPlaying,
                 isPlayerDestination = isPlayerIndependentDestination

@@ -89,6 +89,21 @@ class MusicPlayerContentStructureTest {
     }
 
     @Test
+    fun `artwork uses one reversible playback scale timeline`() {
+        val source = loadSource()
+        val artwork = source
+            .substringAfter("private fun MusicArtwork(")
+            .substringBefore("private fun MusicProgress(")
+
+        assertTrue(artwork.contains("animateFloatAsState("))
+        assertTrue(artwork.contains("APPLE_MUSIC_COVER_MOTION_STIFFNESS"))
+        assertTrue(artwork.contains("resolveAppleMusicCoverShadowElevation(playbackProgress)"))
+        assertTrue(artwork.contains("scaleX = artworkScale"))
+        assertTrue(artwork.contains("scaleY = artworkScale"))
+        assertTrue(artwork.contains("if (reduceMotion)"))
+    }
+
+    @Test
     fun `lyrics expose progress playback controls and immersive chrome`() {
         val source = loadSource()
         val lyricsPage = source.substringAfter("private fun LyricsPage(")

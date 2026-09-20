@@ -20,6 +20,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
@@ -2037,7 +2038,22 @@ private fun MusicArtwork(
         val cardAspectRatio = if (isCard) (16f / 10f) else 1f
         val cornerRadius = if (isCard) APPLE_MUSIC_CARD_CORNER_RADIUS_DP.dp else APPLE_MUSIC_COVER_CORNER_RADIUS_DP.dp
         val cornerShape = RoundedCornerShape(cornerRadius)
-        val shadowElevation = APPLE_MUSIC_COVER_SHADOW_ELEVATION_DP.dp
+        val playbackProgress by animateFloatAsState(
+            targetValue = if (isPlaying) 1f else 0f,
+            animationSpec = if (reduceMotion) {
+                snap()
+            } else {
+                spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = APPLE_MUSIC_COVER_MOTION_STIFFNESS,
+                )
+            },
+            label = "music_artwork_playback_progress",
+        )
+        val playingScale = resolveAppleMusicCoverScale(isPlaying = true)
+        val pausedScale = resolveAppleMusicCoverScale(isPlaying = false)
+        val artworkScale = pausedScale + (playingScale - pausedScale) * playbackProgress
+        val shadowElevation = resolveAppleMusicCoverShadowElevation(playbackProgress).dp
         Box(
             modifier = modifier
                 .aspectRatio(cardAspectRatio)
@@ -2056,6 +2072,12 @@ private fun MusicArtwork(
                 .background(
                     artworkFallbackBrush
                 )
+                .graphicsLayer {
+                    // Keep measured bounds and surrounding controls stationary while
+                    // the artwork and its shadow settle together.
+                    scaleX = artworkScale
+                    scaleY = artworkScale
+                }
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center
         ) {
