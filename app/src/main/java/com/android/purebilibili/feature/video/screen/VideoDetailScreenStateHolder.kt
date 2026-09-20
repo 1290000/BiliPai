@@ -2580,6 +2580,7 @@ internal fun VideoDetailScreenStateHolder(
         isPortraitFullscreen,
         displayContext,
         isFullscreenPlayerLocked,
+        userRequestedFullscreen,
     ) {
         val hostActivity = activity
         if (
@@ -2617,9 +2618,13 @@ internal fun VideoDetailScreenStateHolder(
                     orientationDegrees = orientation,
                     isCurrentlyLandscape = isCurrentlyLandscape,
                     useExactLandscapeSide = orientationPolicyDevice,
-                    // Auto-rotate off still permits a fullscreen half-turn, but never
-                    // enters/exits fullscreen just because the phone passes portrait.
-                    allowPortraitTransitions = autoRotateEnabled,
+                    // A manual fullscreen press can happen while the device is still upright.
+                    // Wait for one physical landscape observation before allowing the sensor
+                    // to treat portrait as an explicit rotate-back gesture.
+                    allowPortraitTransitions = shouldAllowPhoneSensorPortraitTransition(
+                        autoRotateEnabled = autoRotateEnabled,
+                        manualFullscreenRequested = userRequestedFullscreen,
+                    ),
                 )
                 val nowMs = SystemClock.elapsedRealtime()
                 val targetToApply = resolvePhoneAutoRotateTargetToApply(
@@ -2637,6 +2642,13 @@ internal fun VideoDetailScreenStateHolder(
                     lastPhoneAutoRotatePortraitAppliedAtMs = nowMs
                     lastPhoneAutoRotateLandscapeAppliedAtMs = null
                 } else if (isLandscapeRequestedOrientation(targetToApply)) {
+                    if (shouldReleaseManualFullscreenRequestAfterSensorTarget(
+                            manualFullscreenRequested = userRequestedFullscreen,
+                            sensorTargetOrientation = targetToApply,
+                        )
+                    ) {
+                        userRequestedFullscreen = false
+                    }
                     lastPhoneAutoRotateLandscapeAppliedAtMs = nowMs
                     lastPhoneAutoRotatePortraitAppliedAtMs = null
                 }
