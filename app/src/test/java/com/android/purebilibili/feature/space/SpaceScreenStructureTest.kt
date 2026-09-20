@@ -198,10 +198,11 @@ class SpaceScreenStructureTest {
         assertTrue(secondaryRow.contains("resolveSpaceSecondarySwitchNonGlassMinTabWidthDp()"))
         assertTrue(secondaryRow.contains("MiuixNonGlassTabItemWidthMode.CONTENT"))
         assertTrue(secondaryRow.contains("contentSizedMiuixNonGlassItems = true"))
-        assertTrue(secondaryRow.contains("useMiuixContentSizedRail"))
-        assertTrue(secondaryRow.contains("liquidGlassEnabled && !useMiuixContentSizedRail"))
+        assertFalse(secondaryRow.contains("useMiuixContentSizedRail"))
+        assertTrue(secondaryRow.contains("if (liquidGlassEnabled)"))
         assertTrue(secondaryRow.contains("allowLabelOverflow = true"))
-        assertTrue(secondaryRow.contains("homeSettings.androidNativeLiquidGlassEnabled"))
+        assertTrue(secondaryRow.contains("LocalAppThemeConfig.current.liquidGlassEnabled"))
+        assertFalse(secondaryRow.contains("getHomeSettings("))
         assertFalse(source.contains("rememberTextMeasurer()"))
     }
 

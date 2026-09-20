@@ -167,6 +167,12 @@ internal fun resolveEqualMiuixNonGlassTabItemWidth(
     longestLabelWidth + horizontalContentPadding * 2,
 )
 
+internal fun resolveMiuixTabMinWidth(
+    requestedMinWidth: Dp,
+    sharedMinWidth: Dp,
+    contentSizedItems: Boolean,
+): Dp = if (contentSizedItems) requestedMinWidth else sharedMinWidth
+
 fun resolveMiuixNonGlassContentTabItemWidths(
     labelWidths: List<Dp>,
     minTabWidth: Dp,
@@ -416,7 +422,13 @@ fun <T> AppNativeTabRow(
             selectedValue = selectedValue,
             enabled = enabled,
             scrollable = effectiveScrollable,
-            minTabWidth = targetTabWidth,
+            // Content-sized tabs measure each label independently. A shared longest-label
+            // minimum would enlarge every short tab when a long collection title appears.
+            minTabWidth = resolveMiuixTabMinWidth(
+                requestedMinWidth = minTabWidth,
+                sharedMinWidth = targetTabWidth,
+                contentSizedItems = useContentSizedMiuixItems,
+            ),
             colors = colors,
             preferredCornerRadius = policy.preferredCornerRadius,
             height = height,

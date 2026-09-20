@@ -3044,16 +3044,10 @@ private fun SpaceSecondarySwitchRow(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val homeSettings by SettingsManager
-        .getHomeSettings(context)
-        .collectAsStateWithLifecycle(initialValue = null)
-    val liquidGlassEnabled = homeSettings?.androidNativeLiquidGlassEnabled
-        ?: com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
+    val liquidGlassEnabled = com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
     val spec = remember(items, selectedId) {
         resolveSpaceSecondarySwitchChromeSpec(items = items, selectedId = selectedId)
     }
-    val useMiuixContentSizedRail = LocalAppUiStyle.current == AppUiStyle.MIUIX
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
     BoxWithConstraints(
@@ -3096,7 +3090,7 @@ private fun SpaceSecondarySwitchRow(
             contentPaddingPx = containerHorizontalPaddingPx,
         )
 
-        if (liquidGlassEnabled && !useMiuixContentSizedRail) {
+        if (liquidGlassEnabled) {
             BottomBarLiquidSegmentedControl(
                 items = items.map { it.title },
                 selectedIndex = spec.selectedIndex,
