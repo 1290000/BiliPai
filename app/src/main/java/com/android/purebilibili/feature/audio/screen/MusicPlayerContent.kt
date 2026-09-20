@@ -2056,6 +2056,13 @@ private fun MusicArtwork(
         val shadowElevation = resolveAppleMusicCoverShadowElevation(playbackProgress).dp
         Box(
             modifier = modifier
+                // Put the transform before the visual chrome so the artwork, rounded clip,
+                // border and shadow settle as one card. A later graphicsLayer only scales the
+                // image subtree and leaves the old-size frame behind while pausing.
+                .graphicsLayer {
+                    scaleX = artworkScale
+                    scaleY = artworkScale
+                }
                 .aspectRatio(cardAspectRatio)
                 .shadow(
                     elevation = shadowElevation,
@@ -2072,12 +2079,6 @@ private fun MusicArtwork(
                 .background(
                     artworkFallbackBrush
                 )
-                .graphicsLayer {
-                    // Keep measured bounds and surrounding controls stationary while
-                    // the artwork and its shadow settle together.
-                    scaleX = artworkScale
-                    scaleY = artworkScale
-                }
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center
         ) {

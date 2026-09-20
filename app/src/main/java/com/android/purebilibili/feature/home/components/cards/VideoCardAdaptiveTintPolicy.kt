@@ -53,19 +53,26 @@ data class VideoCardAmbientDrawSpec(
 )
 
 /**
- * 计算封面采样区域（仅截取封面底部 25% 区域，针对图二封面下边缘微光）
+ * 计算封面取色区域。代表色必须覆盖整张封面，避免字幕、边缘高光或底部渐变主导结果。
  */
 fun resolveCoverBottomSamplingRegion(width: Int, height: Int): SamplingRegion {
     val safeWidth = width.coerceAtLeast(1)
     val safeHeight = height.coerceAtLeast(1)
-    val top = (safeHeight * 0.75f).toInt().coerceIn(0, safeHeight - 1)
     return SamplingRegion(
         left = 0,
-        top = top,
+        top = 0,
         right = safeWidth,
         bottom = safeHeight
     )
 }
+
+/**
+ * 壁纸是卡片动态取色的唯一来源时，封面色只作为无壁纸时的回退。
+ */
+internal fun shouldUseCoverTintForCard(
+    wallpaperTintEnabled: Boolean,
+    coverTint: Color?,
+): Boolean = !wallpaperTintEnabled && coverTint != null && coverTint.alpha > 0f
 
 /**
  * 壁纸随 Y 轴屏幕位置线性插值（图一能力：滚动时 120fps 极轻量渐变，多段平滑过渡）
@@ -106,7 +113,10 @@ fun resolveVideoCardAmbientDrawSpec(
         )
     }
 
-    val hasValidCoverTint = coverTint != null && coverTint.alpha > 0f
+    val hasValidCoverTint = shouldUseCoverTintForCard(
+        wallpaperTintEnabled = wallpaperTintEnabled,
+        coverTint = coverTint,
+    )
 
     // 核心质感：适度透明度以“直接透出背后的高斯模糊”，同时保留浓郁饱和色彩，杜绝发白发灰的厚重白雾
     val glassTransparency = if (isDarkTheme) {
@@ -116,9 +126,13 @@ fun resolveVideoCardAmbientDrawSpec(
     }
 
     // 1. 壁纸色彩联动（图一）：直接采用壁纸取色插值后的真实色彩，杜绝与白色容器底色混合稀释
-    val baseColor = if (wallpaperPalette != null && wallpaperTintEnabled) {
+    val baseColor = if (wallpaperTintEnabled && wallpaperPalette != null) {
         val rawWallpaperColor = interpolateWallpaperColor(wallpaperPalette, yFraction)
         rawWallpaperColor.copy(alpha = glassTransparency)
+    } else if (wallpaperTintEnabled) {
+        // Wallpaper is enabled but still loading: hold a neutral glass surface instead of
+        // flashing the previous cover's color while the backdrop/palette catches up.
+        defaultContainerColor.copy(alpha = glassTransparency)
     } else if (hasValidCoverTint) {
         val blendFraction = if (isDarkTheme) 0.85f else 0.75f
         lerp(defaultContainerColor, coverTint!!, blendFraction).copy(alpha = glassTransparency)

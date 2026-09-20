@@ -770,6 +770,7 @@ internal fun ElegantVideoCard(
     var coverTint by remember(coverCacheKey) {
         mutableStateOf(VideoCardCoverColorStore.getCachedColor(coverCacheKey))
     }
+    val activeCoverCacheKey by rememberUpdatedState(coverCacheKey)
     val animatedCoverTint by animateColorAsState(
         targetValue = coverTint ?: Color.Transparent,
         animationSpec = tween(durationMillis = 350),
@@ -1227,7 +1228,9 @@ internal fun ElegantVideoCard(
                                 bitmap = bitmap,
                                 scope = scope
                             ) { extracted ->
-                                coverTint = extracted
+                                if (activeCoverCacheKey == requestCoverCacheKey) {
+                                    coverTint = extracted
+                                }
                             }
                         }
                     }
@@ -1619,7 +1622,10 @@ internal fun ElegantVideoCard(
                     color = if (homeCardDynamicTintEnabled && !useRealtimeWallpaperBackdrop) {
                         val borderAlpha = if (isDarkCardTheme) 0.30f else 0.45f
                         val baseBorder = Color.White.copy(alpha = borderAlpha)
-                        if (coverTint != null && animatedCoverTint.alpha > 0f) {
+                        if (
+                            shouldUseCoverTintForCard(wallpaperTintEnabled, coverTint) &&
+                            animatedCoverTint.alpha > 0f
+                        ) {
                             val borderBlend = if (isDarkCardTheme) 0.50f else 0.40f
                             androidx.compose.ui.graphics.lerp(baseBorder, animatedCoverTint, borderBlend).copy(alpha = borderAlpha)
                         } else {
@@ -1641,7 +1647,11 @@ internal fun ElegantVideoCard(
                     vertical = if (compactMetadata) AppSpacingTokens.ExtraSmall + AppSpacingTokens.Micro else AppSpacingTokens.Small
                 )
         } else {
-            val ambientCoverGlowModifier = if (homeCardDynamicTintEnabled && coverTint != null && animatedCoverTint.alpha > 0f) {
+            val ambientCoverGlowModifier = if (
+                homeCardDynamicTintEnabled &&
+                shouldUseCoverTintForCard(wallpaperTintEnabled, coverTint) &&
+                animatedCoverTint.alpha > 0f
+            ) {
                 Modifier.drawBehind {
                     drawRect(
                         brush = Brush.verticalGradient(

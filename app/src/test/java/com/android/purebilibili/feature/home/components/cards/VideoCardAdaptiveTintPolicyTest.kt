@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.home.components.cards
 
 import com.android.purebilibili.feature.home.HomeCardWallpaperSurfaceMode
 import com.android.purebilibili.feature.home.resolveHomeCardWallpaperSurfaceMode
+import androidx.palette.graphics.Palette
 import androidx.compose.ui.graphics.Color
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,10 +11,10 @@ import kotlin.test.assertTrue
 class VideoCardAdaptiveTintPolicyTest {
 
     @Test
-    fun resolveCoverBottomSamplingRegion_targetsBottomQuarter() {
+    fun resolveCoverBottomSamplingRegion_targetsWholeCover() {
         val region = resolveCoverBottomSamplingRegion(width = 800, height = 600)
         assertEquals(0, region.left)
-        assertEquals(450, region.top)
+        assertEquals(0, region.top)
         assertEquals(800, region.right)
         assertEquals(600, region.bottom)
     }
@@ -72,7 +73,7 @@ class VideoCardAdaptiveTintPolicyTest {
     }
 
     @Test
-    fun resolveVideoCardAmbientDrawSpec_combinesWallpaperAndCoverTint() {
+    fun resolveVideoCardAmbientDrawSpec_wallpaperTakesExclusivePrecedenceOverCoverTint() {
         val palette = WallpaperPalette(
             topColor = Color.Blue,
             bottomColor = Color.Red
@@ -91,12 +92,36 @@ class VideoCardAdaptiveTintPolicyTest {
             defaultBorderColor = defaultBorder
         )
 
-        // Should have cover glow enabled
-        assertTrue(spec.coverGlowAlpha > 0f)
-        // Container color should not be purely default container
+        assertEquals(0f, spec.coverGlowAlpha)
+        // Container color comes from the interpolated wallpaper, not the cover.
         assertTrue(spec.containerColor != defaultContainer)
-        // Border color should blend cover tint
-        assertTrue(spec.borderColor != defaultBorder)
+        assertTrue(spec.borderColor != coverTint)
+    }
+
+    @Test
+    fun shouldUseCoverTintForCard_onlyUsesCoverWhenWallpaperIsDisabled() {
+        assertTrue(shouldUseCoverTintForCard(false, Color.Green))
+        assertEquals(false, shouldUseCoverTintForCard(true, Color.Green))
+        assertEquals(false, shouldUseCoverTintForCard(false, null))
+    }
+
+    @Test
+    fun representativeSwatch_prefersLargestUsefulRegionOverSmallBrightSubtitle() {
+        val subtitleRed = Palette.Swatch(0xFFFF0000.toInt(), 12)
+        val coverBlue = Palette.Swatch(0xFF336699.toInt(), 160)
+        val whiteBackground = Palette.Swatch(0xFFFFFFFF.toInt(), 400)
+
+        assertEquals(coverBlue, VideoCardCoverColorStore.resolveRepresentativeSwatch(
+            listOf(subtitleRed, coverBlue, whiteBackground)
+        ))
+    }
+
+    @Test
+    fun representativeSwatch_keeps_grayscale_fallback_when_no_colorful_region_exists() {
+        val black = Palette.Swatch(0xFF111111.toInt(), 120)
+        val white = Palette.Swatch(0xFFF2F2F2.toInt(), 250)
+
+        assertEquals(white, VideoCardCoverColorStore.resolveRepresentativeSwatch(listOf(black, white)))
     }
 
     @Test

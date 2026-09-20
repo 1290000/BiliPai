@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -162,25 +164,41 @@ internal fun TabletSecondaryLiquidTabRow(
     modifier: Modifier = Modifier,
 ) {
     val liquidGlassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled
-    BottomBarLiquidSegmentedControl(
-        items = labels,
-        selectedIndex = selectedIndex,
-        onSelected = onSelected,
-        modifier = modifier,
-        height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
-        indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
-        labelFontSize = 15.sp,
-        liquidGlassEffectsEnabled = liquidGlassEnabled,
-        equalizeMiuixNonGlassItemWidths = false,
-        allowNativeLabelOverflow = true,
-        forceEqualWidth = true,
-        compactMiuixWhenTwoOptions = false,
-        dragSelectionEnabled = true,
-        tapPressRefractionEnabled = true,
-        indicatorPositionProvider = indicatorPositionProvider,
-        isScrollInProgressProvider = isScrollInProgressProvider,
-        externalPagerMotionEffectsEnabled = true,
-    )
+    BoxWithConstraints(modifier = modifier) {
+        val minimumScrollableWidth = (labels.size * 76).dp
+        val needsHorizontalScroll = maxWidth < minimumScrollableWidth
+        val scrollState = rememberScrollState()
+        Box(
+            modifier = if (needsHorizontalScroll) {
+                Modifier
+                    .horizontalScroll(scrollState)
+                    .width(minimumScrollableWidth)
+            } else {
+                Modifier.fillMaxWidth()
+            }
+        ) {
+            BottomBarLiquidSegmentedControl(
+                items = labels,
+                selectedIndex = selectedIndex,
+                onSelected = onSelected,
+                modifier = Modifier.fillMaxWidth(),
+                itemWidth = if (needsHorizontalScroll) 76.dp else null,
+                height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
+                indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
+                labelFontSize = 15.sp,
+                liquidGlassEffectsEnabled = liquidGlassEnabled,
+                equalizeMiuixNonGlassItemWidths = false,
+                allowNativeLabelOverflow = true,
+                forceEqualWidth = !needsHorizontalScroll,
+                compactMiuixWhenTwoOptions = false,
+                dragSelectionEnabled = true,
+                tapPressRefractionEnabled = true,
+                indicatorPositionProvider = indicatorPositionProvider,
+                isScrollInProgressProvider = isScrollInProgressProvider,
+                externalPagerMotionEffectsEnabled = true,
+            )
+        }
+    }
 }
 
 /**
@@ -1102,45 +1120,47 @@ internal fun TabletSecondaryContent(
                         filterRelatedVideosByHiddenBvids(success.related, hiddenRelatedBvids)
                     }
                     val relatedVideoCardLayout = rememberRelatedVideoCardLayout()
+                    val relatedListState = rememberLazyListState()
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
+                        state = relatedListState,
                         contentPadding = PaddingValues(8.dp)
                     ) {
-                        val relatedRows = chunkRelatedVideosForHomeStyleGrid(visibleRelatedVideos)
-                        itemsIndexed(
-                            items = relatedRows,
-                            key = { rowIndex, row ->
-                                val first = row.firstOrNull()
-                                resolveIndexedVideoLazyKey(
-                                    namespace = "tablet_related_row",
-                                    index = rowIndex,
-                                    bvid = first?.bvid.orEmpty(),
-                                    aid = first?.aid ?: 0L,
-                                    cid = first?.cid ?: 0L
-                                )
+                            val relatedRows = chunkRelatedVideosForHomeStyleGrid(visibleRelatedVideos)
+                            itemsIndexed(
+                                items = relatedRows,
+                                key = { rowIndex, row ->
+                                    val first = row.firstOrNull()
+                                    resolveIndexedVideoLazyKey(
+                                        namespace = "tablet_related_row",
+                                        index = rowIndex,
+                                        bvid = first?.bvid.orEmpty(),
+                                        aid = first?.aid ?: 0L,
+                                        cid = first?.cid ?: 0L
+                                    )
+                                }
+                            ) { _, row ->
+                                CompositionLocalProvider(
+                                    LocalVideoCardSharedElementSourceRoute provides "video/${success.info.bvid}"
+                                ) {
+                                    RelatedVideoGridRow(
+                                        videos = row,
+                                        cardLayout = relatedVideoCardLayout,
+                                        followingMids = success.followingMids,
+                                        showUpBadge = showUpBadge,
+                                        onVideoClick = { video ->
+                                            val navOptions = buildVideoNavigationOptions(
+                                                targetCid = video.cid,
+                                                coverUrl = video.pic,
+                                            ) ?: android.os.Bundle.EMPTY
+                                            onRelatedVideoClick(video.bvid, navOptions)
+                                        },
+                                        onVideoHidden = { video ->
+                                            hiddenRelatedBvids = hiddenRelatedBvids + video.bvid
+                                        }
+                                    )
+                                }
                             }
-                        ) { _, row ->
-                            CompositionLocalProvider(
-                                LocalVideoCardSharedElementSourceRoute provides "video/${success.info.bvid}"
-                            ) {
-                                RelatedVideoGridRow(
-                                    videos = row,
-                                    cardLayout = relatedVideoCardLayout,
-                                    followingMids = success.followingMids,
-                                    showUpBadge = showUpBadge,
-                                    onVideoClick = { video ->
-                                        val navOptions = buildVideoNavigationOptions(
-                                            targetCid = video.cid,
-                                            coverUrl = video.pic,
-                                        ) ?: android.os.Bundle.EMPTY
-                                        onRelatedVideoClick(video.bvid, navOptions)
-                                    },
-                                    onVideoHidden = { video ->
-                                        hiddenRelatedBvids = hiddenRelatedBvids + video.bvid
-                                    }
-                                )
-                            }
-                        }
                     }
                 }
 

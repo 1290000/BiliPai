@@ -1,7 +1,7 @@
 package com.android.purebilibili.feature.home.components.cards
 
 import android.graphics.Bitmap
-import android.graphics.Rect
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.util.LruCache
 import androidx.compose.ui.graphics.Color
@@ -12,16 +12,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 视频封面边缘取色提取与缓存管理
+ * 视频封面代表色提取与缓存管理
  * 复用官方 androidx.palette:palette-ktx 能力，纯异步单向流，严防循环采样。
  */
 object VideoCardCoverColorStore {
     private const val MAX_CACHE_SIZE = 128
     private val colorCache = LruCache<String, Color>(MAX_CACHE_SIZE)
 
-    /**
-     * 同步获取已缓存的封面底部代表色
-     */
+    /** 同步获取已缓存的封面代表色。 */
     fun getCachedColor(cacheKey: String): Color? {
         if (cacheKey.isBlank()) return null
         return synchronized(colorCache) {
@@ -29,9 +27,7 @@ object VideoCardCoverColorStore {
         }
     }
 
-    /**
-     * 异步提取封面底部边缘主色并存入缓存
-     */
+    /** 异步提取封面代表色并存入缓存。 */
     fun extractColorAsync(
         cacheKey: String,
         bitmap: Bitmap,
@@ -47,7 +43,7 @@ object VideoCardCoverColorStore {
         }
 
         scope.launch(Dispatchers.Default) {
-            val color = extractBottomEdgeColor(bitmap) ?: return@launch
+            val color = extractRepresentativeColor(bitmap) ?: return@launch
             synchronized(colorCache) {
                 colorCache.put(cacheKey, color)
             }
@@ -58,9 +54,9 @@ object VideoCardCoverColorStore {
     }
 
     /**
-     * 针对封面底部 25% 区域进行高效提取（内部限制最多 8 种颜色聚类，耗时极低）
+     * 对整张封面聚类，按 swatch 面积选择代表色，避免小面积字幕色压过主体画面。
      */
-    internal fun extractBottomEdgeColor(bitmap: Bitmap): Color? {
+    internal fun extractRepresentativeColor(bitmap: Bitmap): Color? {
         return runCatching {
             if (bitmap.isRecycled) return@runCatching null
 
@@ -72,23 +68,26 @@ object VideoCardCoverColorStore {
                 bitmap
             }
 
-            val region = resolveCoverBottomSamplingRegion(safeBitmap.width, safeBitmap.height)
-            val androidRect = Rect(region.left, region.top, region.right, region.bottom)
-
             val palette = Palette.from(safeBitmap)
-                .setRegion(androidRect.left, androidRect.top, androidRect.right, androidRect.bottom)
-                .maximumColorCount(8)
+                .maximumColorCount(16)
                 .clearFilters()
                 .generate()
 
-            val colorInt = palette.vibrantSwatch?.rgb
-                ?: palette.lightVibrantSwatch?.rgb
-                ?: palette.darkVibrantSwatch?.rgb
-                ?: palette.dominantSwatch?.rgb
-                ?: palette.mutedSwatch?.rgb
-
-            colorInt?.let { Color(it) }
+            resolveRepresentativeSwatch(palette.swatches)?.rgb?.let { Color(it) }
         }.getOrNull()
+    }
+
+    /** Select the largest useful color; saturated color wins only when it also covers area. */
+    internal fun resolveRepresentativeSwatch(
+        swatches: List<Palette.Swatch>,
+    ): Palette.Swatch? {
+        if (swatches.isEmpty()) return null
+        val useful = swatches.filterNot { swatch ->
+            val hsv = FloatArray(3)
+            AndroidColor.colorToHSV(swatch.rgb, hsv)
+            hsv[1] < 0.08f || hsv[2] < 0.08f || hsv[2] > 0.96f
+        }
+        return (useful.ifEmpty { swatches }).maxByOrNull { it.population }
     }
 
     fun clear() {
