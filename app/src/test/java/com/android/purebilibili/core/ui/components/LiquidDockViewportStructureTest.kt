@@ -29,8 +29,11 @@ class LiquidDockViewportStructureTest {
 
         assertTrue(controlSource.contains("scrollState: ScrollState? = null"))
         assertTrue(controlSource.contains("scrollState = scrollState"))
-        assertTrue(rendererSource.contains("modifier.horizontalScroll(scrollState)"))
-        assertTrue(rendererSource.contains("contentModifier.width(effectiveItemWidth * itemCount"))
+        assertTrue(rendererSource.contains("BottomBarMatchedLiquidDock("))
+        assertTrue(rendererSource.contains(".horizontalScroll(scrollState)"))
+        assertTrue(rendererSource.contains(".width(contentWidth)"))
+        assertTrue(rendererSource.contains("drawShell = scrollState == null"))
+        assertTrue(rendererSource.contains("allowLabelOverflow && scrollState == null"))
     }
 
     private fun loadSource(path: String): String {

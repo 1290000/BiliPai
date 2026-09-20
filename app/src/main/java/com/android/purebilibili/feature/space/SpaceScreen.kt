@@ -3063,19 +3063,15 @@ private fun SpaceSecondarySwitchRow(
             viewportWidthDp = maxWidth.value.roundToInt(),
             containerHorizontalPaddingDp = containerHorizontalPaddingDp
         ) || items.size > 3 || items.any { it.title.length > 4 }
-        // Keep three slots visible in the viewport even when later library entries
-        // make the rail scrollable; long contribution titles then use the same
-        // compact width as the legacy three-tab dock.
-        val itemWidthDp = resolveSpaceSecondarySwitchAdaptiveItemWidthDp(
+        val adaptiveItemWidthDp = resolveSpaceSecondarySwitchAdaptiveItemWidthDp(
             preferredItemWidthDp = preferredItemWidthDp,
             itemCount = items.size,
             viewportWidthDp = maxWidth.value.roundToInt(),
             containerHorizontalPaddingDp = containerHorizontalPaddingDp
         )
-        // Keep the viewport-derived cap for the liquid rail. The preferred width
-        // is estimated from the longest title, so restoring it here would make
-        // every category as wide as that one outlier and needlessly lengthen the
-        // whole rail. The native Miuix rail below sizes each item independently.
+        // A scrollable liquid rail must honor the measured title width. Compressing
+        // it to three visible slots makes unbounded labels draw across one another.
+        val itemWidthDp = if (useScrollableRail) preferredItemWidthDp else adaptiveItemWidthDp
         val itemWidth = itemWidthDp.dp
         val viewportWidthPx = with(density) { maxWidth.toPx() }
         val itemWidthPx = with(density) { itemWidth.toPx() }

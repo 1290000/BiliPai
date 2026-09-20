@@ -145,15 +145,11 @@ internal fun BottomBarFloatingSegmentedControl(
     val effectiveItemWidth = itemWidth?.coerceAtLeast(48.dp)
     val horizontalPadding = containerHorizontalPadding.coerceAtLeast(0.dp)
     val verticalPadding = containerVerticalPadding.coerceIn(0.dp, effectiveHeight / 2)
-    val contentModifier = if (scrollState != null) {
-        modifier.horizontalScroll(scrollState)
+    val contentWidth = effectiveItemWidth?.let { it * itemCount + horizontalPadding * 2 }
+    val rootModifier = if (scrollState == null && contentWidth != null) {
+        modifier.width(contentWidth)
     } else {
         modifier
-    }
-    val rootModifier = if (effectiveItemWidth != null) {
-        contentModifier.width(effectiveItemWidth * itemCount + horizontalPadding * 2)
-    } else {
-        contentModifier
     }
     val selectedIndexState = rememberUpdatedState(safeSelectedIndex)
     val onSelectedState = rememberUpdatedState(onSelected)
@@ -172,9 +168,9 @@ internal fun BottomBarFloatingSegmentedControl(
         modifier = rootModifier.height(viewportHeight)
     ) {
         val indicatorWidthDp = when {
+            effectiveItemWidth != null -> effectiveItemWidth.value
             constraints.hasBoundedWidth ->
                 resolveFloatingDockSlotWidthPx(maxWidth.value, horizontalPadding.value, itemCount)
-            effectiveItemWidth != null -> effectiveItemWidth.value
             else -> indicatorHeight.value * FLOATING_DOCK_MIN_INDICATOR_ASPECT
         }
         val fittedSegmentedIndicatorWidth = resolveSegmentedControlIndicatorWidthDp(
@@ -201,6 +197,33 @@ internal fun BottomBarFloatingSegmentedControl(
                     .background(AppSurfaceTokens.background())
             )
         }
+        if (scrollState != null) {
+            BottomBarMatchedLiquidDock(
+                backdrop = effectiveBackdrop,
+                containerColor = shellColor.copy(alpha = liquidGlassTuning.surfaceAlpha),
+                shape = resolveSharedBottomBarCapsuleShape(),
+                blurEnabled = liquidGlassEnabled,
+                glassEnabled = liquidGlassEnabled,
+                shellLensIntensity = resolveFloatingDockGeometryScale(effectiveHeight.value),
+                blurRadius = liquidGlassTuning.backdropBlurRadius.dp,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .height(effectiveHeight),
+                liquidGlassTuning = liquidGlassTuning,
+                isScrollInProgressProvider = isScrollInProgressProvider,
+            ) {}
+        }
+        val floatingModifier = if (scrollState != null && contentWidth != null) {
+            Modifier
+                .horizontalScroll(scrollState)
+                .width(contentWidth)
+                .height(viewportHeight)
+        } else {
+            Modifier
+                .fillMaxWidth()
+                .height(viewportHeight)
+        }
         FloatingBottomBar(
             selectedIndex = { selectedIndexState.value },
             onSelected = { index ->
@@ -217,9 +240,7 @@ internal fun BottomBarFloatingSegmentedControl(
             },
             backdrop = effectiveBackdrop,
             tabsCount = itemCount,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(viewportHeight),
+            modifier = floatingModifier,
             mode = floatingMode,
             colors = FloatingBottomBarColors(
                 containerColor = shellColor,
@@ -245,6 +266,7 @@ internal fun BottomBarFloatingSegmentedControl(
             onIndicatorPositionChanged = onIndicatorPositionChanged,
             externalPagerMotionEffectsEnabled = externalPagerMotionEffectsEnabled,
             liquidGlassTuning = liquidGlassTuning,
+            drawShell = scrollState == null,
         ) {
             items.forEachIndexed { index, label ->
                 val selected = index == safeSelectedIndex
@@ -260,9 +282,10 @@ internal fun BottomBarFloatingSegmentedControl(
                         itemContent(index, label, selected)
                     } else {
                         val contentColor = LocalFloatingBottomBarContentColor.current
+                        val allowUnboundedLabel = allowLabelOverflow && scrollState == null
                         AppText(
                             text = label,
-                            modifier = if (allowLabelOverflow) {
+                            modifier = if (allowUnboundedLabel) {
                                 Modifier.wrapContentWidth(
                                     align = Alignment.CenterHorizontally,
                                     unbounded = true,
@@ -279,7 +302,11 @@ internal fun BottomBarFloatingSegmentedControl(
                             },
                             maxLines = 1,
                             softWrap = false,
-                            overflow = if (allowLabelOverflow) TextOverflow.Visible else TextOverflow.Ellipsis,
+                            overflow = if (allowUnboundedLabel) {
+                                TextOverflow.Visible
+                            } else {
+                                TextOverflow.Ellipsis
+                            },
                         )
                     }
                 }

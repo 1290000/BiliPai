@@ -13,10 +13,9 @@ import com.android.purebilibili.core.ui.LocalAppThemeConfig
 /**
  * Keep the visible dock viewport rounded for every chrome mode.
  *
- * A long liquid rail is wider than the viewport that hosts it. Leaving this node unclipped
- * lets the rail's capsule follow its off-screen content and exposes square corners at either
- * edge. The shared dock already reserves vertical bloom room, so clipping the viewport only
- * establishes the stable horizontal shell boundary.
+ * A long liquid rail is wider than the viewport that hosts it. Its shared renderer draws a
+ * fixed capsule behind the moving content; this clip keeps labels and the indicator inside
+ * that visible capsule instead of leaking across its rounded ends.
  */
 @Composable
 internal fun Modifier.liquidDockViewport(): Modifier {
