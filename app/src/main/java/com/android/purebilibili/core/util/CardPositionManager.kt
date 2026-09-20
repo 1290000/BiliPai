@@ -217,6 +217,12 @@ object CardPositionManager {
         lastClickedNativeCoverOverlayLayer = null
         lastClickedNativeCardBitmap = null
     }
+
+    internal fun isNativeVideoCardLayerCurrentOwner(layer: GraphicsLayer): Boolean =
+        lastClickedNativeCardLayer === layer
+
+    internal fun isNativeCoverOverlayLayerCurrentOwner(layer: GraphicsLayer): Boolean =
+        lastClickedNativeCoverOverlayLayer === layer
     
     /**
      * 清除记录的位置
