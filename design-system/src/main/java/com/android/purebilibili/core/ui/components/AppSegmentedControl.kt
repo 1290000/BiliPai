@@ -362,7 +362,6 @@ fun <T> AppNativeTabRow(
             (readableMinTabWidth > minTabWidth && options.size > 2))
     val useContentSizedMiuixItems = contentSizedMiuixNonGlassItems &&
         miuixNonGlassItemWidthMode == MiuixNonGlassTabItemWidthMode.CONTENT &&
-        com.android.purebilibili.core.ui.isMiuixNonGlassEnabled() &&
         effectiveScrollable
     val viewportBoundedModifier = modifier.widthIn(
         max = LocalConfiguration.current.screenWidthDp.dp,

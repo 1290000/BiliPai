@@ -199,6 +199,25 @@ internal fun <T> AppMiuixTabRow(
     drawNonGlassTrack: Boolean = false,
     onSelectionChange: (T) -> Unit,
 ) {
+    if (contentSizedNonGlassItems && scrollable) {
+        AppMiuixNonGlassTabs(
+            options = options,
+            selectedValue = selectedValue,
+            enabled = enabled,
+            compact = false,
+            scrollable = true,
+            minTabWidth = minTabWidth,
+            colors = colors,
+            height = height,
+            modifier = modifier,
+            equalizeScrollableItemWidths = equalizeScrollableItemWidths,
+            contentSizedItems = true,
+            contentSizedMaxItemWidth = contentSizedNonGlassMaxItemWidth,
+            drawTrack = drawNonGlassTrack,
+            onSelectionChange = onSelectionChange,
+        )
+        return
+    }
     if (isMiuixNonGlassEnabled()) {
         if (options.size <= 2 && !scrollable) {
             AppMiuixSegmentedControl(
@@ -267,7 +286,7 @@ internal fun <T> AppMiuixTabRow(
     )
 }
 
-/** Non-glass Miuix tabs delegate directly to the upstream TabRow implementation. */
+/** Miuix tabs delegate to the upstream TabRow unless caller-requested content sizing is active. */
 @Composable
 private fun <T> AppMiuixNonGlassTabs(
     options: List<AppSegmentOption<T>>,

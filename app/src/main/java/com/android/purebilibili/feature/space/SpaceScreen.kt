@@ -134,6 +134,8 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.size.Scale
 import com.android.purebilibili.R
+import com.android.purebilibili.core.theme.AppUiStyle
+import com.android.purebilibili.core.theme.LocalAppUiStyle
 import com.android.purebilibili.core.ui.AppScaffold
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced
@@ -3051,6 +3053,7 @@ private fun SpaceSecondarySwitchRow(
     val spec = remember(items, selectedId) {
         resolveSpaceSecondarySwitchChromeSpec(items = items, selectedId = selectedId)
     }
+    val useMiuixContentSizedRail = LocalAppUiStyle.current == AppUiStyle.MIUIX
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
     BoxWithConstraints(
@@ -3093,7 +3096,7 @@ private fun SpaceSecondarySwitchRow(
             contentPaddingPx = containerHorizontalPaddingPx,
         )
 
-        if (liquidGlassEnabled) {
+        if (liquidGlassEnabled && !useMiuixContentSizedRail) {
             BottomBarLiquidSegmentedControl(
                 items = items.map { it.title },
                 selectedIndex = spec.selectedIndex,
