@@ -341,7 +341,10 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                         videoUrl = cachedState.playUrl,
                         audio = cachedAudio,
                         audioUrl = cachedState.audioUrl,
-                        durationMs = cachedState.currentEpisode.duration.toLong().coerceAtLeast(0L)
+                        durationMs = dash.duration.toLong()
+                            .times(1000L)
+                            .takeIf { it > 0L }
+                            ?: cachedState.currentEpisode.duration.toLong().coerceAtLeast(0L)
                     )
                 }
                 playDashVideo(
