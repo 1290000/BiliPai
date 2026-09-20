@@ -194,9 +194,9 @@ internal object CommentGrpcRepository {
     ): Result<String?> {
         return runCatching {
             val request = ProtoWire.message(
-                ProtoWire.int64(1, oid),
-                ProtoWire.int64(2, type),
-                ProtoWire.int64(3, rpid)
+                ProtoWire.int64(1, type),
+                ProtoWire.int64(2, oid),
+                ProtoWire.packedInt64(3, listOf(rpid))
             )
             val response = BiliGrpcClient.request(
                 path = PATH_TRANSLATE_REPLY,
