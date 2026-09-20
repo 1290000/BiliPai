@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -37,6 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AppPopupSurface
+import com.android.purebilibili.core.ui.AppPopupSurfaceType
+import com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.appContentDialogWidth
@@ -81,7 +84,15 @@ fun <T> AppSingleChoicePreference(
     dialogTitle: String = title,
     presentation: AppSingleChoicePresentation = LocalAppSingleChoicePresentation.current,
 ) {
-    if (presentation == AppSingleChoicePresentation.WINDOW_POPUP) {
+    val resolvedPresentation = if (
+        LocalAppThemeConfig.current.liquidGlassEnabled &&
+        LocalAppPopupSurfaceRenderer.current != null
+    ) {
+        AppSingleChoicePresentation.CENTERED_DIALOG
+    } else {
+        presentation
+    }
+    if (resolvedPresentation == AppSingleChoicePresentation.WINDOW_POPUP) {
         val selectedIndex = options.indexOfFirst { it.value == selectedValue }.coerceAtLeast(0)
         val dropdownItems = remember(options) {
             options.map { option ->
@@ -175,12 +186,13 @@ fun <T> AppSingleChoiceDialog(
             usePlatformDefaultWidth = layoutPolicy.usePlatformDefaultWidth,
         ),
     ) {
-        Surface(
+        AppPopupSurface(
+            type = AppPopupSurfaceType.DIALOG,
             modifier = modifier
                 .appContentDialogWidth(policy = layoutPolicy, wrapHeight = false)
                 .heightIn(max = maxDialogHeight),
             shape = AppShapes.container(ContainerLevel.Dialog),
-            color = dialogContainerColor,
+            containerColor = dialogContainerColor,
             tonalElevation = 6.dp,
         ) {
             Column(modifier = Modifier.padding(vertical = 12.dp)) {
@@ -317,7 +329,8 @@ fun AppSliderDialog(
             usePlatformDefaultWidth = layoutPolicy.usePlatformDefaultWidth,
         ),
     ) {
-        Surface(
+        AppPopupSurface(
+            type = AppPopupSurfaceType.DIALOG,
             modifier = modifier.appContentDialogWidth(
                 policy = resolveAppContentDialogLayoutPolicy(
                     maxWidthDp = layoutPolicy.maxWidthDp,
@@ -326,7 +339,7 @@ fun AppSliderDialog(
                 ),
             ),
             shape = AppShapes.container(ContainerLevel.Dialog),
-            color = AppSurfaceTokens.cardContainer(),
+            containerColor = AppSurfaceTokens.cardContainer(),
             tonalElevation = 6.dp,
         ) {
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {

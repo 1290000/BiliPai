@@ -1757,6 +1757,10 @@ fun AppNavigation(
         }
         val bottomBarBackdrop = bottomBarBackdropSource?.backdrop
         CompositionLocalProvider(
+            com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer provides
+                com.android.purebilibili.core.ui.components.BiliPaiPopupSurfaceRenderer,
+            com.android.purebilibili.core.ui.blur.LocalFloatingChromeBackdrop provides
+                bottomBarBackdrop,
             com.android.purebilibili.feature.aicu.LocalAicuNavigation provides { uid: Long? ->
                 pushNavigation3Key(BiliPaiNavKey.AicuQuery(uid = uid ?: 0L))
             },

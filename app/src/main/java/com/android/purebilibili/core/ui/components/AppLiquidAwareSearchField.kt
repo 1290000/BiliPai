@@ -30,6 +30,7 @@ fun AppLiquidAwareSearchField(
     interactionSource: MutableInteractionSource? = null,
     backdrop: Backdrop? = null,
     isScrollInProgressProvider: () -> Boolean = { false },
+    leadingIconHorizontalOffset: Dp = 0.dp,
 ) {
     BottomBarMatchedReusableLiquidDock(
         shape = CircleShape,
@@ -52,6 +53,7 @@ fun AppLiquidAwareSearchField(
             autoFocusEnabled = autoFocusEnabled,
             focusRequester = focusRequester,
             interactionSource = interactionSource,
+            leadingIconHorizontalOffset = leadingIconHorizontalOffset,
             containerColor = if (liquidChromeActive) Color.Transparent else Color.Unspecified,
             shapeOverride = CircleShape.takeIf { liquidChromeActive },
             heightOverride = if (liquidChromeActive) {

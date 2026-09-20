@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.ui.AppModalBottomSheet
+import com.android.purebilibili.core.ui.AppAlertDialog
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
@@ -263,7 +264,7 @@ fun DanmakuPoolSheet(
 
     // 弹幕长按操作菜单 Dialog
     selectedItemForAction?.let { item ->
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { selectedItemForAction = null },
             title = {
                 AppText(

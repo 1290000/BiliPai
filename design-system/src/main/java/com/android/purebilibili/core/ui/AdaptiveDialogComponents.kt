@@ -15,7 +15,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,10 +79,17 @@ internal fun AdaptiveAlertDialog(
     properties: DialogProperties = DialogProperties()
 ) {
     val uiStyle = LocalAppUiStyle.current
-    when (resolveAppAlertDialogRenderer(
-        uiStyle = uiStyle,
-        nativeMiuixPopupsEnabled = LocalAppThemeConfig.current.nativeMiuixPopupsEnabled,
-    )) {
+    val useInjectedPopupSurface = LocalAppThemeConfig.current.liquidGlassEnabled &&
+        LocalAppPopupSurfaceRenderer.current != null
+    val renderer = if (useInjectedPopupSurface) {
+        AppAlertDialogRenderer.LOCAL_DIALOG
+    } else {
+        resolveAppAlertDialogRenderer(
+            uiStyle = uiStyle,
+            nativeMiuixPopupsEnabled = LocalAppThemeConfig.current.nativeMiuixPopupsEnabled,
+        )
+    }
+    when (renderer) {
         AppAlertDialogRenderer.LOCAL_DIALOG -> {
             val contentLayout = resolveAppCompactContentDialogLayoutPolicy()
             val dialogShape = shape ?: AppShapes.resolveContainerShape(
@@ -107,10 +113,11 @@ internal fun AdaptiveAlertDialog(
                     onDismissRequest = onDismissRequest,
                     maxWidth = contentLayout.maxWidthDp.dp,
                 ) {
-                    Surface(
+                    AppPopupSurface(
+                        type = AppPopupSurfaceType.DIALOG,
                         modifier = modifier.fillMaxWidth(),
                         shape = dialogShape,
-                        color = dialogColor,
+                        containerColor = dialogColor,
                         tonalElevation = tonalElevation ?: 0.dp,
                     ) {
                         dialogBody()
@@ -124,10 +131,11 @@ internal fun AdaptiveAlertDialog(
                         usePlatformDefaultWidth = contentLayout.usePlatformDefaultWidth,
                     ),
                 ) {
-                    Surface(
+                    AppPopupSurface(
+                        type = AppPopupSurfaceType.DIALOG,
                         modifier = modifier.appContentDialogWidth(policy = contentLayout),
                         shape = dialogShape,
-                        color = dialogColor,
+                        containerColor = dialogColor,
                         tonalElevation = tonalElevation ?: 6.dp,
                     ) {
                         dialogBody()

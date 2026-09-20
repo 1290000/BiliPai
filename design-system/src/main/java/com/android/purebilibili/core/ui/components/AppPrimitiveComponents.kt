@@ -576,7 +576,9 @@ fun AppDropdownMenu(
     properties: PopupProperties = PopupProperties(focusable = true),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (LocalAppThemeConfig.current.nativeMiuixPopupsEnabled) {
+    val liquidPopupEnabled = LocalAppThemeConfig.current.liquidGlassEnabled &&
+        com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer.current != null
+    if (LocalAppThemeConfig.current.nativeMiuixPopupsEnabled && !liquidPopupEnabled) {
         WindowListPopup(
             show = expanded,
             popupModifier = modifier,
@@ -594,8 +596,19 @@ fun AppDropdownMenu(
             offset = offset,
             scrollState = scrollState,
             properties = properties,
-            content = content,
-        )
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+        ) {
+            com.android.purebilibili.core.ui.AppPopupSurface(
+                type = com.android.purebilibili.core.ui.AppPopupSurfaceType.MENU,
+                shape = MaterialTheme.shapes.extraSmall,
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+                Column(content = content)
+            }
+        }
     }
 }
 

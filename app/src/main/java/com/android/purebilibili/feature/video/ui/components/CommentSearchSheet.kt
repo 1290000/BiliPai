@@ -4,11 +4,11 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -60,7 +59,7 @@ import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
-import com.android.purebilibili.core.ui.components.AppOutlinedTextField
+import com.android.purebilibili.core.ui.components.AppLiquidAwareSearchField
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.AppSurfaceTokens
@@ -68,6 +67,7 @@ import com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.ReplyItem
 import com.android.purebilibili.feature.home.components.biliPaiFloatingDockShell
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import top.yukonga.miuix.kmp.blur.Backdrop
 
 /**
@@ -146,40 +146,17 @@ fun CommentSearchSheet(
     val liquidGlassEnabled = liquidGlassEffectsEnabled
         ?: LocalAppThemeConfig.current.liquidGlassEnabled
     val glassActive = liquidGlassEnabled && !isLowBlurBudgetForced()
-    val panelShape = RoundedCornerShape(24.dp)
-    val panelColor = AppSurfaceTokens.surfaceContainer()
-
     AppModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier,
     ) {
-        AppSurface(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .biliPaiFloatingDockShell(
-                    backdrop = miuixBackdrop,
-                    containerColor = panelColor,
-                    pressProgress = 0f,
-                    shape = panelShape,
-                    enabled = glassActive,
-                    blurEnabled = glassActive && miuixBackdrop == null,
-                ),
-            shape = panelShape,
-            color = if (glassActive) Color.Transparent else panelColor,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            border = if (glassActive) {
-                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.28f))
-            } else {
-                null
-            },
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp)
-            ) {
                 // 顶栏：标题 + 关闭按钮
                 Row(
                     modifier = Modifier
@@ -218,116 +195,68 @@ fun CommentSearchSheet(
                 }
 
                 // 搜索输入框
-                AppOutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                AppLiquidAwareSearchField(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
-                    placeholder = {
-                        AppText(
-                            text = "搜索本视频评论内容或作者昵称...",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        )
-                    },
-                    leadingIcon = {
-                        AppIcon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "搜索",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            AppIconButton(
-                                onClick = { searchQuery = "" },
-                                modifier = Modifier.size(28.dp),
-                            ) {
-                                AppIcon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "清空",
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        }
-                    },
-                    singleLine = true,
+                    placeholder = "搜索本视频评论内容或作者昵称...",
+                    onClear = { searchQuery = "" },
+                    backdrop = miuixBackdrop,
+                    leadingIconHorizontalOffset = 8.dp,
                 )
 
-                // 筛选标签栏 (全部 / 只看UP主 / 排序)
-                Row(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // UP 主筛选开关
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CommentSearchFilterChip(
-                            selected = !onlyUp,
-                            label = "全部评论",
-                            onClick = { onlyUp = false },
-                            miuixBackdrop = miuixBackdrop,
-                            liquidGlassEnabled = glassActive,
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        CommentSearchFilterChip(
-                            selected = onlyUp,
-                            label = "只看UP主",
-                            onClick = { onlyUp = true },
-                            miuixBackdrop = miuixBackdrop,
-                            liquidGlassEnabled = glassActive,
-                        )
-                    }
-
-                    // 排序模式切换
-                    val sortShape = RoundedCornerShape(8.dp)
-                    Row(
-                        modifier = Modifier
-                            .then(
-                                if (glassActive) {
-                                    Modifier.biliPaiFloatingDockShell(
-                                        backdrop = miuixBackdrop,
-                                        containerColor = AppSurfaceTokens.surfaceContainerHigh(),
-                                        pressProgress = 0f,
-                                        shape = sortShape,
-                                        enabled = miuixBackdrop != null,
-                                        blurEnabled = miuixBackdrop == null,
-                                    )
-                                } else {
-                                    Modifier.background(
-                                        AppSurfaceTokens.surfaceContainerHigh(),
-                                        sortShape,
-                                    )
-                                }
+                    val stackControls = maxWidth < 420.dp
+                    if (stackControls) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CommentSearchSegmentedDock(
+                                items = listOf("全部评论", "只看UP主"),
+                                selectedIndex = if (onlyUp) 1 else 0,
+                                onSelected = { onlyUp = it == 1 },
+                                miuixBackdrop = miuixBackdrop,
+                                liquidGlassEnabled = glassActive,
+                                modifier = Modifier.fillMaxWidth(),
                             )
-                            .clip(sortShape)
-                            .padding(2.dp),
-                    ) {
-                        CommentSearchSortMode.entries.forEach { mode ->
-                            val isSelected = mode == sortMode
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(
-                                        if (isSelected) MaterialTheme.colorScheme.primary
-                                        else Color.Transparent
-                                    )
-                                    .clickable { sortMode = mode }
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                AppText(
-                                    text = mode.label,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            CommentSearchSegmentedDock(
+                                items = CommentSearchSortMode.entries.map { it.label },
+                                selectedIndex = sortMode.ordinal,
+                                onSelected = { index ->
+                                    CommentSearchSortMode.entries.getOrNull(index)?.let { sortMode = it }
+                                },
+                                miuixBackdrop = miuixBackdrop,
+                                liquidGlassEnabled = glassActive,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CommentSearchSegmentedDock(
+                                items = listOf("全部评论", "只看UP主"),
+                                selectedIndex = if (onlyUp) 1 else 0,
+                                onSelected = { onlyUp = it == 1 },
+                                miuixBackdrop = miuixBackdrop,
+                                liquidGlassEnabled = glassActive,
+                                modifier = Modifier.weight(1.3f),
+                            )
+                            CommentSearchSegmentedDock(
+                                items = CommentSearchSortMode.entries.map { it.label },
+                                selectedIndex = sortMode.ordinal,
+                                onSelected = { index ->
+                                    CommentSearchSortMode.entries.getOrNull(index)?.let { sortMode = it }
+                                },
+                                miuixBackdrop = miuixBackdrop,
+                                liquidGlassEnabled = glassActive,
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                     }
                 }
@@ -419,53 +348,31 @@ fun CommentSearchSheet(
                     }
                 }
             }
-        }
     }
 }
 
 @Composable
-private fun CommentSearchFilterChip(
-    selected: Boolean,
-    label: String,
-    onClick: () -> Unit,
+private fun CommentSearchSegmentedDock(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
     miuixBackdrop: Backdrop? = null,
     liquidGlassEnabled: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(8.dp)
-    val chipColor = if (selected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-    } else {
-        AppSurfaceTokens.surfaceContainerHigh()
-    }
-    Box(
-        modifier = Modifier
-            .then(
-                if (liquidGlassEnabled) {
-                    Modifier.biliPaiFloatingDockShell(
-                        backdrop = miuixBackdrop,
-                        containerColor = chipColor,
-                        pressProgress = 0f,
-                        shape = shape,
-                        enabled = miuixBackdrop != null,
-                        blurEnabled = miuixBackdrop == null,
-                    )
-                } else {
-                    Modifier.background(chipColor, shape)
-                }
-            )
-            .clip(shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        AppText(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    BottomBarLiquidSegmentedControl(
+        items = items,
+        selectedIndex = selectedIndex,
+        onSelected = onSelected,
+        modifier = modifier,
+        height = 48.dp,
+        indicatorHeight = 42.dp,
+        labelFontSize = 12.sp,
+        forceEqualWidth = true,
+        allowNativeLabelOverflow = true,
+        liquidGlassEffectsEnabled = liquidGlassEnabled,
+        miuixBackdrop = miuixBackdrop,
+    )
 }
 
 @Composable

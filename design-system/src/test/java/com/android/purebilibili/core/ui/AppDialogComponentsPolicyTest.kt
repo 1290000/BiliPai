@@ -67,4 +67,32 @@ class AppDialogComponentsPolicyTest {
         )
         assertFalse(properties.usePlatformDefaultWidth)
     }
+
+    @Test
+    fun `popup facades delegate their visual surface to the injected renderer`() {
+        val popupSurface = java.io.File(
+            "src/main/java/com/android/purebilibili/core/ui/AppPopupSurface.kt"
+        ).readText()
+        val sheet = java.io.File(
+            "src/main/java/com/android/purebilibili/core/ui/AppSheetComponents.kt"
+        ).readText()
+        val selection = java.io.File(
+            "src/main/java/com/android/purebilibili/core/ui/components/AppSelectionPreferenceComponents.kt"
+        ).readText()
+        val primitives = java.io.File(
+            "src/main/java/com/android/purebilibili/core/ui/components/AppPrimitiveComponents.kt"
+        ).readText()
+        val actionMenu = java.io.File(
+            "src/main/java/com/android/purebilibili/core/ui/components/AppWindowActionMenu.kt"
+        ).readText()
+
+        assertTrue(popupSurface.contains("LocalAppPopupSurfaceRenderer"))
+        assertTrue(popupSurface.contains("renderer.Render("))
+        assertTrue(sheet.contains("type = AppPopupSurfaceType.SHEET"))
+        assertTrue(selection.contains("type = AppPopupSurfaceType.DIALOG"))
+        assertTrue(selection.contains("AppSingleChoicePresentation.CENTERED_DIALOG"))
+        assertTrue(primitives.contains("type = com.android.purebilibili.core.ui.AppPopupSurfaceType.MENU"))
+        assertTrue(actionMenu.contains("parentActions = parentActions + action"))
+        assertTrue(actionMenu.contains("action.onClick?.invoke()"))
+    }
 }
