@@ -38,8 +38,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppPopupSurface
 import com.android.purebilibili.core.ui.AppPopupSurfaceType
-import com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer
-import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.appContentDialogWidth
@@ -84,15 +82,7 @@ fun <T> AppSingleChoicePreference(
     dialogTitle: String = title,
     presentation: AppSingleChoicePresentation = LocalAppSingleChoicePresentation.current,
 ) {
-    val resolvedPresentation = if (
-        LocalAppThemeConfig.current.liquidGlassEnabled &&
-        LocalAppPopupSurfaceRenderer.current != null
-    ) {
-        AppSingleChoicePresentation.CENTERED_DIALOG
-    } else {
-        presentation
-    }
-    if (resolvedPresentation == AppSingleChoicePresentation.WINDOW_POPUP) {
+    if (presentation == AppSingleChoicePresentation.WINDOW_POPUP) {
         val selectedIndex = options.indexOfFirst { it.value == selectedValue }.coerceAtLeast(0)
         val dropdownItems = remember(options) {
             options.map { option ->

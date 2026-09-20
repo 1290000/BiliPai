@@ -65,4 +65,27 @@ class AppSelectionPreferencePolicyTest {
         assertTrue(sliderDialogSection.contains("AppTextButton("))
         assertFalse(sliderDialogSection.contains("AppDialogAction("))
     }
+
+    @Test
+    fun singleChoicePreference_usesMiuixWindowSpinnerForWindowPopupWithoutOverride() {
+        val source = listOf(
+            java.io.File(
+                "design-system/src/main/java/com/android/purebilibili/core/ui/components/AppSelectionPreferenceComponents.kt"
+            ),
+            java.io.File(
+                "../design-system/src/main/java/com/android/purebilibili/core/ui/components/AppSelectionPreferenceComponents.kt"
+            ),
+            java.io.File(
+                "src/main/java/com/android/purebilibili/core/ui/components/AppSelectionPreferenceComponents.kt"
+            ),
+        ).first { it.exists() }.readText()
+        val start = source.indexOf("fun <T> AppSingleChoicePreference(")
+        val end = source.indexOf("fun <T> AppSingleChoiceDialog(")
+        assertTrue(start >= 0 && end > start, "AppSingleChoicePreference section markers missing")
+        val section = source.substring(start, end)
+
+        assertTrue(section.contains("if (presentation == AppSingleChoicePresentation.WINDOW_POPUP)"))
+        assertTrue(section.contains("WindowSpinnerPreference("))
+        assertFalse(section.contains("resolvedPresentation"))
+    }
 }
