@@ -461,6 +461,7 @@ internal enum class ReplyActionSheetAction {
     BLOCK_USER,
     REPORT,
     CHECK_FRAUD,
+    TOGGLE_TOP,
     DELETE
 }
 
@@ -513,10 +514,11 @@ private fun resolveReplyActionSheetLabel(
         ReplyActionSheetAction.COPY_USERNAME -> "复制用户名"
         ReplyActionSheetAction.QUERY_AUTHOR_HISTORY -> "查询作者历史"
         ReplyActionSheetAction.SAVE -> "保存评论"
-        ReplyActionSheetAction.CHECK_FRAUD -> "检测评论状态"
-        ReplyActionSheetAction.TOGGLE_TOP -> topActionLabel.orEmpty()
+        ReplyActionSheetAction.SHARE -> "分享评论"
+        ReplyActionSheetAction.REPLY -> "回复"
         ReplyActionSheetAction.BLOCK_USER -> "屏蔽用户"
         ReplyActionSheetAction.REPORT -> "举报"
+        ReplyActionSheetAction.CHECK_FRAUD -> "检测评论状态"
         ReplyActionSheetAction.TOGGLE_TOP -> topActionLabel.orEmpty()
         ReplyActionSheetAction.DELETE -> "删除"
     }
