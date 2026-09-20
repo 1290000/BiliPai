@@ -1557,7 +1557,7 @@ fun ReplyItemView(
                                                     Toast.makeText(context, "翻译结果为空", Toast.LENGTH_SHORT).show()
                                                 }
                                             }.onFailure { e ->
-                                                Toast.makeText(context, "翻译失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "${e.javaClass.simpleName}: ${e.message}", Toast.LENGTH_SHORT).show()
                                             }
                                             isTranslating = false
                                         }
