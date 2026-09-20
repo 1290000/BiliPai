@@ -593,27 +593,29 @@ internal fun MusicPlayerContent(
                                 isDarkEnvironment = isDarkEnvironment,
                                 onClick = { coverStyle = resolveNextCoverStyle(coverStyle) },
                             )
-                            Spacer(Modifier.height(8.dp))
-                            MusicProgress(
-                                state = state,
-                                onSeek = { positionMs ->
-                                    progressSeekRevision += 1
-                                    onSeek(positionMs)
-                                },
-                                glassEnabled = glassEnabled,
-                                glassTintColor = backgroundColor,
-                                isDarkEnvironment = isDarkEnvironment,
-                                miuixBackdrop = musicBackdrop,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            MusicPlayPauseButton(
-                                state = state,
-                                onPlayPause = onPlayPause,
-                                sizeDp = 56,
-                                isDarkEnvironment = isDarkEnvironment,
-                                glassTintColor = backgroundColor,
-                            )
+                            if (landscapeLyrics) {
+                                Spacer(Modifier.height(8.dp))
+                                MusicProgress(
+                                    state = state,
+                                    onSeek = { positionMs ->
+                                        progressSeekRevision += 1
+                                        onSeek(positionMs)
+                                    },
+                                    glassEnabled = glassEnabled,
+                                    glassTintColor = backgroundColor,
+                                    isDarkEnvironment = isDarkEnvironment,
+                                    miuixBackdrop = musicBackdrop,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                MusicPlayPauseButton(
+                                    state = state,
+                                    onPlayPause = onPlayPause,
+                                    sizeDp = 56,
+                                    isDarkEnvironment = isDarkEnvironment,
+                                    glassTintColor = backgroundColor,
+                                )
+                            }
                         }
                     }
                     Column(modifier = Modifier.weight(1.15f).fillMaxHeight()) {

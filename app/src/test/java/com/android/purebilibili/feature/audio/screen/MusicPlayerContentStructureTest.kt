@@ -43,6 +43,7 @@ class MusicPlayerContentStructureTest {
         assertTrue(compactLandscape.contains("MusicPlayPauseButton("))
         assertTrue(compactLandscape.contains("onPlayPause = onPlayPause"))
         assertTrue(compactLandscape.contains("progressSeekRevision += 1"))
+        assertTrue(compactLandscape.contains("if (landscapeLyrics)"))
     }
 
     @Test
