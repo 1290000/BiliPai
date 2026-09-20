@@ -318,7 +318,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                         cid = cachedState.currentEpisode.cid
                     ) ?: 0L
                 )
-                val isCoursePlayback = isCourse || cachedState.seasonDetail.seasonType == 10 || cachedState.seasonDetail.seasonTypeName == "课堂"
+                val isCoursePlayback = isCourse || cachedState.seasonDetail.seasonType == 10
                 val cachedReferer = if (isCoursePlayback) {
                     "https://www.bilibili.com/cheese/play/ep${cachedState.currentEpisode.id}"
                 } else {
@@ -442,7 +442,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         startPositionMs: Long = 0L
     ) {
         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "🎬 fetchPlayUrl: epId=${episode.id}, cid=${episode.cid}, aid=${episode.aid}")
-        val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+        val isCourse = detail.seasonType == 10
         val playUrlResult = BangumiRepository.getBangumiPlayUrl(
             epId = episode.id,
             qn = resolveBangumiInitialQuality(),
@@ -648,7 +648,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             }
             
             //  [修复] 构建番剧/课程专用 Referer，解决 CDN 403 播放失败问题
-            val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+            val isCourse = detail.seasonType == 10
             val referer = if (isCourse) {
                 "https://www.bilibili.com/cheese/play/ep${episode.id}"
             } else {
@@ -802,7 +802,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         val currentPos = getPlayerCurrentPosition()
         
         viewModelScope.launch {
-            val isCourse = currentState.seasonDetail.seasonType == 10 || currentState.seasonDetail.seasonTypeName == "课堂"
+            val isCourse = currentState.seasonDetail.seasonType == 10
             val playUrlResult = BangumiRepository.getBangumiPlayUrl(
                 epId = currentState.currentEpisode.id,
                 qn = qualityId,
@@ -1001,7 +1001,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         val wasFollowing = isBangumiFollowed(currentState.seasonDetail.userStatus) ||
             followStatusCache[seasonId] == true ||
             (followStatusValueCache[seasonId] ?: 0) > 0
-        val isCourse = isCourseMode || currentState.seasonDetail.seasonType == 10 || currentState.seasonDetail.seasonTypeName == "课堂"
+        val isCourse = isCourseMode || currentState.seasonDetail.seasonType == 10
         
         viewModelScope.launch {
             val result = when {

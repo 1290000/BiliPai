@@ -81,7 +81,7 @@ fun BangumiPlayerContent(
     onDownloadClick: () -> Unit = {},
     onShareClick: () -> Unit = {}
 ) {
-    val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+    val isCourse = detail.seasonType == 10
     val isFollowing = isBangumiFollowed(detail.userStatus)
     val followedIcon = rememberAppCheckCircleIcon()
     val followIcon = rememberAppProfileAddIcon()

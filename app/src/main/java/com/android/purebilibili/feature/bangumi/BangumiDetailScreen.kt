@@ -92,7 +92,7 @@ fun BangumiDetailScreen(
         blurContentReady = detailState !is BangumiDetailState.Loading,
         topBar = {
             val isCourse = (detailState as? BangumiDetailState.Success)?.detail?.let {
-                it.seasonType == 10 || it.seasonTypeName == "课堂"
+                it.seasonType == 10
             } == true
             AppTopBar(
                 title = if (isCourse) "课程详情" else "番剧详情",
@@ -291,7 +291,7 @@ private fun TabletBangumiDetailContent(
                             
                             // Stats
                             detail.stat?.let { stat ->
-                                val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+                                val isCourse = detail.seasonType == 10
                                 val followVerb = if (isCourse) "收藏" else "追番"
                                 AppText(
                                     text = "${FormatUtils.formatStat(stat.views)}播放 · ${FormatUtils.formatStat(stat.favorites)}$followVerb",
@@ -353,7 +353,7 @@ private fun TabletBangumiDetailContent(
 
                 // Action Buttons
                 item {
-                    val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+                    val isCourse = detail.seasonType == 10
                     val targetEpisode = remember(detail) {
                         val lastEpId = detail.userStatus?.progress?.lastEpId ?: 0L
                         detail.episodes?.firstOrNull { it.id == lastEpId } ?: detail.episodes?.firstOrNull()
@@ -673,7 +673,7 @@ private fun TabletBangumiDetailContent(
         )
     }
     if (showFollowStatusDialog) {
-        val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+        val isCourse = detail.seasonType == 10
         BangumiFollowStatusDialog(
             currentStatus = detail.userStatus?.followStatus ?: 0,
             isCourse = isCourse,
@@ -825,7 +825,7 @@ private fun MobileBangumiDetailContent(
                             
                             // 播放量
                             detail.stat?.let { stat ->
-                                val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+                                val isCourse = detail.seasonType == 10
                                 val followVerb = if (isCourse) "收藏" else "追番"
                                 AppText(
                                     text = "${FormatUtils.formatStat(stat.views)}播放 · ${FormatUtils.formatStat(stat.favorites)}$followVerb",
@@ -889,7 +889,7 @@ private fun MobileBangumiDetailContent(
             
             // 操作按钮
             item {
-                val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+                val isCourse = detail.seasonType == 10
                 val targetEpisode = remember(detail) {
                     val lastEpId = detail.userStatus?.progress?.lastEpId ?: 0L
                     detail.episodes?.firstOrNull { it.id == lastEpId } ?: detail.episodes?.firstOrNull()
@@ -1322,7 +1322,7 @@ private fun MobileBangumiDetailContent(
             )
         }
         if (showFollowStatusDialog) {
-            val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
+            val isCourse = detail.seasonType == 10
             BangumiFollowStatusDialog(
                 currentStatus = detail.userStatus?.followStatus ?: 0,
                 isCourse = isCourse,

@@ -373,7 +373,7 @@ fun BangumiPlayerScreen(
     }
 
     LaunchedEffect(currentEpisodeIdForDebug, currentAid, preferredCommentSortMode, successState?.seasonDetail?.stat?.reply) {
-        val isPugv = isCourse || successState?.seasonDetail?.let { it.seasonType == 10 || it.seasonTypeName == "课堂" } == true
+        val isPugv = isCourse || successState?.seasonDetail?.seasonType == 10
         val targetOid = if (isPugv) (successState?.currentEpisode?.id ?: currentEpisodeIdForDebug) else currentAid
         val targetType = if (isPugv) 33 else 1
         val targetUpMid = successState?.seasonDetail?.upInfo?.mid ?: 0L
