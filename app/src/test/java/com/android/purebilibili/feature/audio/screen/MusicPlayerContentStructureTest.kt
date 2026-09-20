@@ -32,6 +32,20 @@ class MusicPlayerContentStructureTest {
     }
 
     @Test
+    fun `compact landscape exposes transport below artwork`() {
+        val source = loadSource()
+        val compactLandscape = source
+            .substringAfter("MusicPlayerLayout.COMPACT_LANDSCAPE ->")
+            .substringBefore("MusicPlayerLayout.COMPACT_PAGER ->")
+
+        assertTrue(compactLandscape.contains("MusicArtwork("))
+        assertTrue(compactLandscape.contains("MusicProgress("))
+        assertTrue(compactLandscape.contains("MusicPlayPauseButton("))
+        assertTrue(compactLandscape.contains("onPlayPause = onPlayPause"))
+        assertTrue(compactLandscape.contains("progressSeekRevision += 1"))
+    }
+
+    @Test
     fun `music backdrop records opaque page background before glass samples it`() {
         val source = loadSource()
         assertTrue(source.contains("val musicBackdrop = musicBackdropSource.backdrop"))

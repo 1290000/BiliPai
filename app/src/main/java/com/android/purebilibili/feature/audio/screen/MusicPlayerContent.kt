@@ -576,18 +576,45 @@ internal fun MusicPlayerContent(
                         modifier = Modifier.weight(0.85f).fillMaxHeight(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        MusicArtwork(
-                            coverUrl = state.coverUrl,
-                            bitmap = artworkBitmap,
-                            modifier = Modifier.width(minOf(maxWidth, maxHeight, 280.dp)),
-                            coverStyle = coverStyle,
-                            isPlaying = state.isPlaying,
-                            rotate = state.isPlaying && !effectiveReduceMotion,
-                            playbackSpeed = state.playbackSpeed,
-                            reduceMotion = effectiveReduceMotion,
-                            isDarkEnvironment = isDarkEnvironment,
-                            onClick = { coverStyle = resolveNextCoverStyle(coverStyle) },
-                        )
+                        val artworkWidth = minOf(maxWidth, maxHeight * 0.70f, 280.dp)
+                        Column(
+                            modifier = Modifier.width(artworkWidth),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            MusicArtwork(
+                                coverUrl = state.coverUrl,
+                                bitmap = artworkBitmap,
+                                modifier = Modifier.width(artworkWidth),
+                                coverStyle = coverStyle,
+                                isPlaying = state.isPlaying,
+                                rotate = state.isPlaying && !effectiveReduceMotion,
+                                playbackSpeed = state.playbackSpeed,
+                                reduceMotion = effectiveReduceMotion,
+                                isDarkEnvironment = isDarkEnvironment,
+                                onClick = { coverStyle = resolveNextCoverStyle(coverStyle) },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            MusicProgress(
+                                state = state,
+                                onSeek = { positionMs ->
+                                    progressSeekRevision += 1
+                                    onSeek(positionMs)
+                                },
+                                glassEnabled = glassEnabled,
+                                glassTintColor = backgroundColor,
+                                isDarkEnvironment = isDarkEnvironment,
+                                miuixBackdrop = musicBackdrop,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            MusicPlayPauseButton(
+                                state = state,
+                                onPlayPause = onPlayPause,
+                                sizeDp = 56,
+                                isDarkEnvironment = isDarkEnvironment,
+                                glassTintColor = backgroundColor,
+                            )
+                        }
                     }
                     Column(modifier = Modifier.weight(1.15f).fillMaxHeight()) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -2182,45 +2209,13 @@ private fun PlaybackControls(
             onClick = onPrevious ?: {},
             sizeDp = skipButtonSizeDp
         )
-        // 播放控制主按钮：沿用播放器的背景取色毛玻璃材质，保持图标高对比。
-        val playButtonBg = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
-            .copy(alpha = if (isDarkEnvironment) 0.62f else 0.52f)
-        val playButtonFg = MusicContentColor
-        val playButtonBorder = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
-            .copy(alpha = 0.62f)
-        Box(
-            modifier = Modifier
-                .size(playButtonSizeDp.dp)
-                .drawBehind {
-                    val radius = size.minDimension / 2f
-                    drawCircle(color = playButtonBg, radius = radius)
-                    drawCircle(
-                        color = playButtonBorder,
-                        radius = radius - 0.8.dp.toPx(),
-                        style = Stroke(width = 1.dp.toPx())
-                    )
-                }
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onPlayPause,
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (state.isBuffering) {
-                AppCircularProgressIndicator(
-                    color = playButtonFg,
-                    modifier = Modifier.size((playButtonSizeDp * 0.45f).dp)
-                )
-            } else {
-                AppIcon(
-                    imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (state.isPlaying) "暂停" else "播放",
-                    tint = playButtonFg,
-                    modifier = Modifier.size((playButtonSizeDp * 0.45f).dp)
-                )
-            }
-        }
+        MusicPlayPauseButton(
+            state = state,
+            onPlayPause = onPlayPause,
+            sizeDp = playButtonSizeDp,
+            isDarkEnvironment = isDarkEnvironment,
+            glassTintColor = glassTintColor,
+        )
         PlaybackIconButton(
             icon = Icons.Filled.SkipNext,
             description = "下一首",
@@ -2773,6 +2768,56 @@ private fun LyricsImmersiveProgress(
         color = MusicContentColor,
         trackColor = MusicContentColor.copy(alpha = 0.22f)
     )
+}
+
+@Composable
+private fun MusicPlayPauseButton(
+    state: MusicPlayerUiState,
+    onPlayPause: () -> Unit,
+    sizeDp: Int,
+    isDarkEnvironment: Boolean,
+    glassTintColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    // Keep the standalone landscape button visually identical to the main player control.
+    val playButtonBg = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
+        .copy(alpha = if (isDarkEnvironment) 0.62f else 0.52f)
+    val playButtonFg = MusicContentColor
+    val playButtonBorder = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
+        .copy(alpha = 0.62f)
+    Box(
+        modifier = modifier
+            .size(sizeDp.dp)
+            .drawBehind {
+                val radius = size.minDimension / 2f
+                drawCircle(color = playButtonBg, radius = radius)
+                drawCircle(
+                    color = playButtonBorder,
+                    radius = radius - 0.8.dp.toPx(),
+                    style = Stroke(width = 1.dp.toPx())
+                )
+            }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onPlayPause,
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (state.isBuffering) {
+            AppCircularProgressIndicator(
+                color = playButtonFg,
+                modifier = Modifier.size((sizeDp * 0.45f).dp)
+            )
+        } else {
+            AppIcon(
+                imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (state.isPlaying) "暂停" else "播放",
+                tint = playButtonFg,
+                modifier = Modifier.size((sizeDp * 0.45f).dp)
+            )
+        }
+    }
 }
 
 @Composable
