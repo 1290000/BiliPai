@@ -222,6 +222,7 @@ fun CommonListScreen(
     onCollectionClick: ((FavoriteCollectionRoute) -> Unit)? = null,
     onFavoriteFolderClick: ((Long, Long, String, String) -> Unit)? = null,
     onFavoriteBangumiClick: (Long) -> Unit = {},
+    onFavoriteCheeseClick: ((Long) -> Unit)? = null,
     onFavoriteArticleClick: (Long, String) -> Unit = { _, _ -> },
     onFavoriteTopicClick: (Long) -> Unit = {},
     onFavoriteWebClick: (String, String) -> Unit = { _, _ -> },
@@ -1043,6 +1044,7 @@ fun CommonListScreen(
                         onArticleClick = onFavoriteArticleClick,
                         onTopicClick = onFavoriteTopicClick,
                         onWebClick = onFavoriteWebClick,
+                        onCheeseClick = onFavoriteCheeseClick,
                     )
                 } else if (isSubscribedBrowse) {
                     val favoriteVm = requireNotNull(favoriteViewModel)

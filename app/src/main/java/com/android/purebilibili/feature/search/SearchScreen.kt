@@ -647,6 +647,7 @@ fun SearchScreen(
     onWebClick: (String, String) -> Unit,
     onUpClick: (Long) -> Unit,  //  点击UP主跳转到空间
     onBangumiClick: (Long) -> Unit, //  点击番剧/影视跳转详情
+    onCheeseClick: ((Long, Long) -> Unit)? = null, // 点击课堂跳转
     onLiveClick: (Long, String, String) -> Unit, // [新增] 直播点击
     onTopicClick: (Long) -> Unit,
     onArticleClick: (Long, String) -> Unit,
@@ -1717,6 +1718,13 @@ fun SearchScreen(
                                                     ) {
                                                         is SearchResultNavigationTarget.Video ->
                                                             onVideoClick(target.bvid, 0, video.pic)
+                                                        is SearchResultNavigationTarget.Course -> {
+                                                            if (onCheeseClick != null) {
+                                                                onCheeseClick(target.seasonId, target.epId)
+                                                            } else {
+                                                                onBangumiClick(target.seasonId)
+                                                            }
+                                                        }
                                                         is SearchResultNavigationTarget.Web ->
                                                             onWebClick(target.url, target.title)
                                                         else -> Unit

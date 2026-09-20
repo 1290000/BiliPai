@@ -1770,7 +1770,14 @@ private fun SpaceContent(
                                             onWebClick(url, title)
                                         }
                                     },
-                                    onCourseClick = onWebClick,
+                                    onCourseClick = { url, title ->
+                                        val courseNav = com.android.purebilibili.feature.bangumi.policy.parseCourseNavigation(url)
+                                        if (courseNav != null && courseNav.seasonId > 0L) {
+                                            onCheeseClick(courseNav.seasonId)
+                                        } else {
+                                            onWebClick(url, title)
+                                        }
+                                    },
                                     onArticleClick = onArticleClick,
                                     onDynamicDetailClick = onDynamicDetailClick,
                                 ),
@@ -2985,10 +2992,10 @@ private fun SpaceContentTabs(
             totalAudios = state.totalAudios
         )
     }
-    val secondarySwitchItems = remember(displayedContributionTabs, hasCheese) {
+    val secondarySwitchItems = remember(displayedContributionTabs) {
         resolveSpaceSecondarySwitchItems(
             contributionTabs = displayedContributionTabs,
-            hasCheese = hasCheese,
+            hasCheese = false,
         )
     }
     val selectedSecondarySwitchId = remember(
@@ -4455,7 +4462,7 @@ private fun SpaceCheeseCard(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         AppText(
-                            text = item.marks.joinToString("·"),
+                            text = item.marks.joinToString(" · "),
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium

@@ -53,6 +53,17 @@ import com.android.purebilibili.feature.bangumi.ui.player.BangumiPlayerView
 import com.android.purebilibili.feature.bangumi.ui.player.BangumiPlayerContent
 import com.android.purebilibili.feature.bangumi.ui.player.BangumiErrorContent
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.android.purebilibili.core.util.FormatUtils
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.android.purebilibili.core.ui.components.AppButton
+import com.android.purebilibili.core.ui.components.AppText
+import com.android.purebilibili.core.ui.components.AppIcon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 
 /**
  * 番剧播放页面
@@ -67,6 +78,7 @@ fun BangumiPlayerScreen(
     seasonId: Long,
     epId: Long,
     resumePositionMs: Long = 0L,
+    isCourse: Boolean = false,
     onBack: () -> Unit,
     onNavigateToLogin: () -> Unit = {},
     onUserClick: (Long) -> Unit = {},
@@ -162,14 +174,14 @@ fun BangumiPlayerScreen(
             val season = item.seasonId
             val ep = item.epId
             if (season != null && ep != null && season > 0L && ep > 0L) {
-                viewModel.loadBangumiPlay(season, ep)
+                viewModel.loadBangumiPlay(season, ep, isCourse = isCourse)
             }
         }
         val previousBangumiCallback: (PlaylistItem) -> Unit = { item ->
             val season = item.seasonId
             val ep = item.epId
             if (season != null && ep != null && season > 0L && ep > 0L) {
-                viewModel.loadBangumiPlay(season, ep)
+                viewModel.loadBangumiPlay(season, ep, isCourse = isCourse)
             }
         }
         miniPlayerManager.onPlayNextBangumiCallback = nextBangumiCallback
@@ -244,11 +256,11 @@ fun BangumiPlayerScreen(
     
     // 附加播放器到 ViewModel 并加载番剧
     // 使用同一个 LaunchedEffect 确保顺序执行，避免竞态条件
-    LaunchedEffect(exoPlayer, seasonId, epId, resumePositionMs) {
+    LaunchedEffect(exoPlayer, seasonId, epId, resumePositionMs, isCourse) {
         // 先附加播放器
         viewModel.attachPlayer(exoPlayer)
         // 然后加载番剧
-        viewModel.loadBangumiPlay(seasonId, epId, resumePositionMs)
+        viewModel.loadBangumiPlay(seasonId, epId, resumePositionMs, isCourse = isCourse)
     }
 
     LaunchedEffect(viewModel, context) {
@@ -618,126 +630,144 @@ fun BangumiPlayerScreen(
         //  移除 movableContentOf，它会导致切换全屏时 Surface 丢失
         @Composable
         fun playerContentView(isFullscreenMode: Boolean) {
-            key(exoPlayer) { // 使用 exoPlayer 作为 key 确保 AndroidView 不被重建
-                BangumiPlayerView(
-                    exoPlayer = exoPlayer,
-                    danmakuManager = danmakuManager,
-                    danmakuEnabled = danmakuEnabled,
-                    onDanmakuToggle = {
-                        if (!danmakuAllowed) {
-                            Toast.makeText(context, "该剧集不支持弹幕", Toast.LENGTH_SHORT).show()
-                        } else {
-                            scope.launch {
-                                com.android.purebilibili.core.store.SettingsManager.setDanmakuEnabled(
-                                    context,
-                                    !danmakuEnabled,
-                                    activeDanmakuScope
-                                )
+            Box(modifier = Modifier.fillMaxSize()) {
+                key(exoPlayer) { // 使用 exoPlayer 作为 key 确保 AndroidView 不被重建
+                    BangumiPlayerView(
+                        exoPlayer = exoPlayer,
+                        danmakuManager = danmakuManager,
+                        danmakuEnabled = danmakuEnabled,
+                        onDanmakuToggle = {
+                            if (!danmakuAllowed) {
+                                Toast.makeText(context, "该剧集不支持弹幕", Toast.LENGTH_SHORT).show()
+                            } else {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager.setDanmakuEnabled(
+                                        context,
+                                        !danmakuEnabled,
+                                        activeDanmakuScope
+                                    )
+                                }
                             }
+                        },
+                        seasonId = successState?.seasonDetail?.seasonId ?: 0L,
+                        epId = successState?.currentEpisode?.id ?: 0L,
+                        title = successState?.seasonDetail?.title.orEmpty(),
+                        subtitle = listOf(
+                            successState?.currentEpisode?.title.orEmpty(),
+                            successState?.currentEpisode?.longTitle.orEmpty()
+                        ).filter { it.isNotBlank() }.joinToString(" "),
+                        bvid = successState?.currentEpisode?.bvid.orEmpty(),
+                        aid = successState?.currentEpisode?.aid ?: 0L,
+                        cid = successState?.currentEpisode?.cid ?: 0L,
+                        coverUrl = successState?.currentEpisode?.cover ?: successState?.seasonDetail?.cover.orEmpty(),
+                        currentVideoUrl = successState?.playUrl.orEmpty(),
+                        currentAudioUrl = successState?.audioUrl.orEmpty(),
+                        debugInfo = resolveBangumiPlaybackDebugInfo(playbackDebugSnapshot),
+                        pages = bangumiPages,
+                        currentPageIndex = currentPageIndex,
+                        onPageSelect = { selectedPageIndex ->
+                            val episode = resolveBangumiEpisodeForPageSelection(
+                                episodes = successState?.seasonDetail?.episodes.orEmpty(),
+                                selectedPageIndex = selectedPageIndex
+                            )
+                            if (episode != null) {
+                                viewModel.switchEpisode(episode)
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        isFullscreen = isFullscreenMode,
+                        currentQuality = successState?.quality ?: 0,
+                        acceptQuality = successState?.acceptQuality ?: emptyList(),
+                        acceptDescription = successState?.acceptDescription ?: emptyList(),
+                        isLoggedIn = successState?.isLoggedIn == true,
+                        isVip = successState?.isVip == true,
+                        onQualityChange = { viewModel.changeQuality(it) },
+                        requestedAudioQuality = successState?.requestedAudioQuality ?: -1,
+                        selectedAudioQuality = successState?.selectedAudioQuality ?: -1,
+                        availableAudioQualities = successState?.availableAudioQualities.orEmpty(),
+                        onAudioQualityChange = viewModel::changeAudioQuality,
+                        onBack = if (isFullscreenMode) { { toggleOrientation() } } else onBack,
+                        onToggleFullscreen = { toggleOrientation() },
+                        onScreenLockChanged = { isPlayerScreenLocked = it },
+                        sponsorSegment = sponsorSegment,
+                        showSponsorSkipButton = showSponsorSkipButton,
+                        onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
+                        onSponsorDismiss = { viewModel.dismissSponsorSkipButton() },
+                        //  倍速控制
+                        currentSpeed = currentSpeed,
+                        onSpeedChange = {
+                            currentSpeed = it
+                            viewModel.applyPlaybackSpeedFromUi(it)
+                        },
+                        //  弹幕设置
+                        danmakuOpacity = danmakuOpacity,
+                        danmakuFontScale = danmakuFontScale,
+                        danmakuSpeed = danmakuSpeed,
+                        danmakuDisplayArea = danmakuDisplayArea,
+                        danmakuMergeDuplicates = danmakuMergeDuplicates,
+                        danmakuDuplicateMergeWindowMs = danmakuDuplicateMergeWindowMs,
+                        danmakuDuplicateMergeCountThreshold = danmakuDuplicateMergeCountThreshold,
+                        onDanmakuOpacityChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuOpacity(context, it, activeDanmakuScope)
+                            }
+                        },
+                        onDanmakuFontScaleChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuFontScale(context, it, activeDanmakuScope)
+                            }
+                        },
+                        onDanmakuSpeedChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuSpeed(context, it, activeDanmakuScope)
+                            }
+                        },
+                        onDanmakuDisplayAreaChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuArea(context, it, activeDanmakuScope)
+                            }
+                        },
+                        onDanmakuMergeDuplicatesChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuMergeDuplicates(context, it, activeDanmakuScope)
+                            }
+                        },
+                        onDanmakuDuplicateMergeWindowMsChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuDuplicateMergeWindowMs(context, it, activeDanmakuScope)
+                            }
+                        },
+                        onDanmakuDuplicateMergeCountThresholdChange = {
+                            scope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuDuplicateMergeCountThreshold(context, it, activeDanmakuScope)
+                            }
+                        },
+                        isLiked = successState?.isLiked ?: false,
+                        coinCount = successState?.coinCount ?: 0,
+                        onToggleLike = { viewModel.toggleLike() },
+                        onCoin = { viewModel.openCoinDialog() },
+                        onReloadVideo = { viewModel.retry() },
+                        onShowMessage = { message ->
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         }
-                    },
-                    seasonId = successState?.seasonDetail?.seasonId ?: 0L,
-                    epId = successState?.currentEpisode?.id ?: 0L,
-                    title = successState?.seasonDetail?.title.orEmpty(),
-                    subtitle = listOf(
-                        successState?.currentEpisode?.title.orEmpty(),
-                        successState?.currentEpisode?.longTitle.orEmpty()
-                    ).filter { it.isNotBlank() }.joinToString(" "),
-                    bvid = successState?.currentEpisode?.bvid.orEmpty(),
-                    aid = successState?.currentEpisode?.aid ?: 0L,
-                    cid = successState?.currentEpisode?.cid ?: 0L,
-                    coverUrl = successState?.currentEpisode?.cover ?: successState?.seasonDetail?.cover.orEmpty(),
-                    currentVideoUrl = successState?.playUrl.orEmpty(),
-                    currentAudioUrl = successState?.audioUrl.orEmpty(),
-                    debugInfo = resolveBangumiPlaybackDebugInfo(playbackDebugSnapshot),
-                    pages = bangumiPages,
-                    currentPageIndex = currentPageIndex,
-                    onPageSelect = { selectedPageIndex ->
-                        val episode = resolveBangumiEpisodeForPageSelection(
-                            episodes = successState?.seasonDetail?.episodes.orEmpty(),
-                            selectedPageIndex = selectedPageIndex
-                        )
-                        if (episode != null) {
-                            viewModel.switchEpisode(episode)
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    isFullscreen = isFullscreenMode,
-                    currentQuality = successState?.quality ?: 0,
-                    acceptQuality = successState?.acceptQuality ?: emptyList(),
-                    acceptDescription = successState?.acceptDescription ?: emptyList(),
-                    isLoggedIn = successState?.isLoggedIn == true,
-                    isVip = successState?.isVip == true,
-                    onQualityChange = { viewModel.changeQuality(it) },
-                    requestedAudioQuality = successState?.requestedAudioQuality ?: -1,
-                    selectedAudioQuality = successState?.selectedAudioQuality ?: -1,
-                    availableAudioQualities = successState?.availableAudioQualities.orEmpty(),
-                    onAudioQualityChange = viewModel::changeAudioQuality,
-                    onBack = if (isFullscreenMode) { { toggleOrientation() } } else onBack,
-                    onToggleFullscreen = { toggleOrientation() },
-                    onScreenLockChanged = { isPlayerScreenLocked = it },
-                    sponsorSegment = sponsorSegment,
-                    showSponsorSkipButton = showSponsorSkipButton,
-                    onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
-                    onSponsorDismiss = { viewModel.dismissSponsorSkipButton() },
-                    //  倍速控制
-                    currentSpeed = currentSpeed,
-                    onSpeedChange = {
-                        currentSpeed = it
-                        viewModel.applyPlaybackSpeedFromUi(it)
-                    },
-                    //  弹幕设置
-                    danmakuOpacity = danmakuOpacity,
-                    danmakuFontScale = danmakuFontScale,
-                    danmakuSpeed = danmakuSpeed,
-                    danmakuDisplayArea = danmakuDisplayArea,
-                    danmakuMergeDuplicates = danmakuMergeDuplicates,
-                    danmakuDuplicateMergeWindowMs = danmakuDuplicateMergeWindowMs,
-                    danmakuDuplicateMergeCountThreshold = danmakuDuplicateMergeCountThreshold,
-                    onDanmakuOpacityChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuOpacity(context, it, activeDanmakuScope)
-                        }
-                    },
-                    onDanmakuFontScaleChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuFontScale(context, it, activeDanmakuScope)
-                        }
-                    },
-                    onDanmakuSpeedChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuSpeed(context, it, activeDanmakuScope)
-                        }
-                    },
-                    onDanmakuDisplayAreaChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuArea(context, it, activeDanmakuScope)
-                        }
-                    },
-                    onDanmakuMergeDuplicatesChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuMergeDuplicates(context, it, activeDanmakuScope)
-                        }
-                    },
-                    onDanmakuDuplicateMergeWindowMsChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuDuplicateMergeWindowMs(context, it, activeDanmakuScope)
-                        }
-                    },
-                    onDanmakuDuplicateMergeCountThresholdChange = {
-                        scope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuDuplicateMergeCountThreshold(context, it, activeDanmakuScope)
-                        }
-                    },
-                    isLiked = successState?.isLiked ?: false,
-                    coinCount = successState?.coinCount ?: 0,
-                    onToggleLike = { viewModel.toggleLike() },
-                    onCoin = { viewModel.openCoinDialog() },
-                    onReloadVideo = { viewModel.retry() },
-                    onShowMessage = { message ->
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                    }
-                )
+                    )
+                }
+
+                if (successState != null && successState.playUrl.isNullOrBlank()) {
+                    BangumiPlayNoticeOverlay(
+                        title = listOf(
+                            successState.currentEpisode.title,
+                            successState.currentEpisode.longTitle
+                        ).filter { it.isNotBlank() }.joinToString(" ").ifBlank {
+                            successState.seasonDetail.title
+                        },
+                        message = successState.playbackErrorMessage ?: "该剧集需购买后观看",
+                        coverUrl = successState.currentEpisode.cover.ifBlank { successState.seasonDetail.cover },
+                        isFullscreen = isFullscreenMode,
+                        onBack = if (isFullscreenMode) { { toggleOrientation() } } else onBack,
+                        onRetry = { viewModel.reloadCurrentEpisode() }
+                    )
+                }
             }
         }
         
@@ -834,3 +864,85 @@ private fun Context.findActivity(): Activity? {
     }
     return null
 }
+
+@Composable
+private fun BangumiPlayNoticeOverlay(
+    title: String,
+    message: String,
+    coverUrl: String,
+    isFullscreen: Boolean,
+    onBack: () -> Unit,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        if (coverUrl.isNotBlank()) {
+            AsyncImage(
+                model = FormatUtils.fixImageUrl(coverUrl),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.25f
+            )
+        }
+        
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+        ) {
+            if (title.isNotBlank()) {
+                AppText(
+                    text = title,
+                    fontSize = if (isFullscreen) 16.sp else 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            AppText(
+                text = message,
+                fontSize = if (isFullscreen) 14.sp else 13.sp,
+                color = Color.White.copy(alpha = 0.8f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            AppButton(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                AppText("重试", fontSize = 13.sp)
+            }
+        }
+
+        if (isFullscreen) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+            ) {
+                IconButton(onClick = onBack) {
+                    AppIcon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "返回",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+

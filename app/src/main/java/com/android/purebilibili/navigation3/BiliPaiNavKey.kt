@@ -349,7 +349,8 @@ internal sealed interface BiliPaiNavKey : NavKey {
     data class BangumiPlayer(
         val seasonId: Long,
         val epId: Long,
-        val resumePositionMs: Long = 0L
+        val resumePositionMs: Long = 0L,
+        val isCourse: Boolean = false
     ) : BiliPaiNavKey {
         override val routeBase: String = "bangumi/play"
     }

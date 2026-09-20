@@ -518,10 +518,18 @@ object BangumiRepository {
     /**
      * 追番/追剧/收藏课程
      */
-    suspend fun followBangumi(seasonId: Long): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun followBangumi(seasonId: Long, isCourse: Boolean = false): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val csrf = TokenManager.csrfCache ?: return@withContext Result.failure(Exception("未登录"))
-            android.util.Log.w("BangumiRepo", "📌 追番/收藏请求: seasonId=$seasonId, csrf=${csrf.take(10)}...")
+            android.util.Log.w("BangumiRepo", "📌 追番/收藏请求: seasonId=$seasonId, isCourse=$isCourse, csrf=${csrf.take(10)}...")
+            if (isCourse) {
+                val pugvResponse = runCatching { api.addFavPugv(seasonId = seasonId, csrf = csrf) }.getOrNull()
+                return@withContext if (pugvResponse?.code == 0) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception(pugvResponse?.message?.ifBlank { "收藏课程失败" } ?: "收藏课程失败"))
+                }
+            }
             val response = api.followBangumi(seasonId = seasonId, csrf = csrf)
             android.util.Log.w("BangumiRepo", "📌 追番响应: code=${response.code}, message=${response.message}")
             if (response.code == 0) {
@@ -544,9 +552,17 @@ object BangumiRepository {
     /**
      * 取消追番/追剧/取消收藏课程
      */
-    suspend fun unfollowBangumi(seasonId: Long): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun unfollowBangumi(seasonId: Long, isCourse: Boolean = false): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val csrf = TokenManager.csrfCache ?: return@withContext Result.failure(Exception("未登录"))
+            if (isCourse) {
+                val pugvResponse = runCatching { api.delFavPugv(seasonId = seasonId, csrf = csrf) }.getOrNull()
+                return@withContext if (pugvResponse?.code == 0) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception(pugvResponse?.message?.ifBlank { "取消收藏失败" } ?: "取消收藏失败"))
+                }
+            }
             val response = api.unfollowBangumi(seasonId = seasonId, csrf = csrf)
             if (response.code == 0) {
                 Result.success(true)
