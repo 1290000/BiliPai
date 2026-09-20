@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.MaterialTheme
@@ -76,7 +77,8 @@ internal fun AdaptiveAlertDialog(
     shape: Shape? = null,
     containerColor: Color? = null,
     tonalElevation: Dp? = null,
-    properties: DialogProperties = DialogProperties()
+    properties: DialogProperties = DialogProperties(),
+    contentLayout: AppContentDialogLayoutPolicy = resolveAppCompactContentDialogLayoutPolicy(),
 ) {
     val uiStyle = LocalAppUiStyle.current
     val themeConfig = LocalAppThemeConfig.current
@@ -94,7 +96,6 @@ internal fun AdaptiveAlertDialog(
     }
     when (renderer) {
         AppAlertDialogRenderer.LOCAL_DIALOG -> {
-            val contentLayout = resolveAppCompactContentDialogLayoutPolicy()
             val dialogShape = shape ?: AppShapes.resolveContainerShape(
                 level = ContainerLevel.Dialog,
                 uiStyle = uiStyle,
@@ -118,7 +119,9 @@ internal fun AdaptiveAlertDialog(
                 ) {
                     AppPopupSurface(
                         type = AppPopupSurfaceType.DIALOG,
-                        modifier = modifier.fillMaxWidth(),
+                        modifier = modifier
+                            .fillMaxWidth()
+                            .widthIn(min = contentLayout.minWidthDp.dp, max = contentLayout.maxWidthDp.dp),
                         shape = dialogShape,
                         containerColor = dialogColor,
                         tonalElevation = tonalElevation ?: 0.dp,
