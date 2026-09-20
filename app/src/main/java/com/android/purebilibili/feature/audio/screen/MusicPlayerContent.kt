@@ -566,6 +566,7 @@ internal fun MusicPlayerContent(
 
             MusicPlayerLayout.COMPACT_LANDSCAPE -> {
                 var landscapeLyrics by rememberSaveable { mutableStateOf(false) }
+                val landscapeHeaderHeight = 48.dp
                 Row(
                     modifier = Modifier.fillMaxSize().safeDrawingPadding()
                         .padding(horizontal = 64.dp, vertical = 8.dp),
@@ -574,11 +575,13 @@ internal fun MusicPlayerContent(
                 ) {
                     BoxWithConstraints(
                         modifier = Modifier.weight(0.85f).fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.TopCenter,
                     ) {
                         val artworkWidth = minOf(maxWidth, maxHeight * 0.70f, 280.dp)
                         Column(
-                            modifier = Modifier.width(artworkWidth),
+                            modifier = Modifier
+                                .width(artworkWidth)
+                                .padding(top = landscapeHeaderHeight),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             MusicArtwork(
@@ -619,7 +622,13 @@ internal fun MusicPlayerContent(
                         }
                     }
                     Column(modifier = Modifier.weight(1.15f).fillMaxHeight()) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(landscapeHeaderHeight),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             AppTextButton(onClick = { landscapeLyrics = !landscapeLyrics }) {
                                 AppText(if (landscapeLyrics) "返回播放" else "歌词", color = MusicContentColor)
                             }

@@ -44,6 +44,8 @@ class MusicPlayerContentStructureTest {
         assertTrue(compactLandscape.contains("onPlayPause = onPlayPause"))
         assertTrue(compactLandscape.contains("progressSeekRevision += 1"))
         assertTrue(compactLandscape.contains("if (landscapeLyrics)"))
+        assertTrue(compactLandscape.contains("val landscapeHeaderHeight = 48.dp"))
+        assertTrue(compactLandscape.contains("contentAlignment = Alignment.TopCenter"))
     }
 
     @Test
