@@ -25,11 +25,21 @@ object BiliPaiPopupSurfaceRenderer : AppPopupSurfaceRenderer {
         tonalElevation: Dp,
         content: @Composable () -> Unit,
     ) {
-        val glassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled &&
+        val themeConfig = LocalAppThemeConfig.current
+        val glassEnabled = themeConfig.liquidGlassEnabled &&
             !isLowBlurBudgetForced()
-        // 独立弹出菜单 (MENU) 安全回退为标准容器，居中弹窗 (DIALOG) 与半屏抽屉 (SHEET)
+        val dialogGlassEnabled = glassEnabled && themeConfig.dialogLiquidGlassEnabled
+
+        // 独立弹出菜单 (MENU) 安全回退为标准容器。
+        // 居中弹窗 (DIALOG) 由独立开关控制（默认关闭）；开启后与半屏抽屉 (SHEET)
         // 接入底栏液态玻璃渲染器，呈现半透明通透质感、高光与边沿折射。
-        if (type == AppPopupSurfaceType.MENU) {
+        val isLiquidTarget = when (type) {
+            AppPopupSurfaceType.MENU -> false
+            AppPopupSurfaceType.DIALOG -> dialogGlassEnabled
+            AppPopupSurfaceType.SHEET -> glassEnabled
+        }
+
+        if (!isLiquidTarget) {
             Surface(
                 modifier = modifier,
                 shape = shape,
@@ -44,10 +54,10 @@ object BiliPaiPopupSurfaceRenderer : AppPopupSurfaceRenderer {
             shape = shape,
             modifier = modifier,
             backdrop = LocalFloatingChromeBackdrop.current,
-            liquidGlassEffectsEnabled = glassEnabled,
+            liquidGlassEffectsEnabled = isLiquidTarget,
             reuseEnabled = true,
             useNeutralLiquidContainer = true,
-            drawShellLens = glassEnabled,
+            drawShellLens = isLiquidTarget,
         ) { liquidChromeActive ->
             Surface(
                 shape = shape,

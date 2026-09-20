@@ -20,7 +20,8 @@ class AppThemeConfigTest {
         assertFalse(config.globalTextTapCopyEnabled)
         assertTrue(config.uiEntranceAnimationEnabled)
         assertTrue(config.runtimeVisualGuardEnabled)
-        assertTrue(config.liquidGlassEnabled)
+        assertFalse(config.liquidGlassEnabled)
+        assertFalse(config.dialogLiquidGlassEnabled)
         assertTrue(config.progressiveTopFadeEnabled)
     }
 

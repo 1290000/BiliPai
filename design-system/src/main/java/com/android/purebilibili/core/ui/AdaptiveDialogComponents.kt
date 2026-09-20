@@ -79,14 +79,17 @@ internal fun AdaptiveAlertDialog(
     properties: DialogProperties = DialogProperties()
 ) {
     val uiStyle = LocalAppUiStyle.current
-    val useInjectedPopupSurface = LocalAppThemeConfig.current.liquidGlassEnabled &&
+    val themeConfig = LocalAppThemeConfig.current
+    val isDialogGlassActive = themeConfig.liquidGlassEnabled &&
+        themeConfig.dialogLiquidGlassEnabled
+    val useInjectedPopupSurface = isDialogGlassActive &&
         LocalAppPopupSurfaceRenderer.current != null
     val renderer = if (useInjectedPopupSurface) {
         AppAlertDialogRenderer.LOCAL_DIALOG
     } else {
         resolveAppAlertDialogRenderer(
             uiStyle = uiStyle,
-            nativeMiuixPopupsEnabled = LocalAppThemeConfig.current.nativeMiuixPopupsEnabled,
+            nativeMiuixPopupsEnabled = themeConfig.nativeMiuixPopupsEnabled,
         )
     }
     when (renderer) {
@@ -95,7 +98,7 @@ internal fun AdaptiveAlertDialog(
             val dialogShape = shape ?: AppShapes.resolveContainerShape(
                 level = ContainerLevel.Dialog,
                 uiStyle = uiStyle,
-                liquidGlassEnabled = !isMiuixNonGlassEnabled(),
+                liquidGlassEnabled = isDialogGlassActive || !isMiuixNonGlassEnabled(),
             )
             val dialogColor = containerColor ?: AppSurfaceTokens.cardContainer()
             val dialogBody: @Composable () -> Unit = {
@@ -107,7 +110,7 @@ internal fun AdaptiveAlertDialog(
                     dismissButton = dismissButton,
                 )
             }
-            if (isMiuixNonGlassEnabled()) {
+            if (isMiuixNonGlassEnabled() || !isDialogGlassActive) {
                 WindowDialog(
                     show = true,
                     onDismissRequest = onDismissRequest,

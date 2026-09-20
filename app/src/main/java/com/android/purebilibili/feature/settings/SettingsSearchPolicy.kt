@@ -521,6 +521,20 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
+        title = "居中弹窗液态玻璃",
+        subtitle = "开启后居中弹窗呈现半透明高光质感；关闭后保持标准容器卡片",
+        section = "外观设置",
+        aliases = listOf(
+            "居中弹窗液态玻璃",
+            "弹窗液态玻璃",
+            "对话框液态玻璃",
+            "弹窗玻璃",
+            "居中弹窗",
+        ),
+        focusId = SettingsSearchFocusIds.APPEARANCE_THEME
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.APPEARANCE,
         title = "字体与显示大小",
         subtitle = "分别调整文字大小、界面缩放和精细显示比例",
         section = "外观设置",
