@@ -52,9 +52,7 @@ fun AppWindowActionMenu(
     onExpandedChange: ((Boolean) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val liquidPopupEnabled = LocalAppThemeConfig.current.liquidGlassEnabled &&
-        com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer.current != null
-    if (!LocalAppThemeConfig.current.nativeMiuixPopupsEnabled || liquidPopupEnabled) {
+    if (!LocalAppThemeConfig.current.nativeMiuixPopupsEnabled) {
         var expanded by remember { mutableStateOf(false) }
         var parentActions by remember { mutableStateOf(emptyList<AppWindowAction>()) }
         val visibleGroups = parentActions.lastOrNull()?.let { listOf(it.children) }

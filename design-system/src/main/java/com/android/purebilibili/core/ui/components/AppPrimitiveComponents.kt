@@ -577,9 +577,7 @@ fun AppDropdownMenu(
     shape: androidx.compose.ui.graphics.Shape? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val liquidPopupEnabled = LocalAppThemeConfig.current.liquidGlassEnabled &&
-        com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer.current != null
-    if (LocalAppThemeConfig.current.nativeMiuixPopupsEnabled && !liquidPopupEnabled) {
+    if (LocalAppThemeConfig.current.nativeMiuixPopupsEnabled) {
         WindowListPopup(
             show = expanded,
             popupModifier = modifier,
