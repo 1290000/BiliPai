@@ -77,7 +77,9 @@ fun BangumiPlayerContent(
     onEpisodeClick: (BangumiEpisode) -> Unit,
     onFollowStatusSelect: (Int) -> Unit,
     onUserClick: ((Long) -> Unit)? = null,
-    onCommentUrlClick: ((String) -> Unit)? = null
+    onCommentUrlClick: ((String) -> Unit)? = null,
+    onDownloadClick: () -> Unit = {},
+    onShareClick: () -> Unit = {}
 ) {
     val isCourse = detail.seasonType == 10 || detail.seasonTypeName == "课堂"
     val isFollowing = isBangumiFollowed(detail.userStatus)
@@ -370,6 +372,38 @@ fun BangumiPlayerContent(
                         resolveBangumiFollowStatusLabel(detail.userStatus)
                     }
                     AppText(followLabel)
+                }
+            }
+        }
+
+        if (isCourse) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AppButton(
+                        onClick = onDownloadClick,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        AppText("下载当前集")
+                    }
+                    AppButton(
+                        onClick = onShareClick,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        AppText("分享课程")
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 // 文件路径: feature/bangumi/BangumiPlayerViewModel.kt
 package com.android.purebilibili.feature.bangumi
 
+import android.content.Context
 import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.ExoPlayer
 import com.android.purebilibili.core.player.BasePlayerViewModel
@@ -16,6 +17,8 @@ import com.android.purebilibili.data.repository.BangumiRepository
 import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
 import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager
+import com.android.purebilibili.feature.download.DownloadManager
+import com.android.purebilibili.feature.download.DownloadTask
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
 import com.android.purebilibili.feature.video.playback.audio.AudioFallbackReason
 import com.android.purebilibili.feature.video.playback.audio.AudioQualityOption
@@ -749,6 +752,45 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         playbackLoadJob?.cancel()
         playbackLoadJob = viewModelScope.launch {
             fetchPlayUrl(currentState.seasonDetail, currentState.currentEpisode, currentState.currentEpisodeIndex)
+        }
+    }
+
+    /** Enqueue the currently loaded course episode in the existing offline manager. */
+    fun downloadCurrentEpisode(context: Context) {
+        val state = _uiState.value as? BangumiPlayerState.Success ?: return
+        val videoUrl = state.playUrl.orEmpty()
+        if (videoUrl.isBlank()) {
+            viewModelScope.launch { _toastEvent.send(state.playbackErrorMessage ?: "当前集暂时无法下载") }
+            return
+        }
+        val episode = state.currentEpisode
+        val detail = state.seasonDetail
+        val owner = detail.upInfo
+        val qualityIndex = state.acceptQuality.indexOf(state.quality)
+        val qualityDesc = state.acceptDescription.getOrNull(qualityIndex)
+            ?: "${state.quality}P"
+        val task = DownloadTask(
+            aid = episode.aid,
+            bvid = episode.bvid,
+            cid = episode.cid,
+            title = detail.title.ifBlank { episode.title },
+            episodeLabel = episode.title.ifBlank { "第${state.currentEpisodeIndex + 1}讲" },
+            groupKey = "course:${detail.seasonId}",
+            groupTitle = detail.title,
+            episodeSortIndex = state.currentEpisodeIndex,
+            episodeCount = detail.episodes?.size ?: 1,
+            cover = episode.cover.ifBlank { detail.cover },
+            ownerName = owner?.uname.orEmpty(),
+            ownerFace = owner?.avatar.orEmpty(),
+            duration = (episode.duration / 1000L).coerceAtLeast(0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            quality = state.quality,
+            qualityDesc = qualityDesc,
+            videoUrl = videoUrl,
+            audioUrl = state.audioUrl.orEmpty()
+        )
+        val added = DownloadManager.addTask(task)
+        viewModelScope.launch {
+            _toastEvent.send(if (added) "已加入课程下载" else "该集已在下载列表")
         }
     }
     

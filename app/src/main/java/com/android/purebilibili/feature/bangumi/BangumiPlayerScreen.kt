@@ -977,7 +977,30 @@ fun BangumiPlayerScreen(
                                 onEpisodeClick = { viewModel.switchEpisode(it) },
                                 onFollowStatusSelect = { viewModel.updateFollowStatus(it) },
                                 onUserClick = onUserClick,
-                                onCommentUrlClick = onOpenBilibiliLink
+                                onCommentUrlClick = onOpenBilibiliLink,
+                                onDownloadClick = { viewModel.downloadCurrentEpisode(context) },
+                                onShareClick = {
+                                    val episode = state.currentEpisode
+                                    val shareUrl = "https://www.bilibili.com/cheese/play/ep${episode.id}"
+                                    val shareText = listOf(
+                                        state.seasonDetail.title,
+                                        episode.title,
+                                        shareUrl
+                                    ).filter { it.isNotBlank() }.joinToString("\n")
+                                    runCatching {
+                                        context.startActivity(
+                                            android.content.Intent.createChooser(
+                                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                                },
+                                                "分享课程"
+                                            )
+                                        )
+                                    }.onFailure {
+                                        Toast.makeText(context, "暂时无法打开分享面板", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
                         }
                     }
