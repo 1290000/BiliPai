@@ -1640,6 +1640,7 @@ internal fun LandscapeCommentPanel(
     var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
     var showImagePreview by remember { mutableStateOf(false) }
+    var showCommentSearchSheet by remember { mutableStateOf(false) }
     val commentAppearance = rememberVideoCommentAppearance()
 
     LandscapeSidePanel(
@@ -1751,6 +1752,19 @@ internal fun LandscapeCommentPanel(
             sourceRect = previewSourceRect,
             textContent = previewTextContent,
             onDismiss = { showImagePreview = false },
+        )
+    }
+    if (showCommentSearchSheet) {
+        CommentSearchSheet(
+            replies = replies,
+            upMid = info.owner.mid,
+            onCommentClick = { reply ->
+                onCommentReplyClick(reply)
+            },
+            onSubReplyClick = { rootReply ->
+                onSubReplyClick(rootReply, 0L)
+            },
+            onDismiss = { showCommentSearchSheet = false },
         )
     }
 }
