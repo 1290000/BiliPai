@@ -466,7 +466,10 @@ private fun TabletBangumiDetailContent(
                                 if (briefImg.url.isNotBlank()) {
                                     val ratio = (1f / briefImg.aspectRatio.coerceAtLeast(0.1f)).coerceIn(0.2f, 5f)
                                     AsyncImage(
-                                        model = FormatUtils.fixImageUrl(briefImg.url),
+                                        model = FormatUtils.resolveVideoCoverUrl(
+                                            briefImg.url,
+                                            useLowQuality = false
+                                        ),
                                         contentDescription = null,
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -1030,7 +1033,10 @@ private fun MobileBangumiDetailContent(
                             if (briefImg.url.isNotBlank()) {
                                 val ratio = (1f / briefImg.aspectRatio.coerceAtLeast(0.1f)).coerceIn(0.2f, 5f)
                                 AsyncImage(
-                                    model = FormatUtils.fixImageUrl(briefImg.url),
+                                    model = FormatUtils.resolveVideoCoverUrl(
+                                        briefImg.url,
+                                        useLowQuality = false
+                                    ),
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxWidth()
