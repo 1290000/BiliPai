@@ -27,10 +27,9 @@ object BiliPaiPopupSurfaceRenderer : AppPopupSurfaceRenderer {
     ) {
         val glassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled &&
             !isLowBlurBudgetForced()
-        // 对话框 (DIALOG) 与弹出菜单 (MENU) 处于独立的系统 Window 中，
-        // 无法跨 Window 读取主 Activity 的 LayerBackdrop。
-        // 此类独立 Window 表面安全回退为标准主题容器，避免因空背景采样导致白/黑死色。
-        if (type == AppPopupSurfaceType.DIALOG || type == AppPopupSurfaceType.MENU) {
+        // 独立弹出菜单 (MENU) 安全回退为标准容器，居中弹窗 (DIALOG) 与半屏抽屉 (SHEET)
+        // 接入底栏液态玻璃渲染器，呈现半透明通透质感、高光与边沿折射。
+        if (type == AppPopupSurfaceType.MENU) {
             Surface(
                 modifier = modifier,
                 shape = shape,
