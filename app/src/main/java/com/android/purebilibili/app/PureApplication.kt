@@ -413,10 +413,8 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
         if (plan.imageCacheTrimLevel != null) {
             _imageLoader?.memoryCache?.apply {
                 when {
-                    plan.clearImageMemoryCache || plan.imageCacheTrimLevel >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> clear()
-                    plan.imageCacheTrimLevel >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW &&
-                        plan.imageCacheTrimLevel != ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ->
-                        trimToSize(size / 2)
+                    plan.clearImageMemoryCache || (plan.imageCacheTrimLevel >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) -> clear()
+                    else -> trimToSize(size / 2)
                 }
             }
             when {
@@ -441,12 +439,20 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
         }
 
         // 联动清理全局静态与单例缓存，降低后台 PSS
-        if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
-            level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
-            level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
+        // 注意：UI_HIDDEN 仅代表用户切到桌面/多任务（切出 2~3 秒），适度修剪已滑走的封面色（保留 16 条活跃卡片）并清理历史备用壁纸，
+        // 坚决保留当前前台活跃的壁纸调色板，杜绝切回前台高斯模糊与自适应颜色退化。
+        if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.trimToSize(16)
+            com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clearCache()
+            com.android.purebilibili.core.cache.PlayUrlCache.clear()
+            com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
+        } else if (level == ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+            level == ComponentCallbacks2.TRIM_MEMORY_MODERATE ||
+            level == ComponentCallbacks2.TRIM_MEMORY_COMPLETE ||
+            level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
         ) {
-            com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.clear()
-            com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clear()
+            com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.trimToSize(8)
+            com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clearCache()
             com.android.purebilibili.core.cache.PlayUrlCache.clear()
             com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
         }
@@ -478,8 +484,8 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
                     requestIdlePlaybackRelease = plan.requestIdlePlaybackRelease
                 )
         }
-        com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.clear()
-        com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clear()
+        com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.trimToSize(8)
+        com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clearCache()
         com.android.purebilibili.core.cache.PlayUrlCache.clear()
         com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
         NetworkModule.evictIdleConnections()

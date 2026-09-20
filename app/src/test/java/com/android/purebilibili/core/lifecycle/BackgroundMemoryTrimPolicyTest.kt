@@ -9,10 +9,10 @@ import org.junit.Test
 class BackgroundMemoryTrimPolicyTest {
 
     @Test
-    fun uiHidden_clearsImageCacheWithoutTouchingPlayer() {
+    fun uiHidden_onlyTrimsImageCacheWithoutTouchingPlayer() {
         val plan = resolveBackgroundMemoryTrimPlan(ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN)
-        assertEquals(ComponentCallbacks2.TRIM_MEMORY_BACKGROUND, plan.imageCacheTrimLevel)
-        assertTrue(plan.clearImageMemoryCache)
+        assertEquals(ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW, plan.imageCacheTrimLevel)
+        assertFalse(plan.clearImageMemoryCache)
         assertFalse(plan.notifyPlayerHeavyOptimization)
         assertFalse(plan.requestIdlePlaybackRelease)
     }

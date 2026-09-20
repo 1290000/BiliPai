@@ -155,10 +155,14 @@ object WallpaperPaletteStore {
         )
     }
 
-    fun clear() {
+    fun clearCache() {
         synchronized(paletteCache) {
             paletteCache.evictAll()
         }
+    }
+
+    fun clear() {
+        clearCache()
         _currentPalette.value = null
     }
 }

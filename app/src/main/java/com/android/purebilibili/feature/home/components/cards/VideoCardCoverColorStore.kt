@@ -91,6 +91,12 @@ object VideoCardCoverColorStore {
         return (useful.ifEmpty { swatches }).maxByOrNull { it.population }
     }
 
+    fun trimToSize(maxSize: Int) {
+        synchronized(colorCache) {
+            colorCache.trimToSize(maxSize)
+        }
+    }
+
     fun clear() {
         synchronized(colorCache) {
             colorCache.evictAll()

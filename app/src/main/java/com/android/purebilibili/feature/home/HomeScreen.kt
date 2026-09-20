@@ -1050,14 +1050,20 @@ fun HomeScreen(
             splashWallpaperUri = splashWallpaperUri
         )
     }
-    LaunchedEffect(homeWallpaperUri) {
-        com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.loadWallpaperPalette(
-            context = context,
-            uri = homeWallpaperUri,
-            scope = this
-        )
-    }
     val wallpaperPalette by com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.currentPalette.collectAsStateWithLifecycle()
+    val homeLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val homeLifecycleState by homeLifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+    LaunchedEffect(homeWallpaperUri, wallpaperPalette == null, homeLifecycleState) {
+        if (homeLifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+            if (wallpaperPalette == null || homeWallpaperUri.isNotBlank()) {
+                com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.loadWallpaperPalette(
+                    context = context,
+                    uri = homeWallpaperUri,
+                    scope = this
+                )
+            }
+        }
+    }
 
     val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsStateWithLifecycle(initialValue = AppNavigationSettings(),
         context = kotlin.coroutines.EmptyCoroutineContext

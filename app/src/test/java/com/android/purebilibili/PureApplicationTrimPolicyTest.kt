@@ -10,14 +10,14 @@ import org.junit.Test
 class PureApplicationTrimPolicyTest {
 
     @Test
-    fun `ui hidden should clear image memory cache for lower background footprint`() {
+    fun `ui hidden should trim image memory cache for lower background footprint`() {
         assertEquals(
-            ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
+            ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
             PureApplicationRuntimeConfig.resolveImageMemoryCacheTrimLevel(
                 ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
             )
         )
-        assertTrue(
+        assertFalse(
             PureApplicationRuntimeConfig.shouldClearImageMemoryCacheOnTrimLevel(
                 ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
             )
@@ -70,7 +70,7 @@ class PureApplicationTrimPolicyTest {
                 ComponentCallbacks2.TRIM_MEMORY_MODERATE
             )
         )
-        assertTrue(
+        assertFalse(
             PureApplicationRuntimeConfig.shouldClearImageMemoryCacheOnTrimLevel(
                 ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN
             )

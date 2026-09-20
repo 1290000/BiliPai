@@ -15,7 +15,7 @@ internal data class BackgroundMemoryTrimPlan(
 
 internal fun resolveBackgroundMemoryTrimPlan(level: Int): BackgroundMemoryTrimPlan {
     val imageCacheTrimLevel = when (level) {
-        ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN,
+        ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
         ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
         ComponentCallbacks2.TRIM_MEMORY_MODERATE,
         ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
@@ -23,8 +23,7 @@ internal fun resolveBackgroundMemoryTrimPlan(level: Int): BackgroundMemoryTrimPl
         ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> level
         else -> null
     }
-    val clearImageMemoryCache = level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
-        level == ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+    val clearImageMemoryCache = level == ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
         level == ComponentCallbacks2.TRIM_MEMORY_MODERATE ||
         level == ComponentCallbacks2.TRIM_MEMORY_COMPLETE
     val notifyPlayerHeavyOptimization = level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
