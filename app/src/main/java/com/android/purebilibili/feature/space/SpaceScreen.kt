@@ -3118,16 +3118,15 @@ private fun SpaceSecondarySwitchRow(
                 tapPressRefractionEnabled = !useScrollableRail,
                 allowNativeLabelOverflow = true,
                 modifier = if (useScrollableRail) {
-                    Modifier
-                        .liquidDockViewport()
-                        .horizontalScroll(scrollState)
+                    Modifier.liquidDockViewport()
                 } else if (items.size <= 2) {
                     Modifier
                         .fillMaxWidth()
                         .wrapContentWidth(Alignment.CenterHorizontally)
                 } else {
                     Modifier.fillMaxWidth()
-                }
+                },
+                scrollState = scrollState.takeIf { useScrollableRail },
             )
         } else {
             AppNativeTabRow(

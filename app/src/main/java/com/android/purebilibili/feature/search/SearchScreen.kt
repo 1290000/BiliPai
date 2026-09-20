@@ -53,7 +53,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -3170,12 +3169,11 @@ private fun SearchResultTypeTabRow(
                 }
             },
             modifier = if (useScrollableRail) {
-                Modifier
-                    .liquidDockViewport()
-                    .horizontalScroll(scrollState)
+                Modifier.liquidDockViewport()
             } else {
                 Modifier.fillMaxWidth()
             },
+            scrollState = scrollState.takeIf { useScrollableRail },
         )
     }
 }

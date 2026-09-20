@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.ScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +46,7 @@ internal fun BottomBarFloatingSegmentedControl(
     selectedIndex: Int,
     onSelected: (Int) -> Unit,
     modifier: Modifier,
+    scrollState: ScrollState? = null,
     enabled: Boolean,
     itemWidth: Dp?,
     height: Dp,
@@ -142,10 +145,15 @@ internal fun BottomBarFloatingSegmentedControl(
     val effectiveItemWidth = itemWidth?.coerceAtLeast(48.dp)
     val horizontalPadding = containerHorizontalPadding.coerceAtLeast(0.dp)
     val verticalPadding = containerVerticalPadding.coerceIn(0.dp, effectiveHeight / 2)
-    val rootModifier = if (effectiveItemWidth != null) {
-        modifier.width(effectiveItemWidth * itemCount + horizontalPadding * 2)
+    val contentModifier = if (scrollState != null) {
+        modifier.horizontalScroll(scrollState)
     } else {
         modifier
+    }
+    val rootModifier = if (effectiveItemWidth != null) {
+        contentModifier.width(effectiveItemWidth * itemCount + horizontalPadding * 2)
+    } else {
+        contentModifier
     }
     val selectedIndexState = rememberUpdatedState(safeSelectedIndex)
     val onSelectedState = rememberUpdatedState(onSelected)
