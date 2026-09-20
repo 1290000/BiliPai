@@ -376,6 +376,7 @@ private fun FavoriteCategoryContent(
                 onArticleClick = onArticleClick,
                 onTopicClick = onTopicClick,
                 onWebClick = onWebClick,
+                onCheeseClick = onCheeseClick,
             )
         }
         Column(
@@ -462,6 +463,7 @@ private fun FavoriteCategoryGrid(
     onArticleClick: (Long, String) -> Unit,
     onTopicClick: (Long) -> Unit,
     onWebClick: (String, String) -> Unit,
+    onCheeseClick: ((Long) -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val columns = resolveFavoriteCategoryColumnCount(state.section, maxWidth.value)

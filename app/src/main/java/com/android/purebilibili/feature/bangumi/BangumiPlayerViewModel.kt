@@ -24,7 +24,6 @@ import com.android.purebilibili.feature.video.playback.audio.resolveRequestedAud
 import com.android.purebilibili.feature.video.playback.policy.shouldRefreshPremiumAudioForPlaybackSpeedChange
 import com.android.purebilibili.feature.video.usecase.VideoInteractionUseCase
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
-import com.android.purebilibili.feature.bangumi.policy.resolveBangumiResumeTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -358,7 +357,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             }
             
             detailResult.onSuccess { detail ->
-                val resumeTarget = resolveBangumiResumeTarget(
+                val resumeTarget = resolveBangumiAutoResumeTarget(
                     detail = detail,
                     routeEpId = epId,
                     autoResumeEnabled = true
@@ -652,6 +651,13 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             exoPlayer?.stop()
             exoPlayer?.clearMediaItems()
 
+            val (authStateLoggedIn, authStateVip) = resolveBangumiPlaybackAuthState(
+                hasSessionCookie = com.android.purebilibili.data.repository.VideoRepository.hasPlaybackSessionCookie(),
+                hasAccessToken = !com.android.purebilibili.data.repository.VideoRepository.playbackAccessToken().isNullOrEmpty(),
+                cachedIsVip = com.android.purebilibili.data.repository.VideoRepository.isPlaybackVip(),
+                seasonUserVip = detail.userStatus?.vip == 1
+            )
+
             _uiState.value = BangumiPlayerState.Success(
                 seasonDetail = detail,
                 currentEpisode = episode,
@@ -666,8 +672,8 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 hasPaid = !isPaidOrPermission,
                 playbackStatus = if (isPaidOrPermission) 1 else 0,
                 playbackErrorMessage = errorMsg,
-                isLoggedIn = TokenManager.isLoggedIn(),
-                isVip = TokenManager.isVip()
+                isLoggedIn = authStateLoggedIn,
+                isVip = authStateVip
             )
             _toastEvent.trySend(errorMsg)
         }

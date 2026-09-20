@@ -53,7 +53,7 @@ import com.android.purebilibili.feature.bangumi.ui.player.BangumiPlayerView
 import com.android.purebilibili.feature.bangumi.ui.player.BangumiPlayerContent
 import com.android.purebilibili.feature.bangumi.ui.player.BangumiErrorContent
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.android.purebilibili.core.util.FormatUtils
 import androidx.compose.material.icons.Icons
