@@ -893,35 +893,42 @@ class VideoCommentViewModel : ViewModel() {
         if (currentState.isSending) return
         
         _commentState.value = currentState.copy(isSending = true, sendError = null)
+
+        // Keep the request bound to the episode that opened the composer. A quick episode
+        // switch must not let a late response update the newly selected comment thread.
+        val sendSubject = currentSubject
+        val sendCurrentAid = currentAid
+        val sendReplyTarget = currentState.replyTarget
+        val sendSubReplyState = _subReplyState.value
         
         viewModelScope.launch {
-            val replyTarget = currentState.replyTarget
             // [修复] 正确计算 root ID
             // 如果是在二级评论页回复，root 为当前二级评论页的根评论 ID
             // 如果是一级评论页回复某评论，root 为该评论 ID
             // 如果是直接发表评论，root 为 0
-            val subReplyState = _subReplyState.value
-            val isSubReplyContext = subReplyState.visible && subReplyState.rootReply != null
+            val isSubReplyContext = sendSubReplyState.visible && sendSubReplyState.rootReply != null
             
             val root = if (isSubReplyContext) {
-                subReplyState.rootReply.rpid
+                sendSubReplyState.rootReply!!.rpid
             } else {
-                replyTarget?.rpid ?: 0
+                sendReplyTarget?.rpid ?: 0
             }
             // parent 总是回复目标的 ID (如果没有回复目标，则是 0)
-            val parent = replyTarget?.rpid ?: 0
+            val parent = sendReplyTarget?.rpid ?: 0
             
             val picturesResult = uploadCommentPictures(imageUris)
             val pictures = picturesResult.getOrElse { error ->
-                _commentState.value = _commentState.value.copy(
-                    isSending = false,
-                    sendError = error.message ?: "图片上传失败"
-                )
+                if (shouldApplyCommentSubjectResult(sendSubject, currentSubject)) {
+                    _commentState.value = _commentState.value.copy(
+                        isSending = false,
+                        sendError = error.message ?: "图片上传失败"
+                    )
+                }
                 return@launch
             }
             val result = CommentRepository.addCommentForSubject(
-                oid = currentSubject.oid,
-                type = currentSubject.type,
+                oid = sendSubject.oid,
+                type = sendSubject.type,
                 message = message,
                 root = root,
                 parent = parent,
@@ -930,6 +937,7 @@ class VideoCommentViewModel : ViewModel() {
             )
             
             result.onSuccess { newReply ->
+                if (!shouldApplyCommentSubjectResult(sendSubject, currentSubject)) return@onSuccess
                 android.util.Log.d("CommentVM", " sendComment success: newReply=${newReply?.rpid}, root=$root, parent=$parent")
                 val current = _commentState.value
 
@@ -940,8 +948,8 @@ class VideoCommentViewModel : ViewModel() {
                     viewModelScope.launch {
                         com.android.purebilibili.data.repository.CommentFraudRepository.saveRecord(
                             rpid = rpidToCheck,
-                            oid = currentSubject.oid,
-                            type = currentSubject.type,
+                            oid = sendSubject.oid,
+                            type = sendSubject.type,
                             root = root,
                             message = message,
                             status = com.android.purebilibili.data.model.CommentFraudStatus.NORMAL
@@ -950,7 +958,7 @@ class VideoCommentViewModel : ViewModel() {
                     
                     val sentAtSeconds = newReply?.ctime?.takeIf { it > 0L } ?: (System.currentTimeMillis() / 1000L)
                     launchFraudDetection(
-                        aid = currentAid,
+                        aid = sendCurrentAid,
                         rpid = rpidToCheck,
                         rootId = root,
                         message = message,
@@ -1010,7 +1018,7 @@ class VideoCommentViewModel : ViewModel() {
                                 grpcNextOffset = null
                             )
                             loadSubReplies(
-                                subject = currentSubject,
+                                subject = sendSubject,
                                 rootId = root.rpid,
                                 page = 1,
                                 paginationOffset = null
@@ -1034,6 +1042,7 @@ class VideoCommentViewModel : ViewModel() {
                     )
                 }
             }.onFailure { e ->
+                if (!shouldApplyCommentSubjectResult(sendSubject, currentSubject)) return@onFailure
                 android.util.Log.e("CommentVM", " sendComment failed: ${e.message}")
                 _commentState.value = _commentState.value.copy(isSending = false, sendError = e.message)
             }
