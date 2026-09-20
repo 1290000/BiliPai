@@ -39,6 +39,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.android.purebilibili.feature.article.ArticleDetailScreen
 import com.android.purebilibili.feature.article.shouldUseArticleNoOpRouteTransition
 import com.android.purebilibili.feature.audio.library.resolveListenVideoPlaybackSelection
@@ -383,6 +385,9 @@ fun AppNavigation(
 ) {
     val homeViewModel: HomeViewModel = viewModel()
     val coroutineScope = rememberCoroutineScope()
+    val videoDetailViewModelOwners = remember {
+        mutableMapOf<BiliPaiNavKey.VideoDetail, ViewModelStoreOwner>()
+    }
     
     // 单一首页视觉配置源：减少根导航层多路 DataStore 收集导致的全局重组。
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -2711,7 +2716,26 @@ fun AppNavigation(
                         BiliPaiNavEntryContentRole.VIDEO_DETAIL -> {
                             val videoKey = key as BiliPaiNavKey.VideoDetail
                             val activity = context as? android.app.Activity
-                            var isNavigatingToAudioMode by remember(videoKey.bvid) { mutableStateOf(false) }
+                            val videoDetailOwner = LocalViewModelStoreOwner.current
+                            val videoPlaybackViewModel:
+                                com.android.purebilibili.feature.video.viewmodel.VideoPlaybackViewModel =
+                                viewModel()
+                            var isNavigatingToAudioMode by remember(videoKey) { mutableStateOf(false) }
+                            DisposableEffect(videoKey, videoDetailOwner) {
+                                if (videoDetailOwner != null) {
+                                    videoDetailViewModelOwners[videoKey] = videoDetailOwner
+                                }
+                                onDispose {
+                                    if (videoDetailViewModelOwners[videoKey] === videoDetailOwner) {
+                                        videoDetailViewModelOwners.remove(videoKey)
+                                    }
+                                }
+                            }
+                            LaunchedEffect(navigation3BackStack.lastOrNull(), videoKey) {
+                                if (navigation3BackStack.lastOrNull() == videoKey) {
+                                    isNavigatingToAudioMode = false
+                                }
+                            }
                             val isImmediateVideoBackPreview =
                                 navigation3BackStack.getOrNull(
                                     navigation3BackStack.lastIndex - 1
@@ -2895,7 +2919,8 @@ fun AppNavigation(
                                             BiliPaiNavKey.NativeMusic(title, videoKey.bvid, videoKey.cid)
                                         )
                                     }
-                                }
+                                },
+                                viewModel = videoPlaybackViewModel,
                             )
                         }
                         BiliPaiNavEntryContentRole.ONBOARDING ->
@@ -3442,8 +3467,19 @@ fun AppNavigation(
                             }
                         BiliPaiNavEntryContentRole.AUDIO_MODE -> {
                                 val audioModeKey = key as BiliPaiNavKey.AudioMode
+                                val previousVideoKey = remember(audioModeKey) {
+                                    navigation3BackStack
+                                        .takeWhile { it != audioModeKey }
+                                        .lastOrNull() as? BiliPaiNavKey.VideoDetail
+                                }
+                                val sharedVideoOwner =
+                                    previousVideoKey?.let(videoDetailViewModelOwners::get)
                                 val viewModel: com.android.purebilibili.feature.video.viewmodel.VideoPlaybackViewModel =
-                                    viewModel()
+                                    if (sharedVideoOwner != null) {
+                                        viewModel(viewModelStoreOwner = sharedVideoOwner)
+                                    } else {
+                                        viewModel()
+                                    }
                                 DisposableEffect(Unit) {
                                     onAudioModeEnter()
                                     onDispose {
@@ -3452,7 +3488,9 @@ fun AppNavigation(
                                 }
                                 val initialLoadRequest = resolveAudioModeInitialLoadRequest(
                                     key = audioModeKey,
-                                    hasDisplayState = false
+                                    hasDisplayState =
+                                        viewModel.uiState.value is
+                                            com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState.Success
                                 )
                                 com.android.purebilibili.feature.video.screen.AudioModeScreen(
                                     viewModel = viewModel,

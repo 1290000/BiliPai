@@ -382,6 +382,19 @@ class BiliPaiNavDisplayHostStructureTest {
     }
 
     @Test
+    fun audioModeKeepsMiuixMotionWithoutStackingRealtimeBlurOverPlayerReturn() {
+        val source = navDisplayHostSource()
+        val audioTransition = source
+            .substringAfter("val audioModeTransition =")
+            .substringBefore("val videoCardTransitionProgress")
+
+        assertTrue(audioTransition.contains("biliPaiMiuixNavTransition("))
+        assertTrue(audioTransition.contains("animation = style"))
+        assertTrue(audioTransition.contains("miuixTransitionBlurEnabled = false"))
+        assertTrue(audioTransition.contains("miuixPredictiveBackProgressEnabled = false"))
+    }
+
+    @Test
     fun navDisplayHostLayersVideoCardTransitionNavBackdropBehindNavDisplay() {
         val source = navDisplayHostSource()
 

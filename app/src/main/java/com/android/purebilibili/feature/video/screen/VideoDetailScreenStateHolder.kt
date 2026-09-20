@@ -696,6 +696,13 @@ internal fun VideoDetailScreenStateHolder(
     var isNavigatingToMiniMode by presentationState.navigatingToMiniModeState
     var hasAutoEnteredAudioMode by rememberSaveable { mutableStateOf(false) }
     var hasAutoEnteredPortraitFromRoute by rememberSaveable(bvid) { mutableStateOf(false) }
+    LaunchedEffect(isVisible, isNavigatingToAudioMode) {
+        if (isVisible && isNavigatingToAudioMode) {
+            // The retained detail entry is active again after audio mode popped. Do not leave
+            // later navigation/disposal permanently classified as an audio hand-off.
+            presentationState.clearNavigatingToAudioMode()
+        }
+    }
     // 路由要求直达竖屏全屏时，立刻盖过可能被 saveable 复写的详情态。
     LaunchedEffect(
         bvid,
