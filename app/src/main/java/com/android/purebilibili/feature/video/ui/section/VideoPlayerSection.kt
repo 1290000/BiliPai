@@ -440,17 +440,26 @@ private fun BoxScope.VideoSubtitleOverlayHost(
             cid = success?.info?.cid ?: 0L,
         )
     }
+    val hasSubtitleCues = remember(uiState) {
+        val success = uiState as? VideoPlaybackUiState.Success ?: return@remember false
+        success.subtitlePrimaryCues.isNotEmpty() || success.subtitleSecondaryCues.isNotEmpty()
+    }
     // Keep the fast playback-position read inside this restart scope so the player, video
     // surface and danmaku hosts are not recomposed on every subtitle tick.
     val subtitlePositionMs by produceState(
-        initialValue = player.currentPosition.coerceAtLeast(0L),
-        key1 = player,
-        key2 = subtitlePollingIdentity,
+        player.currentPosition.coerceAtLeast(0L),
+        player,
+        subtitlePollingIdentity,
+        subtitleFeatureEnabled,
+        hasSubtitleCues,
     ) {
         value = player.currentPosition.coerceAtLeast(0L)
+        if (!subtitleFeatureEnabled || !hasSubtitleCues) {
+            return@produceState
+        }
         while (isActive) {
             value = player.currentPosition.coerceAtLeast(0L)
-            delay(if (player.isPlaying) 120L else 260L)
+            delay(if (player.isPlaying) 120L else 1500L)
         }
     }
     val subtitlePrimaryRawText = remember(
