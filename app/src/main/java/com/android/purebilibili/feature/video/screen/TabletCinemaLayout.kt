@@ -112,6 +112,7 @@ import com.android.purebilibili.feature.video.note.buildVideoNoteShareText
 import com.android.purebilibili.feature.video.note.shouldShowVideoNoteCard
 import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.video.ui.components.CommentSortHeader
+import com.android.purebilibili.feature.video.ui.components.CommentSearchSheet
 import com.android.purebilibili.feature.video.ui.components.BottomInputBar
 import com.android.purebilibili.feature.video.ui.components.CollectionRow
 import com.android.purebilibili.feature.video.ui.components.CollectionSheet
@@ -577,6 +578,8 @@ private fun CinemaStagePlayer(
                 onSponsorContributionActionTypeChange = playbackActions.setSponsorContributionActionType,
                 onSponsorContributionSubmit = playbackActions.submitSponsorContribution,
                 onSponsorContributionCancel = playbackActions.cancelSponsorContribution,
+                onLikeDanmaku = playbackActions.likeDanmaku,
+                onRecallDanmaku = playbackActions.recallDanmaku,
             )
         }
     }
@@ -1286,6 +1289,7 @@ private fun CinemaCommentsPane(
         )
     } else {
         val commentChromeBackdrop = rememberLayerBackdrop()
+        var showCommentSearchSheet by remember { mutableStateOf(false) }
         Column(modifier = Modifier.fillMaxSize()) {
             CommentSortHeader(
                 count = commentState.replyCount,
@@ -1296,6 +1300,7 @@ private fun CinemaCommentsPane(
                         SettingsManager.setCommentDefaultSortMode(context, mode.apiMode)
                     }
                 },
+                onSearchClick = { showCommentSearchSheet = true },
             )
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
@@ -1408,6 +1413,20 @@ private fun CinemaCommentsPane(
                 },
                 showActionButtons = false,
             )
+
+            if (showCommentSearchSheet) {
+                CommentSearchSheet(
+                    replies = commentState.replies,
+                    upMid = success.info.owner.mid,
+                    onCommentClick = { reply ->
+                        playbackActions.replyTo(reply)
+                    },
+                    onSubReplyClick = { rootReply ->
+                        commentActions.openSubReply(rootReply, 0L)
+                    },
+                    onDismiss = { showCommentSearchSheet = false },
+                )
+            }
 
             }
         }

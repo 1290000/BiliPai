@@ -92,6 +92,7 @@ import com.android.purebilibili.feature.video.ui.components.PagesSelector
 import com.android.purebilibili.feature.video.ui.components.CommentListHeader
 import com.android.purebilibili.feature.video.ui.components.CommentSortHeader
 import com.android.purebilibili.feature.video.ui.components.CommentSortFilterBar
+import com.android.purebilibili.feature.video.ui.components.CommentSearchSheet
 import com.android.purebilibili.feature.video.ui.components.resolveCommentSortDockViewportOverflowDp
 import com.android.purebilibili.feature.video.ui.components.ReplyItemView
 import com.android.purebilibili.feature.video.ui.components.rememberVideoCommentAppearance
@@ -630,6 +631,7 @@ internal fun VideoContentSection(
     val immersiveVideoContentChromeEnabled = progressiveCommentHeaderEnabled
     val tabs = listOf("简介", "评论")
     val scope = rememberCoroutineScope()
+    var showCommentSearchSheet by remember { mutableStateOf(false) }
     TrackJankStateFlag(
         stateName = "video_detail:tab_swipe",
         isActive = pagerState.isScrollInProgress
@@ -1001,6 +1003,7 @@ internal fun VideoContentSection(
                         showSortControlInHeader = true,
                         showHeader = !immersiveVideoContentChromeEnabled,
                         floatingHeaderContentPadding = if (immersiveVideoContentChromeEnabled) 46.dp else 0.dp,
+                        onSearchClick = { showCommentSearchSheet = true },
                     )
                 }
             }
@@ -1116,6 +1119,7 @@ internal fun VideoContentSection(
                         .offset(y = (-commentSortDockLiftDp).dp),
                     miuixBackdrop = if (liquidGlassEnabled) videoContentMiuixBackdrop else null,
                     liquidGlassEffectsEnabled = liquidGlassEnabled,
+                    onSearchClick = { showCommentSearchSheet = true },
                 )
             }
         }
@@ -1198,6 +1202,20 @@ internal fun VideoContentSection(
             },
             onDismiss = { confirmDeleteNote = false }
         )
+
+        if (showCommentSearchSheet) {
+            CommentSearchSheet(
+                replies = replies,
+                upMid = info.owner.mid,
+                onCommentClick = { reply ->
+                    onCommentReplyClick(reply)
+                },
+                onSubReplyClick = { rootReply ->
+                    onSubReplyClick(rootReply, 0L)
+                },
+                onDismiss = { showCommentSearchSheet = false },
+            )
+        }
     }
 }
 
@@ -1422,6 +1440,7 @@ internal fun VideoCommentTab(
     showSortControlInHeader: Boolean = false,
     showHeader: Boolean = true,
     floatingHeaderContentPadding: Dp = 0.dp,
+    onSearchClick: (() -> Unit)? = null,
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
@@ -1454,6 +1473,7 @@ internal fun VideoCommentTab(
                     count = replyCount,
                     sortMode = sortMode,
                     onSortModeChange = onSortModeChange,
+                    onSearchClick = onSearchClick,
                 )
             } else {
                 CommentListHeader(
@@ -1645,6 +1665,7 @@ internal fun LandscapeCommentPanel(
                         sortMode = sortMode,
                         onSortModeChange = onSortModeChange,
                         modifier = Modifier.padding(horizontal = 8.dp),
+                        onSearchClick = { showCommentSearchSheet = true },
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     AppTextButton(

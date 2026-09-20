@@ -44,6 +44,7 @@ import com.android.purebilibili.feature.video.ui.overlay.VIDEO_STATUS_BAR_AMBIEN
 import com.android.purebilibili.feature.video.ui.overlay.VIDEO_STATUS_BAR_AMBIENT_SAMPLE_WIDTH_PX
 import com.android.purebilibili.feature.video.ui.components.SponsorSkipButton
 import com.android.purebilibili.feature.video.ui.components.SponsorContributionOverlay
+import com.android.purebilibili.feature.video.ui.components.DanmakuPoolSheet
 import com.android.purebilibili.feature.video.viewmodel.SponsorContributionUiState
 import com.android.purebilibili.feature.video.ui.components.TwoFingerSpeedFeedbackOverlay
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
@@ -209,6 +210,9 @@ import com.android.purebilibili.feature.video.subtitle.shouldRenderSecondarySubt
 import com.android.purebilibili.feature.video.usecase.playPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.seekPlayerFromUserAction
 import com.android.purebilibili.feature.video.usecase.togglePlayerPlaybackFromUserAction
+import com.android.purebilibili.feature.video.player.PlayerKeyAction
+import com.android.purebilibili.feature.video.player.calculateSeekTargetPositionMs
+import com.android.purebilibili.feature.video.player.resolvePlayerKeyAction
 import com.android.purebilibili.feature.video.util.captureAndSaveVideoScreenshot
 import com.android.purebilibili.feature.video.util.captureVideoAmbientFrame
 import com.android.purebilibili.feature.video.playback.session.PlaybackSeekSessionState
@@ -797,6 +801,8 @@ fun VideoPlayerSection(
     subtitleDisplayModePreferenceOverride: SubtitleDisplayMode? = null,
     onSubtitleDisplayModePreferenceOverrideChange: (SubtitleDisplayMode) -> Unit = {},
     onSubtitleTrackSelected: (String) -> Unit = {},
+    onLikeDanmaku: (Long) -> Unit = {},
+    onRecallDanmaku: (Long) -> Unit = {},
 ) {
     val context = LocalContext.current
     val localDensity = LocalDensity.current
@@ -1644,6 +1650,7 @@ fun VideoPlayerSection(
     //  共享弹幕管理器（用于所有 seek 路径的一致同步）
     val danmakuManager = rememberDanmakuManager(bvid)
     val overlayDrawerHazeState = com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState()
+    var showDanmakuPoolSheet by remember { mutableStateOf(false) }
     var showEndDrawer by remember { mutableStateOf(false) }
     var endDrawerInitialTab by remember { mutableIntStateOf(0) }
     LaunchedEffect(endDrawerRequestKey) {
@@ -1885,21 +1892,151 @@ fun VideoPlayerSection(
         rootModifier = rootModifier
             .focusGroup()
             .onKeyEvent { event ->
-                val hasCommandModifier = event.isCtrlPressed || event.isAltPressed ||
-                    event.isMetaPressed || event.isShiftPressed
-                if (
-                    event.type == KeyEventType.KeyDown &&
-                    event.key == Key.Spacebar &&
-                    !hasCommandModifier &&
-                    !isScreenLocked &&
-                    !isInPipMode
-                ) {
-                    togglePlayerPlaybackFromUserAction(playerState.player)
-                    showControls = true
-                    true
-                } else {
-                    // Let unhandled D-pad/arrow keys use Compose's spatial focus search.
-                    false
+                val action = resolvePlayerKeyAction(
+                    event = event,
+                    isScreenLocked = isScreenLocked,
+                    isInPipMode = isInPipMode,
+                    isTextInputActive = danmakuComposerVisible
+                ) ?: return@onKeyEvent false
+
+                when (action) {
+                    PlayerKeyAction.PlayPause -> {
+                        togglePlayerPlaybackFromUserAction(playerState.player)
+                        showControls = true
+                        true
+                    }
+                    is PlayerKeyAction.SeekRelative -> {
+                        val player = playerState.player ?: return@onKeyEvent false
+                        val target = calculateSeekTargetPositionMs(
+                            currentPositionMs = player.currentPosition,
+                            durationMs = player.duration,
+                            action = action
+                        ) ?: return@onKeyEvent false
+                        seekPlayerFromUserAction(player, target)
+                        danmakuManager.seekTo(target)
+                        showControls = true
+                        true
+                    }
+                    is PlayerKeyAction.SeekPercent -> {
+                        val player = playerState.player ?: return@onKeyEvent false
+                        val target = calculateSeekTargetPositionMs(
+                            currentPositionMs = player.currentPosition,
+                            durationMs = player.duration,
+                            action = action
+                        ) ?: return@onKeyEvent false
+                        seekPlayerFromUserAction(player, target)
+                        danmakuManager.seekTo(target)
+                        showControls = true
+                        true
+                    }
+                    PlayerKeyAction.VolumeUp -> {
+                        audioManager.adjustStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            AudioManager.ADJUST_RAISE,
+                            AudioManager.FLAG_SHOW_UI
+                        )
+                        true
+                    }
+                    PlayerKeyAction.VolumeDown -> {
+                        audioManager.adjustStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            AudioManager.ADJUST_LOWER,
+                            AudioManager.FLAG_SHOW_UI
+                        )
+                        true
+                    }
+                    PlayerKeyAction.ToggleMute -> {
+                        audioManager.adjustStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            AudioManager.ADJUST_TOGGLE_MUTE,
+                            AudioManager.FLAG_SHOW_UI
+                        )
+                        true
+                    }
+                    PlayerKeyAction.ToggleFullscreen -> {
+                        onToggleFullscreen()
+                        true
+                    }
+                    PlayerKeyAction.ToggleDanmaku -> {
+                        val newState = !danmakuManager.isEnabled
+                        danmakuManager.isEnabled = newState
+                        if (!newState) {
+                            danmakuManager.clear()
+                        }
+                        Toast.makeText(context, if (newState) "弹幕已开启" else "弹幕已关闭", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    PlayerKeyAction.ToggleLike -> {
+                        onToggleLike()
+                        true
+                    }
+                    PlayerKeyAction.Coin -> {
+                        onCoin()
+                        true
+                    }
+                    PlayerKeyAction.ToggleFavorite -> {
+                        onToggleFavorite()
+                        true
+                    }
+                    PlayerKeyAction.TripleAction -> {
+                        onTriple()
+                        true
+                    }
+                    PlayerKeyAction.TakeScreenshot -> {
+                        val targetView = playerViewRef
+                        if (targetView != null) {
+                            settingsScope.launch {
+                                val success = captureAndSaveVideoScreenshot(
+                                    context = context,
+                                    playerView = targetView,
+                                    videoWidth = videoSizeState.first,
+                                    videoHeight = videoSizeState.second,
+                                    videoTitle = (uiState as? VideoPlaybackUiState.Success)?.info?.title.orEmpty(),
+                                )
+                                Toast.makeText(
+                                    context,
+                                    if (success) "截图已保存到相册（PNG）" else "截图失败，请稍后重试",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                        true
+                    }
+                    PlayerKeyAction.ToggleScreenLock -> {
+                        isScreenLocked = !isScreenLocked
+                        showControls = true
+                        Toast.makeText(context, if (isScreenLocked) "屏幕已锁定" else "屏幕已解锁", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    PlayerKeyAction.PreviousPart -> {
+                        val pages = (uiState as? VideoPlaybackUiState.Success)?.info?.pages.orEmpty()
+                        val currentCid = (uiState as? VideoPlaybackUiState.Success)?.info?.cid ?: 0L
+                        val currentIndex = pages.indexOfFirst { it.cid == currentCid }
+                        if (currentIndex > 0) {
+                            onPageSelect(pages[currentIndex - 1].page)
+                            Toast.makeText(context, "切换至上一分P", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "已经是第一分P了", Toast.LENGTH_SHORT).show()
+                        }
+                        true
+                    }
+                    PlayerKeyAction.NextPart -> {
+                        val pages = (uiState as? VideoPlaybackUiState.Success)?.info?.pages.orEmpty()
+                        val currentCid = (uiState as? VideoPlaybackUiState.Success)?.info?.cid ?: 0L
+                        val currentIndex = pages.indexOfFirst { it.cid == currentCid }
+                        if (currentIndex in 0 until pages.lastIndex) {
+                            onPageSelect(pages[currentIndex + 1].page)
+                            Toast.makeText(context, "切换至下一分P", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "已经是最后一分P了", Toast.LENGTH_SHORT).show()
+                        }
+                        true
+                    }
+                    is PlayerKeyAction.SetSpeed -> {
+                        applyExplicitPlaybackSpeedChange(action.speed)
+                        Toast.makeText(context, "${action.speed}x 倍速", Toast.LENGTH_SHORT).show()
+                        true
+                    }
                 }
             }
             .focusable()
@@ -5451,6 +5588,7 @@ fun VideoPlayerSection(
                 onLandscapeCommentClick = onLandscapeCommentClick,
                 landscapeCommentPanelVisible = landscapeCommentPanelVisible,
                 landscapeCommentPanelOnLeft = landscapeCommentPanelOnLeft,
+                onShowDanmakuPool = { showDanmakuPoolSheet = true },
             )
             }
 
@@ -5485,6 +5623,31 @@ fun VideoPlayerSection(
                     .align(Alignment.BottomStart)
                     .padding(bottom = 60.dp, start = 16.dp),
             )
+
+            if (showDanmakuPoolSheet) {
+                DanmakuPoolSheet(
+                    danmakuList = danmakuManager.getLoadedDanmakuList(),
+                    currentPositionMs = playerState.player?.currentPosition ?: 0L,
+                    onSeekTo = { posMs ->
+                        val commitResult = commitPlaybackSeekInteraction(
+                            state = sharedSeekSession,
+                            player = playerState.player,
+                            positionMs = posMs
+                        )
+                        sharedSeekSession = commitResult.state
+                        seekPlayerFromUserAction(
+                            player = playerState.player,
+                            positionMs = commitResult.committedPositionMs,
+                            shouldResumePlaybackOverride = commitResult.shouldResumePlayback
+                        )
+                        danmakuManager.seekTo(commitResult.committedPositionMs)
+                        onUserSeek(commitResult.committedPositionMs)
+                    },
+                    onLikeDanmaku = onLikeDanmaku,
+                    onRecallDanmaku = onRecallDanmaku,
+                    onDismiss = { showDanmakuPoolSheet = false }
+                )
+            }
     }
 
 

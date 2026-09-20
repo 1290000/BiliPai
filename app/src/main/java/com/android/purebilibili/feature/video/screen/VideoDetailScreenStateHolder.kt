@@ -644,7 +644,9 @@ internal fun VideoDetailScreenStateHolder(
                 viewModel.setReplyingTo(it)
                 viewModel.showCommentInputDialog()
             },
-            markVideoNotInterested = viewModel::markVideoNotInterested
+            markVideoNotInterested = viewModel::markVideoNotInterested,
+            likeDanmaku = { viewModel.likeDanmaku(it) },
+            recallDanmaku = { viewModel.recallDanmaku(it) }
         )
     }
     val engagementActions = remember(engagementViewModel) {
@@ -3763,6 +3765,7 @@ internal fun VideoDetailScreenStateHolder(
                                 isVerticalVideo = isVerticalVideo,
                                 sleepTimerMinutes = sleepTimerMinutes,
                                 viewPoints = viewPoints,
+                                pbpProgressData = visiblePbpProgressData,
                                 bvid = bvid,
                                 coverUrl = coverUrl,
                                 onBack = { handleBack() },
@@ -3829,6 +3832,7 @@ internal fun VideoDetailScreenStateHolder(
                             isVerticalVideo = isVerticalVideo,
                             sleepTimerMinutes = sleepTimerMinutes,
                             viewPoints = viewPoints,
+                            pbpProgressData = visiblePbpProgressData,
                             bvid = bvid,
                             coverUrl = coverUrl,
                             onBack = {

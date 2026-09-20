@@ -34,6 +34,7 @@ import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionS
 import com.android.purebilibili.core.ui.transition.videoCoverSharedElementKey
 import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
 import com.android.purebilibili.feature.video.ui.section.resolveAllowLivePlayerSharedElementForMorph
@@ -61,6 +62,7 @@ internal fun LargeScreenVideoLayout(
     isVerticalVideo: Boolean,
     sleepTimerMinutes: Int?,
     viewPoints: List<ViewPoint>,
+    pbpProgressData: PbpProgressData? = null,
     bvid: String,
     coverUrl: String = "",
     onBack: () -> Unit,
@@ -132,6 +134,7 @@ internal fun LargeScreenVideoLayout(
                 isPortraitFullscreen = isPortraitFullscreen,
                 sleepTimerMinutes = sleepTimerMinutes,
                 viewPoints = viewPoints,
+                pbpProgressData = pbpProgressData,
                 currentCodec = currentCodec,
                 currentSecondCodec = currentSecondCodec,
                 currentAudioQuality = currentAudioQuality,
@@ -397,6 +400,7 @@ private fun LargeScreenPlayerHost(
     isPortraitFullscreen: Boolean,
     sleepTimerMinutes: Int?,
     viewPoints: List<ViewPoint>,
+    pbpProgressData: PbpProgressData? = null,
     currentCodec: String,
     currentSecondCodec: String,
     currentAudioQuality: Int,
@@ -485,6 +489,7 @@ private fun LargeScreenPlayerHost(
                 onSleepTimerChange = playbackActions.setSleepTimer,
                 videoshotData = (uiState as? VideoPlaybackUiState.Success)?.videoshotData,
                 viewPoints = viewPoints,
+                pbpProgressData = pbpProgressData,
                 isVerticalVideo = isVerticalVideo,
                 onPortraitFullscreen = onPortraitFullscreen,
                 isPortraitFullscreen = isPortraitFullscreen,
@@ -503,6 +508,8 @@ private fun LargeScreenPlayerHost(
                 viewportWidthDpOverride = viewportWidthDpOverride,
                 onSubtitleTrackSelected = playbackActions.selectSubtitleTrack,
                 onDanmakuInputClick = playbackActions.showDanmakuSendDialog,
+                onLikeDanmaku = playbackActions.likeDanmaku,
+                onRecallDanmaku = playbackActions.recallDanmaku,
             )
         }
     }

@@ -49,6 +49,7 @@ import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
 import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.ViewPoint
+import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.common.resolveIndexedVideoLazyKey
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
@@ -225,6 +226,7 @@ internal fun TabletVideoLayout(
     isVerticalVideo: Boolean,
     sleepTimerMinutes: Int?,
     viewPoints: List<ViewPoint>,
+    pbpProgressData: PbpProgressData? = null,
     bvid: String,
     coverUrl: String = "",
     onBack: () -> Unit,
@@ -400,6 +402,7 @@ internal fun TabletVideoLayout(
                                 onSleepTimerChange = playbackActions.setSleepTimer,
                                 videoshotData = (uiState as? VideoPlaybackUiState.Success)?.videoshotData,
                                 viewPoints = viewPoints,
+                                pbpProgressData = pbpProgressData,
                                 isVerticalVideo = isVerticalVideo,
                                 onPortraitFullscreen = onPortraitFullscreen,
                                 isPortraitFullscreen = isPortraitFullscreen,
@@ -422,6 +425,8 @@ internal fun TabletVideoLayout(
                                 viewportWidthDpOverride = playerWidth.value.toInt(),
                                 onSubtitleTrackSelected = playbackActions.selectSubtitleTrack,
                                 onDanmakuInputClick = playbackActions.showDanmakuSendDialog,
+                                onLikeDanmaku = playbackActions.likeDanmaku,
+                                onRecallDanmaku = playbackActions.recallDanmaku,
                             )
                         }
                     }
@@ -955,6 +960,7 @@ internal fun TabletSecondaryContent(
                         )
                     } else {
                         val commentChromeBackdrop = rememberLayerBackdrop()
+                        var showCommentSearchSheet by remember { mutableStateOf(false) }
                         Column(modifier = Modifier.fillMaxSize()) {
                             CommentSortHeader(
                                 count = commentState.replyCount,
@@ -966,6 +972,7 @@ internal fun TabletSecondaryContent(
                                             .setCommentDefaultSortMode(context, mode.apiMode)
                                     }
                                 },
+                                onSearchClick = { showCommentSearchSheet = true },
                             )
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                             LazyColumn(
@@ -1102,6 +1109,20 @@ internal fun TabletSecondaryContent(
                             },
                             showActionButtons = false,
                         )
+
+                        if (showCommentSearchSheet) {
+                            CommentSearchSheet(
+                                replies = commentState.replies,
+                                upMid = success.info.owner.mid,
+                                onCommentClick = { reply ->
+                                    playbackActions.replyTo(reply)
+                                },
+                                onSubReplyClick = { rootReply ->
+                                    commentActions.openSubReply(rootReply, 0L)
+                                },
+                                onDismiss = { showCommentSearchSheet = false },
+                            )
+                        }
 
                            }
                         }
