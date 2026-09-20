@@ -575,13 +575,23 @@ internal fun MusicPlayerContent(
                 ) {
                     BoxWithConstraints(
                         modifier = Modifier.weight(0.85f).fillMaxHeight(),
-                        contentAlignment = Alignment.TopCenter,
+                        contentAlignment = if (landscapeLyrics) {
+                            Alignment.Center
+                        } else {
+                            Alignment.TopCenter
+                        },
                     ) {
                         val artworkWidth = minOf(maxWidth, maxHeight * 0.70f, 280.dp)
                         Column(
                             modifier = Modifier
                                 .width(artworkWidth)
-                                .padding(top = landscapeHeaderHeight),
+                                .then(
+                                    if (landscapeLyrics) {
+                                        Modifier
+                                    } else {
+                                        Modifier.padding(top = landscapeHeaderHeight)
+                                    }
+                                ),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             MusicArtwork(
