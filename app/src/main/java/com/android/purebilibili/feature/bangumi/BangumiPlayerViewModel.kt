@@ -25,6 +25,7 @@ import com.android.purebilibili.feature.video.playback.audio.AudioQualityOption
 import com.android.purebilibili.feature.video.playback.audio.resolveAudioStreamSelection
 import com.android.purebilibili.feature.video.playback.audio.resolveRequestedAudioQuality
 import com.android.purebilibili.feature.video.playback.policy.shouldRefreshPremiumAudioForPlaybackSpeedChange
+import com.android.purebilibili.feature.video.playback.dash.buildLocalDashManifest
 import com.android.purebilibili.feature.video.usecase.VideoInteractionUseCase
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
 import kotlinx.coroutines.Dispatchers
@@ -324,11 +325,31 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 } else {
                     "https://www.bilibili.com/bangumi/play/ep${cachedState.currentEpisode.id}"
                 }
+                val cachedDashManifest = cachedState.cachedDash?.let { dash ->
+                    val cachedVideo = dash.video.firstOrNull {
+                        it.getValidUrl() == cachedState.playUrl
+                    } ?: dash.getBestVideo(
+                        cachedState.quality,
+                        preferCodec = resolveBangumiPreferredCodec(isCoursePlayback)
+                    )
+                    val cachedAudio = dash.audio.orEmpty().firstOrNull {
+                        it.getValidUrl() == cachedState.audioUrl
+                    }
+                    buildBangumiDashManifest(
+                        dash = dash,
+                        video = cachedVideo,
+                        videoUrl = cachedState.playUrl,
+                        audio = cachedAudio,
+                        audioUrl = cachedState.audioUrl,
+                        durationMs = cachedState.currentEpisode.duration.toLong().coerceAtLeast(0L)
+                    )
+                }
                 playDashVideo(
                     videoUrl = requireNotNull(cachedState.playUrl),
                     audioUrl = cachedState.audioUrl,
                     seekToMs = restorePositionMs,
-                    referer = cachedReferer
+                    referer = cachedReferer,
+                    dashManifest = cachedDashManifest
                 )
                 return
             }
@@ -414,8 +435,45 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
      * 番剧视频编码偏好：设备支持 HEVC 时优先 hev1（HDR/杜比视界轨道基本为 HEVC），
      * 不支持时回退 avc1 保证可解码。
      */
-    private fun resolveBangumiPreferredCodec(): String =
-        if (MediaUtils.isHevcSupported()) "hev1" else "avc1"
+    private fun resolveBangumiPreferredCodec(isCourse: Boolean = isCourseMode): String =
+        if (isCourse) "avc1" else if (MediaUtils.isHevcSupported()) "hev1" else "avc1"
+
+    private fun buildBangumiDashManifest(
+        dash: Dash,
+        video: DashVideo?,
+        videoUrl: String?,
+        audio: DashAudio?,
+        audioUrl: String?,
+        durationMs: Long
+    ): String? {
+        val resolvedVideoUrl = videoUrl?.takeIf { it.isNotBlank() } ?: return null
+        val videoSegmentBase = video?.segmentBase ?: return null
+        if (videoSegmentBase.initialization.isNullOrBlank() || videoSegmentBase.indexRange.isNullOrBlank()) {
+            return null
+        }
+        if (!audioUrl.isNullOrBlank()) {
+            val audioSegmentBase = audio?.segmentBase ?: return null
+            if (audioSegmentBase.initialization.isNullOrBlank() || audioSegmentBase.indexRange.isNullOrBlank()) {
+                return null
+            }
+        }
+
+        val manifestVideo = video.copy(
+            baseUrl = resolvedVideoUrl,
+            backupUrl = emptyList()
+        )
+        val manifestAudio = if (!audioUrl.isNullOrBlank() && audio != null) {
+            listOf(audio.copy(baseUrl = audioUrl, backupUrl = emptyList()))
+        } else {
+            emptyList()
+        }
+        return buildLocalDashManifest(
+            durationMs = durationMs.coerceAtLeast(0L),
+            minBufferTimeMs = (dash.minBufferTime * 1000f).toLong().coerceAtLeast(1_500L),
+            videoTracks = listOf(manifestVideo),
+            audioTracks = manifestAudio
+        )
+    }
 
     /**
      * 番剧首次加载的请求画质：会员且设备支持 HDR/HEVC 时直接上探 HDR 档，
@@ -459,6 +517,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             // 解析播放地址
             var videoUrl: String? = null
             var audioUrl: String? = null
+            var dashManifest: String? = null
             var durlSegmentUrls: List<String> = emptyList()
             val requestedAudioQuality = resolveConfiguredAudioQuality()
             val audioSelection = playData.dash?.let { dash ->
@@ -475,7 +534,10 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 // DASH 格式
                 val dash = playData.dash
                 //  设备支持 HEVC 时优先 hev1（HDR/杜比视界轨道基本为 HEVC），否则回退 avc1 保证可解码
-                val video = dash.getBestVideo(playData.quality, preferCodec = resolveBangumiPreferredCodec())
+                val video = dash.getBestVideo(
+                    playData.quality,
+                    preferCodec = resolveBangumiPreferredCodec(isCourse)
+                )
                 val audio = audioSelection?.selected?.track
                 
                 com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📹 DASH videos: ${dash.video.size}, audios: ${dash.audio?.size ?: 0}")
@@ -509,6 +571,16 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                         videoUrl = rewrite.videoUrls.firstOrNull() ?: videoUrl
                         audioUrl = rewrite.audioUrls.firstOrNull()?.takeIf { it.isNotBlank() } ?: audioUrl
                     }
+
+                dashManifest = buildBangumiDashManifest(
+                    dash = dash,
+                    video = video,
+                    videoUrl = videoUrl,
+                    audio = audio,
+                    audioUrl = audioUrl,
+                    durationMs = playData.timelength.takeIf { it > 0L }
+                        ?: dash.duration.toLong() * 1000L
+                )
                 
                 com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", " DASH: video=${videoUrl?.take(60)}..., audio=${audioUrl?.take(40)}...")
                 
@@ -668,7 +740,8 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     videoUrl = videoUrl,
                     audioUrl = audioUrl,
                     seekToMs = startPositionMs,
-                    referer = referer
+                    referer = referer,
+                    dashManifest = dashManifest
                 )
             }
             
@@ -816,6 +889,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             playUrlResult.onSuccess { playData ->
                 val videoUrl: String?
                 val audioUrl: String?
+                val dashManifest: String?
                 val durlSegmentUrls: List<String>
                 val dash = playData.dash
                 val audioSelection = dash?.let {
@@ -830,10 +904,22 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 
                 if (dash != null) {
                     //  设备支持 HEVC 时优先 hev1（HDR/杜比视界轨道基本为 HEVC），否则回退 avc1 保证可解码
-                    val video = dash.getBestVideo(qualityId, preferCodec = resolveBangumiPreferredCodec())
+                    val video = dash.getBestVideo(
+                        qualityId,
+                        preferCodec = resolveBangumiPreferredCodec(isCourse)
+                    )
                     val audio = audioSelection?.selected?.track
                     videoUrl = video?.getValidUrl()
                     audioUrl = audio?.getValidUrl()
+                    dashManifest = buildBangumiDashManifest(
+                        dash = dash,
+                        video = video,
+                        videoUrl = videoUrl,
+                        audio = audio,
+                        audioUrl = audioUrl,
+                        durationMs = playData.timelength.takeIf { it > 0L }
+                            ?: dash.duration.toLong() * 1000L
+                    )
                     durlSegmentUrls = emptyList()
                 } else {
                     durlSegmentUrls = collectPlayableDurlUrls(
@@ -845,6 +931,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     )
                     videoUrl = durlSegmentUrls.firstOrNull()
                     audioUrl = null
+                    dashManifest = null
                 }
                 
                 if (videoUrl.isNullOrEmpty()) return@onSuccess
@@ -863,8 +950,12 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     audioFallbackReason = audioSelection?.fallbackReason
                 )
                 
-                //  [修复] 切换清晰度时使用 resetPlayer=false 减少闪烁，并传入 Referer
-                val referer = "https://www.bilibili.com/bangumi/play/ep${currentState.currentEpisode.id}"
+                //  [修复] 切换清晰度时使用 resetPlayer=false 减少闪烁，并传入正确业务 Referer
+                val referer = if (isCourse) {
+                    "https://www.bilibili.com/cheese/play/ep${currentState.currentEpisode.id}"
+                } else {
+                    "https://www.bilibili.com/bangumi/play/ep${currentState.currentEpisode.id}"
+                }
                 val playWhenReady = exoPlayer?.playWhenReady ?: true
                 if (audioUrl.isNullOrEmpty() && durlSegmentUrls.size > 1) {
                     playSegmentedVideo(
@@ -874,7 +965,14 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                         referer = referer
                     )
                 } else {
-                    playDashVideo(videoUrl, audioUrl, currentPos, resetPlayer = false, referer = referer)
+                    playDashVideo(
+                        videoUrl = videoUrl,
+                        audioUrl = audioUrl,
+                        seekToMs = currentPos,
+                        resetPlayer = false,
+                        referer = referer,
+                        dashManifest = dashManifest
+                    )
                 }
                 exoPlayer?.playWhenReady = playWhenReady
             }
@@ -938,17 +1036,34 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         val audioUrl = selection.selected?.track?.getValidUrl()
             ?.takeIf { it.isNotBlank() }
             ?: return false
+        val selectedVideo = dash.video.firstOrNull { it.getValidUrl() == videoUrl }
+            ?: dash.getBestVideo(
+                currentState.quality,
+                preferCodec = resolveBangumiPreferredCodec(currentState.seasonDetail.seasonType == 10)
+            )
+        val dashManifest = buildBangumiDashManifest(
+            dash = dash,
+            video = selectedVideo,
+            videoUrl = videoUrl,
+            audio = selection.selected?.track,
+            audioUrl = audioUrl,
+            durationMs = player.duration.takeIf { it > 0L } ?: 0L
+        )
         val currentPosition = player.currentPosition.coerceAtLeast(0L)
         val playWhenReady = player.playWhenReady
-        val referer =
+        val referer = if (currentState.seasonDetail.seasonType == 10) {
+            "https://www.bilibili.com/cheese/play/ep${currentState.currentEpisode.id}"
+        } else {
             "https://www.bilibili.com/bangumi/play/ep${currentState.currentEpisode.id}"
+        }
 
         playDashVideo(
             videoUrl = videoUrl,
             audioUrl = audioUrl,
             seekToMs = currentPosition,
             resetPlayer = false,
-            referer = referer
+            referer = referer,
+            dashManifest = dashManifest
         )
         player.playWhenReady = playWhenReady
         _uiState.value = currentState.copy(
