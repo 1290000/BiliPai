@@ -1049,7 +1049,7 @@ private fun BangumiPlayNoticeOverlay(
     ) {
         if (coverUrl.isNotBlank()) {
             AsyncImage(
-                model = FormatUtils.fixImageUrl(coverUrl),
+                model = FormatUtils.resolveVideoCoverUrl(coverUrl, useLowQuality = false),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
