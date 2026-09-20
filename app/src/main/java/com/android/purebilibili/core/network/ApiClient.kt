@@ -2038,6 +2038,15 @@ interface SpaceApi {
     suspend fun getSpaceArticleList(
         @QueryMap params: Map<String, String>
     ): com.android.purebilibili.data.model.response.SpaceArticleResponse
+
+    // UP主空间课堂 (Cheese / PUGV 课程)
+    @GET("pugv/app/web/season/page")
+    suspend fun getSpaceCheese(
+        @Query("mid") mid: Long,
+        @Query("pn") page: Int = 1,
+        @Query("ps") pageSize: Int = 30,
+        @Query("web_location") webLocation: String = "333.1387"
+    ): com.android.purebilibili.data.model.response.SpaceCheeseResponse
 }
 
 suspend fun SpaceApi.getSpaceAggregate(
@@ -2152,6 +2161,35 @@ interface BangumiApi {
     suspend fun getBangumiPlayUrlLegacy(
         @QueryMap params: Map<String, String>
     ): ResponseBody
+
+    // 课堂/课程详情
+    @GET("pugv/view/web/season")
+    suspend fun getPugvSeasonDetail(
+        @Query("season_id") seasonId: Long? = null,
+        @Query("ep_id") epId: Long? = null
+    ): ResponseBody
+
+    // 课堂/课程播放地址
+    @GET("pugv/player/web/playurl")
+    suspend fun getPugvPlayUrl(
+        @QueryMap params: Map<String, String>
+    ): ResponseBody
+
+    // 课堂/课程收藏
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("pugv/app/web/favorite/add")
+    suspend fun addFavPugv(
+        @retrofit2.http.Field("season_id") seasonId: Long,
+        @retrofit2.http.Field("csrf") csrf: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
+
+    // 课堂/课程取消收藏
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("pugv/app/web/favorite/del")
+    suspend fun delFavPugv(
+        @retrofit2.http.Field("season_id") seasonId: Long,
+        @retrofit2.http.Field("csrf") csrf: String
+    ): com.android.purebilibili.data.model.response.SimpleApiResponse
     
     // 追番/追剧
     @retrofit2.http.FormUrlEncoded

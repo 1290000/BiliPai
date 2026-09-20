@@ -168,6 +168,7 @@ import com.android.purebilibili.data.model.response.SpaceAggregateArchiveItem
 import com.android.purebilibili.data.model.response.SpaceDynamicItem
 import com.android.purebilibili.data.model.response.SpaceVideoItem
 import com.android.purebilibili.feature.dynamic.DynamicDeleteAction
+import com.android.purebilibili.feature.space.resolveSpaceAggregateVideoId
 import com.android.purebilibili.feature.settings.AppThemeMode
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
@@ -2263,7 +2264,9 @@ private fun ProfileAggregateVideoStrip(
                 subtitle = video.length,
                 imageUrl = video.cover,
                 contentChrome = contentChrome,
-                onClick = { video.bvid.takeIf { it.isNotBlank() }?.let(onVideoClick) }
+                onClick = {
+                    resolveSpaceAggregateVideoId(video)?.let(onVideoClick)
+                }
             )
         }
     }

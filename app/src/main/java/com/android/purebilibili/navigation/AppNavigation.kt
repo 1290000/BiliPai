@@ -391,6 +391,14 @@ fun AppNavigation(
     
     // 单一首页视觉配置源：减少根导航层多路 DataStore 收集导致的全局重组。
     val context = androidx.compose.ui.platform.LocalContext.current
+    val windowConfiguration = androidx.compose.ui.platform.LocalConfiguration.current
+    val windowDensity = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.SideEffect {
+        CardPositionManager.invalidateVideoSourceIfWindowChanged(
+            screenWidth = with(windowDensity) { windowConfiguration.screenWidthDp.dp.toPx() },
+            screenHeight = with(windowDensity) { windowConfiguration.screenHeightDp.dp.toPx() },
+        )
+    }
     val application = remember(context) { context.applicationContext as Application }
     // Navigation3 的条目级 ViewModelStore 不一定携带 Application extras，设置页统一从根导航注入。
     val settingsViewModel: SettingsViewModel = viewModel(
@@ -3632,7 +3640,8 @@ fun AppNavigation(
                                     epId = playerKey.epId,
                                     resumePositionMs = playerKey.resumePositionMs,
                                     onBack = { performSystemBackAction() },
-                                    onNavigateToLogin = { pushNavigation3Key(BiliPaiNavKey.Login) }
+                                    onNavigateToLogin = { pushNavigation3Key(BiliPaiNavKey.Login) },
+                                    onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) }
                                 )
                             }
                         BiliPaiNavEntryContentRole.MUSIC_DETAIL -> {
@@ -3678,6 +3687,11 @@ fun AppNavigation(
                                     onBangumiClick = { seasonId ->
                                         if (seasonId > 0L) {
                                             pushNavigation3Key(BiliPaiNavKey.BangumiDetail(seasonId = seasonId))
+                                        }
+                                    },
+                                    onCheeseClick = { seasonId ->
+                                        if (seasonId > 0L) {
+                                            pushNavigation3Key(BiliPaiNavKey.BangumiPlayer(seasonId = seasonId, epId = 0L))
                                         }
                                     },
                                     onWebClick = { url, title ->
@@ -3961,7 +3975,8 @@ fun AppNavigation(
                                                 )
                                             )
                                         }
-                                    }
+                                    },
+                                    onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) }
                                 )
                             }
                         BiliPaiNavEntryContentRole.BANGUMI_REVIEW -> {
@@ -4096,9 +4111,10 @@ fun AppNavigation(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                        val dockAudioContent: (@Composable (Modifier, Float, Float, Float) -> Unit)? =
+                        val dockAudioContent: (@Composable (Modifier, Float, Float, Float, (() -> Unit)?, Boolean) -> Unit)? =
                             if (showAudioNowPlayingInDock && audioNowPlayingItem != null) {
-                                { audioModifier, dockMergeProgress, iconOnlyProgress, surfaceMergeProgress ->
+                                { audioModifier, dockMergeProgress, iconOnlyProgress, surfaceMergeProgress,
+                                    compactClick, layoutStable ->
                                     val playbackManager = miniPlayerManager ?: MiniPlayerManager.getInstance(context)
                                     AudioNowPlayingBar(
                                         state = AudioNowPlayingBarState(
@@ -4110,10 +4126,13 @@ fun AppNavigation(
                                             isPlaying = playbackManager.isPlaying,
                                             playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                                         ),
+                                        onCompactClick = compactClick,
+                                        isLayoutStable = layoutStable && !driveBottomBarByProgress,
                                         sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
                                         isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
                                         returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
-                                        isSharedTransitionActive = sharedVideoCardTransitionEnabled,
+                                        isSharedTransitionRunning = driveBottomBarByProgress,
+                                        isSharedTransitionSourceOwner = videoCardSourceChromeVisible,
                                         onExpand = {
                                             val expandRoute = resolveAudioNowPlayingBarExpandRoute(
                                                 opensAudioMode = audioNowPlayingBarOpensAudioMode,
@@ -4169,7 +4188,7 @@ fun AppNavigation(
                                 }
                             } else null
                         if (!isBottomBarFloating) {
-                            dockAudioContent?.invoke(Modifier, 0f, 0f, 0f)
+                            dockAudioContent?.invoke(Modifier, 0f, 0f, 0f, null, true)
                         }
                         if (isBottomBarFloating) {
                             val isBookPosture = appWindowAdaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Book
@@ -4297,10 +4316,12 @@ fun AppNavigation(
                         isPlaying = playbackManager.isPlaying,
                         playbackSpeed = playbackManager.player?.playbackParameters?.speed ?: 1f
                     ),
+                    isLayoutStable = !driveBottomBarByProgress,
                     sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
                     isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
                     returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
-                    isSharedTransitionActive = sharedVideoCardTransitionEnabled,
+                    isSharedTransitionRunning = driveBottomBarByProgress,
+                    isSharedTransitionSourceOwner = videoCardSourceChromeVisible,
                     onExpand = {
                         val expandRoute = resolveAudioNowPlayingBarExpandRoute(
                             opensAudioMode = audioNowPlayingBarOpensAudioMode,
