@@ -31,10 +31,22 @@ internal fun shouldFallbackToLegacyBangumiPlayUrl(payload: BangumiPlayUrlPayload
 internal fun validateBangumiPlayableVideoInfo(
     videoInfo: BangumiVideoInfo
 ): Result<BangumiVideoInfo> = when {
-    videoInfo.isDrm -> Result.failure(
+    videoInfo.isDrm && !videoInfo.hasPlayableWebStream() -> Result.failure(
         UnsupportedOperationException("该番剧使用 DRM 版权保护，当前版本暂不支持播放")
     )
     else -> Result.success(videoInfo)
+}
+
+/**
+ * Some PUGV responses keep the DRM marker while still returning a regular DASH/DURL stream.
+ * PiliPlus hands those streams to its player, so the marker alone cannot be treated as a hard
+ * failure. A response is unsupported only when it has no usable video URL at all.
+ */
+private fun BangumiVideoInfo.hasPlayableWebStream(): Boolean {
+    if (dash?.video.orEmpty().any { it.getValidUrl().isNotBlank() }) return true
+    return (durl.orEmpty() + durls.orEmpty()).any { segment ->
+        segment.url.isNotBlank() || segment.backupUrl.orEmpty().any { it.isNotBlank() }
+    }
 }
 
 internal fun buildBangumiPlayUrlParams(

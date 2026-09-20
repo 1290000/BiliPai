@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.bangumi
 
 import com.android.purebilibili.data.model.response.Durl
+import com.android.purebilibili.data.model.response.Dash
+import com.android.purebilibili.data.model.response.DashVideo
 import com.android.purebilibili.core.network.BANGUMI_PLAY_URL_PATH
 import com.android.purebilibili.data.repository.BangumiPlayUrlPayload
 import com.android.purebilibili.data.repository.shouldFallbackToLegacyBangumiPlayUrl
@@ -42,13 +44,27 @@ class BangumiPlaybackUrlPolicyTest {
     }
 
     @Test
-    fun `DRM playurl is rejected with an actionable non-generic reason`() {
+    fun `DRM playurl without a usable stream is rejected with an actionable reason`() {
         val result = validateBangumiPlayableVideoInfo(
             com.android.purebilibili.data.model.response.BangumiVideoInfo(isDrm = true)
         )
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("DRM") == true)
+    }
+
+    @Test
+    fun `DRM marker does not block a clear web stream`() {
+        val result = validateBangumiPlayableVideoInfo(
+            com.android.purebilibili.data.model.response.BangumiVideoInfo(
+                isDrm = true,
+                dash = Dash(
+                    video = listOf(DashVideo(baseUrl = "https://cdn.example/video.m4s"))
+                )
+            )
+        )
+
+        assertTrue(result.isSuccess)
     }
 
     @Test
