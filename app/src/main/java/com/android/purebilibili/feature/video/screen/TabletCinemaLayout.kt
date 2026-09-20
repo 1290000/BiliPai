@@ -1276,6 +1276,7 @@ private fun CinemaCommentsPane(
             onConversationBack = commentActions.closeSubReplyConversation,
             onDissolveStart = commentActions.startSubDissolve,
             onDeleteComment = commentActions.deleteSubComment,
+            onCheckCommentFraud = commentActions.checkCommentFraud,
             onCommentLike = commentActions.likeComment,
             onCommentHate = commentActions.hateComment,
             onReportComment = commentActions.reportComment,

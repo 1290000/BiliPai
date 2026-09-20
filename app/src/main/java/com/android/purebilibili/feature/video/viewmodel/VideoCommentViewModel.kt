@@ -1090,7 +1090,9 @@ class VideoCommentViewModel : ViewModel() {
         rootId: Long,
         message: String = "",
         hasPictures: Boolean = false,
-        sentAtSeconds: Long = 0
+        sentAtSeconds: Long = 0,
+        waitMs: Long = -1L,
+        preserveInitialStatus: Boolean = false
     ) {
         _commentState.value = _commentState.value.copy(
             isDetectingFraud = true,
@@ -1103,11 +1105,11 @@ class VideoCommentViewModel : ViewModel() {
                 rpid = rpid,
                 rootId = rootId,
                 hasPictures = hasPictures,
-                sentAtSeconds = sentAtSeconds
+                sentAtSeconds = sentAtSeconds,
+                waitMs = waitMs
             )
             result.onSuccess { status ->
                 android.util.Log.d("CommentVM", "评论反诈检测结果: $status (rpid=$rpid)")
-                // [存储初检] 初检完成，同步将真实状态写入 initial_status 与 status
                 CommentFraudRepository.saveRecord(
                     rpid = rpid,
                     oid = aid,
@@ -1115,7 +1117,8 @@ class VideoCommentViewModel : ViewModel() {
                     root = rootId,
                     message = message,
                     status = status,
-                    initialStatus = status // 该评论发布 T+5s 的“初始出生状态”！
+                    // 发评自动检测写入初始出生状态；手动复检保留历史 initial_status
+                    initialStatus = if (preserveInitialStatus) null else status
                 )
                 _commentState.value = _commentState.value.copy(
                     isDetectingFraud = false,
@@ -1131,6 +1134,28 @@ class VideoCommentViewModel : ViewModel() {
                 )
             }
         }
+    }
+    /**
+     * 手动触发某条自己评论的反诈检测（评论长按菜单「检测评论状态」入口）。
+     *
+     * 与发评自动检测的区别：
+     * - 不受 [fraudDetectionEnabled] 设置门控（用户主动触发）；
+     * - waitMs=0 立即检测（不是刚发的评论，无需等待主从同步缓冲）；
+     * - 仅更新 status，initialStatus 传 null 以保留历史记录中的初始出生状态。
+     */
+    fun checkCommentFraud(reply: ReplyItem) {
+        val aid = currentAid
+        if (aid <= 0L || reply.rpid <= 0L) return
+        launchFraudDetection(
+            aid = aid,
+            rpid = reply.rpid,
+            rootId = reply.root,
+            message = reply.content.message,
+            hasPictures = !reply.content.pictures.isNullOrEmpty(),
+            sentAtSeconds = reply.ctime.takeIf { it > 0L } ?: 0L,
+            waitMs = 0L,
+            preserveInitialStatus = true
+        )
     }
 
     /** 清除检测结果（用户关闭弹窗后调用） */

@@ -460,7 +460,7 @@ internal enum class ReplyActionSheetAction {
     REPLY,
     BLOCK_USER,
     REPORT,
-    TOGGLE_TOP,
+    CHECK_FRAUD,
     DELETE
 }
 
@@ -491,6 +491,9 @@ internal fun buildReplyActionSheetActions(
         if (canReport) {
             add(ReplyActionSheetAction.REPORT)
         }
+        if (canDelete) {
+            add(ReplyActionSheetAction.CHECK_FRAUD)
+        }
         if (!topActionLabel.isNullOrBlank()) {
             add(ReplyActionSheetAction.TOGGLE_TOP)
         }
@@ -510,8 +513,8 @@ private fun resolveReplyActionSheetLabel(
         ReplyActionSheetAction.COPY_USERNAME -> "复制用户名"
         ReplyActionSheetAction.QUERY_AUTHOR_HISTORY -> "查询作者历史"
         ReplyActionSheetAction.SAVE -> "保存评论"
-        ReplyActionSheetAction.SHARE -> "分享评论"
-        ReplyActionSheetAction.REPLY -> "回复"
+        ReplyActionSheetAction.CHECK_FRAUD -> "检测评论状态"
+        ReplyActionSheetAction.TOGGLE_TOP -> topActionLabel.orEmpty()
         ReplyActionSheetAction.BLOCK_USER -> "屏蔽用户"
         ReplyActionSheetAction.REPORT -> "举报"
         ReplyActionSheetAction.TOGGLE_TOP -> topActionLabel.orEmpty()
@@ -1105,6 +1108,7 @@ fun ReplyItemView(
     onReplyClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     onDeleteClick: (() -> Unit)? = null,
+    onCheckFraudClick: (() -> Unit)? = null,
     onReportClick: ((Int) -> Unit)? = null,
     canToggleTop: Boolean = false,
     onToggleTopClick: (() -> Unit)? = null,
@@ -1337,6 +1341,9 @@ fun ReplyItemView(
             },
             onToggleTop = {
                 onToggleTopClick?.invoke()
+            },
+            onCheckFraud = {
+                onCheckFraudClick?.invoke()
             },
             onDelete = {
                 onDeleteClick?.invoke()
@@ -2634,6 +2641,7 @@ internal fun ReplyActionSheet(
     onReply: () -> Unit,
     onBlockUser: () -> Unit = {},
     onReport: () -> Unit,
+    onCheckFraud: () -> Unit = {},
     onToggleTop: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -2680,6 +2688,7 @@ internal fun ReplyActionSheet(
                             ReplyActionSheetAction.REPLY -> onReply()
                             ReplyActionSheetAction.BLOCK_USER -> onBlockUser()
                             ReplyActionSheetAction.REPORT -> onReport()
+                            ReplyActionSheetAction.CHECK_FRAUD -> onCheckFraud()
                             ReplyActionSheetAction.TOGGLE_TOP -> onToggleTop()
                             ReplyActionSheetAction.DELETE -> onDelete()
                         }

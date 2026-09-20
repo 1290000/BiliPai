@@ -927,6 +927,7 @@ internal fun TabletSecondaryContent(
                             onConversationBack = commentActions.closeSubReplyConversation,
                             onDissolveStart = commentActions.startSubDissolve,
                             onDeleteComment = commentActions.deleteSubComment,
+                            onCheckCommentFraud = commentActions.checkCommentFraud,
                             onCommentLike = commentActions.likeComment,
                             onCommentHate = commentActions.hateComment,
                             onReportComment = commentActions.reportComment,
@@ -1006,6 +1007,9 @@ internal fun TabletSecondaryContent(
                                         onToggleTopClick = { commentActions.toggleTopComment(reply) },
                                         onDeleteClick = if (commentState.currentMid > 0 && reply.mid == commentState.currentMid) {
                                             { commentActions.startDissolve(reply.rpid) }
+                                        } else null,
+                                        onCheckFraudClick = if (commentState.currentMid > 0 && reply.mid == commentState.currentMid) {
+                                            { commentActions.checkCommentFraud(reply) }
                                         } else null,
                                         onUrlClick = openCommentUrl,
                                         onAvatarClick = { mid -> mid.toLongOrNull()?.let { onUpClick(it) } }
