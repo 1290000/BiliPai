@@ -25,7 +25,6 @@ import com.android.purebilibili.feature.video.playback.audio.AudioQualityOption
 import com.android.purebilibili.feature.video.playback.audio.resolveAudioStreamSelection
 import com.android.purebilibili.feature.video.playback.audio.resolveRequestedAudioQuality
 import com.android.purebilibili.feature.video.playback.policy.shouldRefreshPremiumAudioForPlaybackSpeedChange
-import com.android.purebilibili.feature.video.playback.dash.buildLocalDashManifest
 import com.android.purebilibili.feature.video.usecase.VideoInteractionUseCase
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
 import kotlinx.coroutines.Dispatchers
@@ -440,43 +439,6 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
      */
     private fun resolveBangumiPreferredCodec(isCourse: Boolean = isCourseMode): String =
         if (isCourse) "avc1" else if (MediaUtils.isHevcSupported()) "hev1" else "avc1"
-
-    private fun buildBangumiDashManifest(
-        dash: Dash,
-        video: DashVideo?,
-        videoUrl: String?,
-        audio: DashAudio?,
-        audioUrl: String?,
-        durationMs: Long
-    ): String? {
-        val resolvedVideoUrl = videoUrl?.takeIf { it.isNotBlank() } ?: return null
-        val videoSegmentBase = video?.segmentBase ?: return null
-        if (videoSegmentBase.initialization.isNullOrBlank() || videoSegmentBase.indexRange.isNullOrBlank()) {
-            return null
-        }
-        if (!audioUrl.isNullOrBlank()) {
-            val audioSegmentBase = audio?.segmentBase ?: return null
-            if (audioSegmentBase.initialization.isNullOrBlank() || audioSegmentBase.indexRange.isNullOrBlank()) {
-                return null
-            }
-        }
-
-        val manifestVideo = video.copy(
-            baseUrl = resolvedVideoUrl,
-            backupUrl = emptyList()
-        )
-        val manifestAudio = if (!audioUrl.isNullOrBlank() && audio != null) {
-            listOf(audio.copy(baseUrl = audioUrl, backupUrl = emptyList()))
-        } else {
-            emptyList()
-        }
-        return buildLocalDashManifest(
-            durationMs = durationMs.coerceAtLeast(0L),
-            minBufferTimeMs = (dash.minBufferTime * 1000f).toLong().coerceAtLeast(1_500L),
-            videoTracks = listOf(manifestVideo),
-            audioTracks = manifestAudio
-        )
-    }
 
     /**
      * 番剧首次加载的请求画质：会员且设备支持 HDR/HEVC 时直接上探 HDR 档，
