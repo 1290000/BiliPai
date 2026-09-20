@@ -463,6 +463,7 @@ internal fun VideoInlineSubReplyDetailContent(
         currentMid = commentState.currentMid,
         onDissolveStart = onDissolveStart,
         onDeleteComment = onDeleteComment,
+        onCheckCommentFraud = onCheckCommentFraud,
         onCommentLike = onCommentLike,
         onCommentHate = onCommentHate,
         onReportComment = onReportComment,
@@ -503,6 +504,7 @@ internal fun SubReplyDetailContent(
     currentMid: Long = 0,
     onDissolveStart: ((Long) -> Unit)? = null,
     onDeleteComment: ((Long) -> Unit)? = null,
+    onCheckCommentFraud: ((ReplyItem) -> Unit)? = null,
     onCommentLike: ((Long) -> Unit)? = null,
     onCommentHate: ((Long) -> Unit)? = null,
     onReportComment: ((Long, Int) -> Unit)? = null,
@@ -755,6 +757,7 @@ internal fun SubReplyDetailContent(
                             showUpFlag = unusedShowUpFlag,
                             onTimestampClick = onTimestampClick,
                             onImagePreview = onImagePreview,
+                            onReplyClick = { onReplyClick?.invoke(rootReply) },
                             onDeleteClick = if (currentMid > 0 && rootReply.mid == currentMid) {
                                 { onDeleteComment?.invoke(rootReply.rpid) }
                             } else null,
@@ -1139,6 +1142,7 @@ private fun SubReplyDetailItem(
             onBlockUser = {
                 blockReplyUser()
             },
+            onReport = { showReportDialog = true },
             onToggleTop = {},
             onCheckFraud = {
                 onCheckFraudClick?.invoke()

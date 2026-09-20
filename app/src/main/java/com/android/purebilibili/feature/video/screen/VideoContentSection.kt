@@ -607,6 +607,7 @@ internal fun VideoContentSection(
     val onCommentUrlClick = commentActions.onCommentUrlClick
     val onDescriptionUrlClick = commentActions.onDescriptionUrlClick
     val onSearchKeywordClick = commentActions.onSearchKeywordClick
+    val onReportComment = commentActions.onReportComment
     val onToggleTopComment = commentActions.onToggleTopComment
     val onCheckCommentFraud = commentActions.onCheckCommentFraud
     val onRetryAiSummary = noteActions.onRetryAiSummary
@@ -1410,6 +1411,7 @@ internal fun VideoCommentTab(
     likedComments: Set<Long>,
     hatedComments: Set<Long>,
     onCommentUrlClick: (String) -> Unit,
+    onReportComment: (Long, Int) -> Unit,
     onToggleTopComment: (ReplyItem) -> Unit,
     onCheckCommentFraud: (ReplyItem) -> Unit,
     showIdentityDecorations: Boolean,
@@ -1712,6 +1714,7 @@ internal fun LandscapeCommentPanel(
                         onCommentUrlClick = onCommentUrlClick,
                         onReportComment = onReportComment,
                         onToggleTopComment = onToggleTopComment,
+                        onCheckCommentFraud = onCheckCommentFraud,
                         showIdentityDecorations = showIdentityDecorations,
                         lightweightCommentRendering = false,
                     )
