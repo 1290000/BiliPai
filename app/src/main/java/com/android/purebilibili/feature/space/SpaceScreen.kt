@@ -3075,10 +3075,10 @@ private fun SpaceSecondarySwitchRow(
             viewportWidthDp = maxWidth.value.roundToInt(),
             containerHorizontalPaddingDp = containerHorizontalPaddingDp
         )
-        // Keep the viewport-derived cap even when the rail scrolls. The preferred
-        // width is estimated from the longest title, so restoring it here would
-        // make every category as wide as that one outlier and needlessly lengthen
-        // the whole rail. Individual long labels already ellipsize inside the slot.
+        // Keep the viewport-derived cap for the liquid rail. The preferred width
+        // is estimated from the longest title, so restoring it here would make
+        // every category as wide as that one outlier and needlessly lengthen the
+        // whole rail. The native Miuix rail below sizes each item independently.
         val itemWidth = itemWidthDp.dp
         val viewportWidthPx = with(density) { maxWidth.toPx() }
         val itemWidthPx = with(density) { itemWidth.toPx() }
@@ -3119,6 +3119,7 @@ private fun SpaceSecondarySwitchRow(
                     }
                 },
                 tapPressRefractionEnabled = !useScrollableRail,
+                allowNativeLabelOverflow = true,
                 modifier = if (useScrollableRail) {
                     Modifier
                         .liquidDockViewport()
@@ -3140,11 +3141,12 @@ private fun SpaceSecondarySwitchRow(
                 scrollable = shouldScrollSpaceSecondarySwitchForNonGlass(items.size),
                 minTabWidth = resolveSpaceSecondarySwitchNonGlassMinTabWidthDp().dp,
                 compactMiuixWhenTwoOptions = false,
-                // Let the shared renderer derive a readable minimum from the longest
-                // category title; only titles that exceed that estimate are ellipsized.
+                // Let the shared renderer size each Miuix item from its own label;
+                // long labels remain fully visible inside the horizontal rail.
                 allowLabelOverflow = true,
                 miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
                 contentSizedMiuixNonGlassItems = true,
+                contentSizedMiuixNonGlassMaxItemWidth = Dp.Infinity,
             )
         }
     }

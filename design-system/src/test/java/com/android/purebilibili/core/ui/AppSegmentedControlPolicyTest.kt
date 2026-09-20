@@ -137,6 +137,18 @@ class AppSegmentedControlPolicyTest {
     }
 
     @Test
+    fun `Miuix non glass content tabs can keep long labels complete`() {
+        assertEquals(
+            listOf(48.dp, 424.dp),
+            resolveMiuixNonGlassContentTabItemWidths(
+                labelWidths = listOf(20.dp, 400.dp),
+                minTabWidth = 48.dp,
+                maxTabWidth = androidx.compose.ui.unit.Dp.Infinity,
+            ),
+        )
+    }
+
+    @Test
     fun `equal longest label mode is isolated to Miuix non glass tabs`() {
         assertTrue(
             shouldEqualizeMiuixNonGlassTabItems(
