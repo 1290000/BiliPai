@@ -1606,6 +1606,7 @@ internal fun LandscapeCommentPanel(
     onCommentUrlClick: (String) -> Unit,
     onReportComment: (Long, Int) -> Unit,
     onToggleTopComment: (ReplyItem) -> Unit,
+    onCheckCommentFraud: (ReplyItem) -> Unit = {},
     onTimestampClick: ((Long) -> Unit)?,
     onDismiss: () -> Unit,
     onSwitchSide: () -> Unit,
