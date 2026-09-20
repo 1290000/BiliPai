@@ -32,6 +32,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -40,6 +43,8 @@ import com.android.purebilibili.core.ui.AppPopupSurface
 import com.android.purebilibili.core.ui.AppPopupSurfaceType
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
+import com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.appContentDialogWidth
 import com.android.purebilibili.core.ui.resolveAppContentDialogLayoutPolicy
 import com.android.purebilibili.core.ui.resolveAppContentDialogProperties
@@ -84,41 +89,104 @@ fun <T> AppSingleChoicePreference(
 ) {
     if (presentation == AppSingleChoicePresentation.WINDOW_POPUP) {
         val selectedIndex = options.indexOfFirst { it.value == selectedValue }.coerceAtLeast(0)
-        val dropdownItems = remember(options) {
-            options.map { option ->
-                DropdownItem(
-                    text = option.label,
-                    summary = option.description,
-                )
-            }
-        }
-        WindowSpinnerPreference(
-            items = dropdownItems,
-            selectedIndex = selectedIndex,
-            title = title,
-            summary = subtitle,
-            enabled = enabled,
-            modifier = modifier.alpha(if (enabled) 1f else 0.6f),
-            startAction = icon?.let { imageVector ->
-                {
-                    Icon(
-                        imageVector = imageVector,
-                        contentDescription = null,
-                        // 与其他设置条目一致：MD3 官方推荐预设下为 onSurfaceVariant 单色，
-                        // 其余预设保留多彩语义色（MIUIX 等）。
-                        tint = rememberAdaptivePreferenceIconTint(iconTint),
-                        modifier = Modifier.size(24.dp),
+        val selectedLabel = options.firstOrNull { it.value == selectedValue }?.label
+        val liquidPopupEnabled = LocalAppThemeConfig.current.liquidGlassEnabled &&
+            LocalAppPopupSurfaceRenderer.current != null
+
+        if (!liquidPopupEnabled) {
+            val dropdownItems = remember(options) {
+                options.map { option ->
+                    DropdownItem(
+                        text = option.label,
+                        summary = option.description,
                     )
                 }
-            },
-            onSelectedIndexChange = { index ->
-                options.getOrNull(index)?.value?.let { requestedValue ->
-                    if (shouldDispatchAppChoiceSelection(selectedValue, requestedValue)) {
-                        onValueChange(requestedValue)
+            }
+            WindowSpinnerPreference(
+                items = dropdownItems,
+                selectedIndex = selectedIndex,
+                title = title,
+                summary = subtitle,
+                enabled = enabled,
+                modifier = modifier.alpha(if (enabled) 1f else 0.6f),
+                startAction = icon?.let { imageVector ->
+                    {
+                        Icon(
+                            imageVector = imageVector,
+                            contentDescription = null,
+                            // 与其他设置条目一致：MD3 官方推荐预设下为 onSurfaceVariant 单色，
+                            // 其余预设保留多彩语义色（MIUIX 等）。
+                            tint = rememberAdaptivePreferenceIconTint(iconTint),
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                },
+                onSelectedIndexChange = { index ->
+                    options.getOrNull(index)?.value?.let { requestedValue ->
+                        if (shouldDispatchAppChoiceSelection(selectedValue, requestedValue)) {
+                            onValueChange(requestedValue)
+                        }
+                    }
+                },
+            )
+            return
+        }
+
+        var menuExpanded by remember { mutableStateOf(false) }
+        Box(modifier = modifier.alpha(if (enabled) 1f else 0.6f)) {
+            AppPreference(
+                icon = icon,
+                title = title,
+                subtitle = subtitle,
+                value = selectedLabel,
+                onClick = if (enabled) ({ menuExpanded = true }) else null,
+                iconTint = iconTint,
+                showChevron = enabled,
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+            ) {
+                AppDropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    options.forEach { option ->
+                        val isSelected = option.value == selectedValue
+                        AppDropdownMenuItem(
+                            text = {
+                                Column {
+                                    AppText(option.label)
+                                    if (!option.description.isNullOrBlank()) {
+                                        AppText(
+                                            text = option.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            } else null,
+                            onClick = {
+                                menuExpanded = false
+                                if (shouldDispatchAppChoiceSelection(selectedValue, option.value)) {
+                                    onValueChange(option.value)
+                                }
+                            },
+                        )
                     }
                 }
-            },
-        )
+            }
+        }
         return
     }
 

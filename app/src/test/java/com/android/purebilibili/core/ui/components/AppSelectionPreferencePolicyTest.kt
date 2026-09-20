@@ -67,7 +67,7 @@ class AppSelectionPreferencePolicyTest {
     }
 
     @Test
-    fun singleChoicePreference_usesMiuixWindowSpinnerForWindowPopupWithoutOverride() {
+    fun singleChoicePreference_usesMiuixWindowSpinnerOrLiquidDropdownForWindowPopup() {
         val source = listOf(
             java.io.File(
                 "design-system/src/main/java/com/android/purebilibili/core/ui/components/AppSelectionPreferenceComponents.kt"
@@ -85,7 +85,9 @@ class AppSelectionPreferencePolicyTest {
         val section = source.substring(start, end)
 
         assertTrue(section.contains("if (presentation == AppSingleChoicePresentation.WINDOW_POPUP)"))
+        assertTrue(section.contains("val liquidPopupEnabled = LocalAppThemeConfig.current.liquidGlassEnabled"))
         assertTrue(section.contains("WindowSpinnerPreference("))
-        assertFalse(section.contains("resolvedPresentation"))
+        assertTrue(section.contains("AppDropdownMenu("))
+        assertFalse(section.contains("resolvedPresentation = if (LocalAppThemeConfig.current.liquidGlassEnabled"))
     }
 }
