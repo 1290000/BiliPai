@@ -2708,6 +2708,15 @@ object NetworkModule {
         appSessionCookieJar.clear()
     }
 
+    /**
+     * 后台或内存整理时主动释放空闲的 TCP / TLS 连接与底层 Socket 缓冲区。
+     */
+    fun evictIdleConnections() {
+        runCatching {
+            okHttpClient.connectionPool.evictAll()
+        }
+    }
+
     @Synchronized
     fun clearPlaybackAccountClient() {
         playbackAccountKey = null

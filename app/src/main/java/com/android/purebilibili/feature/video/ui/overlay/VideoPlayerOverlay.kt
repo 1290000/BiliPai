@@ -322,7 +322,7 @@ internal fun resolveInlineVideoOverlayProgressPollingIntervalMs(
     return when {
         highFrequencyProgressActive -> 100L
         controlsVisible && isPlaying -> 200L
-        else -> 500L
+        else -> 1000L
     }
 }
 

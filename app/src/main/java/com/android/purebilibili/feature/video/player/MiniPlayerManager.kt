@@ -866,7 +866,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
         )
         if (shouldPauseOnBackground) {
             currentPlayer.pause()
-            Logger.d(TAG, "🔋 后台轻量模式：未播放，先暂停缓冲，延迟拆视频链路")
+            Logger.d(TAG, "🔋 后台轻量模式：未播放，先暂停缓冲")
         } else if (shouldKeepBackgroundAudio) {
             Logger.d(TAG, "🔋 后台轻量模式：先保留视频链路，延迟切到仅音频")
         }
@@ -876,7 +876,19 @@ class MiniPlayerManager private constructor(private val context: Context) :
         }
 
         pendingHeavyBackgroundVideoOptimization = true
-        // 短后台不立刻关视频轨/清 surface/清弹幕，降低回前台固定顿一下的概率。
+        // 优化：未处于播放状态且无后台音频意图时，直接拆解视频链路并释放 Surface/解码器，无需等待 15 秒延迟
+        if (shouldPauseOnBackground && !shouldKeepBackgroundAudio) {
+            Logger.d(TAG, "🔋 后台即时优化：未在播放且无后台音频，立即拆除视频链路与释放闲置资源")
+            applyHeavyBackgroundVideoOptimization(
+                currentPlayer = currentPlayer,
+                shouldKeepBackgroundAudio = false,
+                wasPlaybackActive = foregroundResumeIntent,
+                requestIdlePlaybackRelease = true
+            )
+            return
+        }
+
+        // 短后台不立刻关视频轨/清 surface/清弹幕，降低回前台固定顿一下的概率（仅针对活跃后台音频）。
         backgroundHeavyOptimizationJob = scope.launch {
             delay(SHORT_BACKGROUND_LIGHT_MODE_MS)
             val elapsedMs = (SystemClock.elapsedRealtime() - enteredBackgroundAtMs).coerceAtLeast(0L)

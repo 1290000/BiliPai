@@ -69,6 +69,7 @@ object VideoCardCoverColorStore {
             }
 
             val palette = Palette.from(safeBitmap)
+                .resizeBitmapArea(48 * 48)
                 .maximumColorCount(16)
                 .clearFilters()
                 .generate()

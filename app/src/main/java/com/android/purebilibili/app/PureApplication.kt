@@ -413,14 +413,11 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
         if (plan.imageCacheTrimLevel != null) {
             _imageLoader?.memoryCache?.apply {
                 when {
-                    plan.imageCacheTrimLevel >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> clear()
+                    plan.clearImageMemoryCache || plan.imageCacheTrimLevel >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> clear()
                     plan.imageCacheTrimLevel >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW &&
                         plan.imageCacheTrimLevel != ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ->
                         trimToSize(size / 2)
                 }
-            }
-            if (plan.requestGcHint) {
-                System.gc()
             }
             when {
                 plan.clearImageMemoryCache -> {
@@ -442,6 +439,28 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
                     requestIdlePlaybackRelease = plan.requestIdlePlaybackRelease
                 )
         }
+
+        // 联动清理全局静态与单例缓存，降低后台 PSS
+        if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
+            level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+            level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
+        ) {
+            com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.clear()
+            com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clear()
+            com.android.purebilibili.core.cache.PlayUrlCache.clear()
+            com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
+        }
+
+        // 当 UI 不可见或处于后台内存压力下，且没有活跃的后台音频播放时，释放 OkHttp 空闲连接与 socket 缓冲
+        if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
+            level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
+        ) {
+            val miniPlayer = com.android.purebilibili.feature.video.player.MiniPlayerManager.getInstanceOrNull()
+            val isAudioPlaying = miniPlayer?.let { it.isActive && it.player?.isPlaying == true } ?: false
+            if (!isAudioPlaying) {
+                NetworkModule.evictIdleConnections()
+            }
+        }
     }
     
     override fun onLowMemory() {
@@ -459,6 +478,11 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
                     requestIdlePlaybackRelease = plan.requestIdlePlaybackRelease
                 )
         }
+        com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.clear()
+        com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clear()
+        com.android.purebilibili.core.cache.PlayUrlCache.clear()
+        com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
+        NetworkModule.evictIdleConnections()
         Logger.d(PureApplicationRuntimeConfig.TAG, "🚨 onLowMemory, cleared all caches")
     }
 
