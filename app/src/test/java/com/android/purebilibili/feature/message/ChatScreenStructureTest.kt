@@ -37,6 +37,11 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("ChatWallpaperHost"))
         assertTrue(source.contains("HomeWallpaperBackdrop("))
         assertTrue(source.contains("topBarSurfaceColor = AppSurfaceTokens.chromeBackground()"))
+        assertTrue(source.contains("chromeBackdropSource = chatChromeSource"))
+        assertTrue(source.contains("externalHazeState = chatHazeState"))
+        assertTrue(source.contains("rememberChromeBackdropSource()"))
+        assertTrue(source.contains("hazeSourceCompat"))
+        assertTrue(source.contains("append(\"弹幕\")"))
         assertTrue(source.contains("blurContentReady = !uiState.isLoading"))
         assertTrue(source.contains("containerColor = Color.Transparent"))
         assertTrue(source.contains("BottomBarMatchedReusableLiquidDock("))
@@ -60,6 +65,16 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("messageGlassContainer("))
         assertTrue(source.contains("AppShapes.borderedContainer(surfaceSpec.cornerLevel)"))
         assertFalse(source.contains("AppSurface("))
+    }
+
+    @Test
+    fun videoPreviewLoadsPlaybackAndDanmakuStats() {
+        val source = loadSource(
+            "app/src/main/java/com/android/purebilibili/feature/message/ChatViewModel.kt"
+        )
+        assertTrue(source.contains("val viewCount: Long"))
+        assertTrue(source.contains("val danmakuCount: Long"))
+        assertTrue(source.contains("danmakuCount = viewInfo.stat.danmaku.toLong()"))
     }
 
     @Test

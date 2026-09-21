@@ -1,5 +1,7 @@
 // 聊天详情页面
 package com.android.purebilibili.feature.message
+import android.os.Build
+
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppText
 
@@ -96,9 +98,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.MediaContrastPalette
+import com.android.purebilibili.core.ui.blur.ChromeBackdropSource
+import com.android.purebilibili.core.ui.blur.hazeSourceCompat
+import com.android.purebilibili.core.ui.blur.rememberChromeBackdropSource
+import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
+import com.android.purebilibili.core.ui.blur.shouldAllowRenderEffectBackedHazeEffect
+import com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import dev.chrisbanes.haze.HazeState
 
 private const val MESSAGE_LARGE_VIDEO_COVER_ASPECT_RATIO = 4f / 3f
 
@@ -134,16 +143,43 @@ fun ChatScreen(
         }
     }
 
-    val chatInputBackdrop = if (LocalAppThemeConfig.current.liquidGlassEnabled) {
+    val chatThemeConfig = LocalAppThemeConfig.current
+    val lowBlurBudget = isLowBlurBudgetForced()
+    val chatChromeSource = if (
+        chatThemeConfig.progressiveTopBlurEnabled &&
+            !chatThemeConfig.headerBlurEnabled &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !lowBlurBudget
+    ) {
+        rememberChromeBackdropSource()
+    } else {
+        null
+    }
+    val chatHazeState = if (
+        chatThemeConfig.headerBlurEnabled &&
+            !lowBlurBudget &&
+            shouldAllowRenderEffectBackedHazeEffect(Build.VERSION.SDK_INT)
+    ) {
+        rememberRecoverableHazeState(initialBlurEnabled = true)
+    } else {
+        null
+    }
+
+    val chatInputBackdrop = if (chatThemeConfig.liquidGlassEnabled) {
         rememberLayerBackdrop()
     } else {
         null
     }
     
-    ChatWallpaperHost {
+    ChatWallpaperHost(
+        chromeBackdropSource = chatChromeSource,
+        hazeState = chatHazeState,
+    ) {
     AppScaffold(
         containerColor = Color.Transparent,
         topBarSurfaceColor = AppSurfaceTokens.chromeBackground(),
+        chromeBackdropSource = chatChromeSource,
+        externalHazeState = chatHazeState,
         blurContentReady = !uiState.isLoading,
         topBar = {
             AppTopBar(
@@ -377,7 +413,11 @@ fun ChatScreen(
  * same wallpaper that HomeScreen uses.
  */
 @Composable
-private fun ChatWallpaperHost(content: @Composable () -> Unit) {
+private fun ChatWallpaperHost(
+    chromeBackdropSource: ChromeBackdropSource?,
+    hazeState: HazeState?,
+    content: @Composable () -> Unit,
+) {
     val context = LocalContext.current
     val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context)
         .collectAsStateWithLifecycle(initialValue = "")
@@ -421,13 +461,20 @@ private fun ChatWallpaperHost(content: @Composable () -> Unit) {
     val wallpaperVisible = wallpaperAppearance.visible && wallpaperUri.isNotBlank()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HomeWallpaperBackdrop(
-            wallpaperUri = wallpaperUri,
-            appearance = wallpaperAppearance,
-            baseColor = baseColor,
-            isDataSaverActive = isDataSaverActive,
-            modifier = Modifier.fillMaxSize(),
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(chromeBackdropSource?.modifier ?: Modifier)
+                .then(hazeState?.let { Modifier.hazeSourceCompat(it) } ?: Modifier),
+        ) {
+            HomeWallpaperBackdrop(
+                wallpaperUri = wallpaperUri,
+                appearance = wallpaperAppearance,
+                baseColor = baseColor,
+                isDataSaverActive = isDataSaverActive,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         CompositionLocalProvider(
             LocalGlobalWallpaperBackdropVisible provides wallpaperVisible,
             LocalWallpaperPalette provides wallpaperPalette,
@@ -1084,6 +1131,11 @@ fun VideoLinkPreviewCard(
             if (isNotEmpty()) append(" · ")
             append(FormatUtils.formatStat(preview.viewCount))
             append("播放")
+        }
+        if (preview.danmakuCount > 0) {
+            if (isNotEmpty()) append(" · ")
+            append(FormatUtils.formatStat(preview.danmakuCount))
+            append("弹幕")
         }
     }
     MessageLargeVideoCard(
