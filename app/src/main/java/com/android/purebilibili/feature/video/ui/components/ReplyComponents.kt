@@ -2510,17 +2510,21 @@ internal fun FanGroupDecorationBadge(
             ) {
                 AppText(
                     text = "NO.",
-                    fontSize = 7.sp,
-                    lineHeight = 8.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 7.sp,
+                        lineHeight = 8.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
                     color = textColor,
                     maxLines = 1
                 )
                 AppText(
                     text = fanNumberText,
-                    fontSize = 8.sp,
-                    lineHeight = 9.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 8.sp,
+                        lineHeight = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
                     color = textColor,
                     maxLines = 1
                 )
