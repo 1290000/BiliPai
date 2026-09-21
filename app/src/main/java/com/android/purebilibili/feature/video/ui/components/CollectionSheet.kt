@@ -128,7 +128,7 @@ fun CollectionSheet(
                     collectionId = collectionSubscriptionId,
                     currentBvid = currentBvid,
                     currentAid = currentAid,
-                    fontSize = 13.sp
+                    fontSize = MaterialTheme.typography.labelMedium.fontSize
                 )
 
                 AppIconButton(onClick = onDismiss) {
