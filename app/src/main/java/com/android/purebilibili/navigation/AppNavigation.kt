@@ -724,7 +724,8 @@ fun AppNavigation(
                 effectMode = effectiveHomeSettings.homeWallpaperEffectMode,
                 isDarkTheme = !isLightBackground,
                 isDataSaverActive = isDataSaverActiveForGlobalWallpaper,
-                globalWallpaper = true
+                // Chat uses the same presence, blur and scrim treatment as HomeScreen.
+                globalWallpaper = false
             )
         }
         val bottomBarItemColors = appNavigationSettings.bottomBarItemColors
