@@ -50,6 +50,7 @@ import com.android.purebilibili.feature.audio.screen.AudioNowPlayingBarState
 import com.android.purebilibili.feature.audio.screen.ListenVideoRoute
 import com.android.purebilibili.feature.audio.screen.isAudioNowPlayingPlayerDestination
 import com.android.purebilibili.feature.audio.screen.resolveAudioNowPlayingVisible
+import com.android.purebilibili.feature.home.components.LinkedDockNowPlayingSlot
 import com.android.purebilibili.feature.home.components.LinkedDockPhase
 import com.android.purebilibili.feature.home.components.resolveLinkedDockPhaseOnAudioChange
 import com.android.purebilibili.feature.home.HomeVideoClickRequest
@@ -1795,6 +1796,8 @@ fun AppNavigation(
             LocalBottomBarVisible provides (finalBottomBarVisible && !driveBottomBarByProgress),
             LocalBottomBarContentPadding provides bottomBarContentPadding,
             LocalGlobalWallpaperBackdropVisible provides exposeGlobalHomeWallpaperChrome,
+            com.android.purebilibili.feature.home.components.cards.LocalWallpaperPalette provides
+                wallpaperPalette,
             LocalPredictiveBackGestureEnabled provides predictiveBackEnabled,
             com.android.purebilibili.core.ui.LocalUpBadgeVisibility provides
                 com.android.purebilibili.core.ui.UpBadgeVisibility(
@@ -4272,7 +4275,7 @@ fun AppNavigation(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                        val dockAudioContent: (@Composable (Modifier, Float, Float, Float, (() -> Unit)?, Boolean) -> Unit)? =
+                        val dockAudioContent: LinkedDockNowPlayingSlot? =
                             if (showAudioNowPlayingInDock && audioNowPlayingItem != null) {
                                 { audioModifier, dockMergeProgress, iconOnlyProgress, surfaceMergeProgress,
                                     compactClick, layoutStable ->
@@ -4349,7 +4352,7 @@ fun AppNavigation(
                                 }
                             } else null
                         if (!isBottomBarFloating) {
-                            dockAudioContent?.invoke(Modifier, 0f, 0f, 0f, null, true)
+                            dockAudioContent?.invoke(Modifier, { 0f }, { 0f }, { 0f }, null, true)
                         }
                         if (isBottomBarFloating) {
                             val isBookPosture = appWindowAdaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Book
