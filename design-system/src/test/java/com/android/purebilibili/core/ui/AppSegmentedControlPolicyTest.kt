@@ -162,6 +162,7 @@ class AppSegmentedControlPolicyTest {
         val source = loadSource("src/main/java/com/android/purebilibili/core/ui/components/AppSegmentedControl.kt")
         val materialRenderer = source.substringAfter("AppSegmentedRenderer.MATERIAL3 -> AppMaterial3TabRow(")
         assertTrue(materialRenderer.contains("minTabWidth = resolveMiuixTabMinWidth("))
+        assertTrue(materialRenderer.contains("contentSizedItems = useContentSizedMiuixItems || effectiveScrollable"))
         val renderer = source.substringAfter("AppSegmentedRenderer.MIUIX -> AppMiuixTabRow(")
         assertTrue(renderer.contains("minTabWidth = resolveMiuixTabMinWidth("))
         assertTrue(renderer.contains("contentSizedItems = useContentSizedMiuixItems"))

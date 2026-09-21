@@ -414,7 +414,7 @@ fun <T> AppNativeTabRow(
             minTabWidth = resolveMiuixTabMinWidth(
                 requestedMinWidth = minTabWidth,
                 sharedMinWidth = targetTabWidth,
-                contentSizedItems = useContentSizedMiuixItems,
+                contentSizedItems = useContentSizedMiuixItems || effectiveScrollable,
             ),
             allowLabelOverflow = allowLabelOverflow,
             indicatorPositionProvider = indicatorPositionProvider,

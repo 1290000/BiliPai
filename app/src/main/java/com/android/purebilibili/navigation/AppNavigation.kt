@@ -606,6 +606,16 @@ fun AppNavigation(
                 splashWallpaperUri = splashWallpaperUri
             )
         }
+        val wallpaperPalette by com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore
+            .currentPalette
+            .collectAsStateWithLifecycle()
+        LaunchedEffect(globalHomeWallpaperUri) {
+            com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.loadWallpaperPalette(
+                context = context,
+                uri = globalHomeWallpaperUri,
+                scope = this,
+            )
+        }
         val backgroundColor = MaterialTheme.colorScheme.background
         val isLightBackground = remember(backgroundColor) { backgroundColor.luminance() > 0.5f }
         val isDataSaverActiveForGlobalWallpaper = remember(context) {
