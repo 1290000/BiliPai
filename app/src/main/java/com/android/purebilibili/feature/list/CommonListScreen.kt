@@ -290,6 +290,10 @@ fun CommonListScreen(
     val historyViewModel = viewModel as? HistoryViewModel
     val likedVideosViewModel = viewModel as? LikedVideosViewModel
     val seasonSeriesDetailViewModel = viewModel as? SeasonSeriesDetailViewModel
+    val likedVideosHasMore by likedVideosViewModel?.hasMoreState?.collectAsStateWithLifecycle()
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val likedVideosIsLoadingMore by likedVideosViewModel?.isLoadingMoreState?.collectAsStateWithLifecycle()
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val historyDeleteSession by historyViewModel?.deleteSession?.collectAsStateWithLifecycle()
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<HistoryDeleteSession?>(null) }
     val isHistoryPaused by historyViewModel?.isHistoryPausedState?.collectAsStateWithLifecycle()
@@ -1320,9 +1324,9 @@ fun CommonListScreen(
                             } else {
                                 null
                             },
-                            searchPaginationFallbackEnabled = false,
-                            hasMoreSearchResults = false,
-                            isLoadingMoreSearchResults = false,
+                            searchPaginationFallbackEnabled = likedVideosViewModel != null,
+                            hasMoreSearchResults = likedVideosHasMore,
+                            isLoadingMoreSearchResults = likedVideosIsLoadingMore,
                             historyDeleteSession = null,
                             historyBatchMode = false,
                             historySelectedKeys = emptySet(),

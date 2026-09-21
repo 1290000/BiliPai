@@ -106,8 +106,19 @@ class LikedVideosViewModel(
                 val page = com.android.purebilibili.data.repository.LikedVideosRepository
                     .getLikedVideos(mid = mid, page = nextPage, pageSize = pageSize)
                     .getOrThrow()
-                val merged = (_uiState.value.items + page.items)
+                if (page.items.isEmpty()) {
+                    hasMore = false
+                    _hasMoreState.value = false
+                    return@launch
+                }
+                val currentItems = _uiState.value.items
+                val merged = (currentItems + page.items)
                     .distinctBy { item -> item.bvid.ifBlank { item.id.toString() } }
+                if (merged.size == currentItems.size) {
+                    hasMore = false
+                    _hasMoreState.value = false
+                    return@launch
+                }
                 currentPage = nextPage
                 hasMore = page.items.size >= pageSize &&
                     (page.total <= 0 || merged.size < page.total)
