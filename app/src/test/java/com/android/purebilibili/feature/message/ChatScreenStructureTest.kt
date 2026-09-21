@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class ChatScreenStructureTest {
 
     @Test
-    fun chatBubblesReuseCardGlassTintAndRelatedCoverMetrics() {
+    fun chatBubblesReuseLargeCardGlassTintAndRelatedCoverMetrics() {
         val source = loadSource(
             "app/src/main/java/com/android/purebilibili/feature/message/ChatScreen.kt"
         )
@@ -16,6 +16,9 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("rememberMessageGlassContentColors("))
         assertTrue(source.contains("HorizontalVideoCardFrame("))
         assertTrue(source.contains("MessageHorizontalVideoCard("))
+        assertTrue(source.contains("MessageLargeVideoCard("))
+        assertTrue(source.contains("MESSAGE_LARGE_VIDEO_COVER_ASPECT_RATIO = 4f / 3f"))
+        assertTrue(source.contains("textAlign = TextAlign.Center"))
         assertTrue(source.contains("feedContentTypography(FeedTitleHierarchy.Standard)"))
         assertTrue(source.contains("globalWallpaperAwareChromeColor("))
         assertFalse(source.contains(".height(100.dp)"))
