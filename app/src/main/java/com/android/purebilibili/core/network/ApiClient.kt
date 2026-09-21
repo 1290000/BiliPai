@@ -373,7 +373,9 @@ interface BilibiliApi {
 
     @GET("x/space/like/video")
     suspend fun getLikedVideos(
-        @Query("vmid") mid: Long
+        @Query("vmid") mid: Long,
+        @Query("pn") page: Int = 1,
+        @Query("ps") pageSize: Int = 20,
     ): LikedVideosResponse
 
     @GET("x/space/fav/season/list")

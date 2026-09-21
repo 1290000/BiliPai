@@ -285,9 +285,10 @@ fun CommonListScreen(
     val personalListColumns = columns
     val spacing = rememberResponsiveSpacing()
 
-    //  [修复] 分页支持：收藏 + 历史记录
+    //  [修复] 分页支持：收藏 + 历史记录 + 用户最近点赞
     val favoriteViewModel = viewModel as? FavoriteViewModel
     val historyViewModel = viewModel as? HistoryViewModel
+    val likedVideosViewModel = viewModel as? LikedVideosViewModel
     val seasonSeriesDetailViewModel = viewModel as? SeasonSeriesDetailViewModel
     val historyDeleteSession by historyViewModel?.deleteSession?.collectAsStateWithLifecycle()
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<HistoryDeleteSession?>(null) }
@@ -436,6 +437,7 @@ fun CommonListScreen(
         isSubscribedBrowse = isSubscribedBrowse,
         hasFavoriteViewModel = favoriteViewModel != null,
         hasHistoryViewModel = historyViewModel != null,
+        hasLikedVideosViewModel = likedVideosViewModel != null,
         hasSeasonSeriesDetailViewModel = seasonSeriesDetailViewModel != null
     )
     val shouldUseFavoritePlaybackQueue = shouldUseFavoriteExternalPlaylist(
@@ -1300,13 +1302,12 @@ fun CommonListScreen(
                                 }
                             },
                             onCollectionClick = onCollectionClick,
-                            onRetry = favoriteViewModel?.let { favoriteVm ->
-                                { favoriteVm.loadData() }
-                            },
+                            onRetry = { viewModel.loadData() },
                             onLoadMore = {
                                 when (loadMoreOwner) {
                                     CommonListLoadMoreOwner.FAVORITE -> favoriteViewModel?.loadMore()
                                     CommonListLoadMoreOwner.HISTORY -> historyViewModel?.loadMore()
+                                    CommonListLoadMoreOwner.LIKED_VIDEOS -> likedVideosViewModel?.loadMore()
                                     CommonListLoadMoreOwner.SEASON_SERIES_DETAIL -> seasonSeriesDetailViewModel?.loadMore()
                                     CommonListLoadMoreOwner.NONE -> Unit
                                 }

@@ -252,6 +252,7 @@ fun SpaceScreen(
     onDynamicDetailClick: (String) -> Unit = {},
     onArticleClick: (Long, String) -> Unit = { _, _ -> },
     onViewAllClick: (String, Long, Long, String, String) -> Unit = { _, _, _, _, _ -> },
+    onLikedVideosClick: ((Long, String) -> Unit)? = null,
     onMessageClick: (Long, String, String) -> Unit = { _, _, _ -> },
     onFollowingClick: (Long) -> Unit = {},
     onFansClick: (Long) -> Unit = {},
@@ -686,6 +687,7 @@ fun SpaceScreen(
                             onDynamicDetailClick = onDynamicDetailClick,
                             onArticleClick = onArticleClick,
                             onViewAllClick = onViewAllClick,
+                            onLikedVideosClick = onLikedVideosClick,
                             onMainTabSelected = viewModel::selectMainTab,
                             onContributionTabSelected = viewModel::selectContributionTab,
                             onCategorySelected = viewModel::selectCategory,
@@ -1049,6 +1051,7 @@ private fun SpaceContent(
     onDynamicDetailClick: (String) -> Unit,
     onArticleClick: (Long, String) -> Unit,
     onViewAllClick: (String, Long, Long, String, String) -> Unit,
+    onLikedVideosClick: ((Long, String) -> Unit)? = null,
     onMainTabSelected: (SpaceMainTab) -> Unit,
     onContributionTabSelected: (String) -> Unit,
     onCategorySelected: (Int) -> Unit,
@@ -1549,7 +1552,20 @@ private fun SpaceContent(
                         SpaceSectionHeader(
                             title = "最近点赞的视频",
                             count = state.homeLikeVideoCount.takeIf { it > 0 } ?: state.homeLikeVideos.size,
-                            actionLabel = null
+                            actionLabel = "查看全部",
+                            onActionClick = {
+                                if (onLikedVideosClick != null) {
+                                    onLikedVideosClick(state.userInfo.mid, state.userInfo.name)
+                                } else {
+                                    onViewAllClick(
+                                        "like",
+                                        0L,
+                                        state.userInfo.mid,
+                                        "最近点赞的视频",
+                                        state.userInfo.name
+                                    )
+                                }
+                            }
                         )
                     }
                     itemsIndexed(

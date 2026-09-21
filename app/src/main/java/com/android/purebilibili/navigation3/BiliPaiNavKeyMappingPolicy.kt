@@ -78,6 +78,11 @@ internal fun BiliPaiNavKey.toLegacyRoute(): String {
         BiliPaiNavKey.FavoriteSubscribed -> "favorite_subscribed"
         is BiliPaiNavKey.FavoriteSearch ->
             "favorite_search?query=${encodeRouteValue(query)}&scope=${scope.name}"
+        is BiliPaiNavKey.LikedVideos -> if (mid > 0L) {
+            ScreenRoutes.LikedVideos.createRoute(mid, ownerName)
+        } else {
+            ScreenRoutes.LikedVideos.route
+        }
         BiliPaiNavKey.LikedVideos -> ScreenRoutes.LikedVideos.route
         BiliPaiNavKey.WatchLater -> ScreenRoutes.WatchLater.route
         is BiliPaiNavKey.WatchLaterSearch -> "watch_later_search?query=${encodeRouteValue(query)}"
@@ -217,7 +222,15 @@ internal fun legacyRouteToBiliPaiNavKey(route: String?): BiliPaiNavKey {
                 .firstOrNull { it.name == query["scope"] }
                 ?: com.android.purebilibili.data.model.response.FavoriteSearchScope.CURRENT_FOLDER,
         )
-        normalized == ScreenRoutes.LikedVideos.route -> BiliPaiNavKey.LikedVideos
+        routeBase == ScreenRoutes.LikedVideos.route || normalized == ScreenRoutes.LikedVideos.route -> {
+            val mid = query["mid"]?.toLongOrNull() ?: 0L
+            val ownerName = query["ownerName"].orEmpty()
+            if (mid > 0L) {
+                BiliPaiNavKey.LikedVideos(mid = mid, ownerName = ownerName)
+            } else {
+                BiliPaiNavKey.LikedVideos
+            }
+        }
         normalized == ScreenRoutes.WatchLater.route -> BiliPaiNavKey.WatchLater
         routeBase == "watch_later_search" -> BiliPaiNavKey.WatchLaterSearch(query["query"].orEmpty())
         normalized == ScreenRoutes.Onboarding.route -> BiliPaiNavKey.Onboarding
@@ -400,6 +413,7 @@ internal fun isCardReturnTargetNavKey(key: BiliPaiNavKey): Boolean {
         BiliPaiNavKey.Favorite,
         BiliPaiNavKey.FavoriteSubscribed,
         is BiliPaiNavKey.FavoriteSearch,
+        is BiliPaiNavKey.LikedVideos,
         BiliPaiNavKey.LikedVideos,
         BiliPaiNavKey.WatchLater,
         is BiliPaiNavKey.WatchLaterSearch,

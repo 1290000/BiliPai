@@ -344,6 +344,19 @@ class SpaceScreenStructureTest {
         assertTrue(source.contains("shouldShowScrollToTop("))
     }
 
+    @Test
+    fun `space recent liked videos section provides view all action to open user liked list`() {
+        val source = loadSource("app/src/main/java/com/android/purebilibili/feature/space/SpaceScreen.kt")
+        val likeSection = source.substringAfter("state.homeLikeVideos.isNotEmpty()")
+            .substringBefore("itemsIndexed(")
+
+        assertTrue(likeSection.contains("title = \"最近点赞的视频\""))
+        assertTrue(likeSection.contains("actionLabel = \"查看全部\""))
+        assertTrue(likeSection.contains("onLikedVideosClick(state.userInfo.mid, state.userInfo.name)"))
+        assertTrue(likeSection.contains("onViewAllClick("))
+        assertTrue(source.contains("onLikedVideosClick: ((Long, String) -> Unit)? = null"))
+    }
+
     private fun loadSource(path: String): String {
         val normalizedPath = path.removePrefix("app/")
         val sourceFile = listOf(

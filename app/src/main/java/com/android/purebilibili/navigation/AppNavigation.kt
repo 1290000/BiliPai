@@ -875,6 +875,9 @@ fun AppNavigation(
                     lastSearchOpenId = nextOpenId
                     BiliPaiNavKey.Search(openId = nextOpenId)
                 }
+                BiliPaiNavKey.LikedVideos -> {
+                    BiliPaiNavKey.LikedVideos()
+                }
                 else -> key
             }
             replaceNavigation3BackStack(when (sessionScopedKey) {
@@ -3511,7 +3514,25 @@ fun AppNavigation(
                                 )
                             }
                         BiliPaiNavEntryContentRole.LIKED_VIDEOS -> {
-                                val likedVideosViewModel: LikedVideosViewModel = viewModel()
+                                val likedVideosKey = key as? BiliPaiNavKey.LikedVideos
+                                val targetMid = likedVideosKey?.mid?.takeIf { it > 0L }
+                                val ownerName = likedVideosKey?.ownerName?.takeIf { it.isNotBlank() }.orEmpty()
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val application = context.applicationContext as android.app.Application
+                                val likedVideosViewModel: LikedVideosViewModel = if (targetMid != null) {
+                                    viewModel(
+                                        key = "liked_videos_$targetMid",
+                                        factory = com.android.purebilibili.feature.list.LikedVideosViewModelFactory(
+                                            application = application,
+                                            targetMid = targetMid,
+                                            ownerName = ownerName
+                                        )
+                                    )
+                                } else {
+                                    viewModel()
+                                }
+                                val sourceRoute = (key as? BiliPaiNavKey)?.toLegacyRoute()
+                                    ?: ScreenRoutes.LikedVideos.route
                                 CommonListScreen(
                                     viewModel = likedVideosViewModel,
                                     onBack = { performSystemBackAction() },
@@ -3522,7 +3543,7 @@ fun AppNavigation(
                                             cid = cid,
                                             coverUrl = cover,
                                             initialVertical = isVertical,
-                                            sourceRoute = ScreenRoutes.LikedVideos.route
+                                            sourceRoute = sourceRoute
                                         )
                                     }
                                 )
@@ -3833,13 +3854,30 @@ fun AppNavigation(
                                         }
                                     },
                                     onViewAllClick = { type, id, mid, title, ownerName ->
+                                        if (type.equals("like", ignoreCase = true) || type.equals("liked", ignoreCase = true)) {
+                                            pushNavigation3Key(
+                                                BiliPaiNavKey.LikedVideos(
+                                                    mid = mid,
+                                                    ownerName = ownerName
+                                                )
+                                            )
+                                        } else {
+                                            pushNavigation3Key(
+                                                BiliPaiNavKey.SeasonSeriesDetail(
+                                                    type = type,
+                                                    id = id,
+                                                    mid = mid,
+                                                    title = title,
+                                                    ownerName = ownerName
+                                                )
+                                            )
+                                        }
+                                    },
+                                    onLikedVideosClick = { upMid, upName ->
                                         pushNavigation3Key(
-                                            BiliPaiNavKey.SeasonSeriesDetail(
-                                                type = type,
-                                                id = id,
-                                                mid = mid,
-                                                title = title,
-                                                ownerName = ownerName
+                                            BiliPaiNavKey.LikedVideos(
+                                                mid = upMid,
+                                                ownerName = upName
                                             )
                                         )
                                     },
