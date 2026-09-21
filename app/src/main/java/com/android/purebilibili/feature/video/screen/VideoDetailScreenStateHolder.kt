@@ -249,6 +249,7 @@ import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy
+import com.android.purebilibili.core.util.ShareUtils
 import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
 import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
@@ -263,8 +264,6 @@ import com.android.purebilibili.feature.video.ui.feedback.resolveQualityReminder
 import com.android.purebilibili.feature.video.ui.feedback.resolveTripleCelebrationPlacement
 import com.android.purebilibili.feature.video.ui.feedback.resolveVideoFeedbackPlacement
 import com.android.purebilibili.feature.video.ui.section.resolveForcedReturnCoverSharedElementSourceRoute
-import com.android.purebilibili.feature.video.share.VideoSharePayload
-import com.android.purebilibili.feature.video.share.VideoShareSheet
 import com.android.purebilibili.feature.video.viewmodel.PlayerToastPresentation
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -1404,7 +1403,6 @@ internal fun VideoDetailScreenStateHolder(
     )
     val externalPlaylistQueueTitle = resolveExternalPlaylistQueueTitle(externalPlaylistSource)
     var showExternalPlaylistQueueSheet by rememberSaveable { mutableStateOf(false) }
-    var pendingVideoShare by remember { mutableStateOf<VideoSharePayload?>(null) }
     val externalPlaylistQueueSheetPresentation = remember {
         resolveExternalPlaylistQueueSheetPresentation(requireRealtimeHaze = true)
     }
@@ -4914,7 +4912,13 @@ internal fun VideoDetailScreenStateHolder(
                                         openCommentUrl = openCommentUrl,
                                         onSearchKeywordClick = navigateToSearchKeywordFromVideo,
                                         onOpenBilibiliLink = onOpenBilibiliLink,
-                                        onShareVideo = { payload -> pendingVideoShare = payload },
+                                        onShareVideo = { payload ->
+                                            ShareUtils.shareVideo(
+                                                context = context,
+                                                title = payload.title,
+                                                bvid = payload.bvid,
+                                            )
+                                        },
                                         externalPlaylistQueueTitle = externalPlaylistQueueTitle,
                                         playlistItems = playlistItems,
                                         onShowExternalPlaylistQueueSheet = {
@@ -5256,7 +5260,6 @@ internal fun VideoDetailScreenStateHolder(
             playlistCurrentIndex = playlistCurrentIndex,
             hazeState = hazeState,
             queuePresentation = externalPlaylistQueueSheetPresentation,
-            pendingVideoShare = pendingVideoShare,
             player = playerState.player,
             onDismissQueue = { showExternalPlaylistQueueSheet = false },
             onVideoSelected = { index, item ->
@@ -5268,7 +5271,6 @@ internal fun VideoDetailScreenStateHolder(
                     autoPlay = true,
                 )
             },
-            onDismissShare = { pendingVideoShare = null },
         )
 
         val inputOverlayLayoutInfo = VideoDetailInputOverlayAdapter(
