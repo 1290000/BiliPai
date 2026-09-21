@@ -43,6 +43,8 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("rememberLayerBackdrop()"))
         assertTrue(source.contains("Modifier.layerBackdrop(chatInputBackdrop)"))
         assertTrue(source.contains("backdrop = chatInputBackdrop"))
+        assertTrue(source.contains("modifier = Modifier.align(Alignment.BottomCenter)"))
+        assertFalse(source.contains("bottomBar = {"))
         assertFalse(source.contains("LocalFloatingChromeBackdrop"))
         assertTrue(source.contains("shape = CircleShape"))
         assertFalse(source.contains(".height(100.dp)"))

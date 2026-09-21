@@ -176,8 +176,118 @@ fun ChatScreen(
                 ),
             )
         },
-        bottomBar = {
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (chatInputBackdrop != null) {
+                            Modifier.layerBackdrop(chatInputBackdrop)
+                        } else {
+                            Modifier
+                        }
+                    )
+            ) {
+                when {
+                    uiState.isLoading -> {
+                        com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    uiState.error != null -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            AppText(uiState.error ?: "加载失败")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            AppButton(onClick = { viewModel.loadMessages() }) {
+                                AppText("重试")
+                            }
+                        }
+                    }
+                    uiState.messages.isEmpty() -> {
+                        AppText(
+                            text = "暂无消息",
+                            modifier = Modifier.align(Alignment.Center),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // 加载更多按钮
+                            if (uiState.hasMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (uiState.isLoadingMore) {
+                                            com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
+                                                size = 24.dp
+                                            )
+                                        } else {
+                                            AppTextButton(onClick = { viewModel.loadMoreMessages() }) {
+                                                AppText("加载更多")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            items(
+                                items = uiState.messages,
+                                key = { it.msg_key }
+                            ) { message ->
+                                MessageBubble(
+                                    message = message,
+                                    isOwnMessage = message.sender_uid == viewModel.currentUserMid,
+                                    emoteInfos = uiState.emoteInfos,
+                                    videoPreviews = uiState.videoPreviews,
+                                    canWithdraw = message.sender_uid == viewModel.currentUserMid && message.msg_status != 1,
+                                    onLongPress = {
+                                        pendingWithdrawMessage = message
+                                    },
+                                    onVideoClick = { bvid ->
+                                        onNavigateToVideo(bvid)
+                                    },
+                                    onLinkClick = { link ->
+                                        onOpenBilibiliLink(link)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 发送错误提示
+                uiState.sendError?.let { error ->
+                    AppSnackbar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
+                        action = {
+                            AppTextButton(onClick = { viewModel.clearSendError() }) {
+                                AppText("知道了")
+                            }
+                        }
+                    ) {
+                        AppText(error)
+                    }
+                }
+            }
+
             ChatInputBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
                 text = inputText,
                 onTextChange = { inputText = it },
                 onSend = {
@@ -195,112 +305,6 @@ fun ChatScreen(
                 isUploadingImage = uiState.isUploadingImage,
                 backdrop = chatInputBackdrop,
             )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (chatInputBackdrop != null) {
-                        Modifier.layerBackdrop(chatInputBackdrop)
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(paddingValues)
-        ) {
-            when {
-                uiState.isLoading -> {
-                    com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                uiState.error != null -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        AppText(uiState.error ?: "加载失败")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        AppButton(onClick = { viewModel.loadMessages() }) {
-                            AppText("重试")
-                        }
-                    }
-                }
-                uiState.messages.isEmpty() -> {
-                    AppText(
-                        text = "暂无消息",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // 加载更多按钮
-                        if (uiState.hasMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (uiState.isLoadingMore) {
-                                        com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
-                                            size = 24.dp
-                                        )
-                                    } else {
-                                        AppTextButton(onClick = { viewModel.loadMoreMessages() }) {
-                                            AppText("加载更多")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        items(
-                            items = uiState.messages,
-                            key = { it.msg_key }
-                        ) { message ->
-                            MessageBubble(
-                                message = message,
-                                isOwnMessage = message.sender_uid == viewModel.currentUserMid,
-                                emoteInfos = uiState.emoteInfos,
-                                videoPreviews = uiState.videoPreviews,
-                                canWithdraw = message.sender_uid == viewModel.currentUserMid && message.msg_status != 1,
-                                onLongPress = {
-                                    pendingWithdrawMessage = message
-                                },
-                                onVideoClick = { bvid ->
-                                    onNavigateToVideo(bvid)
-                                },
-                                onLinkClick = { link ->
-                                    onOpenBilibiliLink(link)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // 发送错误提示
-            uiState.sendError?.let { error ->
-                AppSnackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    action = {
-                        AppTextButton(onClick = { viewModel.clearSendError() }) {
-                            AppText("知道了")
-                        }
-                    }
-                ) {
-                    AppText(error)
-                }
-            }
         }
     }
     }
