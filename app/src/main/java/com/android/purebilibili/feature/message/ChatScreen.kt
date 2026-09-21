@@ -8,7 +8,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,18 +43,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.android.purebilibili.core.theme.AppSpacingTokens
+import androidx.compose.ui.unit.em
+import com.android.purebilibili.core.ui.AppSpacingTokens
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.ui.AppAlertDialog
+import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.FeedTitleHierarchy
 import com.android.purebilibili.core.ui.ImmersiveAppScaffold as AppScaffold
 import com.android.purebilibili.core.ui.AppTopBar
+import com.android.purebilibili.core.ui.feedContentTypography
 import com.android.purebilibili.core.ui.components.AppButton
-import com.android.purebilibili.core.ui.components.AppCard
-import com.android.purebilibili.core.ui.components.AppCardDefaults
-import com.android.purebilibili.core.ui.components.AppCardShape
-import com.android.purebilibili.core.ui.components.AppCardVariant
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppWindowAction
 import com.android.purebilibili.core.ui.components.AppWindowActionMenu
@@ -70,6 +67,8 @@ import com.android.purebilibili.core.util.PickGalleryVisualMedia
 import com.android.purebilibili.data.model.response.EmoteInfo
 import com.android.purebilibili.data.model.response.PrivateMessageItem
 import com.android.purebilibili.data.repository.MessageSessionControlInfo
+import com.android.purebilibili.feature.home.components.cards.HorizontalVideoCardFrame
+import com.android.purebilibili.feature.home.components.cards.VideoCardCoverDurationText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -397,6 +396,9 @@ fun ChatInputBar(
     val isBusy = isSending || isUploadingImage
 
     AppSurface(
+        color = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+            com.android.purebilibili.core.ui.AppSurfaceTokens.surface()
+        ),
         tonalElevation = 3.dp,
         shadowElevation = 4.dp
     ) {
@@ -457,17 +459,22 @@ fun MessageBubble(
     onVideoClick: ((String) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null
 ) {
-    val bubbleColor = if (isOwnMessage) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    
-    val textColor = if (isOwnMessage) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val bubbleShape = AppShapes.messageBubble(isOutgoing = isOwnMessage)
+    val fallbackContainerColor = resolveMessageBubbleFallbackContainerColor(
+        isOwnMessage = isOwnMessage,
+        primary = MaterialTheme.colorScheme.primary,
+        surfaceVariant = MaterialTheme.colorScheme.surfaceVariant,
+    )
+    val fallbackContentColor = resolveMessageBubbleFallbackContentColor(
+        isOwnMessage = isOwnMessage,
+        onPrimary = MaterialTheme.colorScheme.onPrimary,
+        onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    val glassContentColors = rememberMessageGlassContentColors(
+        defaultOnSurface = fallbackContentColor,
+        defaultOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    val textColor = glassContentColors.titleColor
     
     // BV号正则匹配
     val bvPattern = remember { Regex("BV[a-zA-Z0-9]{10}") }
@@ -500,8 +507,11 @@ fun MessageBubble(
                         Modifier
                     }
                 )
-                .clip(AppShapes.messageBubble(isOutgoing = isOwnMessage))
-                .background(bubbleColor)
+                .clip(bubbleShape)
+                .messageGlassContainer(
+                    defaultContainerColor = fallbackContainerColor,
+                    shape = bubbleShape,
+                )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             when {
@@ -639,168 +649,128 @@ fun MessageBubble(
 }
 
 /**
- * 视频链接预览卡片
+ * Shared horizontal video-card presentation for private-message previews.
+ * The frame and typography intentionally follow the related-video cards.
  */
+@Composable
+private fun MessageHorizontalVideoCard(
+    coverUrl: String,
+    title: String,
+    duration: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    overlineText: String? = null,
+    supportingText: String? = null,
+) {
+    val cardShape = AppShapes.container(ContainerLevel.Card)
+    val contentTypography = feedContentTypography(FeedTitleHierarchy.Standard)
+    val glassContentColors = rememberMessageGlassContentColors(
+        defaultOnSurface = MaterialTheme.colorScheme.onSurface,
+        defaultOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    Box(
+        modifier = modifier
+            .widthIn(max = 280.dp)
+            .fillMaxWidth()
+            .clip(cardShape)
+            .messageGlassContainer(
+                defaultContainerColor = AppSurfaceTokens.cardContainer(),
+                shape = cardShape,
+            )
+            .clickable(onClick = onClick),
+    ) {
+        HorizontalVideoCardFrame(
+            coverContent = {
+                if (coverUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = coverUrl,
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            },
+            coverOverlayContent = {
+                if (duration > 0) {
+                    VideoCardCoverDurationText(
+                        text = formatDuration(duration),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp),
+                    )
+                }
+            },
+            infoContent = {
+                overlineText?.takeIf { it.isNotBlank() }?.let {
+                    AppText(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                AppText(
+                    text = title,
+                    style = contentTypography.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = glassContentColors.titleColor,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                supportingText?.takeIf { it.isNotBlank() }?.let {
+                    AppText(
+                        text = it,
+                        style = contentTypography.author,
+                        color = glassContentColors.subtitleColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            },
+        )
+    }
+}
+
 @Composable
 fun VideoLinkPreviewCard(
     preview: VideoPreviewInfo,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    AppCard(
-        modifier = Modifier
-            .widthIn(max = 260.dp)
-            .clickable { onClick() },
-        shape = AppCardShape.Semantic(ContainerLevel.Card),
-        colors = AppCardDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        variant = AppCardVariant.Elevated,
-    ) {
-        Column {
-            // 封面图
-            Box {
-                AsyncImage(
-                    model = preview.cover,
-                    contentDescription = preview.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    contentScale = ContentScale.Crop
-                )
-                
-                // 播放图标
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(40.dp)
-                        .background(
-                            Color.Black.copy(alpha = 0.5f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AppText(
-                        text = "▶",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-                
-                if (preview.duration > 0) {
-                    com.android.purebilibili.feature.home.components.cards.VideoCardCoverDurationText(
-                        text = formatDuration(preview.duration),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(4.dp),
-                    )
-                }
+    MessageHorizontalVideoCard(
+        coverUrl = preview.cover,
+        title = preview.title,
+        duration = preview.duration,
+        supportingText = buildString {
+            if (preview.ownerName.isNotBlank()) append(preview.ownerName)
+            if (preview.viewCount > 0) {
+                if (isNotEmpty()) append(" · ")
+                append(FormatUtils.formatStat(preview.viewCount))
+                append("播放")
             }
-            
-            // 信息
-            Column(
-                modifier = Modifier.padding(8.dp)
-            ) {
-                // 标题
-                AppText(
-                    text = preview.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                if (preview.ownerName.isNotBlank() || preview.viewCount > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (preview.ownerName.isNotBlank()) {
-                            AppText(
-                                text = preview.ownerName,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        if (preview.viewCount > 0) {
-                            AppText(
-                                text = if (preview.ownerName.isNotBlank()) {
-                                    " · ${formatViewCount(preview.viewCount)}播放"
-                                } else {
-                                    "${formatViewCount(preview.viewCount)}播放"
-                                },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+        },
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
 
 @Composable
 fun MessageCardPreviewCard(
     preview: MessageCardPreview,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    AppCard(
-        modifier = Modifier
-            .widthIn(max = 260.dp)
-            .clickable { onClick() },
-        shape = AppCardShape.Semantic(ContainerLevel.Card),
-        colors = AppCardDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        variant = AppCardVariant.Elevated,
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (preview.cover.isNotBlank()) {
-                AsyncImage(
-                    model = preview.cover,
-                    contentDescription = preview.title,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(AppShapes.container(ContainerLevel.Chip))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                AppText(
-                    text = preview.kind.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                AppText(
-                    text = preview.title.ifBlank { preview.kind.label },
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (preview.subtitle.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    AppText(
-                        text = preview.subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
+    MessageHorizontalVideoCard(
+        coverUrl = preview.cover,
+        title = preview.title.ifBlank { preview.kind.label },
+        duration = preview.duration,
+        overlineText = preview.kind.label,
+        supportingText = preview.subtitle,
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -808,17 +778,6 @@ fun MessageCardPreviewCard(
  */
 private fun formatDuration(seconds: Long): String {
     return FormatUtils.formatDuration(seconds.coerceAtLeast(0L).toInt())
-}
-
-/**
- * 格式化播放量
- */
-private fun formatViewCount(count: Long): String {
-    return when {
-        count >= 100_000_000 -> String.format("%.1f亿", count / 100_000_000.0)
-        count >= 10_000 -> String.format("%.1f万", count / 10_000.0)
-        else -> count.toString()
-    }
 }
 
 /**
@@ -919,15 +878,15 @@ fun RichMessageText(
         emoteInfos.filter { it.url.isNotEmpty() }.associate { emote ->
             emote.text to InlineTextContent(
                 placeholder = Placeholder(
-                    width = 20.sp,
-                    height = 20.sp,
+                    width = 1.4.em,
+                    height = 1.4.em,
                     placeholderVerticalAlign = PlaceholderVerticalAlign.Center
                 )
             ) {
                 AsyncImage(
                     model = emote.url,
                     contentDescription = emote.text,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit
                 )
             }
