@@ -208,6 +208,9 @@ internal fun LargeScreenVideoLayout(
                     onOpenBilibiliLink = onOpenBilibiliLink,
                     requestedTabName = null,
                     onRequestedTabConsumed = {},
+                    danmakuEnabled = danmakuChrome.enabled,
+                    onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
+                    onDanmakuToggle = danmakuChrome.onToggle,
                     introContent = if (includeIntro) {
                         { intro(Modifier.fillMaxSize()) }
                     } else {

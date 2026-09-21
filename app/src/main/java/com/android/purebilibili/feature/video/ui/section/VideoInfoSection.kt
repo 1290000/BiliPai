@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -446,7 +447,9 @@ fun VideoTitleWithDesc(
         Spacer(Modifier.height(4.dp))
         
         // Stats row
-        Row(
+        androidx.compose.foundation.layout.FlowRow(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Stats Row split for shared element transitions
@@ -518,11 +521,6 @@ fun VideoTitleWithDesc(
             }
             if (onlineCountText.isNotBlank()) {
                 AppText(
-                    text = "  •  ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-                AppText(
                     text = onlineCountText,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f),
@@ -531,7 +529,6 @@ fun VideoTitleWithDesc(
                 )
             }
             // [新增] 显示 BVID 并支持点击复制
-            Spacer(Modifier.width(8.dp))
             AppText(
                 text = info.bvid,
                 style = MaterialTheme.typography.labelSmall,
@@ -709,6 +706,7 @@ fun UpInfoSection(
     transitionEnabled: Boolean = false,  // 🔗 共享元素过渡开关
     isQuickReturnLimitedForSharedElements: Boolean = false,
     sourceRouteForSharedElement: String? = null,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 12.dp,
     modifier: Modifier = Modifier,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
@@ -749,19 +747,14 @@ fun UpInfoSection(
         videoCount = videoCount
     )
     val showInlineOwnerIdentity = shouldShowInlineOwnerIdentity(showOwnerAvatar = showOwnerAvatar)
-    Column(
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onUpClick(info.owner.mid) }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+
+    BoxWithConstraints(modifier = modifier) {
+        val isCompact = maxWidth.isSpecified && shouldUseCompactUpInfoLayout(maxWidth.value.toInt())
+
+        val avatarContent: @Composable () -> Unit = {
             if (showOwnerAvatar) {
                 var avatarModifier = Modifier
-                    .size(40.dp)
+                    .size(if (isCompact) 36.dp else 40.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
 
@@ -813,89 +806,20 @@ fun UpInfoSection(
             } else {
                 UserUpBadge()
             }
+        }
 
-            Spacer(Modifier.width(10.dp))
+        val upNameContent: @Composable (Modifier) -> Unit = { rowModifier ->
+            Row(
+                modifier = rowModifier,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                var upNameModifier: Modifier = Modifier
 
-            // UP owner name row
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    //  共享元素过渡 - UP主名称
-                    //  [调整] 确保 sharedBounds 在交互修饰符之前应用
-                    var upNameModifier: Modifier = Modifier
-
-                    if (metadataSharedEnabled) {
-                        with(requireNotNull(sharedTransitionScope)) {
-                            upNameModifier = upNameModifier.sharedBounds(
-                                sharedContentState = rememberSharedContentState(
-                                    key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(
-                                        info.bvid,
-                                        sourceRoute = sourceRouteForSharedElement
-                                    )
-                                ),
-                                animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { initialBounds, targetBounds ->
-                                    videoMetadataSharedElementBoundsTransformSpec(
-                                        motion = metadataSharedTransitionMotionSpec,
-                                        initialBounds = initialBounds,
-                                        targetBounds = targetBounds
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    //  添加交互修饰符 (放在 sharedBounds 之后，使其包含在 sharedBounds 内部)
-                    upNameModifier = upNameModifier.copyOnLongPress(info.owner.name, "UP主名称")
-
-                    if (showInlineOwnerIdentity) {
-                        if (info.owner.face.isNotBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(FormatUtils.fixImageUrl(info.owner.face))
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "UP主头像",
-                                modifier = Modifier
-                                    .padding(horizontal = 2.dp)
-                                    .size(18.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                            )
-                        } else {
-                            UserUpBadge(modifier = Modifier.padding(horizontal = 2.dp))
-                        }
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    AppText(
-                        text = info.owner.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = upNameModifier
-                    )
-                }
-                if (!upStatsText.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    AppText(
-                        text = upStatsText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            if (playerControlVisibility.showFollowButton) {
-                var followActionModifier = Modifier.heightIn(min = 32.dp)
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
-                        followActionModifier = followActionModifier.sharedBounds(
+                        upNameModifier = upNameModifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(
-                                key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(
+                                key = com.android.purebilibili.core.ui.transition.videoUpNameSharedElementKey(
                                     info.bvid,
                                     sourceRoute = sourceRouteForSharedElement
                                 )
@@ -907,56 +831,188 @@ fun UpInfoSection(
                                     initialBounds = initialBounds,
                                     targetBounds = targetBounds
                                 )
-                            },
-                            clipInOverlayDuringTransition = OverlayClip(VideoDetailShapes.action())
+                            }
                         )
                     }
                 }
 
-                val followDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                val followVisualPolicy = remember(isFollowing, followDarkTheme) {
-                    resolveVideoFollowVisualPolicy(
-                        isFollowing = isFollowing,
-                        darkTheme = followDarkTheme,
+                upNameModifier = upNameModifier.copyOnLongPress(info.owner.name, "UP主名称")
+
+                if (showInlineOwnerIdentity) {
+                    if (info.owner.face.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(FormatUtils.fixImageUrl(info.owner.face))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "UP主头像",
+                            modifier = Modifier
+                                .padding(horizontal = 2.dp)
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        UserUpBadge(modifier = Modifier.padding(horizontal = 2.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
+                AppText(
+                    text = info.owner.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = upNameModifier
+                )
+            }
+        }
+
+        val followButtonContent: @Composable () -> Unit = {
+            var followActionModifier = Modifier.heightIn(min = if (isCompact) 28.dp else 32.dp)
+            if (metadataSharedEnabled) {
+                with(requireNotNull(sharedTransitionScope)) {
+                    followActionModifier = followActionModifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(
+                            key = com.android.purebilibili.core.ui.transition.videoUpActionSharedElementKey(
+                                info.bvid,
+                                sourceRoute = sourceRouteForSharedElement
+                            )
+                        ),
+                        animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+                        boundsTransform = { initialBounds, targetBounds ->
+                            videoMetadataSharedElementBoundsTransformSpec(
+                                motion = metadataSharedTransitionMotionSpec,
+                                initialBounds = initialBounds,
+                                targetBounds = targetBounds
+                            )
+                        },
+                        clipInOverlayDuringTransition = OverlayClip(VideoDetailShapes.action())
                     )
                 }
-                AppSurface(
-                    onClick = onFollowClick,
-                    color = when (followVisualPolicy.detailButtonTone) {
-                        FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
-                        FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
-                    },
-                    shape = VideoDetailShapes.action(),
-                    modifier = followActionModifier
+            }
+
+            val followDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            val followVisualPolicy = remember(isFollowing, followDarkTheme) {
+                resolveVideoFollowVisualPolicy(
+                    isFollowing = isFollowing,
+                    darkTheme = followDarkTheme,
+                )
+            }
+            AppSurface(
+                onClick = onFollowClick,
+                color = when (followVisualPolicy.detailButtonTone) {
+                    FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
+                    FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
+                },
+                shape = VideoDetailShapes.action(),
+                modifier = followActionModifier
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = if (isCompact) 8.dp else 12.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    ) {
-                        AppText(
-                            text = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = when (followVisualPolicy.detailTextTone) {
-                                FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
-                                FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
-                            },
-                            fontWeight = FontWeight.Medium
-                        )
+                    AppText(
+                        text = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = when (followVisualPolicy.detailTextTone) {
+                            FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
+                            FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
+                        },
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isCompact) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onUpClick(info.owner.mid) }
+                        .padding(horizontal = horizontalPadding, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    avatarContent()
+
+                    Spacer(Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        upNameContent(Modifier.fillMaxWidth())
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (playerControlVisibility.showFollowButton) {
+                                followButtonContent()
+                            }
+                            if (!upStatsText.isNullOrBlank()) {
+                                AppText(
+                                    text = upStatsText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (trailingContent != null) {
+                                trailingContent()
+                            }
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onUpClick(info.owner.mid) }
+                        .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    avatarContent()
+
+                    Spacer(Modifier.width(10.dp))
+
+                    // UP owner name row
+                    Column(modifier = Modifier.weight(1f)) {
+                        upNameContent(Modifier)
+                        if (!upStatsText.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            AppText(
+                                text = upStatsText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    if (playerControlVisibility.showFollowButton) {
+                        followButtonContent()
+                    }
+                    if (trailingContent != null) {
+                        if (playerControlVisibility.showFollowButton) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        trailingContent()
                     }
                 }
             }
-            if (trailingContent != null) {
-                if (playerControlVisibility.showFollowButton) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                trailingContent()
+            if (shouldShowCreatorTeamSection(info)) {
+                CreatorTeamSection(
+                    staff = info.staff,
+                    onMemberClick = onUpClick
+                )
             }
-        }
-        if (shouldShowCreatorTeamSection(info)) {
-            CreatorTeamSection(
-                staff = info.staff,
-                onMemberClick = onUpClick
-            )
         }
     }
 }

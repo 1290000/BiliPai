@@ -518,6 +518,9 @@ internal fun TabletVideoLayout(
                         onOpenBilibiliLink = onOpenBilibiliLink,
                         requestedTabName = requestedSecondaryTabName,
                         onRequestedTabConsumed = { requestedSecondaryTabName = null },
+                        danmakuEnabled = danmakuChrome.enabled,
+                        onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
+                        onDanmakuToggle = danmakuChrome.onToggle,
                         fixedTab = if (useThreePaneLayout) TabletSecondaryTab.COMMENTS else null,
                         relatedTabFirst = true,
                         introContent = if (layoutPolicy.useTabletopLayout) {
@@ -664,13 +667,6 @@ internal fun TabletVideoInfoPane(
         onPublicVideoNoteClick = { cvid, _ ->
             onOpenBilibiliLink?.invoke("https://www.bilibili.com/read/cv$cvid")
         },
-        ownerTrailingContent = {
-            TabletSecondaryDanmakuActions(
-                danmakuEnabled = danmakuEnabled,
-                onDanmakuSendClick = onDanmakuSendClick,
-                onDanmakuToggle = onDanmakuToggle,
-            )
-        },
         modifier = modifier,
     )
 
@@ -724,6 +720,9 @@ internal fun TabletSecondaryContent(
     includeRelatedTab: Boolean = true,
     includeOwnerUploadsTab: Boolean = true,
     relatedTabFirst: Boolean = false,
+    danmakuEnabled: Boolean = true,
+    onDanmakuSendClick: () -> Unit = {},
+    onDanmakuToggle: () -> Unit = {},
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     val tabs = remember(
@@ -897,6 +896,14 @@ internal fun TabletSecondaryContent(
                     isScrollInProgressProvider = { pagerState.isScrollInProgress },
                     modifier = Modifier.weight(1f),
                 )
+                if (shouldShowTabletSecondaryDanmakuActions()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TabletSecondaryDanmakuActions(
+                        danmakuEnabled = danmakuEnabled,
+                        onDanmakuSendClick = onDanmakuSendClick,
+                        onDanmakuToggle = onDanmakuToggle,
+                    )
+                }
             }
         } else {
             Row(
@@ -911,6 +918,14 @@ internal fun TabletSecondaryContent(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
+                if (shouldShowTabletSecondaryDanmakuActions()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TabletSecondaryDanmakuActions(
+                        danmakuEnabled = danmakuEnabled,
+                        onDanmakuSendClick = onDanmakuSendClick,
+                        onDanmakuToggle = onDanmakuToggle,
+                    )
+                }
             }
         }
         
@@ -1418,6 +1433,7 @@ private fun ScrollableVideoInfoSection(
                     onUpClick = onUpClick,
                     followerCount = ownerFollowerCount,
                     videoCount = ownerVideoCount,
+                    horizontalPadding = 0.dp,
                     trailingContent = ownerTrailingContent,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
