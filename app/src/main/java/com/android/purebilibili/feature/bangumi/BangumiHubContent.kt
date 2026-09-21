@@ -53,7 +53,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
@@ -572,7 +571,7 @@ private fun IndexFilterPanel(
                     text = group.label,
                     modifier = Modifier.width(56.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                 )
                 if (selectedChoice != null) {
@@ -928,14 +927,14 @@ private fun PosterGridCard(
         AppText(
             text = item.title,
             modifier = Modifier.padding(top = 5.dp),
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         item.newEp?.indexShow?.ifBlank { item.indexShow }?.takeIf { it.isNotBlank() }?.let { subtitle ->
             AppText(
                 text = subtitle,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -962,14 +961,14 @@ private fun SearchPosterCard(
         AppText(
             text = plainSearchTitle(item),
             modifier = Modifier.padding(top = 5.dp),
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         if (item.indexShow.isNotBlank()) {
             AppText(
                 text = item.indexShow,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1031,14 +1030,14 @@ private fun FollowPosterCard(
         AppText(
             item.title,
             modifier = Modifier.padding(top = 5.dp),
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         item.progress.ifBlank { item.newEp?.indexShow.orEmpty() }.takeIf { it.isNotBlank() }?.let { subtitle ->
             AppText(
                 text = subtitle,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1064,14 +1063,14 @@ private fun TimelineEpisodeCard(episode: TimelineEpisode, onClick: () -> Unit) {
         AppText(
             episode.title,
             modifier = Modifier.padding(top = 5.dp),
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         resolveTimelineEpisodeUpdateLabel(episode).takeIf(String::isNotBlank)?.let { updateLabel ->
             AppText(
                 text = updateLabel,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1129,15 +1128,15 @@ private fun FollowInfoCard(
             ) {
                 AppText(item.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 item.newEp?.indexShow?.takeIf { it.isNotBlank() }?.let {
-                    AppText(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    AppText(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item.progress.takeIf { it.isNotBlank() }?.let {
-                    AppText(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                    AppText(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
                 item.evaluate.takeIf { it.isNotBlank() }?.let {
                     AppText(
                         it,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -1167,7 +1166,7 @@ private fun SectionHeader(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             AppText(title, style = MaterialTheme.typography.titleMedium)
-            subtitle?.let { AppText(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
+            subtitle?.let { AppText(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         }
         onRefresh?.let {
             AppIconButton(onClick = it) {
