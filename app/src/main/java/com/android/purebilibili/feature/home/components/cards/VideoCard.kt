@@ -669,37 +669,6 @@ internal fun ElegantVideoCard(
     }
     val useRealtimeWallpaperBackdrop =
         homeWallpaperSurfaceMode == HomeCardWallpaperSurfaceMode.REALTIME_FROSTED
-    val adaptiveContentColors = remember(
-        wallpaperPalette,
-        animatedCoverTint,
-        wallpaperTintEnabled,
-        isDarkCardTheme,
-        MaterialTheme.colorScheme.onSurface,
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        homeCardDynamicTintEnabled
-    ) {
-        resolveVideoCardAdaptiveContentColors(
-            wallpaperPalette = wallpaperPalette,
-            coverTint = if (animatedCoverTint.alpha > 0f) animatedCoverTint else null,
-            wallpaperTintEnabled = wallpaperTintEnabled,
-            isDarkTheme = isDarkCardTheme,
-            defaultOnSurface = MaterialTheme.colorScheme.onSurface,
-            defaultOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
-            homeCardDynamicTintEnabled = homeCardDynamicTintEnabled
-        )
-    }
-    val coverGlowBrush = remember(animatedCoverTint, isDarkCardTheme) {
-        val glowAlpha = if (isDarkCardTheme) 0.48f else 0.38f
-        if (animatedCoverTint.alpha > 0f) {
-            Brush.verticalGradient(
-                colors = listOf(
-                    animatedCoverTint.copy(alpha = glowAlpha),
-                    animatedCoverTint.copy(alpha = glowAlpha * 0.35f),
-                    Color.Transparent
-                )
-            )
-        } else null
-    }
     val infoLayoutCoordinates = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val homeScrollTickProvider = LocalHomeScrollTickProvider.current
     val infoSurfaceAppearance = remember(
@@ -808,6 +777,39 @@ internal fun ElegantVideoCard(
         animationSpec = tween(durationMillis = 350),
         label = "video_card_cover_tint"
     )
+    val defaultOnSurface = MaterialTheme.colorScheme.onSurface
+    val defaultOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val adaptiveContentColors = remember(
+        wallpaperPalette,
+        animatedCoverTint,
+        wallpaperTintEnabled,
+        isDarkCardTheme,
+        defaultOnSurface,
+        defaultOnSurfaceVariant,
+        homeCardDynamicTintEnabled
+    ) {
+        resolveVideoCardAdaptiveContentColors(
+            wallpaperPalette = wallpaperPalette,
+            coverTint = if (animatedCoverTint.alpha > 0f) animatedCoverTint else null,
+            wallpaperTintEnabled = wallpaperTintEnabled,
+            isDarkTheme = isDarkCardTheme,
+            defaultOnSurface = defaultOnSurface,
+            defaultOnSurfaceVariant = defaultOnSurfaceVariant,
+            homeCardDynamicTintEnabled = homeCardDynamicTintEnabled
+        )
+    }
+    val coverGlowBrush = remember(animatedCoverTint, isDarkCardTheme) {
+        val glowAlpha = if (isDarkCardTheme) 0.48f else 0.38f
+        if (animatedCoverTint.alpha > 0f) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    animatedCoverTint.copy(alpha = glowAlpha),
+                    animatedCoverTint.copy(alpha = glowAlpha * 0.35f),
+                    Color.Transparent
+                )
+            )
+        } else null
+    }
     // 返回预热：组合即可见，上报 (bvid, url, cacheKey)，供详情返回时按同一 cacheKey
     // prefetch，避免首页 scene 重建后封面重新解码造成落位闪变。
     SideEffect {
