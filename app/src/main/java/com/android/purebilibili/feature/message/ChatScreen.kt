@@ -652,6 +652,7 @@ fun MessageBubble(
                                 text = content,
                                 emoteInfos = emoteInfos,
                                 color = textColor,
+                                linkColor = textColor,
                                 style = MaterialTheme.typography.bodyLarge,
                                 onLinkClick = onLinkClick
                             )
@@ -1154,6 +1155,7 @@ fun EmoteText(
     color: Color,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    linkColor: Color = MaterialTheme.colorScheme.primary,
     onLinkClick: ((String) -> Unit)? = null
 ) {
     RichMessageText(
@@ -1162,6 +1164,7 @@ fun EmoteText(
         color = color,
         style = style,
         fontSize = fontSize,
+        linkColor = linkColor,
         onLinkClick = onLinkClick
     )
 }

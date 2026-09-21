@@ -15,6 +15,7 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("messageGlassContainer("))
         assertTrue(source.contains("shape = AppShapes.container(ContainerLevel.Card)"))
         assertTrue(source.contains("contentColor = fallbackContentColor"))
+        assertTrue(source.contains("linkColor = textColor"))
         assertTrue(source.contains("BoxWithConstraints("))
         assertTrue(source.contains("resolveMessageBubbleMaxWidth(maxWidth)"))
         assertTrue(source.contains("contentAlignment = if (isOwnMessage) Alignment.TopEnd else Alignment.TopStart"))
