@@ -990,7 +990,7 @@ fun DynamicScreen(
                                 ) {
                                     AppText(
                                         text = if (sidebarOnRight) "‹" else "›",
-                                        fontSize = 24.sp
+                                        style = MaterialTheme.typography.headlineMedium
                                     )
                                 }
                             }

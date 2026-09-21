@@ -918,9 +918,8 @@ private fun DynamicCommentComposer(
                     keyboardOptions = keyboardOptions,
                     keyboardActions = keyboardActions,
                     shape = dockShape,
-                    textStyle = TextStyle(
-                        color = fieldTextColor,
-                        fontSize = 14.sp,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = fieldTextColor
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = fieldColor,
@@ -957,9 +956,8 @@ private fun DynamicCommentComposer(
                     keyboardOptions = keyboardOptions,
                     keyboardActions = keyboardActions,
                     shape = dockShape,
-                    textStyle = TextStyle(
-                        color = fieldTextColor,
-                        fontSize = 14.sp,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = fieldTextColor
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = fieldColor,
