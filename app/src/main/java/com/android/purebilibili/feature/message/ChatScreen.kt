@@ -610,7 +610,8 @@ fun MessageBubble(
         } else {
             // 消息气泡
             BoxWithConstraints(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = if (isOwnMessage) Alignment.TopEnd else Alignment.TopStart,
             ) {
                 AppSurface(
                     modifier = Modifier
