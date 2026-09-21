@@ -28,6 +28,7 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("MessageLargeVideoCard("))
         assertTrue(source.contains("shouldUseLargeVideoLinkCard"))
         assertTrue(source.contains("aspectRatio(MESSAGE_LARGE_VIDEO_COVER_ASPECT_RATIO)"))
+        assertTrue(source.contains("verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall)"))
         assertTrue(source.contains("subtitle = supportingText"))
         assertTrue(source.contains("MESSAGE_LARGE_VIDEO_COVER_ASPECT_RATIO = 4f / 3f"))
         assertTrue(source.contains("textAlign = TextAlign.Center"))

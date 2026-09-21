@@ -950,7 +950,7 @@ private fun MessageLargeVideoCard(
             }
         }
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(AppShapes.bottomRounded(cardCorner))
@@ -959,6 +959,7 @@ private fun MessageLargeVideoCard(
                     horizontal = AppSpacingTokens.Medium,
                     vertical = AppSpacingTokens.Small,
                 ),
+            verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall),
         ) {
             AppText(
                 text = preview.title.ifBlank { preview.kind.label },
