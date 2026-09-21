@@ -62,7 +62,6 @@ import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.resolveAppPlayIcon
 import com.android.purebilibili.core.ui.ImmersiveAppScaffold as AppScaffold
 import com.android.purebilibili.core.ui.AppTopBar
-import com.android.purebilibili.core.ui.blur.LocalFloatingChromeBackdrop
 import com.android.purebilibili.core.ui.feedContentTypography
 import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppIconButton
@@ -97,6 +96,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.MediaContrastPalette
+import top.yukonga.miuix.kmp.blur.Backdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 
 private const val MESSAGE_LARGE_VIDEO_COVER_ASPECT_RATIO = 4f / 3f
 
@@ -130,6 +132,12 @@ fun ChatScreen(
         if (uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.size - 1)
         }
+    }
+
+    val chatInputBackdrop = if (LocalAppThemeConfig.current.liquidGlassEnabled) {
+        rememberLayerBackdrop()
+    } else {
+        null
     }
     
     ChatWallpaperHost {
@@ -184,13 +192,21 @@ fun ChatScreen(
                     )
                 },
                 isSending = uiState.isSending,
-                isUploadingImage = uiState.isUploadingImage
+                isUploadingImage = uiState.isUploadingImage,
+                backdrop = chatInputBackdrop,
             )
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .then(
+                    if (chatInputBackdrop != null) {
+                        Modifier.layerBackdrop(chatInputBackdrop)
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(paddingValues)
         ) {
             when {
@@ -484,13 +500,13 @@ fun ChatInputBar(
     onPickImage: () -> Unit,
     isSending: Boolean,
     isUploadingImage: Boolean,
+    backdrop: Backdrop? = null,
     modifier: Modifier = Modifier,
 ) {
     val showSendAction = text.isNotBlank()
     val isBusy = isSending || isUploadingImage
 
     val liquidGlassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled
-    val backdrop = LocalFloatingChromeBackdrop.current
     val dockShape = resolveSharedBottomBarCapsuleShape()
     val inputHeight = AppSpacingTokens.TripleExtraLarge + AppSpacingTokens.Small
     val shellLensIntensity = resolveFloatingDockGeometryScale(inputHeight.value)
