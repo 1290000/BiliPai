@@ -4845,7 +4845,7 @@ internal fun VideoDetailScreenStateHolder(
                                                     AppText(
                                                         text = "正在重试 ${loadingState.retryAttempt}/${loadingState.maxAttempts}...",
                                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                                        fontSize = 14.sp
+                                                        style = MaterialTheme.typography.bodyMedium
                                                     )
                                                 }
                                             }
@@ -4950,7 +4950,7 @@ internal fun VideoDetailScreenStateHolder(
                                             AppText(
                                                 text = errorState.msg,
                                                 color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 16.sp,
+                                                style = MaterialTheme.typography.titleMedium,
                                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                             )
 
@@ -4962,7 +4962,7 @@ internal fun VideoDetailScreenStateHolder(
                                                     AppText(
                                                         text = " 建议：切换 WiFi/移动数据 或 清除缓存后重试",
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        fontSize = 13.sp,
+                                                        style = MaterialTheme.typography.bodySmall,
                                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                                     )
                                                 }
@@ -4971,7 +4971,7 @@ internal fun VideoDetailScreenStateHolder(
                                                     AppText(
                                                         text = " 该视频可能暂时不可用，请尝试其他视频",
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        fontSize = 13.sp,
+                                                        style = MaterialTheme.typography.bodySmall,
                                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                                     )
                                                 }
@@ -5044,7 +5044,7 @@ internal fun VideoDetailScreenStateHolder(
                                                     AppText(
                                                         text = "可在「我的 - 账号与播放」中更换播放账号",
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        fontSize = 12.sp,
+                                                        style = MaterialTheme.typography.bodySmall,
                                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                                     )
                                                 }
