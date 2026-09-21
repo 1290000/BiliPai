@@ -609,136 +609,143 @@ fun MessageBubble(
             )
         } else {
             // 消息气泡
-            AppSurface(
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .then(
-                        if (canWithdraw && onLongPress != null) {
-                            Modifier.combinedClickable(
-                                onClick = {},
-                                onLongClick = onLongPress
-                            )
-                        } else {
-                            Modifier
-                        }
-                    ),
-                shape = bubbleShape,
-                color = fallbackContainerColor,
-                contentColor = fallbackContentColor,
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                AppSurface(
+                    modifier = Modifier
+                        .widthIn(max = resolveMessageBubbleMaxWidth(maxWidth))
+                        .then(
+                            if (canWithdraw && onLongPress != null) {
+                                Modifier.combinedClickable(
+                                    onClick = {},
+                                    onLongClick = onLongPress
+                                )
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    shape = bubbleShape,
+                    color = fallbackContainerColor,
+                    contentColor = fallbackContentColor,
                 ) {
-                    when {
-                    message.msg_status == 1 -> {
-                        // 已撤回消息
-                        AppText(
-                            text = "[消息已撤回]",
-                            color = textColor.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.bodyMedium
+                    Box(
+                        modifier = Modifier.padding(
+                            horizontal = AppSpacingTokens.Medium,
+                            vertical = AppSpacingTokens.Small,
                         )
-                    }
-                    message.msg_type == 1 -> {
-                        // 文字消息 - 支持表情渲染
-                        val content = parseTextContent(message.content)
-                        EmoteText(
-                            text = content,
-                            emoteInfos = emoteInfos,
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyLarge,
-                            onLinkClick = onLinkClick
-                        )
-                    }
-                    message.msg_type == 2 -> {
-                        // 图片消息
-                        val imageUrl = parseImageUrl(message.content)
-                        if (imageUrl.isNotEmpty()) {
-                            AsyncImage(
-                                model = imageUrl,
-                                contentDescription = "图片",
-                                modifier = Modifier
-                                    .widthIn(max = 200.dp)
-                                    .heightIn(max = 300.dp)
-                                    .clip(AppShapes.container(ContainerLevel.Chip)),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
+                    ) {
+                        when {
+                        message.msg_status == 1 -> {
+                            // 已撤回消息
                             AppText(
-                                text = "[图片]",
+                                text = "[消息已撤回]",
+                                color = textColor.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        message.msg_type == 1 -> {
+                            // 文字消息 - 支持表情渲染
+                            val content = parseTextContent(message.content)
+                            EmoteText(
+                                text = content,
+                                emoteInfos = emoteInfos,
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyLarge,
+                                onLinkClick = onLinkClick
+                            )
+                        }
+                        message.msg_type == 2 -> {
+                            // 图片消息
+                            val imageUrl = parseImageUrl(message.content)
+                            if (imageUrl.isNotEmpty()) {
+                                AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = "图片",
+                                    modifier = Modifier
+                                        .widthIn(max = 200.dp)
+                                        .heightIn(max = 300.dp)
+                                        .clip(AppShapes.container(ContainerLevel.Chip)),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                AppText(
+                                    text = "[图片]",
+                                    color = textColor,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
+                        message.msg_type == 6 -> {
+                            // 表情消息 (大表情)
+                            val emoteUrl = parseEmoteUrl(message.content)
+                            if (emoteUrl.isNotEmpty()) {
+                                AsyncImage(
+                                    model = emoteUrl,
+                                    contentDescription = "表情",
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(AppShapes.container(ContainerLevel.Chip)),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                AppText(
+                                    text = "[表情]",
+                                    color = textColor,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
+                        message.msg_type == 10 -> {
+                            // 通知消息
+                            AppText(
+                                text = parseNotificationContent(message.content),
                                 color = textColor,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
-                    }
-                    message.msg_type == 6 -> {
-                        // 表情消息 (大表情)
-                        val emoteUrl = parseEmoteUrl(message.content)
-                        if (emoteUrl.isNotEmpty()) {
-                            AsyncImage(
-                                model = emoteUrl,
-                                contentDescription = "表情",
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .clip(AppShapes.container(ContainerLevel.Chip)),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
-                            AppText(
-                                text = "[表情]",
+                        message.msg_type == 11 -> {
+                            parsedCard?.let { card ->
+                                MessageCardPreviewCard(
+                                    preview = card,
+                                    onClick = {
+                                        when {
+                                            card.bvid.isNotBlank() -> onVideoClick?.invoke(card.bvid)
+                                            card.targetUrl.isNotBlank() -> onLinkClick?.invoke(card.targetUrl)
+                                        }
+                                    }
+                                )
+                            } ?: AppText(
+                                text = "[视频]",
                                 color = textColor,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
-                    }
-                    message.msg_type == 10 -> {
-                        // 通知消息
-                        AppText(
-                            text = parseNotificationContent(message.content),
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    message.msg_type == 11 -> {
-                        parsedCard?.let { card ->
-                            MessageCardPreviewCard(
-                                preview = card,
-                                onClick = {
-                                    when {
-                                        card.bvid.isNotBlank() -> onVideoClick?.invoke(card.bvid)
-                                        card.targetUrl.isNotBlank() -> onLinkClick?.invoke(card.targetUrl)
+                        message.msg_type in setOf(7, 12, 13, 14) -> {
+                            parsedCard?.let { card ->
+                                MessageCardPreviewCard(
+                                    preview = card,
+                                    onClick = {
+                                        when {
+                                            card.bvid.isNotBlank() -> onVideoClick?.invoke(card.bvid)
+                                            card.targetUrl.isNotBlank() -> onLinkClick?.invoke(card.targetUrl)
+                                        }
                                     }
-                                }
+                                )
+                            } ?: AppText(
+                                text = "[${getMessageTypeName(message.msg_type)}]",
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyLarge
                             )
-                        } ?: AppText(
-                            text = "[视频]",
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    message.msg_type in setOf(7, 12, 13, 14) -> {
-                        parsedCard?.let { card ->
-                            MessageCardPreviewCard(
-                                preview = card,
-                                onClick = {
-                                    when {
-                                        card.bvid.isNotBlank() -> onVideoClick?.invoke(card.bvid)
-                                        card.targetUrl.isNotBlank() -> onLinkClick?.invoke(card.targetUrl)
-                                    }
-                                }
+                        }
+                        else -> {
+                            AppText(
+                                text = "[${getMessageTypeName(message.msg_type)}]",
+                                color = textColor.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodyMedium
                             )
-                        } ?: AppText(
-                            text = "[${getMessageTypeName(message.msg_type)}]",
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    else -> {
-                        AppText(
-                            text = "[${getMessageTypeName(message.msg_type)}]",
-                            color = textColor.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                        }
+                        }
                     }
                 }
             }

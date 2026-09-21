@@ -1,12 +1,20 @@
 package com.android.purebilibili.feature.message
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.android.purebilibili.feature.home.components.cards.WallpaperPalette
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MessageGlassSurfacePolicyTest {
+
+    @Test
+    fun bubbleWidthAdaptsToAvailableSpaceAndCapsOnLargeScreens() {
+        assertEquals(0.dp, resolveMessageBubbleMaxWidth(0.dp))
+        assertEquals(275.52f, resolveMessageBubbleMaxWidth(328.dp).value, 0.01f)
+        assertEquals(420.dp, resolveMessageBubbleMaxWidth(600.dp))
+    }
 
     @Test
     fun yFractionClampsToVisibleScreen() {

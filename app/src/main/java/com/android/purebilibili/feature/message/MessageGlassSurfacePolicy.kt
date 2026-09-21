@@ -1,9 +1,20 @@
 package com.android.purebilibili.feature.message
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.android.purebilibili.feature.home.components.cards.VideoCardAmbientDrawSpec
 import com.android.purebilibili.feature.home.components.cards.resolveVideoCardAmbientDrawSpec
 import com.android.purebilibili.feature.home.components.cards.WallpaperPalette
+
+private const val MESSAGE_BUBBLE_WIDTH_FRACTION = 0.84f
+private val MESSAGE_BUBBLE_MAX_WIDTH = 420.dp
+
+internal fun resolveMessageBubbleMaxWidth(availableWidth: Dp): Dp {
+    if (availableWidth <= 0.dp) return 0.dp
+    return (availableWidth * MESSAGE_BUBBLE_WIDTH_FRACTION)
+        .coerceAtMost(MESSAGE_BUBBLE_MAX_WIDTH)
+}
 
 internal fun resolveMessageGlassYFraction(
     positionY: Float,
