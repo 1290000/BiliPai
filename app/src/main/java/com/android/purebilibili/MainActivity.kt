@@ -1360,11 +1360,8 @@ open class MainActivity : AppCompatActivity() {
                 .collectAsStateWithLifecycle(initialValue = true)
             val liquidGlassEnabled by SettingsManager.getAndroidNativeLiquidGlassEnabled(context)
                 .collectAsStateWithLifecycle(initialValue = true)
-            val dialogLiquidGlassEnabled by SettingsManager.getDialogLiquidGlassEnabled(context)
-                .collectAsStateWithLifecycle(initialValue = false)
             val appThemeConfig = remember(
                 liquidGlassEnabled,
-                dialogLiquidGlassEnabled,
                 blurIntensity,
                 headerBlurEnabled,
                 bottomBarBlurEnabled,
@@ -1378,7 +1375,6 @@ open class MainActivity : AppCompatActivity() {
             ) {
                 AppThemeConfig(
                     liquidGlassEnabled = liquidGlassEnabled,
-                    dialogLiquidGlassEnabled = dialogLiquidGlassEnabled,
                     blurIntensity = blurIntensity,
                     headerBlurEnabled = headerBlurEnabled,
                     bottomBarBlurEnabled = bottomBarBlurEnabled,

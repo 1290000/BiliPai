@@ -33,7 +33,6 @@
       "home_search_liquid_glass_enabled": true,
       "bottom_bar_liquid_glass_enabled": false,
       "android_native_liquid_glass_enabled": false,
-      "dialog_liquid_glass_enabled": false,
       "liquid_glass_enabled": false,
       "liquid_glass_style": 2,
       "liquid_glass_mode": 0,

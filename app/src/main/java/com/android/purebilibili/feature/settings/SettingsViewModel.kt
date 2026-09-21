@@ -124,7 +124,6 @@ data class SettingsUiState(
     val bottomBarSearchLayoutMode: BottomBarSearchLayoutMode =
         BottomBarSearchLayoutMode.FULL_DOCK,
     val androidNativeLiquidGlassEnabled: Boolean = true,
-    val dialogLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle = com.android.purebilibili.core.store.LiquidGlassStyle.CLASSIC, // [New]
     val liquidGlassMode: LiquidGlassMode = LiquidGlassMode.BALANCED,
     val liquidGlassStrength: Float = 0.52f,
@@ -188,7 +187,6 @@ data class ExtraSettings(
     val bottomBarSearchLayoutMode: BottomBarSearchLayoutMode =
         BottomBarSearchLayoutMode.FULL_DOCK,
     val androidNativeLiquidGlassEnabled: Boolean = true,
-    val dialogLiquidGlassEnabled: Boolean = false,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
     val liquidGlassMode: LiquidGlassMode, // [New]
     val liquidGlassStrength: Float, // [New]
@@ -262,7 +260,6 @@ private data class BaseSettings(
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode,
     val bottomBarSearchLayoutMode: BottomBarSearchLayoutMode,
     val androidNativeLiquidGlassEnabled: Boolean,
-    val dialogLiquidGlassEnabled: Boolean,
     val liquidGlassStyle: com.android.purebilibili.core.store.LiquidGlassStyle, // [New]
     val liquidGlassMode: LiquidGlassMode, // [New]
     val liquidGlassStrength: Float, // [New]
@@ -409,8 +406,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         SettingsManager.getTabletUseSidebar(context).asAnyFlow(), // [New]
         SettingsManager.getHeaderCollapseEnabled(context).asAnyFlow(),
         SettingsManager.getGridColumnCount(context).asAnyFlow(), // [New]
-        SettingsManager.getHomeFeedCardWidthPreset(context).asAnyFlow(),
-        SettingsManager.getDialogLiquidGlassEnabled(context).asAnyFlow()
+        SettingsManager.getHomeFeedCardWidthPreset(context).asAnyFlow()
     ) { values ->
         val isBottomBarFloating = values[0] as Boolean
         val labelMode = values[1] as Int
@@ -436,7 +432,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val headerCollapse = values[21] as Boolean
         val gridColumnCount = values[22] as Int
         val homeFeedCardWidthPreset = values[23] as HomeFeedCardWidthPreset
-        val dialogLiquidGlass = values[24] as Boolean
         
         data class Ui2(
             val f: Boolean,
@@ -455,7 +450,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val bbsam: BottomBarSearchAutoExpandMode,
             val bbslm: BottomBarSearchLayoutMode,
             val anlg: Boolean,
-            val dlg: Boolean,
             val lgs: com.android.purebilibili.core.store.LiquidGlassStyle,
             val lgm: LiquidGlassMode,
             val lgt: Float,
@@ -482,7 +476,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             bottomBarSearchAutoExpandMode,
             bottomBarSearchLayoutMode,
             androidNativeLiquidGlass,
-            dialogLiquidGlass,
             liquidGlassStyle,
             liquidGlassMode,
             liquidGlassStrength,
@@ -524,7 +517,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             bottomBarSearchAutoExpandMode = ui2.bbsam,
             bottomBarSearchLayoutMode = ui2.bbslm,
             androidNativeLiquidGlassEnabled = ui2.anlg,
-            dialogLiquidGlassEnabled = ui2.dlg,
             liquidGlassStyle = ui2.lgs, // [New]
             liquidGlassMode = ui2.lgm, // [New]
             liquidGlassStrength = ui2.lgt, // [New]
@@ -628,7 +620,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             bottomBarSearchAutoExpandMode = extra.bottomBarSearchAutoExpandMode,
             bottomBarSearchLayoutMode = extra.bottomBarSearchLayoutMode,
             androidNativeLiquidGlassEnabled = extra.androidNativeLiquidGlassEnabled,
-            dialogLiquidGlassEnabled = extra.dialogLiquidGlassEnabled,
             liquidGlassStyle = extra.liquidGlassStyle, // [New]
             liquidGlassMode = extra.liquidGlassMode, // [New]
             liquidGlassStrength = extra.liquidGlassStrength, // [New]
@@ -696,7 +687,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             bottomBarSearchAutoExpandMode = settings.bottomBarSearchAutoExpandMode,
             bottomBarSearchLayoutMode = settings.bottomBarSearchLayoutMode,
             androidNativeLiquidGlassEnabled = settings.androidNativeLiquidGlassEnabled,
-            dialogLiquidGlassEnabled = settings.dialogLiquidGlassEnabled,
             liquidGlassStyle = settings.liquidGlassStyle, // [New]
             liquidGlassMode = settings.liquidGlassMode, // [New]
             liquidGlassStrength = settings.liquidGlassStrength, // [New]
@@ -1123,12 +1113,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 SettingsManager.setBottomBarBlurEnabled(context, false)
                 SettingsManager.setHeaderBlurEnabled(context, false)
             }
-        }
-    }
-
-    fun setDialogLiquidGlassEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            SettingsManager.setDialogLiquidGlassEnabled(context, enabled)
         }
     }
 

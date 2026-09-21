@@ -29,9 +29,8 @@ class AppDialogComponentsPolicyTest {
             "design-system/src/main/java/com/android/purebilibili/core/ui/AdaptiveDialogComponents.kt"
         )
         val dialogSource = source.readText()
-        assertTrue(dialogSource.contains("isMiuixNonGlassEnabled()"))
         assertTrue(dialogSource.contains("WindowDialog("))
-        assertTrue(dialogSource.contains("Dialog("))
+        assertFalse(dialogSource.contains("LocalAppPopupSurfaceRenderer.current"))
     }
 
     @Test

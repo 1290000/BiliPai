@@ -1489,8 +1489,6 @@ object SettingsManager {
         intPreferencesKey("bottom_bar_search_layout_mode")
     private val KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED =
         booleanPreferencesKey("android_native_liquid_glass_enabled")
-    private val KEY_DIALOG_LIQUID_GLASS_ENABLED =
-        booleanPreferencesKey("dialog_liquid_glass_enabled")
     private val KEY_LEGACY_ANDROID_NATIVE_TOP_TAB_LIQUID_GLASS_ENABLED =
         booleanPreferencesKey("android_native_top_tab_liquid_glass_enabled")
     //  Legacy shared Liquid Glass toggle, kept as migration fallback.
@@ -3993,18 +3991,6 @@ object SettingsManager {
         }
     }
 
-    fun getDialogLiquidGlassEnabled(context: Context): Flow<Boolean> =
-        context.settingsDataStore.data
-            .map { preferences ->
-                preferences[KEY_DIALOG_LIQUID_GLASS_ENABLED]
-                    ?: false
-            }
-
-    suspend fun setDialogLiquidGlassEnabled(context: Context, value: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[KEY_DIALOG_LIQUID_GLASS_ENABLED] = value
-        }
-    }
     
     fun getLiquidGlassStyle(context: Context): Flow<LiquidGlassStyle> = context.settingsDataStore.data
         .map { preferences ->
@@ -7447,10 +7433,6 @@ object SettingsManager {
                 KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED,
                 SettingsShareSection.APPEARANCE
             ),
-            BooleanShareablePreferenceDefinition(
-                KEY_DIALOG_LIQUID_GLASS_ENABLED,
-                SettingsShareSection.APPEARANCE,
-            ),
             BooleanShareablePreferenceDefinition(KEY_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_LIQUID_GLASS_STYLE, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_LIQUID_GLASS_MODE, SettingsShareSection.APPEARANCE),
@@ -7800,9 +7782,6 @@ object SettingsManager {
         return linkedMapOf(
             KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED.name to JsonPrimitive(
                 preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED] ?: true
-            ),
-            KEY_DIALOG_LIQUID_GLASS_ENABLED.name to JsonPrimitive(
-                preferences[KEY_DIALOG_LIQUID_GLASS_ENABLED] ?: false
             ),
             KEY_LIQUID_GLASS_ENABLED.name to JsonPrimitive(bottomBarEnabled),
             KEY_TOP_BAR_LIQUID_GLASS_ENABLED.name to JsonPrimitive(topBarEnabled),

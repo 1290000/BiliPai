@@ -28,14 +28,10 @@ object BiliPaiPopupSurfaceRenderer : AppPopupSurfaceRenderer {
         val themeConfig = LocalAppThemeConfig.current
         val glassEnabled = themeConfig.liquidGlassEnabled &&
             !isLowBlurBudgetForced()
-        val dialogGlassEnabled = glassEnabled && themeConfig.dialogLiquidGlassEnabled
-
-        // 独立弹出菜单 (MENU) 安全回退为标准容器。
-        // 居中弹窗 (DIALOG) 由独立开关控制（默认关闭）；开启后与半屏抽屉 (SHEET)
-        // 接入底栏液态玻璃渲染器，呈现半透明通透质感、高光与边沿折射。
+        // 居中弹窗与菜单始终使用标准容器；液态玻璃仅用于半屏抽屉。
         val isLiquidTarget = when (type) {
             AppPopupSurfaceType.MENU -> false
-            AppPopupSurfaceType.DIALOG -> dialogGlassEnabled
+            AppPopupSurfaceType.DIALOG -> false
             AppPopupSurfaceType.SHEET -> glassEnabled
         }
 

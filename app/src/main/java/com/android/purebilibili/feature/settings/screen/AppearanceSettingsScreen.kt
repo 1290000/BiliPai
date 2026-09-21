@@ -569,20 +569,6 @@ fun AppearanceSettingsContent(
                                 enabled = isLiquidGlassAvailable,
                                 iconTint = iOSBlue
                             )
-                            if (effectiveLiquidGlassEnabled) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                AppPreferenceDivider()
-                                Spacer(modifier = Modifier.height(8.dp))
-                                AppSwitchPreference(
-                                    icon = rememberSettingsSemanticIcon(SettingsIconRole.NATIVE_MIUIX_DIALOG),
-                                    title = "居中弹窗液态玻璃",
-                                    subtitle = "开启后居中弹窗呈现半透明高光质感；关闭后保持标准容器卡片",
-                                    checked = state.dialogLiquidGlassEnabled,
-                                    onCheckedChange = { viewModel.setDialogLiquidGlassEnabled(it) },
-                                    enabled = isLiquidGlassAvailable,
-                                    iconTint = iOSBlue
-                                )
-                            }
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))

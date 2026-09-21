@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.purebilibili.core.theme.AppUiStyle
 import com.android.purebilibili.core.theme.LocalAppUiStyle
@@ -82,24 +81,16 @@ internal fun AdaptiveAlertDialog(
 ) {
     val uiStyle = LocalAppUiStyle.current
     val themeConfig = LocalAppThemeConfig.current
-    val isDialogGlassActive = themeConfig.liquidGlassEnabled &&
-        themeConfig.dialogLiquidGlassEnabled
-    val useInjectedPopupSurface = isDialogGlassActive &&
-        LocalAppPopupSurfaceRenderer.current != null
-    val renderer = if (useInjectedPopupSurface) {
-        AppAlertDialogRenderer.LOCAL_DIALOG
-    } else {
-        resolveAppAlertDialogRenderer(
-            uiStyle = uiStyle,
-            nativeMiuixPopupsEnabled = themeConfig.nativeMiuixPopupsEnabled,
-        )
-    }
+    val renderer = resolveAppAlertDialogRenderer(
+        uiStyle = uiStyle,
+        nativeMiuixPopupsEnabled = themeConfig.nativeMiuixPopupsEnabled,
+    )
     when (renderer) {
         AppAlertDialogRenderer.LOCAL_DIALOG -> {
             val dialogShape = shape ?: AppShapes.resolveContainerShape(
                 level = ContainerLevel.Dialog,
                 uiStyle = uiStyle,
-                liquidGlassEnabled = isDialogGlassActive || !isMiuixNonGlassEnabled(),
+                liquidGlassEnabled = false,
             )
             val dialogColor = containerColor ?: AppSurfaceTokens.cardContainer()
             val dialogBody: @Composable () -> Unit = {
@@ -111,41 +102,21 @@ internal fun AdaptiveAlertDialog(
                     dismissButton = dismissButton,
                 )
             }
-            if (isMiuixNonGlassEnabled() || !isDialogGlassActive) {
-                WindowDialog(
-                    show = true,
-                    onDismissRequest = onDismissRequest,
-                    maxWidth = contentLayout.maxWidthDp.dp,
+            WindowDialog(
+                show = true,
+                onDismissRequest = onDismissRequest,
+                maxWidth = contentLayout.maxWidthDp.dp,
+            ) {
+                AppPopupSurface(
+                    type = AppPopupSurfaceType.DIALOG,
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .widthIn(min = contentLayout.minWidthDp.dp, max = contentLayout.maxWidthDp.dp),
+                    shape = dialogShape,
+                    containerColor = dialogColor,
+                    tonalElevation = tonalElevation ?: 0.dp,
                 ) {
-                    AppPopupSurface(
-                        type = AppPopupSurfaceType.DIALOG,
-                        modifier = modifier
-                            .fillMaxWidth()
-                            .widthIn(min = contentLayout.minWidthDp.dp, max = contentLayout.maxWidthDp.dp),
-                        shape = dialogShape,
-                        containerColor = dialogColor,
-                        tonalElevation = tonalElevation ?: 0.dp,
-                    ) {
-                        dialogBody()
-                    }
-                }
-            } else {
-                Dialog(
-                    onDismissRequest = onDismissRequest,
-                    properties = resolveAppContentDialogProperties(
-                        base = properties,
-                        usePlatformDefaultWidth = contentLayout.usePlatformDefaultWidth,
-                    ),
-                ) {
-                    AppPopupSurface(
-                        type = AppPopupSurfaceType.DIALOG,
-                        modifier = modifier.appContentDialogWidth(policy = contentLayout),
-                        shape = dialogShape,
-                        containerColor = dialogColor,
-                        tonalElevation = tonalElevation ?: 6.dp,
-                    ) {
-                        dialogBody()
-                    }
+                    dialogBody()
                 }
             }
             return
