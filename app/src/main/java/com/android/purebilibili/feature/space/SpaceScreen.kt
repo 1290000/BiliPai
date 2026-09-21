@@ -3056,8 +3056,13 @@ private fun SpaceSecondarySwitchRow(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val spec = remember(items, selectedId) {
-        resolveSpaceSecondarySwitchChromeSpec(items = items, selectedId = selectedId)
+    val uiStyle = LocalAppUiStyle.current
+    val spec = remember(items, selectedId, uiStyle) {
+        resolveSpaceSecondarySwitchChromeSpec(
+            items = items,
+            selectedId = selectedId,
+            uiStyle = uiStyle,
+        )
     }
     Box(
         modifier = modifier

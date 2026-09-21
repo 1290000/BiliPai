@@ -411,7 +411,11 @@ fun <T> AppNativeTabRow(
             selectedValue = selectedValue,
             enabled = enabled,
             scrollable = effectiveScrollable,
-            minTabWidth = targetTabWidth,
+            minTabWidth = resolveMiuixTabMinWidth(
+                requestedMinWidth = minTabWidth,
+                sharedMinWidth = targetTabWidth,
+                contentSizedItems = useContentSizedMiuixItems,
+            ),
             allowLabelOverflow = allowLabelOverflow,
             indicatorPositionProvider = indicatorPositionProvider,
             modifier = viewportBoundedModifier,
