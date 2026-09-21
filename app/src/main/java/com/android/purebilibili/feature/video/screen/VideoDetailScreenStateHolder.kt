@@ -3912,7 +3912,11 @@ internal fun VideoDetailScreenStateHolder(
                         ).dp
                         val screenWidthDp = configuration.screenWidthDp.dp
                         val screenHeightDp = configuration.screenHeightDp.dp
-                        val videoHeight = screenWidthDp * 9f / 16f  // 16:9 比例
+                        val videoHeight = resolvePhoneInlineVideoViewportHeightDp(
+                            windowWidthDp = configuration.screenWidthDp.toFloat(),
+                            windowHeightDp = configuration.screenHeightDp.toFloat(),
+                            isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
+                        ).dp
                         val playerChromeProfile = rememberAppPlayerChromeProfile()
                         val videoContentTabSwitchAnimationSpec = remember(playerChromeProfile.tabPresentation) {
                             resolveVideoContentTabSwitchAnimationSpec(playerChromeProfile.tabPresentation)
