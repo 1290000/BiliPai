@@ -249,8 +249,7 @@ fun DanmakuSendDialog(
                         ) {
                             AppText(
                                 text = "发送弹幕",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
@@ -289,8 +288,7 @@ fun DanmakuSendDialog(
                                     .fillMaxWidth()
                                     .testTag("danmaku_compact_input")
                                     .focusRequester(focusRequester),
-                                textStyle = TextStyle(
-                                    fontSize = 15.sp,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
                                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -304,7 +302,7 @@ fun DanmakuSendDialog(
                                             AppText(
                                                 text = "发个友善的弹幕见证当下",
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                fontSize = 15.sp
+                                                style = MaterialTheme.typography.bodyLarge
                                             )
                                         }
                                         innerTextField()
@@ -316,7 +314,7 @@ fun DanmakuSendDialog(
                         // 字数统计
                         AppText(
                             text = "${text.length}/100",
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             color = if (text.length > 90) {
                                 MaterialTheme.colorScheme.error
                             } else {
@@ -338,8 +336,7 @@ fun DanmakuSendDialog(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             AppText(
                                 text = "颜色",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
@@ -384,8 +381,7 @@ fun DanmakuSendDialog(
                                             AppText(
                                                 text = "VIP",
                                                 modifier = Modifier.align(Alignment.Center),
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                                 color = Color.White
                                             )
                                         }
@@ -417,13 +413,12 @@ fun DanmakuSendDialog(
                             Column(modifier = Modifier.weight(1f)) {
                                 AppText(
                                     text = "内嵌关注按钮",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 AppText(
                                     text = "发送一个视频内嵌关注按钮",
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -440,8 +435,7 @@ fun DanmakuSendDialog(
                             ) {
                                 AppText(
                                     text = "位置",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
 
@@ -454,7 +448,7 @@ fun DanmakuSendDialog(
                                             label = {
                                                 AppText(
                                                     text = label,
-                                                    fontSize = 12.sp,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1
                                                 )
                                             },
@@ -473,8 +467,7 @@ fun DanmakuSendDialog(
                             ) {
                                 AppText(
                                     text = "大小",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
 
@@ -487,7 +480,7 @@ fun DanmakuSendDialog(
                                             label = {
                                                 AppText(
                                                     text = label,
-                                                    fontSize = 12.sp,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1
                                                 )
                                             },
@@ -535,8 +528,7 @@ fun DanmakuSendDialog(
                             } else {
                                 AppText(
                                     text = "发送",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium)
                                 )
                             }
                         }
