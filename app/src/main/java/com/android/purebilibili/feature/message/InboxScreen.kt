@@ -32,6 +32,8 @@ import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.rememberAppSemanticVisualPolicy
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
+import com.android.purebilibili.core.theme.AppUiStyle
+import com.android.purebilibili.core.theme.LocalAppUiStyle
 import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppDropdownMenu
 import com.android.purebilibili.core.ui.components.AppDropdownMenuItem
@@ -431,16 +433,18 @@ private fun MessageSessionCategoryRow(
     selectedCategory: MessageSessionCategory,
     onCategoryClick: (MessageSessionCategory) -> Unit
 ) {
+    val uiStyle = LocalAppUiStyle.current
+    val rowHorizontalPadding = if (uiStyle == AppUiStyle.MATERIAL3) 0.dp else 16.dp
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(vertical = 8.dp)
     ) {
         AppText(
             text = "私信会话",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, bottom = 8.dp)
         )
 
         val options = remember(items) {
@@ -460,7 +464,9 @@ private fun MessageSessionCategoryRow(
             selectedValue = selectedCategory,
             onSelectionChange = onCategoryClick,
             scrollable = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = rowHorizontalPadding),
         )
     }
 }
