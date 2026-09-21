@@ -1077,14 +1077,13 @@ fun ReplyHeader(count: Int) {
     ) {
         AppText(
             text = "评论",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.width(8.dp))
         AppText(
             text = FormatUtils.formatStat(count.toLong()),
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
@@ -2590,8 +2589,7 @@ fun formatTime(timestamp: Long): String {
 internal fun ReplySpecialLabelChip(text: String) {
     AppText(
         text = text,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
         color = MaterialTheme.colorScheme.primary
     )
 }
@@ -2710,7 +2708,7 @@ private fun ReplyActionSheetItem(
 ) {
     AppText(
         text = label,
-        fontSize = 16.sp,
+        style = MaterialTheme.typography.bodyLarge,
         color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
@@ -2875,8 +2873,7 @@ fun CommentPictures(
                                         AppText(
                                             "+${totalCount - 9}",
                                             color = Color.White,
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold
+                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                                         )
                                     }
                                 }
