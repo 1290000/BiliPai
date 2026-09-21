@@ -761,8 +761,8 @@ internal fun SubReplyDetailContent(
                             onDeleteClick = if (currentMid > 0 && rootReply.mid == currentMid) {
                                 { onDeleteComment?.invoke(rootReply.rpid) }
                             } else null,
-                            onCheckFraudClick = if (currentMid > 0 && rootReply.mid == currentMid) {
-                                { onCheckCommentFraud?.invoke(rootReply) }
+                            onCheckFraudClick = if (onCheckCommentFraud != null && currentMid > 0 && rootReply.mid == currentMid) {
+                                { onCheckCommentFraud.invoke(rootReply) }
                             } else null,
                             onLikeClick = { onCommentLike?.invoke(rootReply.rpid) },
                             onHateClick = { onCommentHate?.invoke(rootReply.rpid) },
@@ -886,8 +886,8 @@ internal fun SubReplyDetailContent(
                             } else {
                                 null
                             },
-                            onCheckFraudClick = if (currentMid > 0 && item.mid == currentMid) {
-                                { onCheckCommentFraud?.invoke(item) }
+                            onCheckFraudClick = if (onCheckCommentFraud != null && currentMid > 0 && item.mid == currentMid) {
+                                { onCheckCommentFraud.invoke(item) }
                             } else null,
                             onLikeClick = { onCommentLike?.invoke(item.rpid) },
                             onHateClick = { onCommentHate?.invoke(item.rpid) },
