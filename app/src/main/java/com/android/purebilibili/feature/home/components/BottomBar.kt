@@ -2251,20 +2251,37 @@ fun FrostedBottomBar(
     val isTablet = com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
     val effectiveToggleSidebar = onToggleSidebar.takeUnless { forceBottomNavigation }
     var lastHomeClickMs by remember { mutableLongStateOf(0L) }
+    var lastDynamicClickMs by remember { mutableLongStateOf(0L) }
     val resolvedItemClick: (BottomNavItem) -> Unit = { item ->
         val nowMs = SystemClock.elapsedRealtime()
-        when (
-            resolveHomeSideBarClickAction(
-                item = item,
-                nowMs = nowMs,
-                lastHomeClickMs = lastHomeClickMs,
-            )
-        ) {
-            HomeSideBarClickAction.HOME_DOUBLE_TAP -> onHomeDoubleTap()
-            HomeSideBarClickAction.NAVIGATE -> onItemClick(item)
-        }
-        if (item == BottomNavItem.HOME) {
-            lastHomeClickMs = nowMs
+        val isDynamicDoubleTap = resolveDynamicSideBarClickAction(
+            item = item,
+            nowMs = nowMs,
+            lastDynamicClickMs = lastDynamicClickMs
+        )
+        if (isDynamicDoubleTap) {
+            lastDynamicClickMs = 0L
+            onDynamicDoubleTap()
+        } else {
+            when (
+                resolveHomeSideBarClickAction(
+                    item = item,
+                    nowMs = nowMs,
+                    lastHomeClickMs = lastHomeClickMs,
+                )
+            ) {
+                HomeSideBarClickAction.HOME_DOUBLE_TAP -> {
+                    lastHomeClickMs = 0L
+                    onHomeDoubleTap()
+                }
+                HomeSideBarClickAction.NAVIGATE -> onItemClick(item)
+            }
+            if (item == BottomNavItem.HOME) {
+                lastHomeClickMs = nowMs
+            }
+            if (item == BottomNavItem.DYNAMIC) {
+                lastDynamicClickMs = nowMs
+            }
         }
     }
     ProvideBottomBarSkinMotion(uiSkinDecoration) {

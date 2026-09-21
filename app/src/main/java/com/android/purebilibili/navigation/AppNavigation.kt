@@ -100,6 +100,7 @@ import com.android.purebilibili.feature.video.player.ExternalPlaylistSource
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.dynamic.DynamicScreen
+import com.android.purebilibili.feature.dynamic.DynamicScrollRequest
 import com.android.purebilibili.feature.dynamic.LocalDynamicScrollChannel
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewOverlayHost
 import com.android.purebilibili.feature.live.shouldStopLivePlaybackOnRouteDispose
@@ -1541,7 +1542,7 @@ fun AppNavigation(
                 kotlinx.coroutines.channels.Channel.CONFLATED
             )
         }
-        val dynamicScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
+        val dynamicScrollChannel = remember { kotlinx.coroutines.channels.Channel<DynamicScrollRequest>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val historyScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val profileScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val favoriteScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
@@ -1572,7 +1573,7 @@ fun AppNavigation(
                     BottomNavItem.HOME -> homeScrollChannel.trySend(
                         com.android.purebilibili.feature.home.HomeScrollRequest.SCROLL_TO_TOP
                     )
-                    BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(Unit)
+                    BottomNavItem.DYNAMIC -> dynamicScrollChannel.trySend(DynamicScrollRequest.SCROLL_TO_TOP_OR_REFRESH)
                     BottomNavItem.HISTORY -> historyScrollChannel.trySend(Unit)
                     BottomNavItem.PROFILE -> profileScrollChannel.trySend(Unit)
                     BottomNavItem.FAVORITE -> favoriteScrollChannel.trySend(Unit)
@@ -1967,6 +1968,11 @@ fun AppNavigation(
                             onHomeDoubleTap = {
                                 homeScrollChannel.trySend(
                                     com.android.purebilibili.feature.home.HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH
+                                )
+                            },
+                            onDynamicDoubleTap = {
+                                dynamicScrollChannel.trySend(
+                                    DynamicScrollRequest.SCROLL_TO_TOP_AND_REFRESH
                                 )
                             },
                             hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
@@ -4368,7 +4374,11 @@ fun AppNavigation(
                                             com.android.purebilibili.feature.home.HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH
                                         )
                                     },
-                                    onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
+                                    onDynamicDoubleTap = {
+                                        dynamicScrollChannel.trySend(
+                                            DynamicScrollRequest.SCROLL_TO_TOP_AND_REFRESH
+                                        )
+                                    },
                                     onSearchClick = { requestSearchFromBottomBar() },
                                     onSearchKeywordSubmit = submitSearchKeywordInNavigation3,
                                     searchLaunchKey = bottomBarSearchLaunchKey,
@@ -4417,7 +4427,11 @@ fun AppNavigation(
                                         com.android.purebilibili.feature.home.HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH
                                     )
                                 },
-                                onDynamicDoubleTap = { dynamicScrollChannel.trySend(Unit) },
+                                onDynamicDoubleTap = {
+                                    dynamicScrollChannel.trySend(
+                                        DynamicScrollRequest.SCROLL_TO_TOP_AND_REFRESH
+                                    )
+                                },
                                 onSearchClick = { requestSearchFromBottomBar() },
                                 onSearchKeywordSubmit = submitSearchKeywordInNavigation3,
                                 searchLaunchKey = bottomBarSearchLaunchKey,
