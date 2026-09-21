@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
@@ -57,9 +58,11 @@ import coil3.compose.AsyncImage
 import com.android.purebilibili.core.ui.AppAlertDialog
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.FeedTitleHierarchy
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.resolveAppPlayIcon
 import com.android.purebilibili.core.ui.ImmersiveAppScaffold as AppScaffold
 import com.android.purebilibili.core.ui.AppTopBar
+import com.android.purebilibili.core.ui.blur.LocalFloatingChromeBackdrop
 import com.android.purebilibili.core.ui.feedContentTypography
 import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppIconButton
@@ -82,6 +85,9 @@ import com.android.purebilibili.feature.home.components.cards.HorizontalVideoCar
 import com.android.purebilibili.feature.home.components.cards.VideoCardCoverDurationText
 import com.android.purebilibili.feature.home.components.cards.LocalWallpaperPalette
 import com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore
+import com.android.purebilibili.feature.home.components.BottomBarMatchedReusableLiquidDock
+import com.android.purebilibili.feature.home.components.resolveFloatingDockGeometryScale
+import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -477,38 +483,111 @@ fun ChatInputBar(
     onSend: () -> Unit,
     onPickImage: () -> Unit,
     isSending: Boolean,
-    isUploadingImage: Boolean
+    isUploadingImage: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val showSendAction = text.isNotBlank()
     val isBusy = isSending || isUploadingImage
 
-    AppSurface(
-        modifier = Modifier.imePadding(),
-        color = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
-            com.android.purebilibili.core.ui.AppSurfaceTokens.surface()
-        ),
-        tonalElevation = 3.dp,
-        shadowElevation = 4.dp
+    val liquidGlassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled
+    val backdrop = LocalFloatingChromeBackdrop.current
+    val dockShape = resolveSharedBottomBarCapsuleShape()
+    val inputHeight = AppSpacingTokens.TripleExtraLarge + AppSpacingTokens.Small
+    val shellLensIntensity = resolveFloatingDockGeometryScale(inputHeight.value)
+    val panelColor = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+        AppSurfaceTokens.surface()
+    )
+    val keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
+    val keyboardActions = KeyboardActions(onSend = { onSend() })
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .imePadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
+        BottomBarMatchedReusableLiquidDock(
+            shape = dockShape,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+                .weight(1f)
+                .height(inputHeight)
+                .then(
+                    if (!liquidGlassEnabled) {
+                        Modifier
+                            .clip(dockShape)
+                            .background(panelColor)
+                    } else {
+                        Modifier
+                    }
+                ),
+            backdrop = backdrop,
+            reuseEnabled = liquidGlassEnabled,
+            drawShellLens = true,
+            shellLensIntensity = shellLensIntensity,
+        ) { liquidChromeActive ->
+            val fieldColor = if (liquidChromeActive) Color.Transparent else panelColor
+            val fieldTextColor = MaterialTheme.colorScheme.onSurface
+            val placeholderColor = if (liquidChromeActive) {
+                fieldTextColor.copy(alpha = 0.82f)
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
             AppOutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { AppText("输入消息...") },
+                modifier = Modifier.fillMaxSize(),
+                placeholderText = "输入消息...",
                 maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSend() }),
-                shape = AppShapes.container(ContainerLevel.Floating)
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                shape = dockShape,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = fieldTextColor),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = fieldColor,
+                    unfocusedContainerColor = fieldColor,
+                    disabledContainerColor = fieldColor,
+                    focusedBorderColor = if (liquidChromeActive) {
+                        Color.Transparent
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    unfocusedBorderColor = if (liquidChromeActive) {
+                        Color.Transparent
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
+                    disabledBorderColor = Color.Transparent,
+                    focusedTextColor = fieldTextColor,
+                    unfocusedTextColor = fieldTextColor,
+                    disabledTextColor = fieldTextColor.copy(alpha = 0.72f),
+                    focusedPlaceholderColor = placeholderColor,
+                    unfocusedPlaceholderColor = placeholderColor,
+                    disabledPlaceholderColor = placeholderColor,
+                    cursorColor = fieldTextColor,
+                ),
             )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
+        }
+
+        BottomBarMatchedReusableLiquidDock(
+            shape = CircleShape,
+            modifier = Modifier
+                .size(inputHeight)
+                .then(
+                    if (!liquidGlassEnabled) {
+                        Modifier
+                            .clip(CircleShape)
+                            .background(panelColor)
+                    } else {
+                        Modifier
+                    }
+                ),
+            backdrop = backdrop,
+            reuseEnabled = liquidGlassEnabled,
+            drawShellLens = true,
+            shellLensIntensity = shellLensIntensity,
+        ) {
             AppIconButton(
                 onClick = {
                     if (showSendAction) {
@@ -517,18 +596,27 @@ fun ChatInputBar(
                         onPickImage()
                     }
                 },
-                enabled = !isBusy
+                modifier = Modifier.fillMaxSize(),
+                enabled = !isBusy,
             ) {
                 if (isBusy) {
                     com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
                         size = 24.dp,
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
                     )
                 } else {
                     AppIcon(
-                        imageVector = if (showSendAction) Icons.AutoMirrored.Filled.Send else Icons.Filled.AddCircle,
+                        imageVector = if (showSendAction) {
+                            Icons.AutoMirrored.Filled.Send
+                        } else {
+                            Icons.Filled.AddCircle
+                        },
                         contentDescription = if (showSendAction) "发送" else "图片",
-                        tint = if (showSendAction) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (showSendAction) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 }
             }
