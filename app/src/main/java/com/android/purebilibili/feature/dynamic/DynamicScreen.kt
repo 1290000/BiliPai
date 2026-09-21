@@ -833,9 +833,9 @@ fun DynamicScreen(
                                         state = pagerState,
                                         enabled = true,
                                     ),
-                                key = { page -> visibleTabs[page].logicalIndex }
+                                key = { page -> resolveDynamicPagerTabKey(visibleTabs, page) }
                             ) { page ->
-                                val tab = visibleTabs[page]
+                                val tab = visibleTabs.getOrNull(page) ?: return@HorizontalPager
                                 val pageListState = requireNotNull(listStates[tab.logicalIndex])
                                 val pagePresentation = remember(
                                     state,
@@ -1028,9 +1028,9 @@ fun DynamicScreen(
                                     state = pagerState,
                                     enabled = true,
                                 ),
-                            key = { page -> visibleTabs[page].logicalIndex }
+                            key = { page -> resolveDynamicPagerTabKey(visibleTabs, page) }
                         ) { page ->
-                            val tab = visibleTabs[page]
+                            val tab = visibleTabs.getOrNull(page) ?: return@HorizontalPager
                             val pageListState = requireNotNull(listStates[tab.logicalIndex])
                             val pagePresentation = remember(
                                 state,
