@@ -43,8 +43,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.purebilibili.core.theme.AppSpacingTokens
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.ui.AppAlertDialog
@@ -508,7 +510,7 @@ fun MessageBubble(
                     AppText(
                         text = "[消息已撤回]",
                         color = textColor.copy(alpha = 0.6f),
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 message.msg_type == 1 -> {
@@ -518,7 +520,7 @@ fun MessageBubble(
                         text = content,
                         emoteInfos = emoteInfos,
                         color = textColor,
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.bodyLarge,
                         onLinkClick = onLinkClick
                     )
                 }
@@ -539,7 +541,7 @@ fun MessageBubble(
                         AppText(
                             text = "[图片]",
                             color = textColor,
-                            fontSize = 15.sp
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
@@ -559,7 +561,7 @@ fun MessageBubble(
                         AppText(
                             text = "[表情]",
                             color = textColor,
-                            fontSize = 15.sp
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
@@ -568,7 +570,7 @@ fun MessageBubble(
                     AppText(
                         text = parseNotificationContent(message.content),
                         color = textColor,
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 message.msg_type == 11 -> {
@@ -585,7 +587,7 @@ fun MessageBubble(
                     } ?: AppText(
                         text = "[视频]",
                         color = textColor,
-                        fontSize = 15.sp
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
                 message.msg_type in setOf(7, 12, 13, 14) -> {
@@ -602,14 +604,14 @@ fun MessageBubble(
                     } ?: AppText(
                         text = "[${getMessageTypeName(message.msg_type)}]",
                         color = textColor,
-                        fontSize = 15.sp
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
                 else -> {
                     AppText(
                         text = "[${getMessageTypeName(message.msg_type)}]",
                         color = textColor.copy(alpha = 0.6f),
-                        fontSize = 14.sp
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
@@ -618,7 +620,7 @@ fun MessageBubble(
         // 视频链接预览卡片
         detectedBvids.forEach { bvid ->
             videoPreviews[bvid]?.let { preview ->
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(AppSpacingTokens.ExtraSmall))
                 VideoLinkPreviewCard(
                     preview = preview,
                     onClick = { onVideoClick?.invoke(bvid) }
@@ -630,7 +632,7 @@ fun MessageBubble(
         Spacer(modifier = Modifier.height(2.dp))
         AppText(
             text = formatMessageTime(message.timestamp),
-            fontSize = 10.sp,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
     }
@@ -680,7 +682,7 @@ fun VideoLinkPreviewCard(
                     AppText(
                         text = "▶",
                         color = Color.White,
-                        fontSize = 16.sp
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
                 
@@ -827,7 +829,8 @@ fun RichMessageText(
     text: String,
     emoteInfos: List<EmoteInfo>,
     color: Color,
-    fontSize: androidx.compose.ui.unit.TextUnit,
+    style: TextStyle = MaterialTheme.typography.bodyLarge,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
     linkColor: Color = MaterialTheme.colorScheme.primary,  // 使用主题色
     onLinkClick: ((String) -> Unit)? = null
 ) {
@@ -866,7 +869,7 @@ fun RichMessageText(
     
     // 如果没有特殊内容，直接显示文本
     if (allMatches.isEmpty()) {
-        AppText(text = text, color = color, fontSize = fontSize)
+        AppText(text = text, color = color, style = style, fontSize = fontSize)
         return
     }
     
@@ -937,6 +940,7 @@ fun RichMessageText(
     AppText(
         text = annotatedString,
         color = color,
+        style = style,
         fontSize = fontSize,
         inlineContent = inlineContentMap,
         onTextLayout = { layoutResult = it },
@@ -974,13 +978,15 @@ fun EmoteText(
     text: String,
     emoteInfos: List<EmoteInfo>,
     color: Color,
-    fontSize: androidx.compose.ui.unit.TextUnit,
+    style: TextStyle = MaterialTheme.typography.bodyLarge,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
     onLinkClick: ((String) -> Unit)? = null
 ) {
     RichMessageText(
         text = text,
         emoteInfos = emoteInfos,
         color = color,
+        style = style,
         fontSize = fontSize,
         onLinkClick = onLinkClick
     )
