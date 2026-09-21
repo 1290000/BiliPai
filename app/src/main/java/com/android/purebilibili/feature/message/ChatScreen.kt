@@ -26,10 +26,12 @@ import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +49,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.android.purebilibili.core.ui.AppSpacingTokens
+import com.android.purebilibili.core.store.HomeWallpaperEffectMode
+import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.ui.AppAlertDialog
@@ -70,8 +75,13 @@ import com.android.purebilibili.core.util.PickGalleryVisualMedia
 import com.android.purebilibili.data.model.response.EmoteInfo
 import com.android.purebilibili.data.model.response.PrivateMessageItem
 import com.android.purebilibili.data.repository.MessageSessionControlInfo
+import com.android.purebilibili.feature.home.HomeWallpaperBackdrop
+import com.android.purebilibili.feature.home.resolveHomeWallpaperBackdropAppearance
+import com.android.purebilibili.feature.home.resolveHomeWallpaperUri
 import com.android.purebilibili.feature.home.components.cards.HorizontalVideoCardFrame
 import com.android.purebilibili.feature.home.components.cards.VideoCardCoverDurationText
+import com.android.purebilibili.feature.home.components.cards.LocalWallpaperPalette
+import com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -116,7 +126,9 @@ fun ChatScreen(
         }
     }
     
+    ChatWallpaperHost {
     AppScaffold(
+        containerColor = Color.Transparent,
         topBar = {
             AppTopBar(
                 title = userName,
@@ -267,6 +279,7 @@ fun ChatScreen(
             }
         }
     }
+    }
 
     pendingWithdrawMessage?.let { targetMessage ->
         AppAlertDialog(
@@ -327,6 +340,72 @@ fun ChatScreen(
                 }
             }
         )
+    }
+}
+
+/**
+ * Chat is a retained navigation entry, so it needs its own opaque visual root. Otherwise a
+ * transparent chat scaffold composites with the inbox entry underneath instead of with the
+ * same wallpaper that HomeScreen uses.
+ */
+@Composable
+private fun ChatWallpaperHost(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val configuredHomeWallpaperUri by SettingsManager.getHomeWallpaperUri(context)
+        .collectAsStateWithLifecycle(initialValue = "")
+    val splashWallpaperUri by SettingsManager.getSplashWallpaperUri(context)
+        .collectAsStateWithLifecycle(initialValue = "")
+    val wallpaperEffectMode by SettingsManager.getHomeWallpaperEffectMode(context)
+        .collectAsStateWithLifecycle(initialValue = HomeWallpaperEffectMode.SOFT_BLUR)
+    val wallpaperUri = remember(configuredHomeWallpaperUri, splashWallpaperUri) {
+        resolveHomeWallpaperUri(
+            homeWallpaperUri = configuredHomeWallpaperUri,
+            splashWallpaperUri = splashWallpaperUri,
+        )
+    }
+    val wallpaperPalette by WallpaperPaletteStore.currentPalette.collectAsStateWithLifecycle()
+    LaunchedEffect(wallpaperUri) {
+        WallpaperPaletteStore.loadWallpaperPalette(
+            context = context,
+            uri = wallpaperUri,
+            scope = this,
+        )
+    }
+
+    val baseColor = AppSurfaceTokens.chromeBackground()
+    val isLightBackground = remember(baseColor) { baseColor.luminance() > 0.5f }
+    val isDataSaverActive = remember(context) {
+        SettingsManager.isDataSaverActive(context)
+    }
+    val wallpaperAppearance = remember(
+        wallpaperUri,
+        wallpaperEffectMode,
+        isLightBackground,
+        isDataSaverActive,
+    ) {
+        resolveHomeWallpaperBackdropAppearance(
+            hasWallpaper = wallpaperUri.isNotBlank(),
+            effectMode = wallpaperEffectMode,
+            isDarkTheme = !isLightBackground,
+            isDataSaverActive = isDataSaverActive,
+        )
+    }
+    val wallpaperVisible = wallpaperAppearance.visible && wallpaperUri.isNotBlank()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        HomeWallpaperBackdrop(
+            wallpaperUri = wallpaperUri,
+            appearance = wallpaperAppearance,
+            baseColor = baseColor,
+            isDataSaverActive = isDataSaverActive,
+            modifier = Modifier.fillMaxSize(),
+        )
+        CompositionLocalProvider(
+            LocalGlobalWallpaperBackdropVisible provides wallpaperVisible,
+            LocalWallpaperPalette provides wallpaperPalette,
+        ) {
+            content()
+        }
     }
 }
 
