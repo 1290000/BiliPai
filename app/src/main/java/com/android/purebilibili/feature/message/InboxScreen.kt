@@ -444,7 +444,7 @@ private fun MessageSessionCategoryRow(
             text = "私信会话",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, bottom = 8.dp)
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
         )
 
         val options = remember(items) {
