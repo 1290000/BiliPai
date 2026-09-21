@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 
 /**
  * 全局壁纸调色板数据结构
@@ -162,4 +163,66 @@ fun resolveVideoCardAmbientDrawSpec(
         coverGlowAlpha = glowAlpha,
         borderColor = finalBorderColor
     )
+}
+
+/**
+ * Adaptive text colors for video card based on dynamic surface tint and theme.
+ */
+@Immutable
+data class VideoCardAdaptiveContentColors(
+    val titleColor: Color,
+    val subtitleColor: Color,
+    val isDarkSurface: Boolean,
+)
+
+/**
+ * Resolves title and metadata colors adapted for dynamic card surface tinting.
+ * Prevents low contrast when dark wallpaper or dark cover tint turns the card dark in light theme.
+ */
+fun resolveVideoCardAdaptiveContentColors(
+    wallpaperPalette: WallpaperPalette?,
+    coverTint: Color?,
+    wallpaperTintEnabled: Boolean,
+    isDarkTheme: Boolean,
+    defaultOnSurface: Color,
+    defaultOnSurfaceVariant: Color,
+    homeCardDynamicTintEnabled: Boolean = true,
+): VideoCardAdaptiveContentColors {
+    if (!homeCardDynamicTintEnabled) {
+        return VideoCardAdaptiveContentColors(
+            titleColor = defaultOnSurface,
+            subtitleColor = defaultOnSurfaceVariant,
+            isDarkSurface = isDarkTheme
+        )
+    }
+
+    val isDarkSurface = if (isDarkTheme) {
+        true
+    } else {
+        val hasDarkWallpaper = wallpaperTintEnabled &&
+            wallpaperPalette != null &&
+            wallpaperPalette.dominantColor.luminance() < 0.45f
+
+        val hasValidCover = shouldUseCoverTintForCard(
+            wallpaperTintEnabled = wallpaperTintEnabled,
+            coverTint = coverTint,
+        )
+        val hasDarkCover = hasValidCover && coverTint!!.luminance() < 0.38f
+
+        hasDarkWallpaper || hasDarkCover
+    }
+
+    return if (isDarkSurface && !isDarkTheme) {
+        VideoCardAdaptiveContentColors(
+            titleColor = Color.White,
+            subtitleColor = Color.White.copy(alpha = 0.78f),
+            isDarkSurface = true
+        )
+    } else {
+        VideoCardAdaptiveContentColors(
+            titleColor = defaultOnSurface,
+            subtitleColor = defaultOnSurfaceVariant,
+            isDarkSurface = isDarkSurface
+        )
+    }
 }

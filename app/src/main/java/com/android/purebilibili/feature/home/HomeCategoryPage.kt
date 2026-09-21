@@ -417,7 +417,7 @@ internal fun HomeCategoryPageContent(
     }
 
     val homeScrollTickProvider = remember(gridState) {
-        { (gridState.firstVisibleItemIndex shl 16) + gridState.firstVisibleItemScrollOffset }
+        { (gridState.firstVisibleItemIndex shl 16) + (gridState.firstVisibleItemScrollOffset / 4) }
     }
 
     Box(modifier = modifier) {

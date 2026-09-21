@@ -112,13 +112,15 @@ internal fun HomeWallpaperBackdrop(
             configuration.screenWidthDp,
             configuration.screenHeightDp,
             density.density,
-            isDataSaverActive
+            isDataSaverActive,
+            appearance.blurRadiusDp
         ) {
             resolveHomeWallpaperDecodeSizePx(
                 screenWidthDp = configuration.screenWidthDp,
                 screenHeightDp = configuration.screenHeightDp,
                 density = density.density,
-                isDataSaverActive = isDataSaverActive
+                isDataSaverActive = isDataSaverActive,
+                blurRadiusDp = appearance.blurRadiusDp
             )
         }
         val imageRequest = remember(context, wallpaperUri, decodeSize) {

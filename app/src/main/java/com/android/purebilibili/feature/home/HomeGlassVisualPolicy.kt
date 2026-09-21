@@ -375,15 +375,26 @@ internal fun resolveHomeWallpaperDecodeSizePx(
     screenWidthDp: Int,
     screenHeightDp: Int,
     density: Float,
-    isDataSaverActive: Boolean
+    isDataSaverActive: Boolean,
+    blurRadiusDp: Float = 0f,
 ): Pair<Int, Int> {
     val safeDensity = density.takeIf { it.isFinite() && it > 0f } ?: 1f
     val widthPx = (screenWidthDp.coerceAtLeast(320) * safeDensity).toInt().coerceAtLeast(720)
     val heightPx = (screenHeightDp.coerceAtLeast(568) * safeDensity).toInt().coerceAtLeast(1280)
     val shortSide = min(widthPx, heightPx)
     val longSide = max(widthPx, heightPx)
-    val maxShortSide = if (isDataSaverActive) 720 else 1080
-    val maxLongSide = if (isDataSaverActive) 1280 else 1920
+    val maxShortSide = when {
+        isDataSaverActive -> 720
+        blurRadiusDp >= 24f -> 540
+        blurRadiusDp >= 12f -> 720
+        else -> 1080
+    }
+    val maxLongSide = when {
+        isDataSaverActive -> 1280
+        blurRadiusDp >= 24f -> 960
+        blurRadiusDp >= 12f -> 1280
+        else -> 1920
+    }
     return min(shortSide, maxShortSide) to min(longSide, maxLongSide)
 }
 

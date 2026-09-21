@@ -263,4 +263,90 @@ class VideoCardAdaptiveTintPolicyTest {
             )
         )
     }
+
+    @Test
+    fun resolveVideoCardAdaptiveContentColors_usesWhiteTextForDarkCoverInLightMode() {
+        val darkCover = Color(0xFF101828)
+        val defaultOnSurface = Color(0xFF1D1B20)
+        val defaultOnSurfaceVariant = Color(0xFF49454F)
+
+        val colors = resolveVideoCardAdaptiveContentColors(
+            wallpaperPalette = null,
+            coverTint = darkCover,
+            wallpaperTintEnabled = false,
+            isDarkTheme = false,
+            defaultOnSurface = defaultOnSurface,
+            defaultOnSurfaceVariant = defaultOnSurfaceVariant,
+            homeCardDynamicTintEnabled = true
+        )
+
+        assertEquals(Color.White, colors.titleColor)
+        assertTrue(colors.isDarkSurface)
+    }
+
+    @Test
+    fun resolveVideoCardAdaptiveContentColors_usesOnSurfaceForLightCoverInLightMode() {
+        val lightCover = Color(0xFFE8F0FE)
+        val defaultOnSurface = Color(0xFF1D1B20)
+        val defaultOnSurfaceVariant = Color(0xFF49454F)
+
+        val colors = resolveVideoCardAdaptiveContentColors(
+            wallpaperPalette = null,
+            coverTint = lightCover,
+            wallpaperTintEnabled = false,
+            isDarkTheme = false,
+            defaultOnSurface = defaultOnSurface,
+            defaultOnSurfaceVariant = defaultOnSurfaceVariant,
+            homeCardDynamicTintEnabled = true
+        )
+
+        assertEquals(defaultOnSurface, colors.titleColor)
+        assertEquals(defaultOnSurfaceVariant, colors.subtitleColor)
+        assertEquals(false, colors.isDarkSurface)
+    }
+
+    @Test
+    fun resolveVideoCardAdaptiveContentColors_usesWhiteTextForDarkWallpaperInLightMode() {
+        val darkWallpaper = WallpaperPalette(
+            topColor = Color(0xFF0F172A),
+            bottomColor = Color(0xFF020617),
+            dominantColor = Color(0xFF0F172A)
+        )
+        val defaultOnSurface = Color(0xFF1D1B20)
+        val defaultOnSurfaceVariant = Color(0xFF49454F)
+
+        val colors = resolveVideoCardAdaptiveContentColors(
+            wallpaperPalette = darkWallpaper,
+            coverTint = null,
+            wallpaperTintEnabled = true,
+            isDarkTheme = false,
+            defaultOnSurface = defaultOnSurface,
+            defaultOnSurfaceVariant = defaultOnSurfaceVariant,
+            homeCardDynamicTintEnabled = true
+        )
+
+        assertEquals(Color.White, colors.titleColor)
+        assertTrue(colors.isDarkSurface)
+    }
+
+    @Test
+    fun resolveVideoCardAdaptiveContentColors_respectsDynamicTintDisabled() {
+        val darkCover = Color(0xFF101828)
+        val defaultOnSurface = Color(0xFF1D1B20)
+        val defaultOnSurfaceVariant = Color(0xFF49454F)
+
+        val colors = resolveVideoCardAdaptiveContentColors(
+            wallpaperPalette = null,
+            coverTint = darkCover,
+            wallpaperTintEnabled = false,
+            isDarkTheme = false,
+            defaultOnSurface = defaultOnSurface,
+            defaultOnSurfaceVariant = defaultOnSurfaceVariant,
+            homeCardDynamicTintEnabled = false
+        )
+
+        assertEquals(defaultOnSurface, colors.titleColor)
+        assertEquals(defaultOnSurfaceVariant, colors.subtitleColor)
+        assertEquals(false, colors.isDarkSurface)
+    }
 }

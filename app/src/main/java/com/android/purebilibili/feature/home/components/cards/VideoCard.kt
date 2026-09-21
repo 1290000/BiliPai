@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
@@ -668,7 +669,37 @@ internal fun ElegantVideoCard(
     }
     val useRealtimeWallpaperBackdrop =
         homeWallpaperSurfaceMode == HomeCardWallpaperSurfaceMode.REALTIME_FROSTED
-    val cardYFraction = remember { mutableFloatStateOf(0.5f) }
+    val adaptiveContentColors = remember(
+        wallpaperPalette,
+        animatedCoverTint,
+        wallpaperTintEnabled,
+        isDarkCardTheme,
+        MaterialTheme.colorScheme.onSurface,
+        MaterialTheme.colorScheme.onSurfaceVariant,
+        homeCardDynamicTintEnabled
+    ) {
+        resolveVideoCardAdaptiveContentColors(
+            wallpaperPalette = wallpaperPalette,
+            coverTint = if (animatedCoverTint.alpha > 0f) animatedCoverTint else null,
+            wallpaperTintEnabled = wallpaperTintEnabled,
+            isDarkTheme = isDarkCardTheme,
+            defaultOnSurface = MaterialTheme.colorScheme.onSurface,
+            defaultOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
+            homeCardDynamicTintEnabled = homeCardDynamicTintEnabled
+        )
+    }
+    val coverGlowBrush = remember(animatedCoverTint, isDarkCardTheme) {
+        val glowAlpha = if (isDarkCardTheme) 0.48f else 0.38f
+        if (animatedCoverTint.alpha > 0f) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    animatedCoverTint.copy(alpha = glowAlpha),
+                    animatedCoverTint.copy(alpha = glowAlpha * 0.35f),
+                    Color.Transparent
+                )
+            )
+        } else null
+    }
     val infoLayoutCoordinates = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val homeScrollTickProvider = LocalHomeScrollTickProvider.current
     val infoSurfaceAppearance = remember(
@@ -1167,10 +1198,6 @@ internal fun ElegantVideoCard(
                 .clip(coverShape)
                 .onGloballyPositioned { coordinates ->
                     coverCoordsRef.value = coordinates
-                    val rootTop = coordinates.boundsInRoot().top
-                    if (screenMetrics.heightPx > 0f) {
-                        cardYFraction.floatValue = (rootTop / screenMetrics.heightPx).coerceIn(0f, 1f)
-                    }
                 }
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 //  [交互优化] 封面区域：点击跳转
@@ -1575,11 +1602,14 @@ internal fun ElegantVideoCard(
                             coords.positionInRoot().y
                         } else null
 
-                        val yFrac = if (currentY != null && screenMetrics.heightPx > 0f) {
+                        val rawYFrac = if (currentY != null && screenMetrics.heightPx > 0f) {
                             (currentY / screenMetrics.heightPx).coerceIn(0f, 1f)
                         } else {
-                            cardYFraction.floatValue
+                            0.5f
                         }
+                        // 步长量化：避免微小亚像素移动在每帧频繁重算颜色
+                        val yFrac = (rawYFrac * 50f).toInt() / 50f
+
                         val drawSpec = resolveVideoCardAmbientDrawSpec(
                             wallpaperPalette = wallpaperPalette,
                             yFraction = yFrac,
@@ -1592,17 +1622,10 @@ internal fun ElegantVideoCard(
                             frostedGlassEnabled = true
                         )
                         drawRect(color = drawSpec.containerColor)
-                        if (drawSpec.coverGlowAlpha > 0f && animatedCoverTint.alpha > 0f) {
+                        if (drawSpec.coverGlowAlpha > 0f && coverGlowBrush != null) {
                             drawRect(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        animatedCoverTint.copy(alpha = drawSpec.coverGlowAlpha),
-                                        animatedCoverTint.copy(alpha = drawSpec.coverGlowAlpha * 0.35f),
-                                        Color.Transparent
-                                    ),
-                                    startY = 0f,
-                                    endY = size.height * 0.85f
-                                )
+                                brush = coverGlowBrush,
+                                size = Size(size.width, size.height * 0.85f)
                             )
                         }
                     } else {
@@ -1703,7 +1726,7 @@ internal fun ElegantVideoCard(
             minLines = titleMinLines,
             overflow = videoCardTitleOverflow(),
             style = contentTypography.title.copy(
-                color = MaterialTheme.colorScheme.onSurface
+                color = adaptiveContentColors.titleColor
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1744,8 +1767,8 @@ internal fun ElegantVideoCard(
             modifier = resolveVideoCardMetadataModifier(hasTrailingCardAction)
         ) {
         val metadataColors = resolveHomeVideoCardMetadataColors(
-            onSurfaceColor = MaterialTheme.colorScheme.onSurface,
-            onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            onSurfaceColor = adaptiveContentColors.titleColor,
+            onSurfaceVariantColor = adaptiveContentColors.subtitleColor,
         )
 
         val resolvedUpBadgeVisibility = com.android.purebilibili.core.ui.LocalUpBadgeVisibility.current
@@ -1773,11 +1796,11 @@ internal fun ElegantVideoCard(
                             imageVector = Icons.Outlined.Visibility,
                             contentDescription = null,
                             modifier = Modifier.size(AppSpacingTokens.Medium),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = adaptiveContentColors.subtitleColor
                         )
                         AppText(
                             text = onlineCount,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = adaptiveContentColors.subtitleColor,
                             style = contentTypography.statistic.copy(fontWeight = FontWeight.Medium),
                             maxLines = 1,
                             softWrap = false,
@@ -1836,7 +1859,7 @@ internal fun ElegantVideoCard(
                             imageVector = Icons.Filled.ThumbUp,
                             contentDescription = "取消收藏",
                             modifier = Modifier.size(AppSpacingTokens.Large),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            tint = adaptiveContentColors.subtitleColor.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -1857,7 +1880,7 @@ internal fun ElegantVideoCard(
                     ) {
                         AppText(
                             text = "⋮",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = adaptiveContentColors.subtitleColor,
                             fontSize = MaterialTheme.typography.labelMedium.fontSize,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(
