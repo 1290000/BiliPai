@@ -174,6 +174,7 @@ fun ChatScreen(
     ChatWallpaperHost(
         chromeBackdropSource = chatChromeSource,
         hazeState = chatHazeState,
+        inputBackdrop = chatInputBackdrop,
     ) {
     AppScaffold(
         containerColor = Color.Transparent,
@@ -222,13 +223,6 @@ fun ChatScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(
-                        if (chatInputBackdrop != null) {
-                            Modifier.layerBackdrop(chatInputBackdrop)
-                        } else {
-                            Modifier
-                        }
-                    )
             ) {
                 when {
                     uiState.isLoading -> {
@@ -417,6 +411,7 @@ fun ChatScreen(
 private fun ChatWallpaperHost(
     chromeBackdropSource: ChromeBackdropSource?,
     hazeState: HazeState?,
+    inputBackdrop: Backdrop?,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -466,7 +461,8 @@ private fun ChatWallpaperHost(
             modifier = Modifier
                 .fillMaxSize()
                 .then(chromeBackdropSource?.modifier ?: Modifier)
-                .then(hazeState?.let { Modifier.hazeSourceCompat(it) } ?: Modifier),
+                .then(hazeState?.let { Modifier.hazeSourceCompat(it) } ?: Modifier)
+                .then(inputBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
         ) {
             HomeWallpaperBackdrop(
                 wallpaperUri = wallpaperUri,
