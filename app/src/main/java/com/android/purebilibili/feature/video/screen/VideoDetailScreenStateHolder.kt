@@ -4271,12 +4271,12 @@ internal fun VideoDetailScreenStateHolder(
                             useOfficialInlinePortraitDetailExperience -> expandedPortraitInlineSpec.heightDp.dp
                             else -> videoHeight
                         }
-                        // PiliPlus 的 VideoHeader minExtent 始终是 kToolbarHeight；不能在非
-                        // official-inline 路径把播放器收成 0，否则 Overlay 会被父布局裁掉。
+                        // 官方竖屏详情折叠到全宽 16:9 画布；其他播放器路径继续保留原有
+                        // 56dp 紧凑栏。竖屏路径必须优先判断，否则会再次被压成工具栏高度。
                         val collapsedViewportHeight = when {
-                            portraitPlayerCollapseMode != PortraitPlayerCollapseMode.OFF -> 56.dp
                             useOfficialInlinePortraitDetailExperience ->
                                 collapsedPortraitInlineSpec.heightDp.dp
+                            portraitPlayerCollapseMode != PortraitPlayerCollapseMode.OFF -> 56.dp
                             else -> 0.dp
                         }
                         val inlineViewportHeight = lerp(

@@ -39,6 +39,15 @@ class VideoDetailScreenPolicyTest {
 
         assertTrue(playerHost.contains("CollapsedPlayerNavigationBar("))
         assertFalse(playerHost.contains("isPortraitVideo"))
+
+        val collapsedHeightPolicy = source
+            .substringAfter("val collapsedViewportHeight = when {")
+            .substringBefore("val inlineViewportHeight = lerp(")
+        assertTrue(
+            collapsedHeightPolicy.indexOf("useOfficialInlinePortraitDetailExperience") <
+                collapsedHeightPolicy.indexOf("portraitPlayerCollapseMode != PortraitPlayerCollapseMode.OFF")
+        )
+        assertTrue(collapsedHeightPolicy.contains("collapsedPortraitInlineSpec.heightDp.dp"))
     }
 
     @Test
