@@ -105,6 +105,7 @@ import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
 import com.android.purebilibili.core.ui.blur.shouldAllowRenderEffectBackedHazeEffect
 import com.android.purebilibili.core.ui.performance.isLowBlurBudgetForced
 import top.yukonga.miuix.kmp.blur.Backdrop
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import dev.chrisbanes.haze.HazeState
@@ -411,7 +412,7 @@ fun ChatScreen(
 private fun ChatWallpaperHost(
     chromeBackdropSource: ChromeBackdropSource?,
     hazeState: HazeState?,
-    inputBackdrop: Backdrop?,
+    inputBackdrop: LayerBackdrop?,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
