@@ -663,6 +663,12 @@ fun MessageBubble(
     val parsedCard = remember(message.content, message.msg_type) {
         MessagePreviewParser.parseMessageCard(message.content, message.msg_type)
     }
+    val linkedVideoPreviews = remember(detectedBvids, videoPreviews) {
+        detectedBvids.distinct().mapNotNull { bvid ->
+            videoPreviews[bvid]?.let { preview -> bvid to preview }
+        }
+    }
+    val shouldUseLargeVideoLinkCard = message.msg_type == 1 && linkedVideoPreviews.isNotEmpty()
     val isLargeVideoMessage = message.msg_status != 1 && parsedCard?.kind == MessageCardKind.Video
     
     Column(
@@ -695,7 +701,7 @@ fun MessageBubble(
                         onLongClick = if (canWithdraw) onLongPress else null,
                     ),
             )
-        } else {
+        } else if (!shouldUseLargeVideoLinkCard) {
             // 消息气泡
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth(),
@@ -842,14 +848,12 @@ fun MessageBubble(
         }
         
         // 视频链接预览卡片
-        detectedBvids.forEach { bvid ->
-            videoPreviews[bvid]?.let { preview ->
-                Spacer(modifier = Modifier.height(AppSpacingTokens.ExtraSmall))
-                VideoLinkPreviewCard(
-                    preview = preview,
-                    onClick = { onVideoClick?.invoke(bvid) }
-                )
-            }
+        linkedVideoPreviews.forEach { (bvid, preview) ->
+            Spacer(modifier = Modifier.height(AppSpacingTokens.ExtraSmall))
+            VideoLinkPreviewCard(
+                preview = preview,
+                onClick = { onVideoClick?.invoke(bvid) }
+            )
         }
         
         if (!isLargeVideoMessage) {
@@ -948,6 +952,16 @@ private fun MessageLargeVideoCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth(),
             )
+            preview.subtitle.takeIf { it.isNotBlank() }?.let { subtitle ->
+                AppText(
+                    text = subtitle,
+                    style = contentTypography.author,
+                    color = glassContentColors.subtitleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -1043,20 +1057,26 @@ fun VideoLinkPreviewCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MessageHorizontalVideoCard(
-        coverUrl = preview.cover,
-        title = preview.title,
-        duration = preview.duration,
-        supportingText = buildString {
-            if (preview.ownerName.isNotBlank()) append(preview.ownerName)
-            if (preview.viewCount > 0) {
-                if (isNotEmpty()) append(" · ")
-                append(FormatUtils.formatStat(preview.viewCount))
-                append("播放")
-            }
-        },
-        onClick = onClick,
-        modifier = modifier,
+    val supportingText = buildString {
+        if (preview.ownerName.isNotBlank()) append(preview.ownerName)
+        if (preview.viewCount > 0) {
+            if (isNotEmpty()) append(" · ")
+            append(FormatUtils.formatStat(preview.viewCount))
+            append("播放")
+        }
+    }
+    MessageLargeVideoCard(
+        preview = MessageCardPreview(
+            kind = MessageCardKind.Video,
+            title = preview.title,
+            subtitle = supportingText,
+            cover = preview.cover,
+            bvid = preview.bvid,
+            duration = preview.duration,
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
     )
 }
 
