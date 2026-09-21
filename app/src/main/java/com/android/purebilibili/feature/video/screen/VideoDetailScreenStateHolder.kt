@@ -4944,7 +4944,7 @@ internal fun VideoDetailScreenStateHolder(
                                                     is com.android.purebilibili.data.model.VideoLoadError.PlayUrlEmpty -> "⚡"
                                                     else -> ""
                                                 },
-                                                fontSize = 48.sp
+                                                style = MaterialTheme.typography.displayMedium
                                             )
                                             Spacer(Modifier.height(16.dp))
                                             AppText(
