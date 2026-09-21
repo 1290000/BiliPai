@@ -2689,10 +2689,16 @@ internal fun VideoDetailScreenStateHolder(
         !useOfficialInlinePortraitDetailExperience
     // Direct morph: hide phone intro/comment body under the full-bleed shell so only
     // card→fullscreen motion + entry cover / portrait pager are visible.
-    val suppressPhoneDetailBodyForDirectPortrait = shouldSuppressPhoneDetailBodyForDirectPortraitEntry(
-        directPortraitEntry = directPortraitEntryFromRoute,
-        isPortraitFullscreen = isPortraitFullscreen
-    )
+    val suppressPhoneDetailBodyForDirectPortrait =
+        shouldSuppressPhoneDetailBodyForDirectPortraitEntry(
+            directPortraitEntry = directPortraitEntryFromRoute,
+            isPortraitFullscreen = isPortraitFullscreen
+        ) || shouldSuppressPhoneDetailBodyUnderStandalonePortraitPager(
+            portraitExperienceEnabled = portraitExperienceEnabled,
+            isPortraitFullscreen = isPortraitFullscreen,
+            hasPlayableState = uiState is VideoPlaybackUiState.Success ||
+                uiState is VideoPlaybackUiState.Loading,
+        )
     val isCurrentRouteVideoLoaded = remember(uiState, currentBvid) {
         val success = uiState as? VideoPlaybackUiState.Success
         success?.info?.bvid == currentBvid

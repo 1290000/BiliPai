@@ -148,6 +148,7 @@ import com.android.purebilibili.data.model.response.UgcSeason
 import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.video.danmaku.DanmakuManager
+import com.android.purebilibili.feature.video.danmaku.configureAsPassiveDanmakuOverlay
 import com.android.purebilibili.feature.video.danmaku.rememberIsolatedDanmakuManager
 import com.android.purebilibili.feature.video.playback.session.PlaybackSeekSessionState
 import com.android.purebilibili.feature.video.playback.session.SEEK_PLAYBACK_RECOVERY_DELAY_MS
@@ -3713,10 +3714,13 @@ private fun PortraitDanmakuOverlay(
         factory = { ctx ->
             DanmakuRenderView(ctx).apply {
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                // 弹幕层必须 passive，否则会吞掉竖屏全屏的全部触控。
+                configureAsPassiveDanmakuOverlay()
                 danmakuManager.attachView(this)
             }
         },
         update = { view ->
+            view.configureAsPassiveDanmakuOverlay()
             val viewportTag = "$videoWidth:$videoHeight:$resizeMode:${view.width}x${view.height}"
             if (view.width > 0 && view.height > 0 && view.tag != viewportTag) {
                 view.tag = viewportTag

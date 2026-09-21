@@ -110,6 +110,20 @@ internal fun shouldSuppressPhoneDetailBodyForDirectPortraitEntry(
     return directPortraitEntry && isPortraitFullscreen
 }
 
+/**
+ * Standalone portrait pager covers the phone detail body. Suppress that body so inline
+ * VideoPlayerSection does not dual-host the shared player under the pager.
+ */
+internal fun shouldSuppressPhoneDetailBodyUnderStandalonePortraitPager(
+    portraitExperienceEnabled: Boolean,
+    isPortraitFullscreen: Boolean,
+    hasPlayableState: Boolean,
+): Boolean {
+    return portraitExperienceEnabled &&
+        isPortraitFullscreen &&
+        hasPlayableState
+}
+
 internal fun resolvePortraitFullscreenButtonAction(
     useOfficialInlinePortraitDetailExperience: Boolean
 ): PortraitFullscreenButtonAction {
