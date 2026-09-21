@@ -691,8 +691,9 @@ internal fun ElegantVideoCard(
             blurEnabled = blurEnabled
         )
     }
-    val shouldUseFrostedGlass = homeCardDynamicTintEnabled ||
-        infoGlassMode != HomeCardInfoGlassMode.OFF
+    // The global card switch is authoritative. Older per-card glass settings must not
+    // re-enable frosted surfaces after the user turns the shared setting off.
+    val shouldUseFrostedGlass = homeCardDynamicTintEnabled
     val scrollLitePolicy = remember(compactStatsOnCover) {
         resolveVideoCardScrollLiteVisualPolicy(
             scrollLiteModeEnabled = false,
@@ -1220,7 +1221,7 @@ internal fun ElegantVideoCard(
                 model = coverImageRequest,
                 contentDescription = null,
                 onSuccess = { state ->
-                    if (coverTint == null) {
+                    if (homeCardDynamicTintEnabled && coverTint == null) {
                         val bitmap = (state.result.image as? coil3.BitmapImage)?.bitmap
                         if (bitmap != null) {
                             VideoCardCoverColorStore.extractColorAsync(

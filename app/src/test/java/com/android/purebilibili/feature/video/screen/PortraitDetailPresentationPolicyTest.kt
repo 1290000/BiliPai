@@ -151,9 +151,9 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun enabledCollapseModes_usePiliPlusToolbarHeight() {
+    fun enabledCollapseModes_keepMediaPeekBehindPiliPlusToolbar() {
         assertEquals(
-            56f,
+            112f,
             resolvePiliPlusCollapsedPlayerViewportHeightDp(
                 standardCollapsedHeightDp = 231.75f,
                 collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
@@ -161,7 +161,7 @@ class PortraitDetailPresentationPolicyTest {
             )
         )
         assertEquals(
-            56f,
+            112f,
             resolvePiliPlusCollapsedPlayerViewportHeightDp(
                 standardCollapsedHeightDp = 231.75f,
                 collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
@@ -179,7 +179,7 @@ class PortraitDetailPresentationPolicyTest {
             PortraitPlayerCollapseMode.BOTH,
         ).forEach { mode ->
             assertEquals(
-                if (mode == PortraitPlayerCollapseMode.OFF) 231.75f else 56f,
+                if (mode == PortraitPlayerCollapseMode.OFF) 231.75f else 112f,
                 resolvePiliPlusCollapsedPlayerViewportHeightDp(
                     standardCollapsedHeightDp = 231.75f,
                     collapseMode = mode,
@@ -187,6 +187,19 @@ class PortraitDetailPresentationPolicyTest {
                 )
             )
         }
+    }
+
+    @Test
+    fun switchingToCommentTab_doesNotHidePortraitPlayer() {
+        assertFalse(
+            shouldUseCompactInlinePortraitPlayerForCommentTab(
+                useOfficialInlinePortraitDetailExperience = true,
+                selectedTabIndex = 1,
+                isPortraitFullscreen = false,
+                collapseMode = PortraitPlayerCollapseMode.BOTH,
+                isVerticalVideo = true,
+            )
+        )
     }
 
     @Test
@@ -260,8 +273,8 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun inlinePortraitPlayer_compactsImmediatelyWhenCommentTabIsSelected() {
-        assertTrue(
+    fun inlinePortraitPlayer_keepsCommentTabPlayerVisible() {
+        assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,
@@ -269,7 +282,7 @@ class PortraitDetailPresentationPolicyTest {
                 collapseMode = PortraitPlayerCollapseMode.BOTH
             )
         )
-        assertTrue(
+        assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,
@@ -308,8 +321,8 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun inlinePortraitPlayer_compactsWhenCommentThreadDetailIsVisible() {
-        assertTrue(
+    fun inlinePortraitPlayer_keepsPlayerWhenCommentThreadDetailIsVisible() {
+        assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 0,
@@ -442,7 +455,7 @@ class PortraitDetailPresentationPolicyTest {
                 isVerticalVideo = true
             )
         )
-        assertTrue(
+        assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,
@@ -482,7 +495,7 @@ class PortraitDetailPresentationPolicyTest {
                 isVerticalVideo = false
             )
         )
-        assertTrue(
+        assertFalse(
             shouldUseCompactInlinePortraitPlayerForCommentTab(
                 useOfficialInlinePortraitDetailExperience = true,
                 selectedTabIndex = 1,
@@ -494,9 +507,9 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun inlinePortraitPlayer_commentTabUsesCollapsedVisualProgressWithoutChangingManualState() {
+    fun inlinePortraitPlayer_scrollProgressFollowsManualOffsetForRestore() {
         assertEquals(
-            1f,
+            0f,
             resolveInlinePortraitPlayerCollapseProgress(
                 manualCollapseProgress = 0f,
                 compactForCommentTabProgress = 1f
@@ -510,7 +523,7 @@ class PortraitDetailPresentationPolicyTest {
             )
         )
         assertEquals(
-            0.6f,
+            0.2f,
             resolveInlinePortraitPlayerCollapseProgress(
                 manualCollapseProgress = 0.2f,
                 compactForCommentTabProgress = 0.6f

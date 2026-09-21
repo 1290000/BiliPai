@@ -125,11 +125,9 @@ internal fun shouldUseCompactInlinePortraitPlayerForCommentTab(
     isVerticalVideo: Boolean = true,
     isPlaybackPaused: Boolean = false
 ): Boolean {
-    if (!useOfficialInlinePortraitDetailExperience || isPortraitFullscreen) return false
-    if (!collapseMode.enablesVideoOrientation(isVerticalVideo)) return false
-    if (!collapseMode.enablesComment) return false
-    if (collapseMode == PortraitPlayerCollapseMode.PAUSED_ONLY) return false
-    return selectedTabIndex == 1
+    // Switching between 简介/评论 must keep the inline portrait player visible. The player is
+    // collapsed only by the detail list gesture, which also allows an upward drag to restore it.
+    return false
 }
 
 internal fun shouldUseCompactInlinePortraitPlayerForIntroScroll(
@@ -169,9 +167,9 @@ internal fun resolveInlinePortraitPlayerCollapseProgress(
     restoreRequested: Boolean = false
 ): Float {
     if (restoreRequested) return 0f
-    return manualCollapseProgress
-        .coerceIn(0f, 1f)
-        .coerceAtLeast(compactForCommentTabProgress.coerceIn(0f, 1f))
+    // The list threshold drives the state holder to its compact offset. Rendering must follow
+    // that manual offset afterwards so an upward drag can restore the player immediately.
+    return manualCollapseProgress.coerceIn(0f, 1f)
 }
 
 internal fun resolveInlinePortraitPlayerCommentCollapseDurationMillis(
@@ -181,7 +179,7 @@ internal fun resolveInlinePortraitPlayerCommentCollapseDurationMillis(
 }
 
 /**
- * PiliPlus collapses every enabled player-collapse mode to a single 56dp toolbar. OFF keeps the
+ * Enabled player-collapse modes keep a 56dp control row plus a 56dp media peek. OFF keeps the
  * existing compact viewport because the collapse affordance is disabled.
  */
 internal fun resolvePiliPlusCollapsedPlayerViewportHeightDp(
@@ -189,12 +187,15 @@ internal fun resolvePiliPlusCollapsedPlayerViewportHeightDp(
     collapseMode: PortraitPlayerCollapseMode,
     isPlaybackPaused: Boolean,
     toolbarHeightDp: Float = 56f,
+    mediaPeekHeightDp: Float = 56f,
 ): Float {
     return if (collapseMode != PortraitPlayerCollapseMode.OFF) {
-        toolbarHeightDp
+        // Keep a real portrait media peek behind the compact controls. A toolbar-only endpoint
+        // made vertical videos disappear when switching tabs or scrolling the detail list.
+        toolbarHeightDp + mediaPeekHeightDp
     } else {
         standardCollapsedHeightDp
-    }.coerceAtLeast(0f)
+    }.coerceIn(0f, standardCollapsedHeightDp.coerceAtLeast(0f))
 }
 
 internal fun shouldShowPiliPlusCollapsedPlayAction(

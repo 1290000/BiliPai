@@ -1846,7 +1846,6 @@ fun HomeScreen(
                             homeWallpaperUri.isNotBlank() && isStaticHomeWallpaperUri(homeWallpaperUri)
                         ),
                         com.android.purebilibili.feature.home.components.cards.LocalWallpaperPalette provides wallpaperPalette,
-                        com.android.purebilibili.feature.home.components.cards.LocalHomeCardDynamicTintEnabled provides homeSettings.homeCardDynamicTintEnabled
                     ) {
                     Box(
                         modifier = Modifier

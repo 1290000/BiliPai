@@ -63,6 +63,7 @@ import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.feature.home.components.biliPaiProgressiveTopBlur
+import com.android.purebilibili.core.ui.blur.topSolidProgressiveFade
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackScrollJank
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
@@ -626,9 +627,14 @@ internal fun VideoContentSection(
     val onIntroScrollThresholdChange = uiActions.onIntroScrollThresholdChange
     val onCommentScrollStateChange = uiActions.onCommentScrollStateChange
     val context = LocalContext.current
-    val liquidGlassEnabled = LocalAppThemeConfig.current.liquidGlassEnabled
-    val progressiveCommentHeaderEnabled = LocalAppThemeConfig.current.progressiveTopBlurEnabled
-    val immersiveVideoContentChromeEnabled = progressiveCommentHeaderEnabled
+    val themeConfig = LocalAppThemeConfig.current
+    val liquidGlassEnabled = themeConfig.liquidGlassEnabled
+    val progressiveCommentHeaderEnabled = themeConfig.progressiveTopBlurEnabled &&
+        !themeConfig.headerBlurEnabled
+    val solidProgressiveCommentHeaderEnabled = themeConfig.progressiveTopFadeEnabled &&
+        !themeConfig.headerBlurEnabled
+    val immersiveVideoContentChromeEnabled = progressiveCommentHeaderEnabled ||
+        solidProgressiveCommentHeaderEnabled
     val tabs = listOf("简介", "评论")
     val scope = rememberCoroutineScope()
     var showCommentSearchSheet by remember { mutableStateOf(false) }
@@ -1019,8 +1025,12 @@ internal fun VideoContentSection(
                     .height(tabBarVisibleHeightDp + commentChromeHeight)
                     .biliPaiProgressiveTopBlur(
                         backdrop = videoContentMiuixBackdrop,
-                        enabled = true,
+                        enabled = progressiveCommentHeaderEnabled,
                         surfaceColor = Color.Transparent,
+                    )
+                    .topSolidProgressiveFade(
+                        surfaceColor = MaterialTheme.colorScheme.surface,
+                        enabled = solidProgressiveCommentHeaderEnabled,
                     ),
             )
         }

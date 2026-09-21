@@ -284,6 +284,7 @@ private const val VIDEO_DETAIL_COLLAPSE_SIGNAL_IDLE_TIMEOUT_MS = 120L
 private fun CollapsedPlayerNavigationBar(
     scrollRatio: Float,
     topInset: Dp,
+    isPortraitVideo: Boolean = false,
     onBack: () -> Unit,
     onHomeClick: () -> Unit,
     onPlayClick: () -> Unit,
@@ -292,8 +293,17 @@ private fun CollapsedPlayerNavigationBar(
 ) {
     if (scrollRatio > 0f) {
         val useMiuixNonGlassChrome = isMiuixNonGlassEnabled()
-        val mediaScrimAlpha = resolveCollapsedPlayerMediaScrimAlpha(scrollRatio)
+        val mediaScrimAlpha = if (isPortraitVideo) {
+            (resolveCollapsedPlayerMediaScrimAlpha(scrollRatio) * 0.35f).coerceAtMost(0.16f)
+        } else {
+            resolveCollapsedPlayerMediaScrimAlpha(scrollRatio)
+        }
         val toolbarAlpha = resolveCollapsedPlayerToolbarAlpha(scrollRatio)
+        val toolbarSurface = if (isPortraitVideo) {
+            Color.Black.copy(alpha = 0.34f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
         Box(
             modifier = modifier.drawBehind {
                 drawRect(
@@ -312,13 +322,13 @@ private fun CollapsedPlayerNavigationBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(topInset)
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(if (isPortraitVideo) Color.Transparent else toolbarSurface)
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(toolbarSurface)
                         .clickable(onClick = onPlayClick),
                 ) {
                     Row(
@@ -4066,12 +4076,13 @@ internal fun VideoDetailScreenStateHolder(
                         )
                         LaunchedEffect(
                             skipGesturePlayerCollapse,
+                            compactInlinePlayerForIntroScroll,
                             collapseRangePx,
                             isExitTransitionInProgress,
                         ) {
                             // 返回 morph 期间不要再强制压扁，否则封面又被裁成一条。
                             if (isExitTransitionInProgress) return@LaunchedEffect
-                            if (skipGesturePlayerCollapse && collapseRangePx > 0f) {
+                            if (compactInlinePlayerForIntroScroll && collapseRangePx > 0f) {
                                 // 与视觉折叠对齐，避免之后阈值解除时 offset 仍停在半途。
                                 inlinePlayerCollapseState.updateOffset(-collapseRangePx)
                             }
@@ -4174,7 +4185,7 @@ internal fun VideoDetailScreenStateHolder(
                             isPortraitFullscreen = isPortraitFullscreen
                         )
                         val commentTabCollapseProgress by animateFloatAsState(
-                            targetValue = if (compactInlinePlayerForCommentTab || compactInlinePlayerForIntroScroll) 1f else 0f,
+                            targetValue = if (compactInlinePlayerForCommentTab) 1f else 0f,
                             animationSpec = tween(
                                 durationMillis = resolveInlinePortraitPlayerCommentCollapseDurationMillis(
                                     videoContentTabSwitchAnimationSpec
@@ -4190,7 +4201,7 @@ internal fun VideoDetailScreenStateHolder(
                         )
                         // Drag/scroll collapse stays directly coupled to the finger. Only an
                         // explicit restore ("立即播放" / comment back-to-top) eases the player from
-                        // the 56dp toolbar back to its full viewport instead of jumping in one frame.
+                        // the compact viewport back to its full size instead of jumping in one frame.
                         val animatedCollapseProgress by animateFloatAsState(
                             targetValue = effectiveCollapseProgress,
                             animationSpec = if (inlinePlayerCollapseState.restoreRequested) {
@@ -4701,6 +4712,7 @@ internal fun VideoDetailScreenStateHolder(
                             CollapsedPlayerNavigationBar(
                                 scrollRatio = layoutCollapseProgress,
                                 topInset = collapsedSystemBarInset,
+                                isPortraitVideo = isVerticalVideo,
                                 onBack = handleBack,
                                 onHomeClick = {
                                     handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
