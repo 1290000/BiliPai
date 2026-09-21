@@ -54,9 +54,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.android.purebilibili.core.theme.AppUiStyle
+import com.android.purebilibili.core.theme.LocalAppUiStyle
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
 import com.android.purebilibili.core.ui.AppAlertDialog
+import com.android.purebilibili.core.ui.AppChromeSizeTokens
 import com.android.purebilibili.core.ui.AppDialogAction
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
@@ -375,13 +378,19 @@ private fun TimelineSection(
             text = "追番时间表",
             style = MaterialTheme.typography.titleMedium,
         )
+        val uiStyle = LocalAppUiStyle.current
+        val timelineRangeMinWidth = if (uiStyle == AppUiStyle.MATERIAL3) {
+            AppChromeSizeTokens.MinimumTouchTarget
+        } else {
+            104.dp
+        }
         AppThemeAdaptiveTabRow(
             options = BangumiTimelineRange.entries.map { range ->
                 AppSegmentOption(range, range.label)
             },
             selectedValue = state.range,
             onSelectionChange = onRangeSelected,
-            minTabWidth = 104.dp,
+            minTabWidth = timelineRangeMinWidth,
             scrollable = true,
             miuixBackdrop = tabBackdrop,
             modifier = Modifier.fillMaxWidth(),
@@ -391,6 +400,11 @@ private fun TimelineSection(
             state.error != null && state.days.isEmpty() -> InlineError(state.error, onRetry)
             state.days.isEmpty() -> InlineNotice("当前范围暂无更新时间表")
             else -> {
+                val timelineDayMinWidth = if (uiStyle == AppUiStyle.MATERIAL3) {
+                    AppChromeSizeTokens.MinimumTouchTarget
+                } else {
+                    112.dp
+                }
                 AppThemeAdaptiveTabRow(
                     options = state.days.mapIndexed { index, item ->
                         AppSegmentOption(index, resolveBangumiTimelineDayLabel(item))
@@ -398,7 +412,7 @@ private fun TimelineSection(
                     selectedValue = selectedDay,
                     onSelectionChange = { selectedDay = it },
                     scrollable = true,
-                    minTabWidth = 112.dp,
+                    minTabWidth = timelineDayMinWidth,
                     miuixBackdrop = tabBackdrop,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -480,11 +494,17 @@ private fun BangumiIndexContent(
                 span = { GridItemSpan(maxLineSpan) },
                 key = "index_categories",
             ) {
+                val uiStyle = LocalAppUiStyle.current
+                val categoryMinWidth = if (uiStyle == AppUiStyle.MATERIAL3) {
+                    AppChromeSizeTokens.MinimumTouchTarget
+                } else {
+                    108.dp
+                }
                 AppThemeAdaptiveTabRow(
                     options = categories.map { AppSegmentOption(it, it.label) },
                     selectedValue = category,
                     scrollable = true,
-                    minTabWidth = 108.dp,
+                    minTabWidth = categoryMinWidth,
                     miuixBackdrop = tabBackdrop,
                     onSelectionChange = {
                         if (it == category) {
@@ -575,13 +595,19 @@ private fun IndexFilterPanel(
                     maxLines = 1,
                 )
                 if (selectedChoice != null) {
+                    val uiStyle = LocalAppUiStyle.current
+                    val filterChoiceMinWidth = if (uiStyle == AppUiStyle.MATERIAL3) {
+                        AppChromeSizeTokens.MinimumTouchTarget
+                    } else {
+                        88.dp
+                    }
                     AppThemeAdaptiveTabRow(
                         options = group.choices.map { choice ->
                             AppSegmentOption(choice, choice.label)
                         },
                         selectedValue = selectedChoice,
                         scrollable = true,
-                        minTabWidth = 88.dp,
+                        minTabWidth = filterChoiceMinWidth,
                         onSelectionChange = { choice -> onFilterSelected(group, choice) },
                         modifier = Modifier.weight(1f),
                     )
@@ -837,16 +863,23 @@ private fun BangumiSearchContent(
     val results = state.results
     Column(modifier = Modifier.fillMaxSize().padding(top = listTopPadding)) {
         val categories = resolveBangumiSearchCategories(channel)
+        val uiStyle = LocalAppUiStyle.current
+        val searchCategoryMinWidth = if (uiStyle == AppUiStyle.MATERIAL3) {
+            AppChromeSizeTokens.MinimumTouchTarget
+        } else {
+            104.dp
+        }
+        val searchTabHorizontalPadding = if (uiStyle == AppUiStyle.MATERIAL3) 0.dp else 12.dp
         AppThemeAdaptiveTabRow(
             options = categories.map { category -> AppSegmentOption(category, category.label) },
             selectedValue = state.category,
             onSelectionChange = onCategorySelected,
             scrollable = true,
-            minTabWidth = 104.dp,
+            minTabWidth = searchCategoryMinWidth,
             miuixBackdrop = tabBackdrop,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = searchTabHorizontalPadding, vertical = 8.dp),
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
