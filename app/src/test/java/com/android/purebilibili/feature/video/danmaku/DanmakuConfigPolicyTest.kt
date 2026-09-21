@@ -76,16 +76,77 @@ class DanmakuConfigPolicyTest {
     }
 
     @Test
-    fun `massive mode should expose more visible lines`() {
+    fun `known viewport line count should honor engine line budget`() {
+        val regularLines = resolveDanmakuVisibleLineCount(
+            visibleHeightPx = 500f,
+            areaRatioHint = 0.5f,
+            fontSize = 20f,
+            strokeWidth = 1.5f,
+            strokeEnabled = true,
+            lineHeight = 1.6f,
+            massiveMode = false
+        )
+        val massiveLines = resolveDanmakuVisibleLineCount(
+            visibleHeightPx = 500f,
+            areaRatioHint = 0.5f,
+            fontSize = 20f,
+            strokeWidth = 1.5f,
+            strokeEnabled = true,
+            lineHeight = 1.6f,
+            massiveMode = true
+        )
+
+        assertEquals(9, regularLines)
+        assertEquals(10, massiveLines)
+    }
+
+    @Test
+    fun `short viewport should not force a minimum line beyond the pixel budget`() {
         assertEquals(
-            10,
+            1,
             resolveDanmakuVisibleLineCount(
-                visibleHeightPx = 280f,
+                visibleHeightPx = 42f,
                 areaRatioHint = 0.5f,
                 fontSize = 42f,
                 strokeWidth = 1.5f,
                 strokeEnabled = true,
                 lineHeight = 1.0f,
+                massiveMode = false
+            )
+        )
+        assertEquals(
+            0,
+            resolveDanmakuVisibleLineCount(
+                visibleHeightPx = 41f,
+                areaRatioHint = 0.5f,
+                fontSize = 42f,
+                strokeWidth = 1.5f,
+                strokeEnabled = true,
+                lineHeight = 1.0f,
+                massiveMode = true
+            )
+        )
+    }
+
+    @Test
+    fun `text size should scale the 20dp baseline by density and user scale`() {
+        assertEquals(20f, resolveDanmakuTextSizePx(density = 1f, fontScale = 1f), 0.001f)
+        assertEquals(40f, resolveDanmakuTextSizePx(density = 2f, fontScale = 1f), 0.001f)
+        assertEquals(30f, resolveDanmakuTextSizePx(density = 1f, fontScale = 1.5f), 0.001f)
+        assertEquals(12f, resolveDanmakuTextSizePx(density = 2f, fontScale = 0.3f), 0.001f)
+    }
+
+    @Test
+    fun `unknown viewport should retain area based fallback line count`() {
+        assertEquals(
+            8,
+            resolveDanmakuVisibleLineCount(
+                visibleHeightPx = 0f,
+                areaRatioHint = 0.5f,
+                fontSize = 42f,
+                strokeWidth = 1.5f,
+                strokeEnabled = true,
+                lineHeight = 1.6f,
                 massiveMode = true
             )
         )

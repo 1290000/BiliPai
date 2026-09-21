@@ -1052,7 +1052,10 @@ class DanmakuManager private constructor(
         controller?.let { ctrl ->
             val viewWidth = danmakuView?.width ?: 0
             val viewHeight = danmakuView?.height ?: 0
-            baseRenderConfig = config.resolveRenderConfig(viewWidth, viewHeight)
+            baseRenderConfig = config.resolveRenderConfig(
+                viewWidth, viewHeight,
+                (danmakuView?.resources ?: context.resources).displayMetrics.density
+            )
 
             // 记录设置后的基准时间，供倍速同步使用
             originalMoveTime = baseRenderConfig.scrollDurationMs

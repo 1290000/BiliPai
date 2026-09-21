@@ -22,16 +22,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.ThumbUp
 import com.android.purebilibili.core.ui.components.AppButton
 import androidx.compose.material3.ButtonDefaults
@@ -60,9 +65,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
@@ -73,6 +80,7 @@ import com.android.purebilibili.feature.video.danmaku.CommandDanmakuItem
 import com.android.purebilibili.feature.video.danmaku.CommandDanmakuType
 import com.android.purebilibili.feature.video.danmaku.VoteDanmakuKind
 import com.android.purebilibili.feature.video.danmaku.VoteOption
+import com.android.purebilibili.feature.video.danmaku.resolveGradeStarOptions
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import com.android.purebilibili.core.ui.AppShapes
@@ -139,20 +147,38 @@ private fun CommandDanmakuCard(
         CommandDanmakuType.LINK -> 0.08f to 0.18f
         CommandDanmakuType.TEXT -> 0.08f to 0.10f
     }
-    val cardWidthDp = when (item.type) {
+    val requestedCardWidthDp = when (item.type) {
         CommandDanmakuType.ATTENTION -> resolveAttentionCommandCardWidthDp(item.attentionType)
-        CommandDanmakuType.VOTE -> 240
+        // Five 48dp star targets fit without scrolling while leaving the close control above.
+        CommandDanmakuType.VOTE -> if (item.voteKind == VoteDanmakuKind.GRADE) 260 else 224
         else -> 220
     }
     val density = LocalDensity.current
-    val cardWidthPx = with(density) { cardWidthDp.dp.roundToPx() }
+    val requestedCardWidthPx = with(density) { requestedCardWidthDp.dp.roundToPx() }
+    val cardWidthPx = resolveCommandDanmakuCardWidthPx(
+        containerWidthPx = containerWidth,
+        requestedCardWidthPx = requestedCardWidthPx
+    )
+    val cardWidthDp = with(density) { cardWidthPx.toDp() }
+    val maxCardHeightDp = with(density) { containerHeight.toDp() }
+    // Start conservatively at the full viewport height so the first frame cannot extend below it;
+    // onSizeChanged then tightens the position to the measured card height.
+    var measuredCardHeightPx by remember(item.id, containerHeight) {
+        mutableIntStateOf(containerHeight)
+    }
     val x = resolveCommandDanmakuHorizontalOffsetPx(containerWidth, cardWidthPx, xRatio)
-    val y = (containerHeight * yRatio).roundToInt()
+    val y = resolveCommandDanmakuVerticalOffsetPx(
+        containerHeightPx = containerHeight,
+        cardHeightPx = measuredCardHeightPx,
+        yRatio = yRatio
+    )
 
     AppSurface(
         modifier = Modifier
-            .offset { IntOffset(x, y) }
-            .width(cardWidthDp.dp),
+            .width(cardWidthDp)
+            .heightIn(max = maxCardHeightDp)
+            .onSizeChanged { measuredCardHeightPx = it.height }
+            .offset { IntOffset(x, y) },
         color = resolveCommandDanmakuContainerColor(item.type),
         contentColor = Color.White,
         shape = AppShapes.container(ContainerLevel.Chip)
@@ -167,6 +193,7 @@ private fun CommandDanmakuCard(
                 )
                 CommandDanmakuType.VOTE -> VoteCommandCard(
                     item = item,
+                    maxHeightDp = maxCardHeightDp,
                     onVoteSubmit = onVoteSubmit
                 )
                 else -> InfoCommandCard(item)
@@ -175,7 +202,7 @@ private fun CommandDanmakuCard(
                 onDismiss = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(2.dp)
+                    .padding(1.dp)
             )
         }
     }
@@ -184,7 +211,7 @@ private fun CommandDanmakuCard(
 @Composable
 private fun InfoCommandCard(item: CommandDanmakuItem) {
     Row(
-        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 34.dp, bottom = 8.dp),
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 52.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (item.iconUrl.isNotBlank()) {
@@ -230,7 +257,7 @@ private fun AttentionCommandCard(
     }
 
     Column(
-        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 34.dp, bottom = 8.dp),
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 52.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (item.iconUrl.isNotBlank()) {
@@ -265,7 +292,7 @@ private fun AttentionCommandCard(
             elevation = null,
             contentPadding = PaddingValues(horizontal = 14.dp),
             modifier = Modifier
-                .height(36.dp)
+                .heightIn(min = 48.dp)
                 .fillMaxWidth()
         ) {
             AppText(
@@ -289,7 +316,7 @@ private fun CommandDanmakuCloseButton(
 ) {
     AppIconButton(
         onClick = onDismiss,
-        modifier = modifier.size(30.dp),
+        modifier = modifier.size(48.dp),
         colors = AppIconButtonDefaults.colors(
             containerColor = Color.Black.copy(alpha = 0.34f),
             contentColor = Color.White
@@ -452,43 +479,70 @@ internal fun resolveCommandDanmakuContainerColor(type: CommandDanmakuType): Colo
 }
 
 /**
- * 投票/打分弹幕卡片：标题 + 选项按钮，点击后提交并显示已投票状态。
+ * 投票/打分弹幕卡片：普通投票保留选项按钮，打分使用固定五颗星。
+ * 星位始终按 API 的合法分数 2/4/6/8/10 对齐，不按服务端列表顺序猜测分数。
  */
 @Composable
 private fun VoteCommandCard(
     item: CommandDanmakuItem,
+    maxHeightDp: Dp,
     onVoteSubmit: (CommandDanmakuItem, VoteOption) -> Unit
 ) {
     var selectedOptionId by remember(item.id) { mutableStateOf<String?>(null) }
+    var selectedGradeScore by remember(item.id) { mutableStateOf<Int?>(null) }
     val isGrade = item.voteKind == VoteDanmakuKind.GRADE
     val title = item.voteTitle.ifBlank { item.content }
+    val gradeStarOptions = remember(item.id, item.voteOptions) {
+        resolveGradeStarOptions(item.voteOptions)
+    }
 
     Column(
-        modifier = Modifier.padding(start = 12.dp, top = 10.dp, end = 34.dp, bottom = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = maxHeightDp)
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        AppText(
-            text = if (isGrade) "打分弹幕" else "互动投票",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.74f)
-        )
-        AppText(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        if (item.voteOptions.isEmpty()) {
+        Column(
+            modifier = Modifier.padding(start = 10.dp, end = 52.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             AppText(
-                text = if (isGrade) "点击屏幕参与打分" else "点击屏幕参与投票",
+                text = if (isGrade) "打分弹幕" else "互动投票",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.74f)
+            )
+            AppText(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        when {
+            isGrade -> GradeStarRating(
+                modifier = Modifier.padding(start = 10.dp),
+                starOptions = gradeStarOptions,
+                selectedScore = selectedGradeScore,
+                onSelect = { option ->
+                    if (selectedOptionId == null) {
+                        selectedOptionId = option.id
+                        selectedGradeScore = option.score
+                        onVoteSubmit(item, option)
+                    }
+                }
+            )
+            item.voteOptions.isEmpty() -> AppText(
+                text = "点击屏幕参与投票",
+                modifier = Modifier.padding(start = 10.dp, end = 52.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.6f)
             )
-        } else {
-            item.voteOptions.forEach { option ->
+            else -> item.voteOptions.forEach { option ->
                 val isSelected = selectedOptionId == option.id
                 val isSubmitted = selectedOptionId != null
                 AppButton(
@@ -507,28 +561,114 @@ private fun VoteCommandCard(
                         disabledContentColor = Color.White.copy(alpha = 0.85f)
                     ),
                     elevation = null,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                     modifier = Modifier
+                        .padding(start = 10.dp, end = 52.dp)
                         .fillMaxWidth()
-                        .height(32.dp)
+                        .heightIn(min = 48.dp)
                 ) {
                     AppText(
-                        text = option.label + if (isGrade) " 分" else "",
+                        text = option.label,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            if (selectedOptionId != null) {
-                AppText(
-                    text = if (isGrade) "✓ 已打分" else "✓ 已投票",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.8f)
+        }
+
+        if (selectedOptionId != null) {
+            AppText(
+                text = if (isGrade) "✓ 已打分" else "✓ 已投票",
+                modifier = Modifier.padding(start = 10.dp, end = 52.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GradeStarRating(
+    modifier: Modifier = Modifier,
+    starOptions: List<VoteOption?>,
+    selectedScore: Int?,
+    onSelect: (VoteOption) -> Unit
+) {
+    val hasAvailableScore = starOptions.any { it != null }
+    val selectedIndex = selectedScore?.let { score ->
+        starOptions.indexOfFirst { it?.score == score }
+    } ?: -1
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        starOptions.forEachIndexed { index, option ->
+            val isFilled = selectedIndex >= 0 && index <= selectedIndex
+            val canSelect = option != null && selectedScore == null
+            AppIconButton(
+                onClick = { option?.let(onSelect) },
+                enabled = canSelect,
+                modifier = Modifier.size(48.dp),
+                colors = AppIconButtonDefaults.colors(
+                    containerColor = if (isFilled) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                    } else {
+                        Color.White.copy(alpha = 0.08f)
+                    },
+                    contentColor = if (option != null) Color(0xFFFFC107) else Color.White.copy(alpha = 0.26f),
+                    disabledContainerColor = if (isFilled && option != null) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
+                    } else {
+                        Color.White.copy(alpha = 0.04f)
+                    },
+                    disabledContentColor = if (isFilled && option != null) {
+                        Color(0xFFFFC107)
+                    } else {
+                        Color.White.copy(alpha = 0.26f)
+                    }
+                )
+            ) {
+                AppIcon(
+                    imageVector = if (isFilled) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                    contentDescription = if (option == null) {
+                        "${index + 1}星不可用"
+                    } else {
+                        "${index + 1}星"
+                    },
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
     }
+    if (!hasAvailableScore) {
+        AppText(
+            text = "当前评分档位不可提交",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+internal fun resolveCommandDanmakuCardWidthPx(
+    containerWidthPx: Int,
+    requestedCardWidthPx: Int
+): Int {
+    return requestedCardWidthPx.coerceIn(0, containerWidthPx.coerceAtLeast(0))
+}
+
+internal fun resolveCommandDanmakuVerticalOffsetPx(
+    containerHeightPx: Int,
+    cardHeightPx: Int,
+    yRatio: Float
+): Int {
+    val safeHeight = containerHeightPx.coerceAtLeast(0)
+    val maxOffset = (safeHeight - cardHeightPx.coerceAtLeast(0)).coerceAtLeast(0)
+    return (safeHeight * yRatio).roundToInt().coerceIn(0, maxOffset)
 }
 
 internal fun resolveCommandDanmakuHorizontalOffsetPx(

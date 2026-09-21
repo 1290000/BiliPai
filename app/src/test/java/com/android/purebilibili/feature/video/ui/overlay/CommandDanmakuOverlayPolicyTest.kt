@@ -55,6 +55,19 @@ class CommandDanmakuOverlayPolicyTest {
     }
 
     @Test
+    fun `command card width is capped by a narrow player viewport`() {
+        assertEquals(320, resolveCommandDanmakuCardWidthPx(320, 420))
+        assertEquals(0, resolveCommandDanmakuCardWidthPx(320, -1))
+    }
+
+    @Test
+    fun `command card vertical offset is clamped by measured card height`() {
+        assertEquals(192, resolveCommandDanmakuVerticalOffsetPx(320, 128, 0.8f))
+        assertEquals(0, resolveCommandDanmakuVerticalOffsetPx(320, 400, 0.8f))
+        assertEquals(0, resolveCommandDanmakuVerticalOffsetPx(320, 128, -0.2f))
+    }
+
+    @Test
     fun `attention command container is transparent while info commands keep readable scrim`() {
         assertEquals(Color.Transparent, resolveCommandDanmakuContainerColor(CommandDanmakuType.ATTENTION))
         assertTrue(resolveCommandDanmakuContainerColor(CommandDanmakuType.UP).alpha > 0.5f)

@@ -76,8 +76,8 @@ class DanmakuConfig {
     var topMarginPx = 0
     
     /** Resolve app settings into the renderer-neutral configuration contract. */
-    fun resolveRenderConfig(viewWidth: Int = 0, viewHeight: Int = 0): DanmakuRenderConfig {
-        val resolvedTextSize = DEFAULT_DANMAKU_TEXT_SIZE_PX * fontScale
+    fun resolveRenderConfig(viewWidth: Int, viewHeight: Int, density: Float): DanmakuRenderConfig {
+        val resolvedTextSize = resolveDanmakuTextSizePx(density, fontScale)
         val resolvedStrokeWidth = if (strokeEnabled) strokeWidth else 0f
         val layerLineHeightPx = resolveDanmakuLayerLineHeightPx(
             fontSize = resolvedTextSize,
@@ -171,6 +171,9 @@ internal fun resolveDanmakuTypeface(fontWeight: Int): Typeface {
     }
 }
 
+internal fun resolveDanmakuTextSizePx(density: Float, fontScale: Float): Float =
+    20f * density * fontScale.coerceIn(0.3f, 2f)
+
 /** Converts Bilibili's 18/25/36 size grades into a renderer-independent multiplier. */
 internal fun resolveBilibiliDanmakuFontScale(fontSize: Float): Float {
     if (!fontSize.isFinite() || fontSize <= 0f) return 1f
@@ -217,23 +220,48 @@ internal fun resolveDanmakuVisibleLineCount(
         return resolveDanmakuFallbackMaxLines(areaRatioHint)
     }
 
+    val lineHeightMultiplier = lineHeight.coerceIn(0.8f, 2.2f)
     val estimatedLineHeight =
-        (fontSize + (if (strokeEnabled) strokeWidth else 0f) + 12f) * lineHeight.coerceIn(0.8f, 2.2f)
-    val totalLines = (visibleHeightPx / estimatedLineHeight).toInt()
-    val minLines = resolveDanmakuMinimumVisibleLines(areaRatioHint)
-    val resolvedLines = totalLines.coerceAtLeast(minLines)
-    val boostedLines = if (massiveMode) {
-        (resolvedLines * 2).coerceAtMost(40)
+        (fontSize + (if (strokeEnabled) strokeWidth else 0f) + 12f) * lineHeightMultiplier
+    val estimatedLines = if (estimatedLineHeight > 0f) {
+        (visibleHeightPx / estimatedLineHeight).toInt()
+    } else {
+        0
+    }
+    val minimumLines = resolveDanmakuMinimumVisibleLines(areaRatioHint)
+    val resolvedLines = estimatedLines.coerceAtLeast(minimumLines)
+    val requestedLines = if (massiveMode) {
+        (resolvedLines.toLong() * 2L).coerceAtMost(40L).toInt()
     } else {
         resolvedLines
     }
-    return boostedLines.also {
+
+    // ByteDanceDanmakuEngine positions each line at
+    // `index * (lineHeight + lineMargin)`. Its line margin remains the
+    // engine default because the app only configures lineHeight.
+    val engineLineHeight = resolveDanmakuLayerLineHeightPx(
+        fontSize = fontSize,
+        lineHeightMultiplier = lineHeightMultiplier
+    )
+    val lineStep = engineLineHeight + DANMAKU_ENGINE_LINE_MARGIN_PX
+    val maxLinesByBudget = if (visibleHeightPx >= engineLineHeight && lineStep > 0f) {
+        ((visibleHeightPx - engineLineHeight) / lineStep).toInt() + 1
+    } else {
+        0
+    }
+    val budgetedLines = requestedLines.coerceAtMost(maxLinesByBudget)
+
+    return budgetedLines.also {
         android.util.Log.i(
             "DanmakuConfig",
-            "DisplayArea: visibleHeight=$visibleHeightPx, fontSize=$fontSize, ratio=$areaRatioHint -> total=$totalLines, visible=$it"
+            "DisplayArea: visibleHeight=$visibleHeightPx, estimatedLineHeight=$estimatedLineHeight, " +
+                "lineHeight=$engineLineHeight, lineMargin=$DANMAKU_ENGINE_LINE_MARGIN_PX, " +
+                "ratio=$areaRatioHint -> estimated=$estimatedLines, max=$maxLinesByBudget, visible=$it"
         )
     }
 }
+
+internal const val DANMAKU_ENGINE_LINE_MARGIN_PX = 18f
 
 internal fun resolveDanmakuMinimumVisibleLines(displayAreaRatio: Float): Int {
     return when {
