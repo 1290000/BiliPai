@@ -2382,7 +2382,7 @@ private fun FansMedalTag(detail: ReplyFansDetail) {
     ) {
         AppText(
             text = detail.medalName,
-            fontSize = 9.sp,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
             color = accentColor.copy(alpha = 0.95f),
             maxLines = 1,
@@ -2396,7 +2396,7 @@ private fun FansMedalTag(detail: ReplyFansDetail) {
         ) {
             AppText(
                 text = detail.level.toString(),
-                fontSize = 9.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
@@ -2737,8 +2737,7 @@ fun TopTag() {
     ) {
         AppText(
             text = "TOP",
-            fontSize = 9.sp,
-            lineHeight = 9.sp,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
