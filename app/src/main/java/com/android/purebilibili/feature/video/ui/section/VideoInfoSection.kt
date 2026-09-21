@@ -234,11 +234,8 @@ fun VideoTitleSection(
         ) {
             AppText(
                 text = info.title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp,
-                    fontWeight = FontWeight.SemiBold
-                ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = if (expanded) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -261,7 +258,7 @@ fun VideoTitleSection(
         // Stats row (views, danmaku)
         AppText(
             text = "${FormatUtils.formatStat(info.stat.view.toLong())}  \u2022  ${FormatUtils.formatStat(info.stat.danmaku.toLong())}\u5f39\u5e55",
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             maxLines = 1
         )
@@ -277,7 +274,7 @@ fun VideoTitleSection(
                 ) {
                     AppText(
                         text = publishTimeRowText,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -286,7 +283,7 @@ fun VideoTitleSection(
             } else {
                 AppText(
                     text = publishTimeRowText,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     maxLines = 1
                 )
@@ -422,11 +419,8 @@ fun VideoTitleWithDesc(
 
             AppText(
                 text = info.title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 16.sp,
-                    lineHeight = 21.sp,
-                    fontWeight = FontWeight.SemiBold
-                ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = if (expanded) Int.MAX_VALUE else 1,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -481,14 +475,14 @@ fun VideoTitleWithDesc(
                 }
                 AppText(
                     text = "${FormatUtils.formatStat(info.stat.view.toLong())}播放",
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = viewsModifier
                 )
 
                 AppText(
                     text = "  •  ",
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
 
@@ -516,7 +510,7 @@ fun VideoTitleWithDesc(
                 }
                 AppText(
                     text = "${FormatUtils.formatStat(info.stat.danmaku.toLong())}弹幕",
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = danmakuModifier
                 )
@@ -525,12 +519,12 @@ fun VideoTitleWithDesc(
             if (onlineCountText.isNotBlank()) {
                 AppText(
                     text = "  •  ",
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
                 AppText(
                     text = onlineCountText,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -540,7 +534,7 @@ fun VideoTitleWithDesc(
             Spacer(Modifier.width(8.dp))
             AppText(
                 text = info.bvid,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 modifier = Modifier.copyOnClick(info.bvid, "BV号")
             )
@@ -572,7 +566,7 @@ fun VideoTitleWithDesc(
                 ) {
                     AppText(
                         text = publishTimeRowText,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -581,7 +575,7 @@ fun VideoTitleWithDesc(
             } else {
                 AppText(
                     text = publishTimeRowText,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     maxLines = 1
                 )
@@ -645,10 +639,7 @@ fun VideoTitleWithDesc(
                 SelectionContainer {
                     AppText(
                         text = descriptionText,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp
-                        ),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         onTextLayout = { descriptionTextLayout = it },
                         modifier = (if (animateLayout) Modifier.animateContentSize() else Modifier)
@@ -878,7 +869,7 @@ fun UpInfoSection(
                     }
                     AppText(
                         text = info.owner.name,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -890,7 +881,7 @@ fun UpInfoSection(
                     Spacer(modifier = Modifier.height(2.dp))
                     AppText(
                         text = upStatsText,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.82f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -944,7 +935,7 @@ fun UpInfoSection(
                     ) {
                         AppText(
                             text = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             color = when (followVisualPolicy.detailTextTone) {
                                 FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
                                 FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
@@ -987,14 +978,14 @@ private fun CreatorTeamSection(
         ) {
             AppText(
                 text = "创作团队",
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.weight(1f))
             AppText(
                 text = "共 ${staff.size} 位",
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
             )
         }
@@ -1059,7 +1050,7 @@ private fun CreatorTeamMemberChip(
             ) {
                 AppText(
                     text = member.name,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -1076,7 +1067,7 @@ private fun CreatorTeamMemberChip(
             if (member.title.isNotBlank()) {
                 AppText(
                     text = member.title,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1107,10 +1098,7 @@ fun DescriptionSection(desc: String) {
         ) {
             AppText(
                 text = desc,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp
-                ),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
                 maxLines = if (expanded) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis
@@ -1128,7 +1116,7 @@ fun DescriptionSection(desc: String) {
                     AppText(
                         text = if (expanded) "\u6536\u8d77" else "\u5c55\u5f00\u66f4\u591a",
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.width(2.dp))
