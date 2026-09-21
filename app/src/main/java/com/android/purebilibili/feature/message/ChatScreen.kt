@@ -87,6 +87,7 @@ import com.android.purebilibili.feature.home.components.cards.VideoCardCoverDura
 import com.android.purebilibili.feature.home.components.cards.LocalWallpaperPalette
 import com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore
 import com.android.purebilibili.feature.home.components.BottomBarMatchedReusableLiquidDock
+import com.android.purebilibili.feature.home.components.liquid.rememberCombinedBackdrop
 import com.android.purebilibili.feature.home.components.resolveFloatingDockGeometryScale
 import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import kotlinx.serialization.json.Json
@@ -166,8 +167,18 @@ fun ChatScreen(
         null
     }
 
-    val chatInputBackdrop = if (chatThemeConfig.liquidGlassEnabled) {
+    val chatWallpaperBackdrop = if (chatThemeConfig.liquidGlassEnabled) {
         rememberLayerBackdrop()
+    } else {
+        null
+    }
+    val chatContentBackdrop = if (chatThemeConfig.liquidGlassEnabled) {
+        rememberLayerBackdrop()
+    } else {
+        null
+    }
+    val chatInputBackdrop = if (chatWallpaperBackdrop != null && chatContentBackdrop != null) {
+        rememberCombinedBackdrop(chatWallpaperBackdrop, chatContentBackdrop)
     } else {
         null
     }
@@ -175,7 +186,7 @@ fun ChatScreen(
     ChatWallpaperHost(
         chromeBackdropSource = chatChromeSource,
         hazeState = chatHazeState,
-        inputBackdrop = chatInputBackdrop,
+        wallpaperBackdrop = chatWallpaperBackdrop,
     ) {
     AppScaffold(
         containerColor = Color.Transparent,
@@ -224,6 +235,7 @@ fun ChatScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(chatContentBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)
             ) {
                 when {
                     uiState.isLoading -> {
@@ -412,7 +424,7 @@ fun ChatScreen(
 private fun ChatWallpaperHost(
     chromeBackdropSource: ChromeBackdropSource?,
     hazeState: HazeState?,
-    inputBackdrop: LayerBackdrop?,
+    wallpaperBackdrop: LayerBackdrop?,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -463,7 +475,7 @@ private fun ChatWallpaperHost(
                 .fillMaxSize()
                 .then(chromeBackdropSource?.modifier ?: Modifier)
                 .then(hazeState?.let { Modifier.hazeSourceCompat(it) } ?: Modifier)
-                .then(inputBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
+                .then(wallpaperBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
         ) {
             HomeWallpaperBackdrop(
                 wallpaperUri = wallpaperUri,
