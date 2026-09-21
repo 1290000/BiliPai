@@ -23,6 +23,8 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("globalWallpaperAwareChromeColor("))
         assertTrue(source.contains("ChatWallpaperHost"))
         assertTrue(source.contains("HomeWallpaperBackdrop("))
+        assertTrue(source.contains("topBarSurfaceColor = AppSurfaceTokens.chromeBackground()"))
+        assertTrue(source.contains("blurContentReady = !uiState.isLoading"))
         assertTrue(source.contains("containerColor = Color.Transparent"))
         assertFalse(source.contains(".height(100.dp)"))
         assertFalse(source.contains(".size(72.dp)"))

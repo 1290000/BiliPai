@@ -33,6 +33,7 @@ internal fun ImmersiveAppScaffold(
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
     containerColor: Color = MaterialTheme.colorScheme.background,
+    topBarSurfaceColor: Color = containerColor,
     contentWindowInsets: WindowInsets = WindowInsets.navigationBars,
     // Keep false until any outgoing skeleton transition has left composition.
     blurContentReady: Boolean = true,
@@ -79,7 +80,7 @@ internal fun ImmersiveAppScaffold(
                     backdrop = backdrop.takeIf { progressiveActive },
                     enabled = progressiveActive,
                     headerBlurActive = hazeActive,
-                    surfaceColor = globalWallpaperAwareChromeColor(containerColor),
+                    surfaceColor = globalWallpaperAwareChromeColor(topBarSurfaceColor),
                     fadeEnabled = fadeActive,
                     extendBelowBounds = false,
                     modifier = Modifier.then(
@@ -92,11 +93,11 @@ internal fun ImmersiveAppScaffold(
                                     surfaceType = BlurSurfaceType.HEADER,
                                 )
                                 .background(
-                                    globalWallpaperAwareChromeColor(containerColor)
+                                    globalWallpaperAwareChromeColor(topBarSurfaceColor)
                                         .copy(alpha = AppSurfaceTokens.FrostedScrimAlpha)
                                 )
                         } else {
-                            Modifier.background(globalWallpaperAwareChromeColor(containerColor))
+                            Modifier.background(globalWallpaperAwareChromeColor(topBarSurfaceColor))
                         }
                     ),
                     content = topBar,

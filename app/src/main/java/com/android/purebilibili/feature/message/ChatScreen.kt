@@ -129,6 +129,8 @@ fun ChatScreen(
     ChatWallpaperHost {
     AppScaffold(
         containerColor = Color.Transparent,
+        topBarSurfaceColor = AppSurfaceTokens.chromeBackground(),
+        blurContentReady = !uiState.isLoading,
         topBar = {
             AppTopBar(
                 title = userName,
