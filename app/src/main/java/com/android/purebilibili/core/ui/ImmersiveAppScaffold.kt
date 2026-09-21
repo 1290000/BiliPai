@@ -37,6 +37,8 @@ internal fun ImmersiveAppScaffold(
     containerColor: Color = MaterialTheme.colorScheme.background,
     topBarSurfaceColor: Color = containerColor,
     contentWindowInsets: WindowInsets = WindowInsets.navigationBars,
+    /** Let a screen opt into the progressive renderer when both top effects are temporarily on. */
+    preferProgressiveTopBlur: Boolean = false,
     /**
      * Optional source owned by a wallpaper host. The host must attach its modifier to the
      * wallpaper layer so the top chrome samples the same visual background as the screen.
@@ -50,7 +52,7 @@ internal fun ImmersiveAppScaffold(
 ) {
     val config = LocalAppThemeConfig.current
     val lowBlurBudget = isLowBlurBudgetForced()
-    val headerRequested = config.headerBlurEnabled && topBar != null
+    val headerRequested = config.headerBlurEnabled && !preferProgressiveTopBlur && topBar != null
     val progressiveRequested = config.progressiveTopBlurEnabled && !headerRequested && topBar != null
     val hazeState = externalHazeState ?: if (
         headerRequested &&

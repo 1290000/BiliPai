@@ -37,6 +37,7 @@ class ChatScreenStructureTest {
         assertTrue(source.contains("ChatWallpaperHost"))
         assertTrue(source.contains("HomeWallpaperBackdrop("))
         assertTrue(source.contains("topBarSurfaceColor = AppSurfaceTokens.chromeBackground()"))
+        assertTrue(source.contains("preferProgressiveTopBlur = chatThemeConfig.progressiveTopBlurEnabled"))
         assertTrue(source.contains("chromeBackdropSource = chatChromeSource"))
         assertTrue(source.contains("externalHazeState = chatHazeState"))
         assertTrue(source.contains("rememberChromeBackdropSource()"))

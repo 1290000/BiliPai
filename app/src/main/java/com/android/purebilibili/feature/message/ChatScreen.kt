@@ -147,7 +147,6 @@ fun ChatScreen(
     val lowBlurBudget = isLowBlurBudgetForced()
     val chatChromeSource = if (
         chatThemeConfig.progressiveTopBlurEnabled &&
-            !chatThemeConfig.headerBlurEnabled &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             !lowBlurBudget
     ) {
@@ -157,6 +156,7 @@ fun ChatScreen(
     }
     val chatHazeState = if (
         chatThemeConfig.headerBlurEnabled &&
+            !chatThemeConfig.progressiveTopBlurEnabled &&
             !lowBlurBudget &&
             shouldAllowRenderEffectBackedHazeEffect(Build.VERSION.SDK_INT)
     ) {
@@ -178,6 +178,7 @@ fun ChatScreen(
     AppScaffold(
         containerColor = Color.Transparent,
         topBarSurfaceColor = AppSurfaceTokens.chromeBackground(),
+        preferProgressiveTopBlur = chatThemeConfig.progressiveTopBlurEnabled,
         chromeBackdropSource = chatChromeSource,
         externalHazeState = chatHazeState,
         blurContentReady = !uiState.isLoading,
