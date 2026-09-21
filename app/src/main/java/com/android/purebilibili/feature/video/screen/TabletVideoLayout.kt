@@ -101,8 +101,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
+import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpeedSettings
+import com.android.purebilibili.core.ui.transition.LocalVideoTransitionAdaptiveInfo
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
+import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionMotionSpec
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionSourceCornerDp
+import com.android.purebilibili.core.ui.transition.videoSharedElementBoundsTransformSpec
 import com.android.purebilibili.feature.video.viewmodel.withEngagementUiState
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
@@ -321,6 +325,21 @@ internal fun TabletVideoLayout(
                 val sharedCoverShape = remember(sourceRoute) {
                     RoundedCornerShape(resolveVideoSharedTransitionSourceCornerDp(sourceRoute).dp)
                 }
+                val sharedTransitionSpeedSettings = LocalVideoSharedTransitionSpeedSettings.current
+                val transitionAdaptiveInfo = LocalVideoTransitionAdaptiveInfo.current
+                val sharedTransitionMotionSpec = remember(
+                    sourceRoute,
+                    transitionEnabled,
+                    sharedTransitionSpeedSettings,
+                    transitionAdaptiveInfo,
+                ) {
+                    resolveVideoCardSharedTransitionMotionSpec(
+                        sourceRoute = sourceRoute,
+                        transitionEnabled = transitionEnabled,
+                        speedSettings = sharedTransitionSpeedSettings,
+                        adaptiveInfo = transitionAdaptiveInfo,
+                    )
+                }
                 
                 //  为播放器容器添加共享元素标记（受开关控制）
                 val playerContainerModifier = if (
@@ -335,7 +354,18 @@ internal fun TabletVideoLayout(
                             .sharedBounds(
                                 sharedContentState = rememberSharedContentState(key = com.android.purebilibili.core.ui.transition.videoCoverSharedElementKey(bvid)),
                                 animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                                boundsTransform = { _, _ -> com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec() },
+                                boundsTransform = { initialBounds, targetBounds ->
+                                    if (sharedTransitionMotionSpec.enabled) {
+                                        videoSharedElementBoundsTransformSpec(
+                                            motion = sharedTransitionMotionSpec,
+                                            initialBounds = initialBounds,
+                                            targetBounds = targetBounds,
+                                            durationMillis = sharedTransitionMotionSpec.durationMillis,
+                                        )
+                                    } else {
+                                        com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
+                                    }
+                                },
                                 clipInOverlayDuringTransition = OverlayClip(sharedCoverShape)
                             )
                     }

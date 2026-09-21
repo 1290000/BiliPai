@@ -171,6 +171,7 @@ import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackJankStateValue
 import com.android.purebilibili.core.ui.blur.unifiedBlur
 import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpeedSettings
+import com.android.purebilibili.core.ui.transition.LocalVideoTransitionAdaptiveInfo
 import com.android.purebilibili.core.ui.transition.VideoSharedTransitionPlaybackIntent
 import com.android.purebilibili.core.ui.transition.VIDEO_SHARED_COVER_ASPECT_RATIO
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionMotionSpec
@@ -2073,6 +2074,21 @@ fun VideoPlayerSection(
             forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation,
             requiresHdrSurfaceOutput = navigationHdrSurfaceRequired
         )
+    val sharedTransitionSpeedSettings = LocalVideoSharedTransitionSpeedSettings.current
+    val transitionAdaptiveInfo = LocalVideoTransitionAdaptiveInfo.current
+    val livePlayerSharedTransitionMotionSpec = remember(
+        sourceRouteForSharedElement,
+        transitionEnabled,
+        sharedTransitionSpeedSettings,
+        transitionAdaptiveInfo,
+    ) {
+        resolveVideoCardSharedTransitionMotionSpec(
+            sourceRoute = sourceRouteForSharedElement,
+            transitionEnabled = transitionEnabled,
+            speedSettings = sharedTransitionSpeedSettings,
+            adaptiveInfo = transitionAdaptiveInfo,
+        )
+    }
     val resolvedSharedElementBvid = sharedElementBvid.trim().ifBlank { bvid }
     if (resolvedSharedElementBvid.isNotEmpty() && livePlayerSharedElementEnabled) {
          with(requireNotNull(sharedTransitionScope)) {
@@ -2083,8 +2099,17 @@ fun VideoPlayerSection(
                      )
                  ),
                  animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
-                 boundsTransform = { _, _ ->
-                     com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
+                 boundsTransform = { initialBounds, targetBounds ->
+                     if (livePlayerSharedTransitionMotionSpec.enabled) {
+                         videoSharedElementBoundsTransformSpec(
+                             motion = livePlayerSharedTransitionMotionSpec,
+                             initialBounds = initialBounds,
+                             targetBounds = targetBounds,
+                             durationMillis = livePlayerSharedTransitionMotionSpec.durationMillis,
+                         )
+                     } else {
+                         com.android.purebilibili.core.ui.motion.AppMotionTokens.spatialSpec()
+                     }
                  }
              )
          }
@@ -3998,8 +4023,6 @@ fun VideoPlayerSection(
     }
     val transitionSourceCornerDp =
         LocalVideoCardTransitionBackgroundState.current.sourceCornerDpProvider()
-    val transitionAdaptiveInfo = com.android.purebilibili.core.ui.transition
-        .LocalVideoTransitionAdaptiveInfo.current
     val videoSharedTransitionVisualSpec = remember(
         sourceRouteForSharedElement,
         transitionSourceCornerDp,
@@ -4056,20 +4079,7 @@ fun VideoPlayerSection(
         hasAnimatedVisibilityScope = animatedVisibilityScope != null,
         sourceRoute = sourceRouteForSharedElement
     )
-    val sharedTransitionSpeedSettings = LocalVideoSharedTransitionSpeedSettings.current
-    val coverOverlaySharedTransitionMotionSpec = remember(
-        sourceRouteForSharedElement,
-        transitionEnabled,
-        sharedTransitionSpeedSettings,
-        transitionAdaptiveInfo,
-    ) {
-        resolveVideoCardSharedTransitionMotionSpec(
-            sourceRoute = sourceRouteForSharedElement,
-            transitionEnabled = transitionEnabled,
-            speedSettings = sharedTransitionSpeedSettings,
-            adaptiveInfo = transitionAdaptiveInfo,
-        )
-    }
+    val coverOverlaySharedTransitionMotionSpec = livePlayerSharedTransitionMotionSpec
     val forcedReturnCoverSharedElementSourceRoute = resolveForcedReturnCoverSharedElementSourceRoute(
         sourceRouteForSharedElement
     )

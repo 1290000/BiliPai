@@ -30,8 +30,12 @@ import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
+import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpeedSettings
+import com.android.purebilibili.core.ui.transition.LocalVideoTransitionAdaptiveInfo
+import com.android.purebilibili.core.ui.transition.resolveVideoCardSharedTransitionMotionSpec
 import com.android.purebilibili.core.ui.transition.resolveVideoSharedTransitionSourceCornerDp
 import com.android.purebilibili.core.ui.transition.videoCoverSharedElementKey
+import com.android.purebilibili.core.ui.transition.videoSharedElementBoundsTransformSpec
 import com.android.purebilibili.data.model.response.BgmInfo
 import com.android.purebilibili.data.model.response.ViewPoint
 import com.android.purebilibili.feature.video.progress.PbpProgressData
@@ -429,6 +433,21 @@ private fun LargeScreenPlayerHost(
     val sharedCoverShape = remember(sourceRoute) {
         RoundedCornerShape(resolveVideoSharedTransitionSourceCornerDp(sourceRoute).dp)
     }
+    val sharedTransitionSpeedSettings = LocalVideoSharedTransitionSpeedSettings.current
+    val transitionAdaptiveInfo = LocalVideoTransitionAdaptiveInfo.current
+    val sharedTransitionMotionSpec = remember(
+        sourceRoute,
+        transitionEnabled,
+        sharedTransitionSpeedSettings,
+        transitionAdaptiveInfo,
+    ) {
+        resolveVideoCardSharedTransitionMotionSpec(
+            sourceRoute = sourceRoute,
+            transitionEnabled = transitionEnabled,
+            speedSettings = sharedTransitionSpeedSettings,
+            adaptiveInfo = transitionAdaptiveInfo,
+        )
+    }
     val playerContainerModifier = if (
         transitionEnabled &&
         sharedTransitionScope != null &&
@@ -441,7 +460,18 @@ private fun LargeScreenPlayerHost(
                     key = videoCoverSharedElementKey(bvid),
                 ),
                 animatedVisibilityScope = animatedVisibilityScope,
-                boundsTransform = { _, _ -> AppMotionTokens.spatialSpec() },
+                boundsTransform = { initialBounds, targetBounds ->
+                    if (sharedTransitionMotionSpec.enabled) {
+                        videoSharedElementBoundsTransformSpec(
+                            motion = sharedTransitionMotionSpec,
+                            initialBounds = initialBounds,
+                            targetBounds = targetBounds,
+                            durationMillis = sharedTransitionMotionSpec.durationMillis,
+                        )
+                    } else {
+                        AppMotionTokens.spatialSpec()
+                    }
+                },
                 clipInOverlayDuringTransition = OverlayClip(sharedCoverShape),
             )
         }
