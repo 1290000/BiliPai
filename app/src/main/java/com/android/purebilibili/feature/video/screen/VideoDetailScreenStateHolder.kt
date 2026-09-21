@@ -165,6 +165,8 @@ import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.state.rememberVideoPlayerState
 import com.android.purebilibili.feature.video.state.shouldReuseMiniPlayerAtEntry
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
+import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionActions
+import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionState
 import com.android.purebilibili.feature.video.ui.section.resolveAllowLivePlayerSharedElementForMorph
 import com.android.purebilibili.feature.video.ui.section.resolveNavigationLiveSurfaceTextureEnabled
 import com.android.purebilibili.feature.video.ui.section.shouldKeepVideoPlaybackAwake
@@ -3472,161 +3474,150 @@ internal fun VideoDetailScreenStateHolder(
                     }
                 } else {
                     VideoPlayerSection(
-                    playerState = playerState,
-                    uiState = uiState,
-                    isFullscreen = true,
-                    isInPipMode = isPipMode,
-                    danmakuHostActive = !hasCommittedRelatedVideoNavigation,
-                    transitionEnabled = detailChildTransitionEnabled,
-                    onToggleFullscreen = { toggleFullscreen() },
-                    onQualityChange = { qid -> viewModel.changeQuality(qid) },
-                    onBack = { toggleFullscreen() },
-                    onHomeClick = {
-                        handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
-                    },
-                    onLandscapeCommentClick = {
-                        landscapeCommentPanelVisible = !landscapeCommentPanelVisible
-                    },
-                    landscapeCommentPanelVisible = canShowLandscapeComments && landscapeCommentPanelVisible,
-                    landscapeCommentPanelOnLeft = landscapeCommentPanelOnLeft,
-                    onDanmakuInputClick = { viewModel.showDanmakuSendDialog() },
-                    danmakuComposerVisible = showDanmakuDialog && useInlineDanmakuComposer,
-                    onDismissDanmakuComposer = { viewModel.hideDanmakuSendDialog() },
-                    onSendDanmakuComposer = { message, color, mode, fontSize, encourage ->
-                        viewModel.sendDanmaku(message, color, mode, fontSize, encourage)
-                    },
-                    isSendingDanmakuComposer = isSendingDanmaku,
-                    danmakuComposerInitialText = composerDrafts.danmaku.text,
-                    danmakuComposerInitialAttentionCommand = composerDrafts.danmaku.attentionCommand,
-                    danmakuComposerInitialColor = rememberedDanmakuSendColor,
-                    danmakuComposerInitialMode = rememberedDanmakuSendMode,
-                    danmakuComposerInitialFontSize = rememberedDanmakuSendFontSize,
-                    onDanmakuComposerDraftChange = viewModel::updateDanmakuDraft,
-                    onDanmakuComposerSelectionChange = { color, mode, fontSize ->
-                        danmakuSendPreferenceScope.launch {
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuSendColor(context, color)
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuSendMode(context, mode)
-                            com.android.purebilibili.core.store.SettingsManager.setDanmakuSendFontSize(context, fontSize)
-                        }
-                    },
-                    // 🔗 [新增] 分享功能
-                    bvid = videoPlayerSectionTarget.bvid,
-                    coverUrl = videoPlayerSectionTarget.entryCoverUrl,
-                    stationaryListCoverUrl = residentCoverSource?.url.orEmpty(),
-                    stationaryListCoverCacheKey = residentCoverSource?.cacheKey.orEmpty(),
-                    stationaryListCoverDecodeWidthPx = residentCoverSource?.decodeWidthPx ?: 0,
-                    stationaryListCoverDecodeHeightPx = residentCoverSource?.decodeHeightPx ?: 0,
-                    sharedElementBvid = videoPlayerSectionTarget.sharedElementBvid,
-                    //  实验性功能：双击点赞
-                    onDoubleTapLike = { engagementViewModel.toggleLike() },
-                    sponsorSegment = sponsorSegment,
-                    showSponsorSkipButton = showSponsorSkipButton,
-                    onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
-                    onSponsorDismiss = { viewModel.dismissSponsorSkipButton() },
-                    onSponsorVote = viewModel::voteCurrentSponsorSegment,
-                    sponsorContributionState = sponsorContributionState,
-                    onSponsorContributionMarkBoundary = viewModel::markSponsorContributionBoundary,
-                    onSponsorContributionCategoryChange = viewModel::setSponsorContributionCategory,
-                    onSponsorContributionActionTypeChange = viewModel::setSponsorContributionActionType,
-                    onSponsorContributionSubmit = viewModel::submitSponsorContribution,
-                    onSponsorContributionCancel = viewModel::cancelSponsorContribution,
-                    //  [新增] 重载视频
-                    onReloadVideo = { viewModel.reloadVideo() },
-                    //  [新增] CDN 线路切换
-                    cdnCount = (uiState as? VideoPlaybackUiState.Success)?.cdnCount ?: 1,
-                    cdnLineDiagnostics = (uiState as? VideoPlaybackUiState.Success)?.cdnLineDiagnostics.orEmpty(),
-                    isCdnProbing = (uiState as? VideoPlaybackUiState.Success)?.isCdnProbing ?: false,
-                    onSwitchCdn = { viewModel.switchCdn() },
-                    onSwitchCdnTo = { viewModel.switchCdnTo(it) },
-                    onProbeCdnCandidates = { viewModel.probeCurrentCdnCandidates() },
-
-                    // [New] Codec & Audio (Fullscreen)
-                    currentCodec = codecPreference,
-                    onCodecChange = { viewModel.setVideoCodec(it) },
-                    currentSecondCodec = secondCodecPreference,
-                    onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
-                    currentAudioQuality = audioQualityPreference,
-                    onAudioQualityChange = { viewModel.setAudioQuality(it) },
-                    onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
-                    // [New] Audio Language
-                    onAudioLangChange = { viewModel.changeAudioLanguage(it) },
-
-                    //  [新增] 音频模式
-                    isAudioOnly = false, // 全屏模式只有视频
-                    onAudioOnlyToggle = {
-                        viewModel.setAudioMode(true)
-                        presentationState.markNavigatingToAudioMode()
-                        onNavigateToAudioMode()
-                    },
-
-                    //  [新增] 定时关闭
-                    sleepTimerMinutes = sleepTimerMinutes,
-                    onSleepTimerChange = { viewModel.setSleepTimer(it) },
-
-                    // 🖼️ [新增] 视频预览图数据
+                    state = VideoPlayerSectionState(
+                        playerState = playerState,
+                        uiState = uiState,
+                        isFullscreen = true,
+                        isInPipMode = isPipMode,
+                        danmakuHostActive = !hasCommittedRelatedVideoNavigation,
+                        transitionEnabled = detailChildTransitionEnabled,
+                        landscapeCommentPanelVisible = canShowLandscapeComments && landscapeCommentPanelVisible,
+                        landscapeCommentPanelOnLeft = landscapeCommentPanelOnLeft,
+                        danmakuComposerVisible = showDanmakuDialog && useInlineDanmakuComposer,
+                        isSendingDanmakuComposer = isSendingDanmaku,
+                        danmakuComposerInitialText = composerDrafts.danmaku.text,
+                        danmakuComposerInitialAttentionCommand = composerDrafts.danmaku.attentionCommand,
+                        danmakuComposerInitialColor = rememberedDanmakuSendColor,
+                        danmakuComposerInitialMode = rememberedDanmakuSendMode,
+                        danmakuComposerInitialFontSize = rememberedDanmakuSendFontSize,
+                        bvid = videoPlayerSectionTarget.bvid,
+                        coverUrl = videoPlayerSectionTarget.entryCoverUrl,
+                        stationaryListCoverUrl = residentCoverSource?.url.orEmpty(),
+                        stationaryListCoverCacheKey = residentCoverSource?.cacheKey.orEmpty(),
+                        stationaryListCoverDecodeWidthPx = residentCoverSource?.decodeWidthPx ?: 0,
+                        stationaryListCoverDecodeHeightPx = residentCoverSource?.decodeHeightPx ?: 0,
+                        sharedElementBvid = videoPlayerSectionTarget.sharedElementBvid,
+                        sponsorSegment = sponsorSegment,
+                        showSponsorSkipButton = showSponsorSkipButton,
+                        sponsorContributionState = sponsorContributionState,
+                        cdnCount = (uiState as? VideoPlaybackUiState.Success)?.cdnCount ?: 1,
+                        cdnLineDiagnostics = (uiState as? VideoPlaybackUiState.Success)
+                            ?.cdnLineDiagnostics.orEmpty(),
+                        isCdnProbing = (uiState as? VideoPlaybackUiState.Success)?.isCdnProbing ?: false,
+                        isAudioOnly = false,
+                        sleepTimerMinutes = sleepTimerMinutes,
                         videoshotData = (uiState as? VideoPlaybackUiState.Success)?.videoshotData,
-
-                    // 📖 [新增] 视频章节数据
                         viewPoints = viewPoints,
                         pbpProgressData = visiblePbpProgressData,
                         sponsorMarkers = sponsorProgressMarkers,
-                        onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
-                    // 📱 [新增] 竖屏全屏模式
-                    isVerticalVideo = isVerticalVideo,
-                    isPortraitFullscreen = isPortraitFullscreen,
-                    onPortraitFullscreen = {
-                        if (allowStandalonePortraitExperience) {
-                            if (!isPortraitFullscreen) {
-                                if (isFullscreenMode) {
-                                    toggleFullscreen()
-                                }
-                                enterPortraitFullscreen()
-                            } else {
-                                presentationState.setPortraitFullscreen(false)
+                        isVerticalVideo = isVerticalVideo,
+                        isPortraitFullscreen = isPortraitFullscreen,
+                        currentPlayMode = currentPlayMode,
+                        relatedVideos = (uiState as? VideoPlaybackUiState.Success)?.related
+                            ?: emptyList(),
+                        ugcSeason = (uiState as? VideoPlaybackUiState.Success)?.info?.ugc_season,
+                        isFollowed = engagementState.isFollowing,
+                        isLiked = engagementState.isLiked,
+                        isCoined = engagementState.coinCount > 0,
+                        isFavorited = engagementState.isFavorited,
+                        hasFavoritePlaylist = isExternalPlaylist &&
+                            externalPlaylistSource == ExternalPlaylistSource.FAVORITE &&
+                            playlistItems.size > 1,
+                        forceCoverOnly = forceCoverOnlyForLiveSafeReturn,
+                        preserveCurrentFrameOnFullscreenChange = preserveCurrentFrameOnFullscreenChange,
+                        useTextureSurfaceForNavigation = useTextureSurfaceForNavigation,
+                        predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
+                        allowLivePlayerSharedElement = allowLivePlayerSharedElement,
+                        sourceRouteForSharedElement = sourceRouteForSharedElement,
+                        suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
+                        subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
+                        currentCodec = codecPreference,
+                        currentSecondCodec = secondCodecPreference,
+                        currentAudioQuality = audioQualityPreference,
+                    ),
+                    actions = VideoPlayerSectionActions(
+                        onToggleFullscreen = { toggleFullscreen() },
+                        onQualityChange = { qid -> viewModel.changeQuality(qid) },
+                        onBack = { toggleFullscreen() },
+                        onHomeClick = {
+                            handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
+                        },
+                        onLandscapeCommentClick = {
+                            landscapeCommentPanelVisible = !landscapeCommentPanelVisible
+                        },
+                        onDanmakuInputClick = { viewModel.showDanmakuSendDialog() },
+                        onDismissDanmakuComposer = { viewModel.hideDanmakuSendDialog() },
+                        onSendDanmakuComposer = { message, color, mode, fontSize, encourage ->
+                            viewModel.sendDanmaku(message, color, mode, fontSize, encourage)
+                        },
+                        onDanmakuComposerDraftChange = viewModel::updateDanmakuDraft,
+                        onDanmakuComposerSelectionChange = { color, mode, fontSize ->
+                            danmakuSendPreferenceScope.launch {
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuSendColor(context, color)
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuSendMode(context, mode)
+                                com.android.purebilibili.core.store.SettingsManager.setDanmakuSendFontSize(context, fontSize)
                             }
-                        }
-                    },
-                    // 🔁 [新增] 播放模式
-                    currentPlayMode = currentPlayMode,
-                    onPlayModeClick = { com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode() },
-
-                    // [New Actions]
-                    onSaveCover = { viewModel.saveCover(context) },
-                    onDownloadAudio = { viewModel.downloadAudio(context) },
-
-                    // [新增] 侧边栏抽屉数据与交互
-                    relatedVideos = (uiState as? VideoPlaybackUiState.Success)?.related ?: emptyList(),
-                    ugcSeason = (uiState as? VideoPlaybackUiState.Success)?.info?.ugc_season,
-                    isFollowed = engagementState.isFollowing,
-                    isLiked = engagementState.isLiked,
-                    isCoined = engagementState.coinCount > 0,
-                    isFavorited = engagementState.isFavorited,
-                    onToggleFollow = { engagementViewModel.toggleFollow() },
-                    onToggleLike = { engagementViewModel.toggleLike() },
-                    onDislike = { viewModel.markVideoNotInterested() },
-                    onCoin = { engagementViewModel.openCoinDialog() },
-                    onToggleFavorite = {
-                        openFavoriteFolders(VideoFavoriteEntryPoint.FullscreenOverlay)
-                    },
-                    onTriple = { engagementViewModel.doTripleAction() },
-                    onRelatedVideoClick = navigateToRelatedVideo,
-                    onPageSelect = playbackActions.switchPage,
-                    hasFavoritePlaylist = isExternalPlaylist &&
-                        externalPlaylistSource == ExternalPlaylistSource.FAVORITE &&
-                        playlistItems.size > 1,
-                    onFavoritePlaylistClick = {
-                        showExternalPlaylistQueueSheet = true
-                    },
-                    forceCoverOnly = forceCoverOnlyForLiveSafeReturn,
-                    preserveCurrentFrameOnFullscreenChange = preserveCurrentFrameOnFullscreenChange,
-                    useTextureSurfaceForNavigation = useTextureSurfaceForNavigation,
-                    predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
-                    allowLivePlayerSharedElement = allowLivePlayerSharedElement,
-                    sourceRouteForSharedElement = sourceRouteForSharedElement,
-                    suppressSubtitleOverlay = shouldSuppressSubtitleOverlay,
-                    subtitleDisplayModePreferenceOverride = subtitleDisplayModeOverride,
-                    onSubtitleDisplayModePreferenceOverrideChange = { subtitleDisplayModeOverride = it },
-                        onSubtitleTrackSelected = viewModel::selectSubtitleTrack
+                        },
+                        onDoubleTapLike = { engagementViewModel.toggleLike() },
+                        onSponsorSkip = { viewModel.skipCurrentSponsorSegment() },
+                        onSponsorDismiss = { viewModel.dismissSponsorSkipButton() },
+                        onSponsorVote = viewModel::voteCurrentSponsorSegment,
+                        onSponsorContributionMarkBoundary = viewModel::markSponsorContributionBoundary,
+                        onSponsorContributionCategoryChange = viewModel::setSponsorContributionCategory,
+                        onSponsorContributionActionTypeChange = viewModel::setSponsorContributionActionType,
+                        onSponsorContributionSubmit = viewModel::submitSponsorContribution,
+                        onSponsorContributionCancel = viewModel::cancelSponsorContribution,
+                        onReloadVideo = { viewModel.reloadVideo() },
+                        onSwitchCdn = { viewModel.switchCdn() },
+                        onSwitchCdnTo = { viewModel.switchCdnTo(it) },
+                        onProbeCdnCandidates = { viewModel.probeCurrentCdnCandidates() },
+                        onCodecChange = { viewModel.setVideoCodec(it) },
+                        onSecondCodecChange = { viewModel.setVideoSecondCodec(it) },
+                        onAudioQualityChange = { viewModel.setAudioQuality(it) },
+                        onPlaybackSpeedChange = { viewModel.applyPlaybackSpeedFromUi(it) },
+                        onAudioLangChange = { viewModel.changeAudioLanguage(it) },
+                        onAudioOnlyToggle = {
+                            viewModel.setAudioMode(true)
+                            presentationState.markNavigatingToAudioMode()
+                            onNavigateToAudioMode()
+                        },
+                        onSleepTimerChange = { viewModel.setSleepTimer(it) },
+                        onUserSeek = { position -> viewModel.notifyPluginsOfExplicitSeek(position) },
+                        onPortraitFullscreen = {
+                            if (allowStandalonePortraitExperience) {
+                                if (!isPortraitFullscreen) {
+                                    if (isFullscreenMode) {
+                                        toggleFullscreen()
+                                    }
+                                    enterPortraitFullscreen()
+                                } else {
+                                    presentationState.setPortraitFullscreen(false)
+                                }
+                            }
+                        },
+                        onPlayModeClick = {
+                            com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode()
+                        },
+                        onSaveCover = { viewModel.saveCover(context) },
+                        onDownloadAudio = { viewModel.downloadAudio(context) },
+                        onToggleFollow = { engagementViewModel.toggleFollow() },
+                        onToggleLike = { engagementViewModel.toggleLike() },
+                        onDislike = { viewModel.markVideoNotInterested() },
+                        onCoin = { engagementViewModel.openCoinDialog() },
+                        onToggleFavorite = {
+                            openFavoriteFolders(VideoFavoriteEntryPoint.FullscreenOverlay)
+                        },
+                        onTriple = { engagementViewModel.doTripleAction() },
+                        onRelatedVideoClick = navigateToRelatedVideo,
+                        onPageSelect = playbackActions.switchPage,
+                        onFavoritePlaylistClick = {
+                            showExternalPlaylistQueueSheet = true
+                        },
+                        onSubtitleDisplayModePreferenceOverrideChange = {
+                            subtitleDisplayModeOverride = it
+                        },
+                        onSubtitleTrackSelected = viewModel::selectSubtitleTrack,
+                    ),
                     )
                     val success = uiState as? VideoPlaybackUiState.Success
                     if (canShowLandscapeComments && landscapeCommentPanelVisible && success != null) {

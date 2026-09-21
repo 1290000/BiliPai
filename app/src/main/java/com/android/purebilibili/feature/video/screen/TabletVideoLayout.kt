@@ -71,6 +71,8 @@ import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
 import com.android.purebilibili.feature.video.ui.section.shouldShowAiSummaryEntry
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
+import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionActions
+import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionState
 import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
 import com.android.purebilibili.feature.video.ui.section.resolveAllowLivePlayerSharedElementForMorph
 import com.android.purebilibili.feature.video.ui.section.resolveNavigationLiveSurfaceTextureEnabled
@@ -395,68 +397,69 @@ internal fun TabletVideoLayout(
                             playerContent(Modifier.fillMaxSize())
                         } else {
                             VideoPlayerSection(
-                                playerState = playerState,
-                                uiState = uiState,
-                                isFullscreen = false,
-                                isInPipMode = isInPipMode,
-                                useTextureSurfaceForNavigation = resolveNavigationLiveSurfaceTextureEnabled(
-                                    cardTransitionEnabled = transitionEnabled && !foldHalfOpened,
-                                    liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
-                                ),
-                                allowLivePlayerSharedElement = !foldHalfOpened &&
-                                    resolveAllowLivePlayerSharedElementForMorph(
-                                        cardTransitionEnabled = transitionEnabled,
+                                state = VideoPlayerSectionState(
+                                    playerState = playerState,
+                                    uiState = uiState,
+                                    isFullscreen = false,
+                                    isInPipMode = isInPipMode,
+                                    useTextureSurfaceForNavigation = resolveNavigationLiveSurfaceTextureEnabled(
+                                        cardTransitionEnabled = transitionEnabled && !foldHalfOpened,
                                         liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
                                     ),
-                                predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
-                                onToggleFullscreen = onToggleFullscreen,
-                                onQualityChange = playbackActions.changeQuality,
-                                onBack = onBack,
-                                onHomeClick = onHomeClick,
-                                bvid = bvid,
-                                coverUrl = coverUrl,
-                                onDoubleTapLike = engagementActions.toggleLike,
-                                onReloadVideo = playbackActions.reloadVideo,
-                                cdnCount = (uiState as? VideoPlaybackUiState.Success)?.cdnCount ?: 1,
-                                cdnLineDiagnostics = (uiState as? VideoPlaybackUiState.Success)?.cdnLineDiagnostics.orEmpty(),
-                                isCdnProbing = (uiState as? VideoPlaybackUiState.Success)?.isCdnProbing ?: false,
-                                onSwitchCdn = playbackActions.switchCdn,
-                                onSwitchCdnTo = playbackActions.switchCdnTo,
-                                onProbeCdnCandidates = playbackActions.probeCdnCandidates,
-                                isAudioOnly = false,
-                                onAudioOnlyToggle = {
-                                    playbackActions.setAudioMode(true)
-                                    onNavigateToAudioMode()
-                                },
-                                sleepTimerMinutes = sleepTimerMinutes,
-                                onSleepTimerChange = playbackActions.setSleepTimer,
-                                videoshotData = (uiState as? VideoPlaybackUiState.Success)?.videoshotData,
-                                viewPoints = viewPoints,
-                                pbpProgressData = pbpProgressData,
-                                isVerticalVideo = isVerticalVideo,
-                                onPortraitFullscreen = onPortraitFullscreen,
-                                isPortraitFullscreen = isPortraitFullscreen,
-
-                                onPipClick = onPipClick,
-                                // [New] Codec & Audio
-                                currentCodec = currentCodec,
-                                onCodecChange = onCodecChange,
-                                currentSecondCodec = currentSecondCodec,
-                                onSecondCodecChange = onSecondCodecChange,
-                                currentAudioQuality = currentAudioQuality,
-                                onAudioQualityChange = onAudioQualityChange,
-                                onPlaybackSpeedChange = playbackActions.applyPlaybackSpeed,
-                                // [New Actions]
-                                onSaveCover = playbackActions.saveCover,
-                                onDownloadAudio = playbackActions.downloadAudio,
-                                // 🔁 [新增] 播放模式
-                                currentPlayMode = currentPlayMode,
-                                onPlayModeClick = onPlayModeClick,
-                                viewportWidthDpOverride = playerWidth.value.toInt(),
-                                onSubtitleTrackSelected = playbackActions.selectSubtitleTrack,
-                                onDanmakuInputClick = playbackActions.showDanmakuSendDialog,
-                                onLikeDanmaku = playbackActions.likeDanmaku,
-                                onRecallDanmaku = playbackActions.recallDanmaku,
+                                    allowLivePlayerSharedElement = !foldHalfOpened &&
+                                        resolveAllowLivePlayerSharedElementForMorph(
+                                            cardTransitionEnabled = transitionEnabled,
+                                            liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
+                                        ),
+                                    predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
+                                    bvid = bvid,
+                                    coverUrl = coverUrl,
+                                    cdnCount = (uiState as? VideoPlaybackUiState.Success)?.cdnCount ?: 1,
+                                    cdnLineDiagnostics = (uiState as? VideoPlaybackUiState.Success)
+                                        ?.cdnLineDiagnostics.orEmpty(),
+                                    isCdnProbing = (uiState as? VideoPlaybackUiState.Success)?.isCdnProbing ?: false,
+                                    isAudioOnly = false,
+                                    sleepTimerMinutes = sleepTimerMinutes,
+                                    videoshotData = (uiState as? VideoPlaybackUiState.Success)?.videoshotData,
+                                    viewPoints = viewPoints,
+                                    pbpProgressData = pbpProgressData,
+                                    isVerticalVideo = isVerticalVideo,
+                                    isPortraitFullscreen = isPortraitFullscreen,
+                                    currentCodec = currentCodec,
+                                    currentSecondCodec = currentSecondCodec,
+                                    currentAudioQuality = currentAudioQuality,
+                                    currentPlayMode = currentPlayMode,
+                                    viewportWidthDpOverride = playerWidth.value.toInt(),
+                                ),
+                                actions = VideoPlayerSectionActions(
+                                    onToggleFullscreen = onToggleFullscreen,
+                                    onQualityChange = playbackActions.changeQuality,
+                                    onBack = onBack,
+                                    onHomeClick = onHomeClick,
+                                    onDoubleTapLike = engagementActions.toggleLike,
+                                    onReloadVideo = playbackActions.reloadVideo,
+                                    onSwitchCdn = playbackActions.switchCdn,
+                                    onSwitchCdnTo = playbackActions.switchCdnTo,
+                                    onProbeCdnCandidates = playbackActions.probeCdnCandidates,
+                                    onAudioOnlyToggle = {
+                                        playbackActions.setAudioMode(true)
+                                        onNavigateToAudioMode()
+                                    },
+                                    onSleepTimerChange = playbackActions.setSleepTimer,
+                                    onPortraitFullscreen = onPortraitFullscreen,
+                                    onPipClick = onPipClick,
+                                    onCodecChange = onCodecChange,
+                                    onSecondCodecChange = onSecondCodecChange,
+                                    onAudioQualityChange = onAudioQualityChange,
+                                    onPlaybackSpeedChange = playbackActions.applyPlaybackSpeed,
+                                    onSaveCover = playbackActions.saveCover,
+                                    onDownloadAudio = playbackActions.downloadAudio,
+                                    onPlayModeClick = onPlayModeClick,
+                                    onSubtitleTrackSelected = playbackActions.selectSubtitleTrack,
+                                    onDanmakuInputClick = playbackActions.showDanmakuSendDialog,
+                                    onLikeDanmaku = playbackActions.likeDanmaku,
+                                    onRecallDanmaku = playbackActions.recallDanmaku,
+                                ),
                             )
                         }
                     }
