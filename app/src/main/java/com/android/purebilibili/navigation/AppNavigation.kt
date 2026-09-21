@@ -1002,7 +1002,12 @@ fun AppNavigation(
                     coverIdentity = seed.coverUrl,
                 )
                 navigation3ReturnSession = navigation3ReturnSession
-                    .recordTransitionSession(transitionSession)
+                    .recordTransitionSession(
+                        session = transitionSession,
+                        preserveCurrentSession = navigation3BackStack.any {
+                            it is BiliPaiNavKey.VideoDetail
+                        },
+                    )
                     .markDetailEntered(SystemClock.uptimeMillis())
                 prearmVideoCardOpening(transitionSession)
             }
@@ -1102,7 +1107,12 @@ fun AppNavigation(
                 coverIdentity = videoKey?.coverUrl,
             )
             navigation3ReturnSession = navigation3ReturnSession
-                .recordTransitionSession(transitionSession)
+                .recordTransitionSession(
+                    session = transitionSession,
+                    preserveCurrentSession = navigation3BackStack.any {
+                        it is BiliPaiNavKey.VideoDetail
+                    },
+                )
                 .markDetailEntered(SystemClock.uptimeMillis())
             prearmVideoCardOpening(transitionSession)
             miniPlayerManager?.isNavigatingToVideo = true
@@ -4126,6 +4136,9 @@ fun AppNavigation(
                             navigation3ReturnSession.lastVideoSourceKey
                         )
                     },
+                    restorePreviousVideoSourceOnDetailReturn =
+                        navigation3ReturnSession.previousTransitionSessions.isNotEmpty() ||
+                            navigation3ReturnSession.previousVideoSources.isNotEmpty(),
                     modifier = Modifier
                         .fillMaxSize()
                         .onGloballyPositioned { coordinates ->

@@ -433,6 +433,23 @@ internal fun resolveLaunchActivityIconRes(context: Context): Int {
     }.getOrDefault(0)
 }
 
+internal fun resolveActivePlaybackLaunchIntent(
+    context: Context,
+    bvid: String?,
+): Intent {
+    val launchIntent = context.packageManager
+        .getLaunchIntentForPackage(context.packageName)
+        ?: Intent(context, com.android.purebilibili.MainActivity::class.java)
+    return launchIntent.apply {
+        bvid?.takeIf { it.isNotBlank() }?.let { activeBvid ->
+            action = Intent.ACTION_VIEW
+            data = Uri.parse("https://www.bilibili.com/video/$activeBvid")
+        }
+        putExtra(com.android.purebilibili.EXTRA_OPEN_ACTIVE_PLAYBACK, true)
+        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    }
+}
+
 internal fun shouldRebindMediaSessionPlayer(
     sessionPlayer: Any?,
     playbackPlayer: Any?
@@ -1822,14 +1839,9 @@ class MiniPlayerManager private constructor(private val context: Context) :
                     prepare()
                 }
             
-            // 创建 MediaSession
-            // 🎯 [修复] 使用 MainActivity 以保持单一任务栈，防止进入 VideoActivity 导致状态丢失
-            val sessionIntent = Intent(context, com.android.purebilibili.MainActivity::class.java).apply {
-                action = Intent.ACTION_VIEW
-                // 占位符 URL，实际点击时会复用 Activity 栈顶
-                data = Uri.parse("https://www.bilibili.com/video/")
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
+            // Follow the currently enabled launcher alias. Targeting MainActivity directly can
+            // create a second activity instance when the selected app icon uses a splash alias.
+            val sessionIntent = resolveActivePlaybackLaunchIntent(context, currentBvid)
             val pendingIntent = PendingIntent.getActivity(
                 context, 0, sessionIntent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -2247,14 +2259,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
             // 构建新的 Session
             val sessionActivityPendingIntent = PendingIntent.getActivity(
                 context, 0,
-                Intent(context, com.android.purebilibili.MainActivity::class.java).apply {
-                    if (currentBvid != null) {
-                        action = Intent.ACTION_VIEW
-                        data = Uri.parse("https://www.bilibili.com/video/$currentBvid")
-                    }
-                    putExtra(com.android.purebilibili.EXTRA_OPEN_ACTIVE_PLAYBACK, true)
-                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                },
+                resolveActivePlaybackLaunchIntent(context, currentBvid),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             
@@ -2797,12 +2802,7 @@ class MiniPlayerManager private constructor(private val context: Context) :
             }
         
         // 🎯 [修复] 确保点击通知本体也能正确跳转（覆盖 setContentIntent 作为双重保障）
-        val intent = Intent(context, com.android.purebilibili.MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
-            data = Uri.parse("https://www.bilibili.com/video/$currentBvid") // 携带 BVID
-            putExtra(com.android.purebilibili.EXTRA_OPEN_ACTIVE_PLAYBACK, true)
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
+        val intent = resolveActivePlaybackLaunchIntent(context, currentBvid)
         val contentIntent = PendingIntent.getActivity(
             context, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT

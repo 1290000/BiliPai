@@ -179,9 +179,10 @@ internal fun resolveInlinePortraitPlayerCommentCollapseDurationMillis(
 }
 
 /**
- * Enabled player-collapse modes keep a 56dp control row plus a 56dp media peek. OFF keeps the
- * existing compact viewport because the collapse affordance is disabled.
+ * Keep the collapsed portrait player on a full-width 16:9 canvas. The vertical media remains
+ * centered inside the black canvas while the detail tabs move directly below it.
  */
+@Suppress("UNUSED_PARAMETER")
 internal fun resolvePiliPlusCollapsedPlayerViewportHeightDp(
     standardCollapsedHeightDp: Float,
     collapseMode: PortraitPlayerCollapseMode,
@@ -189,23 +190,7 @@ internal fun resolvePiliPlusCollapsedPlayerViewportHeightDp(
     toolbarHeightDp: Float = 56f,
     mediaPeekHeightDp: Float = 56f,
 ): Float {
-    return if (collapseMode != PortraitPlayerCollapseMode.OFF) {
-        // Keep a real portrait media peek behind the compact controls. A toolbar-only endpoint
-        // made vertical videos disappear when switching tabs or scrolling the detail list.
-        toolbarHeightDp + mediaPeekHeightDp
-    } else {
-        standardCollapsedHeightDp
-    }.coerceIn(0f, standardCollapsedHeightDp.coerceAtLeast(0f))
-}
-
-internal fun shouldShowPiliPlusCollapsedPlayAction(
-    collapseMode: PortraitPlayerCollapseMode,
-    isPlaybackPaused: Boolean,
-    collapseProgress: Float,
-): Boolean {
-    return collapseMode != PortraitPlayerCollapseMode.OFF &&
-        (collapseMode != PortraitPlayerCollapseMode.PAUSED_ONLY || isPlaybackPaused) &&
-        collapseProgress >= 0.98f
+    return standardCollapsedHeightDp.coerceAtLeast(0f)
 }
 
 /**

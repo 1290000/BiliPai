@@ -151,9 +151,9 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun enabledCollapseModes_keepMediaPeekBehindPiliPlusToolbar() {
+    fun enabledCollapseModes_keepFullWidth16By9PortraitCanvas() {
         assertEquals(
-            112f,
+            231.75f,
             resolvePiliPlusCollapsedPlayerViewportHeightDp(
                 standardCollapsedHeightDp = 231.75f,
                 collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
@@ -161,7 +161,7 @@ class PortraitDetailPresentationPolicyTest {
             )
         )
         assertEquals(
-            112f,
+            231.75f,
             resolvePiliPlusCollapsedPlayerViewportHeightDp(
                 standardCollapsedHeightDp = 231.75f,
                 collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
@@ -171,7 +171,7 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
-    fun regularCollapseModes_useToolbarExceptWhenDisabled() {
+    fun everyCollapseMode_usesFullWidth16By9PortraitCanvas() {
         listOf(
             PortraitPlayerCollapseMode.OFF,
             PortraitPlayerCollapseMode.INTRO_ONLY,
@@ -179,7 +179,7 @@ class PortraitDetailPresentationPolicyTest {
             PortraitPlayerCollapseMode.BOTH,
         ).forEach { mode ->
             assertEquals(
-                if (mode == PortraitPlayerCollapseMode.OFF) 231.75f else 112f,
+                231.75f,
                 resolvePiliPlusCollapsedPlayerViewportHeightDp(
                     standardCollapsedHeightDp = 231.75f,
                     collapseMode = mode,
@@ -198,38 +198,6 @@ class PortraitDetailPresentationPolicyTest {
                 isPortraitFullscreen = false,
                 collapseMode = PortraitPlayerCollapseMode.BOTH,
                 isVerticalVideo = true,
-            )
-        )
-    }
-
-    @Test
-    fun piliPlusToolbar_appearsWheneverAnEnabledPlayerIsFullyCollapsed() {
-        assertTrue(
-            shouldShowPiliPlusCollapsedPlayAction(
-                collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
-                isPlaybackPaused = true,
-                collapseProgress = 1f,
-            )
-        )
-        assertFalse(
-            shouldShowPiliPlusCollapsedPlayAction(
-                collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
-                isPlaybackPaused = false,
-                collapseProgress = 1f,
-            )
-        )
-        assertFalse(
-            shouldShowPiliPlusCollapsedPlayAction(
-                collapseMode = PortraitPlayerCollapseMode.PAUSED_ONLY,
-                isPlaybackPaused = true,
-                collapseProgress = 0.75f,
-            )
-        )
-        assertTrue(
-            shouldShowPiliPlusCollapsedPlayAction(
-                collapseMode = PortraitPlayerCollapseMode.BOTH,
-                isPlaybackPaused = true,
-                collapseProgress = 1f,
             )
         )
     }

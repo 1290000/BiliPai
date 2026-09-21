@@ -284,7 +284,6 @@ private const val VIDEO_DETAIL_COLLAPSE_SIGNAL_IDLE_TIMEOUT_MS = 120L
 private fun CollapsedPlayerNavigationBar(
     scrollRatio: Float,
     topInset: Dp,
-    isPortraitVideo: Boolean = false,
     onBack: () -> Unit,
     onHomeClick: () -> Unit,
     onPlayClick: () -> Unit,
@@ -293,17 +292,9 @@ private fun CollapsedPlayerNavigationBar(
 ) {
     if (scrollRatio > 0f) {
         val useMiuixNonGlassChrome = isMiuixNonGlassEnabled()
-        val mediaScrimAlpha = if (isPortraitVideo) {
-            (resolveCollapsedPlayerMediaScrimAlpha(scrollRatio) * 0.35f).coerceAtMost(0.16f)
-        } else {
-            resolveCollapsedPlayerMediaScrimAlpha(scrollRatio)
-        }
+        val mediaScrimAlpha = resolveCollapsedPlayerMediaScrimAlpha(scrollRatio)
         val toolbarAlpha = resolveCollapsedPlayerToolbarAlpha(scrollRatio)
-        val toolbarSurface = if (isPortraitVideo) {
-            Color.Black.copy(alpha = 0.34f)
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
+        val toolbarSurface = MaterialTheme.colorScheme.surface
         Box(
             modifier = modifier.drawBehind {
                 drawRect(
@@ -322,7 +313,7 @@ private fun CollapsedPlayerNavigationBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(topInset)
-                        .background(if (isPortraitVideo) Color.Transparent else toolbarSurface)
+                        .background(toolbarSurface)
                 )
                 Box(
                     modifier = Modifier
@@ -4200,7 +4191,7 @@ internal fun VideoDetailScreenStateHolder(
                             restoreRequested = inlinePlayerCollapseState.restoreRequested
                         )
                         // Drag/scroll collapse stays directly coupled to the finger. Only an
-                        // explicit restore ("立即播放" / comment back-to-top) eases the player from
+                        // An explicit restore (for example comment back-to-top) eases the player from
                         // the compact viewport back to its full size instead of jumping in one frame.
                         val animatedCollapseProgress by animateFloatAsState(
                             targetValue = effectiveCollapseProgress,
@@ -4709,23 +4700,24 @@ internal fun VideoDetailScreenStateHolder(
                                         },
                                 )
                             }
-                            CollapsedPlayerNavigationBar(
-                                scrollRatio = layoutCollapseProgress,
-                                topInset = collapsedSystemBarInset,
-                                isPortraitVideo = isVerticalVideo,
-                                onBack = handleBack,
-                                onHomeClick = {
-                                    handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
-                                },
-                                onPlayClick = {
-                                    inlinePlayerCollapseState.restore()
-                                    playPlayerFromUserAction(playerState.player)
-                                },
-                                onMoreClick = { collapsedPlayerMoreRequestKey += 1 },
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .zIndex(2f),
-                            )
+                            if (!isVerticalVideo) {
+                                CollapsedPlayerNavigationBar(
+                                    scrollRatio = layoutCollapseProgress,
+                                    topInset = collapsedSystemBarInset,
+                                    onBack = handleBack,
+                                    onHomeClick = {
+                                        handleTopBarAction(resolveVideoDetailTopBarAction(isHomeButton = true))
+                                    },
+                                    onPlayClick = {
+                                        inlinePlayerCollapseState.restore()
+                                        playPlayerFromUserAction(playerState.player)
+                                    },
+                                    onMoreClick = { collapsedPlayerMoreRequestKey += 1 },
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .zIndex(2f),
+                                )
+                            }
                         }
                         Box(
                             modifier = Modifier
