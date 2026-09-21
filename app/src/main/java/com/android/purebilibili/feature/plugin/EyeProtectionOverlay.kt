@@ -42,7 +42,7 @@ import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
 import com.android.purebilibili.core.ui.motion.continuityTween
-import com.android.purebilibili.core.theme.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppSpacingTokens
 
 @Composable
 fun EyeProtectionOverlay(

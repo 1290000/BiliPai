@@ -51,7 +51,7 @@ import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
-import com.android.purebilibili.core.theme.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppSpacingTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.purebilibili.core.theme.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppSpacingTokens
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.database.entity.SearchHistory
 import com.android.purebilibili.core.ui.AppSurfaceTokens
