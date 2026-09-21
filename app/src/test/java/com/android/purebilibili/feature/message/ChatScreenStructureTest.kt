@@ -13,6 +13,9 @@ class ChatScreenStructureTest {
             "app/src/main/java/com/android/purebilibili/feature/message/ChatScreen.kt"
         )
         assertTrue(source.contains("messageGlassContainer("))
+        assertTrue(source.contains("shape = AppShapes.container(ContainerLevel.Card)"))
+        assertTrue(source.contains("contentColor = fallbackContentColor"))
+        assertTrue(source.contains("modifier = Modifier.imePadding()"))
         assertTrue(source.contains("rememberMessageGlassContentColors("))
         assertTrue(source.contains("HorizontalVideoCardFrame("))
         assertTrue(source.contains("MessageHorizontalVideoCard("))

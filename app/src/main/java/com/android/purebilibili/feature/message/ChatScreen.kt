@@ -483,6 +483,7 @@ fun ChatInputBar(
     val isBusy = isSending || isUploadingImage
 
     AppSurface(
+        modifier = Modifier.imePadding(),
         color = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
             com.android.purebilibili.core.ui.AppSurfaceTokens.surface()
         ),
@@ -546,7 +547,7 @@ fun MessageBubble(
     onVideoClick: ((String) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null
 ) {
-    val bubbleShape = AppShapes.messageBubble(isOutgoing = isOwnMessage)
+    val bubbleShape = AppShapes.container(ContainerLevel.Card)
     val fallbackContainerColor = resolveMessageBubbleFallbackContainerColor(
         isOwnMessage = isOwnMessage,
         primary = MaterialTheme.colorScheme.primary,
@@ -557,11 +558,7 @@ fun MessageBubble(
         onPrimary = MaterialTheme.colorScheme.onPrimary,
         onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    val glassContentColors = rememberMessageGlassContentColors(
-        defaultOnSurface = fallbackContentColor,
-        defaultOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    val textColor = glassContentColors.titleColor
+    val textColor = fallbackContentColor
     
     // BV号正则匹配
     val bvPattern = remember { Regex("BV[a-zA-Z0-9]{10}") }
@@ -612,7 +609,7 @@ fun MessageBubble(
             )
         } else {
             // 消息气泡
-            Box(
+            AppSurface(
                 modifier = Modifier
                     .widthIn(max = 280.dp)
                     .then(
@@ -624,15 +621,15 @@ fun MessageBubble(
                         } else {
                             Modifier
                         }
-                    )
-                    .clip(bubbleShape)
-                    .messageGlassContainer(
-                        defaultContainerColor = fallbackContainerColor,
-                        shape = bubbleShape,
-                    )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ),
+                shape = bubbleShape,
+                color = fallbackContainerColor,
+                contentColor = fallbackContentColor,
             ) {
-                when {
+                Box(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    when {
                     message.msg_status == 1 -> {
                         // 已撤回消息
                         AppText(
@@ -741,6 +738,7 @@ fun MessageBubble(
                             color = textColor.copy(alpha = 0.6f),
                             style = MaterialTheme.typography.bodyMedium
                         )
+                    }
                     }
                 }
             }
