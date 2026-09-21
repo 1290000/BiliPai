@@ -43,7 +43,6 @@ internal fun resolveAppAdaptiveTabMinWidth(
  * is enabled. The disabled path always delegates to the active theme's native tab row.
  */
 @Composable
-@Suppress("UNUSED_PARAMETER")
 fun <T> AppThemeAdaptiveTabRow(
     options: List<AppSegmentOption<T>>,
     selectedValue: T,
@@ -63,37 +62,25 @@ fun <T> AppThemeAdaptiveTabRow(
     indicatorPositionProvider: (() -> Float)? = null,
     isScrollInProgressProvider: () -> Boolean = { false },
 ) {
-    if (options.isEmpty()) return
-    val uiStyle = LocalAppUiStyle.current
-    val resolvedMinTabWidth = resolveAppAdaptiveTabMinWidth(
-        requestedMinTabWidth = minTabWidth,
-        uiStyle = uiStyle,
-        liquidGlassEnabled = false,
+    AppLiquidAwareTabRow(
+        options = options,
+        selectedValue = selectedValue,
+        onSelectionChange = onSelectionChange,
+        modifier = modifier,
+        enabled = enabled,
+        scrollable = scrollable,
+        minTabWidth = minTabWidth,
+        compactMiuixWhenTwoOptions = compactMiuixWhenTwoOptions,
+        height = height,
+        indicatorHeight = indicatorHeight,
+        labelFontSize = labelFontSize,
+        dragSelectionEnabled = dragSelectionEnabled,
+        tapPressRefractionEnabled = tapPressRefractionEnabled,
+        miuixBackdrop = miuixBackdrop,
+        preferInlineContentStyle = preferInlineContentStyle,
+        indicatorPositionProvider = indicatorPositionProvider,
+        isScrollInProgressProvider = isScrollInProgressProvider,
     )
-    if (uiStyle == AppUiStyle.MIUIX && options.size <= 2 && compactMiuixWhenTwoOptions) {
-        AppNativeSegmentedControl(
-            options = options,
-            selectedValue = selectedValue,
-            onSelectionChange = onSelectionChange,
-            modifier = modifier,
-            enabled = enabled,
-            indicatorPositionProvider = indicatorPositionProvider,
-        )
-    } else {
-        AppNativeTabRow(
-            options = options,
-            selectedValue = selectedValue,
-            onSelectionChange = onSelectionChange,
-            modifier = modifier,
-            enabled = enabled,
-            scrollable = scrollable,
-            minTabWidth = resolvedMinTabWidth,
-            compactMiuixWhenTwoOptions = compactMiuixWhenTwoOptions,
-            height = height,
-            allowLabelOverflow = true,
-            indicatorPositionProvider = indicatorPositionProvider,
-        )
-    }
 }
 
 /**

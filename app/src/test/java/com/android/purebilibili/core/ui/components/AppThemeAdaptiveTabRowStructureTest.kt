@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 class AppThemeAdaptiveTabRowStructureTest {
     @Test
-    fun `global tab row uses native theme renderer and does not force liquid glass`() {
+    fun `global tab row uses native theme renderer when liquid glass is disabled`() {
         val source = File(
             "app/src/main/java/com/android/purebilibili/core/ui/components/AppLiquidAwareTabRow.kt"
         ).readText()
@@ -19,17 +19,20 @@ class AppThemeAdaptiveTabRowStructureTest {
             .substringAfter("fun <T> AppThemeAdaptiveTabRow(")
             .substringBefore("fun <T> AppLiquidAwareTabRow(")
 
-        assertFalse(adaptiveEntry.contains("AppLiquidAwareTabRow("))
-        assertTrue(adaptiveEntry.contains("AppNativeTabRow("))
-        assertTrue(adaptiveEntry.contains("AppNativeSegmentedControl("))
-        assertTrue(adaptiveEntry.contains("LocalAppUiStyle"))
-        assertTrue(adaptiveEntry.contains("liquidGlassEnabled = false"))
+        assertTrue(adaptiveEntry.contains("AppLiquidAwareTabRow("))
+        assertTrue(adaptiveEntry.contains("miuixBackdrop = miuixBackdrop"))
+        assertTrue(adaptiveEntry.contains("dragSelectionEnabled = dragSelectionEnabled"))
+        assertTrue(adaptiveEntry.contains("tapPressRefractionEnabled = tapPressRefractionEnabled"))
+        assertTrue(adaptiveEntry.contains("height = height"))
+        assertTrue(adaptiveEntry.contains("indicatorHeight = indicatorHeight"))
         assertEquals(
             2,
             source.lineSequence().count {
                 it.contains("minTabWidth: Dp = Dp.Unspecified")
             },
         )
+        assertFalse(adaptiveEntry.contains("AppNativeTabRow("))
+        assertFalse(adaptiveEntry.contains("LocalAppUiStyle"))
 
         val adaptiveRenderer = source.substringAfter("fun <T> AppLiquidAwareTabRow(")
         assertTrue(adaptiveRenderer.contains("LocalAppThemeConfig.current.liquidGlassEnabled"))

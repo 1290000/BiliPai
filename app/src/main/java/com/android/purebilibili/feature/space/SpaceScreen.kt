@@ -174,7 +174,6 @@ import com.android.purebilibili.feature.home.components.cards.HorizontalVideoCar
 import com.android.purebilibili.feature.home.components.cards.HorizontalVideoStatRow
 import com.android.purebilibili.feature.home.components.cards.VideoCardCoverDurationText
 import com.android.purebilibili.feature.home.components.cards.resolveVideoCardCoverOverlayTextShadow
-import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.ui.AppSpacingTokens
@@ -3060,103 +3059,29 @@ private fun SpaceSecondarySwitchRow(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val liquidGlassEnabled = com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
     val spec = remember(items, selectedId) {
         resolveSpaceSecondarySwitchChromeSpec(items = items, selectedId = selectedId)
     }
-    val scrollState = rememberScrollState()
-    val density = LocalDensity.current
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = spec.horizontalPaddingDp.dp, vertical = 6.dp),
     ) {
-        val containerHorizontalPaddingDp = AppSpacingTokens.ExtraSmall.value.roundToInt()
-        val preferredItemWidthDp = spec.itemWidthDp ?: 104
-        val useScrollableRail = shouldScrollSpaceSecondarySwitch(
-            itemCount = items.size,
-            itemWidthDp = preferredItemWidthDp,
-            viewportWidthDp = maxWidth.value.roundToInt(),
-            containerHorizontalPaddingDp = containerHorizontalPaddingDp
-        ) || items.size > 3 || items.any { it.title.length > 4 }
-        val adaptiveItemWidthDp = resolveSpaceSecondarySwitchAdaptiveItemWidthDp(
-            preferredItemWidthDp = preferredItemWidthDp,
-            itemCount = items.size,
-            viewportWidthDp = maxWidth.value.roundToInt(),
-            containerHorizontalPaddingDp = containerHorizontalPaddingDp
+        AppNativeTabRow(
+            options = items.map { AppSegmentOption(it.id, it.title) },
+            selectedValue = selectedId,
+            onSelectionChange = onSelect,
+            modifier = Modifier.fillMaxWidth(),
+            scrollable = shouldScrollSpaceSecondarySwitchForNonGlass(items.size),
+            minTabWidth = resolveSpaceSecondarySwitchNonGlassMinTabWidthDp().dp,
+            compactMiuixWhenTwoOptions = false,
+            // Let the shared renderer size each Miuix item from its own label;
+            // long labels remain fully visible inside the horizontal rail.
+            allowLabelOverflow = true,
+            miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
+            contentSizedMiuixNonGlassItems = true,
+            contentSizedMiuixNonGlassMaxItemWidth = Dp.Infinity,
         )
-        // A scrollable liquid rail must honor the measured title width. Compressing
-        // it to three visible slots makes unbounded labels draw across one another.
-        val itemWidthDp = if (useScrollableRail) preferredItemWidthDp else adaptiveItemWidthDp
-        val itemWidth = itemWidthDp.dp
-        val viewportWidthPx = with(density) { maxWidth.toPx() }
-        val itemWidthPx = with(density) { itemWidth.toPx() }
-        val containerHorizontalPaddingPx = with(density) { AppSpacingTokens.ExtraSmall.toPx() }
-        val dragFollowEdgePaddingPx = with(density) { 12.dp.toPx() }
-
-        KeepScrollableTabSelectionVisible(
-            scrollState = scrollState,
-            selectedIndex = if (useScrollableRail) spec.selectedIndex else 0,
-            itemWidthPx = itemWidthPx,
-            viewportWidthPx = viewportWidthPx,
-            contentPaddingPx = containerHorizontalPaddingPx,
-        )
-
-        if (liquidGlassEnabled) {
-            BottomBarLiquidSegmentedControl(
-                items = items.map { it.title },
-                selectedIndex = spec.selectedIndex,
-                onSelected = { index -> items.getOrNull(index)?.id?.let(onSelect) },
-                itemWidth = itemWidth.takeIf { useScrollableRail || items.size <= 2 },
-                height = spec.heightDp.dp,
-                indicatorHeight = spec.indicatorHeightDp.dp,
-                labelFontSize = 14.sp,
-                liquidGlassEffectsEnabled = spec.liquidGlassEffectsEnabled,
-                dragSelectionEnabled = spec.dragSelectionEnabled || useScrollableRail,
-                onIndicatorPositionChanged = { position ->
-                    if (useScrollableRail) {
-                        scrollState.dispatchRawDelta(
-                            resolveSpaceSecondarySwitchDragScrollDeltaPx(
-                                indicatorPosition = position,
-                                itemWidthPx = itemWidthPx,
-                                viewportWidthPx = viewportWidthPx,
-                                currentScrollPx = scrollState.value.toFloat(),
-                                containerHorizontalPaddingPx = containerHorizontalPaddingPx,
-                                edgePaddingPx = dragFollowEdgePaddingPx
-                            )
-                        )
-                    }
-                },
-                tapPressRefractionEnabled = !useScrollableRail,
-                allowNativeLabelOverflow = true,
-                modifier = if (useScrollableRail) {
-                    Modifier.liquidDockViewport()
-                } else if (items.size <= 2) {
-                    Modifier
-                        .fillMaxWidth()
-                        .wrapContentWidth(Alignment.CenterHorizontally)
-                } else {
-                    Modifier.fillMaxWidth()
-                },
-                scrollState = scrollState.takeIf { useScrollableRail },
-            )
-        } else {
-            AppNativeTabRow(
-                options = items.map { AppSegmentOption(it.id, it.title) },
-                selectedValue = selectedId,
-                onSelectionChange = onSelect,
-                modifier = Modifier.fillMaxWidth(),
-                scrollable = shouldScrollSpaceSecondarySwitchForNonGlass(items.size),
-                minTabWidth = resolveSpaceSecondarySwitchNonGlassMinTabWidthDp().dp,
-                compactMiuixWhenTwoOptions = false,
-                // Let the shared renderer size each Miuix item from its own label;
-                // long labels remain fully visible inside the horizontal rail.
-                allowLabelOverflow = true,
-                miuixNonGlassItemWidthMode = MiuixNonGlassTabItemWidthMode.CONTENT,
-                contentSizedMiuixNonGlassItems = true,
-                contentSizedMiuixNonGlassMaxItemWidth = Dp.Infinity,
-            )
-        }
     }
 }
 
