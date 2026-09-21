@@ -669,6 +669,7 @@ internal fun ElegantVideoCard(
     }
     val useRealtimeWallpaperBackdrop =
         homeWallpaperSurfaceMode == HomeCardWallpaperSurfaceMode.REALTIME_FROSTED
+    val cardYFraction = remember { mutableFloatStateOf(0.5f) }
     val infoLayoutCoordinates = remember { mutableStateOf<LayoutCoordinates?>(null) }
     val homeScrollTickProvider = LocalHomeScrollTickProvider.current
     val infoSurfaceAppearance = remember(
@@ -797,18 +798,6 @@ internal fun ElegantVideoCard(
             defaultOnSurfaceVariant = defaultOnSurfaceVariant,
             homeCardDynamicTintEnabled = homeCardDynamicTintEnabled
         )
-    }
-    val coverGlowBrush = remember(animatedCoverTint, isDarkCardTheme) {
-        val glowAlpha = if (isDarkCardTheme) 0.48f else 0.38f
-        if (animatedCoverTint.alpha > 0f) {
-            Brush.verticalGradient(
-                colors = listOf(
-                    animatedCoverTint.copy(alpha = glowAlpha),
-                    animatedCoverTint.copy(alpha = glowAlpha * 0.35f),
-                    Color.Transparent
-                )
-            )
-        } else null
     }
     // 返回预热：组合即可见，上报 (bvid, url, cacheKey)，供详情返回时按同一 cacheKey
     // prefetch，避免首页 scene 重建后封面重新解码造成落位闪变。
@@ -1200,6 +1189,10 @@ internal fun ElegantVideoCard(
                 .clip(coverShape)
                 .onGloballyPositioned { coordinates ->
                     coverCoordsRef.value = coordinates
+                    val rootTop = coordinates.boundsInRoot().top
+                    if (screenMetrics.heightPx > 0f) {
+                        cardYFraction.floatValue = (rootTop / screenMetrics.heightPx).coerceIn(0f, 1f)
+                    }
                 }
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 //  [交互优化] 封面区域：点击跳转
@@ -1604,14 +1597,11 @@ internal fun ElegantVideoCard(
                             coords.positionInRoot().y
                         } else null
 
-                        val rawYFrac = if (currentY != null && screenMetrics.heightPx > 0f) {
+                        val yFrac = if (currentY != null && screenMetrics.heightPx > 0f) {
                             (currentY / screenMetrics.heightPx).coerceIn(0f, 1f)
                         } else {
-                            0.5f
+                            cardYFraction.floatValue
                         }
-                        // 步长量化：避免微小亚像素移动在每帧频繁重算颜色
-                        val yFrac = (rawYFrac * 50f).toInt() / 50f
-
                         val drawSpec = resolveVideoCardAmbientDrawSpec(
                             wallpaperPalette = wallpaperPalette,
                             yFraction = yFrac,
@@ -1624,10 +1614,17 @@ internal fun ElegantVideoCard(
                             frostedGlassEnabled = true
                         )
                         drawRect(color = drawSpec.containerColor)
-                        if (drawSpec.coverGlowAlpha > 0f && coverGlowBrush != null) {
+                        if (drawSpec.coverGlowAlpha > 0f && animatedCoverTint.alpha > 0f) {
                             drawRect(
-                                brush = coverGlowBrush,
-                                size = Size(size.width, size.height * 0.85f)
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        animatedCoverTint.copy(alpha = drawSpec.coverGlowAlpha),
+                                        animatedCoverTint.copy(alpha = drawSpec.coverGlowAlpha * 0.35f),
+                                        Color.Transparent
+                                    ),
+                                    startY = 0f,
+                                    endY = size.height * 0.85f
+                                )
                             )
                         }
                     } else {
