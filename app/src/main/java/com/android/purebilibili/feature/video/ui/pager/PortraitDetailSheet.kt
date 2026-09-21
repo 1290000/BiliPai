@@ -300,7 +300,7 @@ fun PortraitDetailSheet(
                             // 简介正文
                             AppText(
                                 text = info.desc.ifEmpty { "暂无简介" },
-                                style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
+                                style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
