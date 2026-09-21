@@ -72,6 +72,7 @@ class VideoPlayerSectionPolicyTest {
             .substringAfter("fun VideoPlayerSection(")
             .substringBefore(") {")
 
+        assertTrue(source.contains("internal fun VideoPlayerSection("))
         assertTrue(publicEntry.contains("state: VideoPlayerSectionState"))
         assertTrue(publicEntry.contains("actions: VideoPlayerSectionActions"))
         assertFalse(publicEntry.contains("playerState: VideoPlayerState"))

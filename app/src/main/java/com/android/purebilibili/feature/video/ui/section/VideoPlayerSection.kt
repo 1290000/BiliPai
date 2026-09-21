@@ -662,7 +662,7 @@ private const val MEDIA_SWITCH_SURFACE_RETRY_INTERVAL_MS = 750L
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun VideoPlayerSection(
+internal fun VideoPlayerSection(
     state: VideoPlayerSectionState,
     actions: VideoPlayerSectionActions,
 ) {
