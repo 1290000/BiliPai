@@ -30,6 +30,7 @@ import com.android.purebilibili.core.store.navigation.parseBottomBarItemLabels
 import com.android.purebilibili.core.store.player.PlayerSettingsStore
 import com.android.purebilibili.core.store.player.defaultAudioQualityPreferenceKey
 import com.android.purebilibili.core.theme.AppFontSizePreset
+import com.android.purebilibili.core.ui.components.AppTagChipSize
 import com.android.purebilibili.core.theme.AppUiScalePreset
 import com.android.purebilibili.core.theme.AndroidNativeVariant
 import com.android.purebilibili.core.theme.AppUiStyle
@@ -1623,6 +1624,7 @@ object SettingsManager {
     private val KEY_VIDEO_NOTE_ENABLED = booleanPreferencesKey("video_note_enabled")
     private val KEY_VIDEO_NOTE_DEFAULT_COLLAPSED = booleanPreferencesKey("video_note_default_collapsed")
     private val KEY_VIDEO_INFO_DEFAULT_EXPANDED = booleanPreferencesKey("video_info_default_expanded")
+    private val KEY_VIDEO_TAG_SIZE_PRESET = intPreferencesKey("video_tag_size_preset")
     private val KEY_VIDEO_DETAIL_CHROME_SCROLL_HIDE_ENABLED =
         booleanPreferencesKey("video_detail_chrome_scroll_hide_enabled")
     private const val VIDEO_NOTE_CACHE_PREFS = "video_note_settings"
@@ -6231,6 +6233,17 @@ object SettingsManager {
         }
     }
 
+    fun getVideoTagSizePreset(context: Context): Flow<AppTagChipSize> = context.settingsDataStore.data
+        .map { preferences ->
+            AppTagChipSize.fromValue(preferences[KEY_VIDEO_TAG_SIZE_PRESET] ?: AppTagChipSize.STANDARD.value)
+        }
+
+    suspend fun setVideoTagSizePreset(context: Context, size: AppTagChipSize) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_VIDEO_TAG_SIZE_PRESET] = size.value
+        }
+    }
+
     fun getVideoDetailChromeScrollHideEnabled(context: Context): Flow<Boolean> =
         context.settingsDataStore.data.map { preferences ->
             preferences[KEY_VIDEO_DETAIL_CHROME_SCROLL_HIDE_ENABLED] ?: false
@@ -7595,6 +7608,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_VIDEO_NOTE_ENABLED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_VIDEO_NOTE_DEFAULT_COLLAPSED, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_VIDEO_INFO_DEFAULT_EXPANDED, SettingsShareSection.PLAYBACK),
+            IntShareablePreferenceDefinition(KEY_VIDEO_TAG_SIZE_PRESET, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(
                 KEY_VIDEO_DETAIL_CHROME_SCROLL_HIDE_ENABLED,
                 SettingsShareSection.PLAYBACK,

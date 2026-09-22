@@ -669,17 +669,25 @@ fun VideoTitleWithDesc(
                 androidx.compose.animation.ExitTransition.None
             }
         ) {
+            val videoTagSize by com.android.purebilibili.core.store.SettingsManager
+                .getVideoTagSizePreset(context)
+                .collectAsStateWithLifecycle(
+                    initialValue = com.android.purebilibili.core.ui.components.AppTagChipSize.STANDARD
+                )
+            val tagMetrics = com.android.purebilibili.core.ui.components
+                .resolveAppTagChipMetrics(videoTagSize)
             Column {
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(tagMetrics.itemSpacingHorizontal),
+                    verticalArrangement = Arrangement.spacedBy(tagMetrics.itemSpacingVertical)
                 ) {
                     videoTags.take(10).forEach { tag ->
                         com.android.purebilibili.core.ui.components.AppTagChip(
                             label = tag.tag_name,
                             onClick = { onTagClick(tag.tag_name) },
                             modifier = Modifier.copyOnLongPress(tag.tag_name, "标签"),
+                            size = videoTagSize,
                         )
                     }
                 }
