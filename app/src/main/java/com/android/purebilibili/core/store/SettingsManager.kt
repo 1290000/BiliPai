@@ -939,12 +939,12 @@ enum class DanmakuSettingsScope(
     PORTRAIT(
         keyPrefix = "portrait",
         badgeLabel = "竖屏专用",
-        subtitle = "当前修改仅作用于竖屏观看"
+        subtitle = "开关、字号和区域与横屏同步，其余样式独立"
     ),
     LANDSCAPE(
         keyPrefix = "landscape",
         badgeLabel = "横屏专用",
-        subtitle = "当前修改仅作用于横屏观看"
+        subtitle = "开关、字号和区域与竖屏同步，其余样式独立"
     )
 }
 
@@ -4263,7 +4263,12 @@ object SettingsManager {
     private fun buildScopedDanmakuKeyName(
         scope: DanmakuSettingsScope,
         suffix: String
-    ): String = "danmaku_${scope.keyPrefix}_$suffix"
+    ): String {
+        // Keep the existing fullscreen values authoritative across playback modes.
+        val shared = suffix == "enabled" || suffix == "font_scale" || suffix == "area"
+        val prefix = if (shared) DanmakuSettingsScope.LANDSCAPE.keyPrefix else scope.keyPrefix
+        return "danmaku_${prefix}_$suffix"
+    }
     
     private val KEY_DANMAKU_ENABLED = booleanPreferencesKey("danmaku_enabled")
     private val KEY_DANMAKU_OPACITY = floatPreferencesKey("danmaku_opacity")
@@ -4326,6 +4331,26 @@ object SettingsManager {
         floatPreferencesKey(buildScopedDanmakuKeyName(scope, "line_height"))
     private fun keyDanmakuScrollDurationSeconds(scope: DanmakuSettingsScope) =
         floatPreferencesKey(buildScopedDanmakuKeyName(scope, "scroll_duration_seconds"))
+    private fun keyDanmakuLegacyPortraitEnabled() =
+        booleanPreferencesKey("danmaku_portrait_enabled")
+    private fun keyDanmakuLegacyPortraitFontScale() =
+        floatPreferencesKey("danmaku_portrait_font_scale")
+    private fun keyDanmakuLegacyPortraitArea() =
+        floatPreferencesKey("danmaku_portrait_area")
+
+    private fun <T> readSharedDanmakuPreference(
+        preferences: Preferences,
+        scopeKey: Preferences.Key<T>,
+        legacyPortraitKey: Preferences.Key<T>,
+        legacyKey: Preferences.Key<T>,
+        defaultValue: T
+    ): T {
+        return preferences[scopeKey]
+            ?: preferences[legacyPortraitKey]
+            ?: preferences[legacyKey]
+            ?: defaultValue
+    }
+
     private fun keyDanmakuStaticDurationSeconds(scope: DanmakuSettingsScope) =
         floatPreferencesKey(buildScopedDanmakuKeyName(scope, "static_duration_seconds"))
     private fun keyDanmakuScrollFixedVelocity(scope: DanmakuSettingsScope) =
@@ -4375,9 +4400,10 @@ object SettingsManager {
             defaultValue = ""
         )
         return DanmakuSettings(
-            enabled = readScopedDanmakuPreference(
+            enabled = readSharedDanmakuPreference(
                 preferences = preferences,
                 scopeKey = keyDanmakuEnabled(scope),
+                legacyPortraitKey = keyDanmakuLegacyPortraitEnabled(),
                 legacyKey = KEY_DANMAKU_ENABLED,
                 defaultValue = true
             ),
@@ -4390,9 +4416,10 @@ object SettingsManager {
                 )
             ),
             fontScale = normalizeDanmakuFontScale(
-                readScopedDanmakuPreference(
+                readSharedDanmakuPreference(
                     preferences = preferences,
                     scopeKey = keyDanmakuFontScale(scope),
+                    legacyPortraitKey = keyDanmakuLegacyPortraitFontScale(),
                     legacyKey = KEY_DANMAKU_FONT_SCALE,
                     defaultValue = DEFAULT_DANMAKU_FONT_SCALE
                 )
@@ -4404,9 +4431,10 @@ object SettingsManager {
                 defaultValue = DEFAULT_DANMAKU_SPEED
             ),
             displayArea = normalizeDanmakuDisplayArea(
-                readScopedDanmakuPreference(
+                readSharedDanmakuPreference(
                     preferences = preferences,
                     scopeKey = keyDanmakuArea(scope),
+                    legacyPortraitKey = keyDanmakuLegacyPortraitArea(),
                     legacyKey = KEY_DANMAKU_AREA,
                     defaultValue = DEFAULT_DANMAKU_AREA
                 )
@@ -4563,9 +4591,10 @@ object SettingsManager {
         scope: DanmakuSettingsScope = DanmakuSettingsScope.PORTRAIT
     ): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences ->
-            readScopedDanmakuPreference(
+            readSharedDanmakuPreference(
                 preferences = preferences,
                 scopeKey = keyDanmakuEnabled(scope),
+                legacyPortraitKey = keyDanmakuLegacyPortraitEnabled(),
                 legacyKey = KEY_DANMAKU_ENABLED,
                 defaultValue = true
             )
@@ -4614,9 +4643,10 @@ object SettingsManager {
     ): Flow<Float> = context.settingsDataStore.data
         .map { preferences ->
             normalizeDanmakuFontScale(
-                readScopedDanmakuPreference(
+                readSharedDanmakuPreference(
                     preferences = preferences,
                     scopeKey = keyDanmakuFontScale(scope),
+                    legacyPortraitKey = keyDanmakuLegacyPortraitFontScale(),
                     legacyKey = KEY_DANMAKU_FONT_SCALE,
                     defaultValue = DEFAULT_DANMAKU_FONT_SCALE
                 )
@@ -4664,9 +4694,10 @@ object SettingsManager {
     ): Flow<Float> = context.settingsDataStore.data
         .map { preferences ->
             normalizeDanmakuDisplayArea(
-                readScopedDanmakuPreference(
+                readSharedDanmakuPreference(
                     preferences = preferences,
                     scopeKey = keyDanmakuArea(scope),
+                    legacyPortraitKey = keyDanmakuLegacyPortraitArea(),
                     legacyKey = KEY_DANMAKU_AREA,
                     defaultValue = DEFAULT_DANMAKU_AREA
                 )
