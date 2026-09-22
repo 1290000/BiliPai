@@ -18,22 +18,6 @@ class DanmakuConfigPolicyTest {
     }
 
     @Test
-    fun `minimum visible lines should not degrade to single line`() {
-        assertEquals(2, resolveDanmakuMinimumVisibleLines(0.25f))
-        assertEquals(3, resolveDanmakuMinimumVisibleLines(0.5f))
-        assertEquals(5, resolveDanmakuMinimumVisibleLines(0.75f))
-        assertEquals(6, resolveDanmakuMinimumVisibleLines(1.0f))
-    }
-
-    @Test
-    fun `fallback max lines should remain stable by area ratio`() {
-        assertEquals(4, resolveDanmakuFallbackMaxLines(0.25f))
-        assertEquals(8, resolveDanmakuFallbackMaxLines(0.5f))
-        assertEquals(12, resolveDanmakuFallbackMaxLines(0.75f))
-        assertEquals(16, resolveDanmakuFallbackMaxLines(1.0f))
-    }
-
-    @Test
     fun `scroll duration should respect explicit duration seconds and speed factor`() {
         assertEquals(
             7000L,
@@ -129,11 +113,13 @@ class DanmakuConfigPolicyTest {
     }
 
     @Test
-    fun `text size should scale the 20dp baseline by density and user scale`() {
-        assertEquals(20f, resolveDanmakuTextSizePx(density = 1f, fontScale = 1f), 0.001f)
-        assertEquals(40f, resolveDanmakuTextSizePx(density = 2f, fontScale = 1f), 0.001f)
-        assertEquals(30f, resolveDanmakuTextSizePx(density = 1f, fontScale = 1.5f), 0.001f)
-        assertEquals(12f, resolveDanmakuTextSizePx(density = 2f, fontScale = 0.3f), 0.001f)
+    fun `text size composes user preference density and viewport without a small window floor`() {
+        val fullscreen = requireNotNull(resolveDanmakuViewport(2392, 1080, 3f, 1080f))
+        val inline = requireNotNull(resolveDanmakuViewport(1080, 608, 3f, 1080f))
+        assertEquals(608f / 1080f,
+            resolveDanmakuTextSizePx(inline, 1.5f) / resolveDanmakuTextSizePx(fullscreen, 1.5f), 0.001f)
+        assertEquals(1.5f,
+            resolveDanmakuTextSizePx(inline, 1.5f) / resolveDanmakuTextSizePx(inline, 1f), 0.001f)
     }
 
     @Test

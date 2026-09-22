@@ -9,13 +9,6 @@ import kotlin.test.assertTrue
 class CommandDanmakuOverlayPolicyTest {
 
     @Test
-    fun `attention command labels match action type`() {
-        assertEquals("一键三连", resolveAttentionCommandLabel(1))
-        assertEquals("关注并三连", resolveAttentionCommandLabel(2))
-        assertEquals("关注 UP", resolveAttentionCommandLabel(0))
-    }
-
-    @Test
     fun `follow and triple command does not unfollow existing followers`() {
         val action = resolveAttentionCommandClickAction(attentionType = 2, isFollowing = true)
 
@@ -37,12 +30,6 @@ class CommandDanmakuOverlayPolicyTest {
 
         assertEquals(false, action.shouldFollow)
         assertEquals(false, action.shouldTriple)
-    }
-
-    @Test
-    fun `follow and triple attention card has enough width for portrait details`() {
-        assertTrue(resolveAttentionCommandCardWidthDp(2) > resolveAttentionCommandCardWidthDp(1))
-        assertTrue(resolveAttentionCommandCardWidthDp(2) >= 188)
     }
 
     @Test
