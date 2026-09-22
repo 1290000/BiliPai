@@ -415,6 +415,8 @@ internal fun BiliPaiNavDisplayHost(
         derivedStateOf {
             when (videoCardTransitionProgress.settleStateOrNull()) {
                 VideoCardTransitionSettleState.AutoReturn -> VideoCardTransitionExposure.Returning
+                VideoCardTransitionSettleState.CancelRestore -> VideoCardTransitionExposure.Restoring
+                VideoCardTransitionSettleState.InteractiveSeek -> VideoCardTransitionExposure.BackPreview
                 VideoCardTransitionSettleState.Idle,
                 VideoCardTransitionSettleState.Held,
                 null -> VideoCardTransitionExposure.Idle
