@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size
-import com.android.purebilibili.core.ui.common.CopySelectionDialog
+import com.android.purebilibili.core.ui.common.TextSelectionBottomSheet
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.rememberStoragePermissionState
 import com.android.purebilibili.data.model.response.ReplyItem
@@ -1147,7 +1147,7 @@ private fun SubReplyDetailItem(
     }
 
     if (showFreeCopyDialog) {
-        CopySelectionDialog(
+        TextSelectionBottomSheet(
             text = copyText,
             title = "选择评论内容",
             onDismiss = { showFreeCopyDialog = false }

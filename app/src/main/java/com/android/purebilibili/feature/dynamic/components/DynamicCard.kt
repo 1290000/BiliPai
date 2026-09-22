@@ -11,6 +11,8 @@ import com.android.purebilibili.core.ui.components.AppListItem
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppHorizontalDivider
 
+import com.android.purebilibili.core.ui.UserAvatarCornerMarkBadge
+import com.android.purebilibili.core.ui.resolveUserAvatarCornerMark
 import com.android.purebilibili.core.ui.AppChromeSizeTokens
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppSurfaceTokens
@@ -50,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.TextUnit
@@ -60,7 +63,10 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.core.util.BilibiliNavigationTarget
 import com.android.purebilibili.core.util.BilibiliNavigationTargetParser
-import com.android.purebilibili.core.ui.common.CopySelectionDialog
+import androidx.compose.foundation.text.selection.SelectionContainer
+import com.android.purebilibili.core.ui.common.TextSelectionBottomSheet
+import com.android.purebilibili.core.ui.common.TextSelectionPolicy
+import com.android.purebilibili.core.ui.common.detectTapWithSelectionFriendly
 import com.android.purebilibili.core.ui.rememberAppMoreIcon
 import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
 import com.android.purebilibili.core.ui.rememberAppWarningIcon
@@ -448,28 +454,18 @@ fun DynamicCardV2(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 头像
-                Box(
+                DynamicAuthorFace(
+                    faceUrl = author.face,
+                    officialType = author.official_verify?.type,
+                    vipStatus = author.vip?.status,
+                    faceSize = AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Small,
                     modifier = Modifier
                         .size(AppChromeSizeTokens.MinimumTouchTarget)
-                        .clip(CircleShape)
                         .semantics { contentDescription = "查看${author.name}的个人主页" }
                         .clickable(enabled = authorClickMid != null || (ugcSeason != null && ugcSeason.id > 0L && onCollectionClick != null)) {
                             onAuthorHeaderClick()
                         },
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = coil3.request.ImageRequest.Builder(LocalContext.current)
-                            .data(author.face.let { if (it.startsWith("http://")) it.replace("http://", "https://") else it })
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Small)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                )
                 
                 Spacer(modifier = Modifier.width(AppSpacingTokens.Medium))
                 
@@ -2004,42 +2000,37 @@ fun RichTextContent(
         val richNodeText = resolveDynamicRichTextNodeDisplayText(desc.rich_text_nodes)
         richNodeText.ifBlank { desc.text }.trim()
     }
-    var showCopySelectionDialog by remember(copyText) { mutableStateOf(false) }
+    var showTextSelectionSheet by remember(copyText) { mutableStateOf(false) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-    AppText(
-        text = annotatedText,
-        inlineContent = inlineContent,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-        lineHeight = lineHeight,
-        maxLines = maxLines,
-        overflow = overflow,
-        color = textColor,
-        onTextLayout = { textLayoutResult = it },
-        modifier = modifier.pointerInput(
-            copyText,
-            annotatedText,
-            onUserClick,
-            onVoteClick,
-            onTopicClick,
-            onBlankTap,
-            onVideoClick,
-            onDynamicDetailClick,
-            onBangumiClick,
-            onArticleClick,
-            onLiveClick,
-            onMusicClick,
-            onLinkClick,
-        ) {
-            detectTapGestures(
-                onLongPress = {
-                    if (copyText.isNotEmpty()) {
-                        showCopySelectionDialog = true
-                    }
-                },
-                onTap = { offset ->
-                    val layoutResult = textLayoutResult ?: return@detectTapGestures
+    SelectionContainer {
+        AppText(
+            text = annotatedText,
+            inlineContent = inlineContent,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            lineHeight = lineHeight,
+            maxLines = maxLines,
+            overflow = overflow,
+            color = textColor,
+            onTextLayout = { textLayoutResult = it },
+            modifier = modifier.pointerInput(
+                copyText,
+                annotatedText,
+                onUserClick,
+                onVoteClick,
+                onTopicClick,
+                onBlankTap,
+                onVideoClick,
+                onDynamicDetailClick,
+                onBangumiClick,
+                onArticleClick,
+                onLiveClick,
+                onMusicClick,
+                onLinkClick,
+            ) {
+                detectTapWithSelectionFriendly { offset ->
+                    val layoutResult = textLayoutResult ?: return@detectTapWithSelectionFriendly
                     val position = layoutResult.getOffsetForPosition(offset)
                     val searchStart = maxOf(0, position - 1)
                     val searchEnd = minOf(annotatedText.length, position + 1)
@@ -2052,7 +2043,7 @@ fun RichTextContent(
                         annotation.item.toLongOrNull()
                             ?.takeIf { it > 0L }
                             ?.let(onUserClick)
-                        return@detectTapGestures
+                        return@detectTapWithSelectionFriendly
                     }
 
                     annotatedText.getStringAnnotations(
@@ -2064,7 +2055,7 @@ fun RichTextContent(
                         ?.takeIf { it > 0L }
                         ?.let { voteId ->
                             onVoteClick(voteId)
-                            return@detectTapGestures
+                            return@detectTapWithSelectionFriendly
                         }
 
                     // 带 topicId 的话题标签优先跳转话题详情页，而不是关键词搜索。
@@ -2077,7 +2068,7 @@ fun RichTextContent(
                         ?.takeIf { it > 0L }
                         ?.let { topicId ->
                             onTopicClick(topicId)
-                            return@detectTapGestures
+                            return@detectTapWithSelectionFriendly
                         }
 
                     // 无 topicId 的话题（纯 #关键词# 或链接搜索）才回落到关键词搜索。
@@ -2088,7 +2079,7 @@ fun RichTextContent(
                     ).firstOrNull()?.item?.takeIf { it.isNotBlank() }?.let { keyword ->
                         if (onTopicKeywordClick != null) {
                             onTopicKeywordClick(keyword)
-                            return@detectTapGestures
+                            return@detectTapWithSelectionFriendly
                         }
                         val searchUrl = "bilibili://search?keyword=" + java.net.URLEncoder.encode(keyword, java.nio.charset.StandardCharsets.UTF_8.name())
                         if (onLinkClick != null) {
@@ -2104,7 +2095,7 @@ fun RichTextContent(
                                 openDynamicRichTextLinkExternally(context, searchUrl, uriHandler)
                             }
                         }
-                        return@detectTapGestures
+                        return@detectTapWithSelectionFriendly
                     }
 
                     val urlAnnotation = annotatedText.getStringAnnotations(
@@ -2188,6 +2179,7 @@ fun RichTextContent(
                                 }
                                 if (handled) return@launch
                             }
+
                             if (onLinkClick != null) {
                                 onLinkClick(rawUrl)
                             } else {
@@ -2220,20 +2212,21 @@ fun RichTextContent(
                                 }
                             }
                         }
-                        return@detectTapGestures
+                        return@detectTapWithSelectionFriendly
                     }
 
                     // 非 @ / 链接：交给外层（例如转发卡片打开原动态）
                     onBlankTap?.invoke()
                 }
-            )
-        }
-    )
-    if (showCopySelectionDialog) {
-        CopySelectionDialog(
+            }
+        )
+    }
+
+    if (showTextSelectionSheet) {
+        TextSelectionBottomSheet(
             text = copyText,
             title = "选择动态内容",
-            onDismiss = { showCopySelectionDialog = false }
+            onDismiss = { showTextSelectionSheet = false }
         )
     }
 }
@@ -2266,6 +2259,40 @@ private fun openDynamicRichTextLinkExternally(
 
     if (!launchedExternally) {
         runCatching { uriHandler.openUri(url) }
+    }
+}
+
+@Composable
+private fun DynamicAuthorFace(
+    faceUrl: String,
+    officialType: Int?,
+    vipStatus: Int?,
+    faceSize: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val normalizedFace = faceUrl.let { if (it.startsWith("http://")) it.replace("http://", "https://") else it }
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(faceSize)) {
+            AsyncImage(
+                model = coil3.request.ImageRequest.Builder(LocalContext.current)
+                    .data(normalizedFace)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+            )
+            UserAvatarCornerMarkBadge(
+                mark = resolveUserAvatarCornerMark(
+                    officialType = officialType,
+                    vipStatus = vipStatus,
+                ),
+                modifier = Modifier.align(Alignment.BottomEnd),
+                badgeSize = 14.dp,
+            )
+        }
     }
 }
 
@@ -2304,28 +2331,18 @@ fun DynamicCardCompact(
     ) {
         // 头像
         if (author != null) {
-            Box(
+            DynamicAuthorFace(
+                faceUrl = author.face,
+                officialType = author.official_verify?.type,
+                vipStatus = author.vip?.status,
+                faceSize = AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Medium,
                 modifier = Modifier
                     .size(AppChromeSizeTokens.MinimumTouchTarget)
-                    .clip(CircleShape)
                     .semantics { contentDescription = "查看${author.name}的个人主页" }
-                    .clickable(enabled = authorClickMid != null) { 
-                        authorClickMid?.let(onUserClick) 
+                    .clickable(enabled = authorClickMid != null) {
+                        authorClickMid?.let(onUserClick)
                     },
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = coil3.request.ImageRequest.Builder(LocalContext.current)
-                        .data(author.face.let { if (it.startsWith("http://")) it.replace("http://", "https://") else it })
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Medium)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            }
+            )
             
             Spacer(modifier = Modifier.width(AppSpacingTokens.Medium))
         }
