@@ -54,12 +54,16 @@ import com.android.purebilibili.data.model.response.UgcSeason
 import com.android.purebilibili.data.model.response.VideoStaff
 import com.android.purebilibili.data.model.response.ViewInfo
 import com.android.purebilibili.data.model.response.VideoTag
+import com.android.purebilibili.core.ui.common.TextSelectionPolicy
+import com.android.purebilibili.core.ui.common.detectTapWithSelectionFriendly
 import com.android.purebilibili.core.ui.common.copyOnLongPress
 import com.android.purebilibili.feature.video.ui.components.VideoCardSkeleton
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.draw.rotate
 import com.android.purebilibili.core.ui.common.copyOnClick
 import com.android.purebilibili.core.ui.OfficialVerifyBadge
+import com.android.purebilibili.core.ui.UserAvatarCornerMarkBadge
+import com.android.purebilibili.core.ui.resolveUserAvatarCornerMark
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.resolveUpStatsText
@@ -233,18 +237,21 @@ fun VideoTitleSection(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            AppText(
-                text = info.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = if (expanded) Int.MAX_VALUE else 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
+            SelectionContainer(
                 modifier = Modifier
                     .weight(1f)
                     .then(if (animateLayout) Modifier.animateContentSize() else Modifier)
-                    .copyOnLongPress(info.title, "视频标题")
-            )
+            ) {
+                AppText(
+                    text = info.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.copyOnLongPress(info.title, "视频标题")
+                )
+            }
             Spacer(Modifier.width(4.dp))
             AppIcon(
                 imageVector = if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
@@ -418,15 +425,17 @@ fun VideoTitleWithDesc(
                 }
             }
 
-            AppText(
-                text = info.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = if (expanded) Int.MAX_VALUE else 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = titleModifier.weight(1f)
-            )
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                AppText(
+                    text = info.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = if (expanded) Int.MAX_VALUE else 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = titleModifier
+                )
+            }
 
             val rotateAngle by animateFloatAsState(
                 targetValue = if (expanded) 180f else 0f, // 展开时旋转180度
@@ -615,8 +624,8 @@ fun VideoTitleWithDesc(
                 var descriptionTextLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
                 val descriptionModifier = if (onDescriptionUrlClick != null) {
                     Modifier.pointerInput(descriptionText, info.desc, onDescriptionUrlClick) {
-                        detectTapGestures { offset ->
-                            val layoutResult = descriptionTextLayout ?: return@detectTapGestures
+                        detectTapWithSelectionFriendly { offset ->
+                            val layoutResult = descriptionTextLayout ?: return@detectTapWithSelectionFriendly
                             val position = layoutResult.getOffsetForPosition(offset)
                             val searchStart = maxOf(0, position - 1)
                             val searchEnd = minOf(descriptionText.length, position + 1)
@@ -753,14 +762,11 @@ fun UpInfoSection(
 
         val avatarContent: @Composable () -> Unit = {
             if (showOwnerAvatar) {
-                var avatarModifier = Modifier
-                    .size(if (isCompact) 36.dp else 40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-
+                val avatarSize = if (isCompact) 36.dp else 40.dp
+                var sharedFaceModifier: Modifier = Modifier
                 if (metadataSharedEnabled) {
                     with(requireNotNull(sharedTransitionScope)) {
-                        avatarModifier = avatarModifier.sharedBounds(
+                        sharedFaceModifier = Modifier.sharedBounds(
                             sharedContentState = rememberSharedContentState(
                                 key = com.android.purebilibili.core.ui.transition.videoAvatarSharedElementKey(
                                     info.bvid,
@@ -779,20 +785,26 @@ fun UpInfoSection(
                         )
                     }
                 }
+                val ownerStaff = info.staff.firstOrNull { it.mid == info.owner.mid }
 
                 if (info.owner.face.isNotBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(FormatUtils.fixImageUrl(info.owner.face))
-                            .crossfade(true)
-                            .build(),
+                    OwnerDecoratedAvatar(
+                        faceUrl = info.owner.face,
+                        ownerMid = info.owner.mid,
+                        modifier = Modifier.size(avatarSize),
+                        badgeSize = if (isCompact) 12.dp else 14.dp,
+                        fallbackOfficialType = ownerStaff?.official?.type,
+                        fallbackVipStatus = ownerStaff?.vip?.status,
+                        faceModifier = sharedFaceModifier,
                         contentDescription = "UP主头像",
-                        modifier = avatarModifier,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
                 } else {
                     Box(
-                        modifier = avatarModifier,
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .then(sharedFaceModifier),
                         contentAlignment = Alignment.Center
                     ) {
                         AppIcon(
@@ -858,15 +870,17 @@ fun UpInfoSection(
                     }
                     Spacer(Modifier.width(4.dp))
                 }
-                AppText(
-                    text = info.owner.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = upNameModifier
-                )
+                SelectionContainer {
+                    AppText(
+                        text = info.owner.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = upNameModifier
+                    )
+                }
             }
         }
 
@@ -1084,18 +1098,28 @@ private fun CreatorTeamMemberChip(
             .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(FormatUtils.fixImageUrl(member.face))
-                .crossfade(true)
-                .build(),
-            contentDescription = "${member.name} 头像",
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-        )
+        Box(modifier = Modifier.size(36.dp)) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(FormatUtils.fixImageUrl(member.face))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "${member.name} 头像",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+            UserAvatarCornerMarkBadge(
+                mark = resolveUserAvatarCornerMark(
+                    officialType = member.official.type,
+                    vipStatus = member.vip.status,
+                ),
+                modifier = Modifier.align(Alignment.BottomEnd),
+                badgeSize = 14.dp,
+            )
+        }
         Spacer(modifier = Modifier.width(8.dp))
         Column(
             modifier = Modifier.widthIn(min = 64.dp, max = 112.dp)
@@ -1152,13 +1176,15 @@ fun DescriptionSection(desc: String) {
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .animateContentSize()
         ) {
-            AppText(
-                text = desc,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
-                maxLines = if (expanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            SelectionContainer {
+                AppText(
+                    text = desc,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             if (desc.length > 100 || desc.lines().size > 3) {
                 Row(
