@@ -192,13 +192,18 @@ fun ensureSubscriptionHomeTab(
     feedsEnabled: Boolean,
     visibleIds: Set<String>?,
 ): List<HomeTopTabEntry> {
-    val stripped = entries.filterNot { it == HomeTopTabEntry.Subscriptions }
-    if (!feedsEnabled) return stripped
+    if (!feedsEnabled) {
+        return entries.filterNot { it == HomeTopTabEntry.Subscriptions }
+    }
     val visible = visibleIds?.map { it.trim().uppercase() }?.filter { it.isNotBlank() }?.toSet()
     val legacyDefault = visible == null || visible == LEGACY_DEFAULT_HOME_TOP_TAB_IDS
-    if (visible != null && !legacyDefault && HOME_TOP_SUBSCRIPTION_TAB_ID !in visible) return stripped
-    if (stripped.any { it == HomeTopTabEntry.Subscriptions }) return stripped
-    return stripped + HomeTopTabEntry.Subscriptions
+    if (visible != null && !legacyDefault && HOME_TOP_SUBSCRIPTION_TAB_ID !in visible) {
+        return entries.filterNot { it == HomeTopTabEntry.Subscriptions }
+    }
+    if (entries.any { it == HomeTopTabEntry.Subscriptions }) {
+        return entries
+    }
+    return entries + HomeTopTabEntry.Subscriptions
 }
 
 fun resolveHomeTopTabEntryLabel(entry: HomeTopTabEntry): String {

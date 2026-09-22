@@ -612,6 +612,18 @@ internal fun resolveTopTabCategoryIcon(
     iconFamily: AppSemanticIconFamily = AppSemanticIconFamily.MATERIAL,
     selected: Boolean = false
 ): ImageVector {
+    val normalizedKey = categoryKey.trim()
+    if (normalizedKey.equals("SUBSCRIPTIONS", ignoreCase = true)) {
+        return when (iconFamily) {
+            AppSemanticIconFamily.MATERIAL -> androidx.compose.ui.res.vectorResource(
+                com.android.purebilibili.R.drawable.ms_rss_feed_24
+            )
+            AppSemanticIconFamily.MIUIX -> resolveMiuixPreferredHomeNavigationIcon(
+                tabId = "SUBSCRIPTIONS",
+                selected = selected,
+            )
+        }
+    }
     val category = resolveTopTabCategoryForIcon(categoryKey)
     return when (iconFamily) {
         AppSemanticIconFamily.MATERIAL -> when (category) {

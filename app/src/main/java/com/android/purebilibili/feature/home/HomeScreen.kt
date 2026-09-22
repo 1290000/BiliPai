@@ -438,8 +438,20 @@ fun HomeScreen(
         .collectAsStateWithLifecycle()
     val installedPlugins by com.android.purebilibili.core.plugin.PluginManager.pluginsFlow
         .collectAsStateWithLifecycle()
-    val subscriptionFeedsEnabled = remember(subscriptionRevision, installedPlugins, homeTopTabSettings) {
-        com.android.purebilibili.core.plugin.feed.loadEnabledFeedSources(context).isNotEmpty()
+    val isSubscriptionPluginPersistedEnabled by com.android.purebilibili.core.plugin.PluginStore
+        .isEnabledFlow(context, com.android.purebilibili.feature.plugin.SubscriptionFeedPlugin.PLUGIN_ID)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val subscriptionFeedsEnabled = remember(
+        subscriptionRevision,
+        installedPlugins,
+        isSubscriptionPluginPersistedEnabled,
+        homeTopTabSettings,
+    ) {
+        com.android.purebilibili.core.plugin.feed.isSubscriptionPluginOrFeedEnabled(
+            context = context,
+            installedPlugins = installedPlugins,
+            isPluginPersistedEnabled = isSubscriptionPluginPersistedEnabled,
+        )
     }
     val topTabEntries = remember(homeTopTabSettings, subscriptionFeedsEnabled) {
         ensureSubscriptionHomeTab(
