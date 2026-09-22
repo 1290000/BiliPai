@@ -1076,12 +1076,17 @@ class DanmakuManager private constructor(
 
             // Geometry/style updates remeasure retained items in the engine, including paused frames.
             // Only a changed source list needs a timeline replacement.
+            // 正则屏蔽在整表扫描上非常重，禁止在主线程同步 rebuild（ANR）。
             if (reason == "merge_changed" || reason == "filter_changed" || reason == "staticDanmakuToScroll") {
-                buildDanmakuCacheFromSource()?.let { commitDanmakuCacheRebuild(it, reason) }
-            
-                cachedDanmakuList?.let { list ->
+                val rebuildReason = reason
+                scope.launch {
+                    val rebuild = withContext(Dispatchers.Default) {
+                        buildDanmakuCacheFromSource()
+                    } ?: return@launch
+                    if (!commitDanmakuCacheRebuild(rebuild, rebuildReason)) return@launch
+                    val list = cachedDanmakuList ?: return@launch
                     val currentPos = player?.currentPosition ?: 0L
-                    Log.w(TAG, " Re-applying danmaku data after $reason change at ${currentPos}ms")
+                    Log.w(TAG, " Re-applying danmaku data after $rebuildReason change at ${currentPos}ms")
                     resyncDanmakuTimeline(
                         list = list,
                         positionMs = currentPos,
@@ -1089,7 +1094,7 @@ class DanmakuManager private constructor(
                             isPlaying = player?.isPlaying == true,
                             playWhenReady = player?.playWhenReady == true
                         ),
-                        reason = "config:$reason"
+                        reason = "config:$rebuildReason"
                     )
                 }
             } else {

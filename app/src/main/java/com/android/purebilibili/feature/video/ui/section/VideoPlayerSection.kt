@@ -1339,11 +1339,14 @@ private fun VideoPlayerSectionContent(
         .collectAsStateWithLifecycle(
             initialValue = SettingsManager.getHideVideoPageStatusBarSync(context),
         )
-    val shouldCaptureStatusBarAmbientFrame = contentTopInset.value > 0f &&
-        !isFullscreen &&
-        !isInPipMode &&
-        hostLifecycleStarted &&
-        statusBarHazeEnabled
+    val shouldCaptureStatusBarAmbientFrame = shouldCaptureInlineStatusBarAmbientFrame(
+        contentTopInsetPx = contentTopInset.value,
+        isFullscreen = isFullscreen,
+        isPortraitFullscreen = isPortraitFullscreen,
+        isInPipMode = isInPipMode,
+        hostLifecycleStarted = hostLifecycleStarted,
+        statusBarHazeEnabled = statusBarHazeEnabled,
+    )
     LaunchedEffect(
         playerViewRef,
         shouldCaptureStatusBarAmbientFrame,
@@ -2099,8 +2102,12 @@ private fun VideoPlayerSectionContent(
                 isFullscreen,
                 isInPipMode,
                 isScreenLocked,
-                twoFingerSpeedMode
+                twoFingerSpeedMode,
+                isPortraitFullscreen,
             ) {
+                if (!shouldEnableInlinePlayerGestures(isPortraitFullscreen)) {
+                    return@pointerInput
+                }
                 try {
                     awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -2243,6 +2250,9 @@ private fun VideoPlayerSectionContent(
                 gestureSeekFallbackDurationMs,
                 isPortraitFullscreen
             ) {
+                if (!shouldEnableInlinePlayerGestures(isPortraitFullscreen)) {
+                    return@pointerInput
+                }
                 if (!isInPipMode) {
                     detectDragGestures(
                         onDragStart = { offset ->
@@ -2679,8 +2689,12 @@ private fun VideoPlayerSectionContent(
                 scale,
                 isMultiTouchActive,
                 isFullscreen,
-                longPressSpeedLockEnabled
+                longPressSpeedLockEnabled,
+                isPortraitFullscreen,
             ) {
+                if (!shouldEnableInlinePlayerGestures(isPortraitFullscreen)) {
+                    return@pointerInput
+                }
                 detectDragGesturesAfterLongPress(
                     onDragStart = { startOffset ->
                         startLongPressSpeedGesture(startOffset)
@@ -2765,8 +2779,12 @@ private fun VideoPlayerSectionContent(
                 seekForwardSeconds,
                 seekBackwardSeconds,
                 doubleTapSeekEnabled,
-                isScreenLocked
+                isScreenLocked,
+                isPortraitFullscreen,
             ) {
+                if (!shouldEnableInlinePlayerGestures(isPortraitFullscreen)) {
+                    return@pointerInput
+                }
                 detectTapGestures(
                     onTap = { 
                         // 🔒 锁定时点击只显示解锁按钮
@@ -2997,6 +3015,7 @@ private fun VideoPlayerSectionContent(
         val runDanmakuHostEffects = shouldRunVideoPlayerDanmakuHostEffects(
             danmakuHostActive = danmakuHostActive,
             hostLifecycleStarted = hostLifecycleStarted,
+            isPortraitFullscreen = isPortraitFullscreen,
         )
         LaunchedEffect(cid, aid, danmakuEnabled, runDanmakuHostEffects) {
             // 相关推荐 push 会让新旧详情页在转场期间同时处于 STARTED。旧页不得再次
