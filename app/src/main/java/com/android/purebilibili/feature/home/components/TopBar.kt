@@ -92,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.android.purebilibili.core.ui.AppIconStyle
@@ -615,7 +616,7 @@ internal fun resolveTopTabCategoryIcon(
     val normalizedKey = categoryKey.trim()
     if (normalizedKey.equals("SUBSCRIPTIONS", ignoreCase = true)) {
         return when (iconFamily) {
-            AppSemanticIconFamily.MATERIAL -> androidx.compose.ui.res.vectorResource(
+            AppSemanticIconFamily.MATERIAL -> ImageVector.vectorResource(
                 com.android.purebilibili.R.drawable.ms_rss_feed_24
             )
             AppSemanticIconFamily.MIUIX -> resolveMiuixPreferredHomeNavigationIcon(
