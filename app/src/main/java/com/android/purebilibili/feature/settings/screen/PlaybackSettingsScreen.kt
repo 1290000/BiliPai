@@ -1463,7 +1463,7 @@ private fun PlaybackInteractionSettingsSection(
             )
         SettingsSingleChoicePreference(
             title = "视频标签大小：${videoTagSizePreset.label}",
-            subtitle = "调整视频简介区标签的字号与间距；「标准」为当前样式",
+            subtitle = "调整视频简介区标签的字号与间距",
             options = resolveVideoTagSizeSegmentOptions(),
             selectedValue = videoTagSizePreset,
             onSelectionChange = { size ->

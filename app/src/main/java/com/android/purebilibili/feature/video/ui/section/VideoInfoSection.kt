@@ -680,13 +680,15 @@ fun VideoTitleWithDesc(
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.foundation.layout.FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(tagMetrics.itemSpacingHorizontal),
-                    verticalArrangement = Arrangement.spacedBy(tagMetrics.itemSpacingVertical)
+                    verticalArrangement = Arrangement.Top
                 ) {
                     videoTags.take(10).forEach { tag ->
                         com.android.purebilibili.core.ui.components.AppTagChip(
                             label = tag.tag_name,
                             onClick = { onTagClick(tag.tag_name) },
-                            modifier = Modifier.copyOnLongPress(tag.tag_name, "标签"),
+                            modifier = Modifier
+                                .padding(bottom = tagMetrics.itemSpacingVertical)
+                                .copyOnLongPress(tag.tag_name, "标签"),
                             size = videoTagSize,
                         )
                     }

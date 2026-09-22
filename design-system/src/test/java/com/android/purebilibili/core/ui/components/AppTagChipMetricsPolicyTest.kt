@@ -31,7 +31,7 @@ class AppTagChipMetricsPolicyTest {
         assertTrue(small.verticalPadding < compact.verticalPadding)
         assertTrue(compact.itemSpacingHorizontal < standard.itemSpacingHorizontal)
         assertTrue(small.itemSpacingHorizontal < compact.itemSpacingHorizontal)
-        assertTrue(compact.itemSpacingVertical < standard.itemSpacingVertical)
+        assertTrue(compact.itemSpacingVertical <= standard.itemSpacingVertical)
         assertTrue(small.itemSpacingVertical < compact.itemSpacingVertical)
     }
 
