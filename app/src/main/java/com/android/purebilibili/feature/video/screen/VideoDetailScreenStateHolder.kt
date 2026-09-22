@@ -3266,7 +3266,9 @@ internal fun VideoDetailScreenStateHolder(
         .collectAsStateWithLifecycle(initialValue = 25)
     val continuousPlayerUnitState = remember { mutableFloatStateOf(1f) }
     val continuousPlayerRenderer = rememberUpdatedState<@Composable (ContinuousPlayerHostLayout) -> Unit> { layout ->
-        PortraitInlineVideoPlayerHost(
+        // 竖屏全屏 pager 接管共享播放器后，内联 host 必须退出 composition。
+        if (!suppressPhoneDetailBodyForDirectPortrait && !isPortraitFullscreen) {
+            PortraitInlineVideoPlayerHost(
             modifier = layout.modifier,
             animatedViewportWidth = layout.viewportWidth,
             contentTopInset = layout.contentTopInset,
@@ -3376,6 +3378,7 @@ internal fun VideoDetailScreenStateHolder(
                 landscapeCommentPanelOnLeft = landscapeCommentPanelOnLeft,
             ),
         )
+        }
     }
     val continuousPlayerContent = remember {
         movableContentOf<ContinuousPlayerHostLayout> { layout ->
@@ -5151,18 +5154,31 @@ internal fun VideoDetailScreenStateHolder(
                 }
             },
             onProgressUpdate = { updatedBvid, positionMs, updatedCid, updatedCoverUrl ->
-                portraitPendingSelectionBvid = updatedBvid
-                portraitSyncSnapshotBvid = updatedBvid
-                portraitSyncSnapshotCid = updatedCid
-                portraitSyncSnapshotPositionMs = positionMs.coerceAtLeast(0L)
-                // 竖屏滑到第 N 个视频时冻结其封面，切回横屏时勿回落到路由首个视频封面。
-                if (updatedCoverUrl.isNotBlank()) {
-                    pendingInPageSwitchCoverUrl = updatedCoverUrl
-                }
-                if (shouldMirrorPortraitProgressToMainPlayer) {
-                    hasPendingPortraitSync = true
-                    if (tryApplyPortraitProgressSync(updatedBvid, portraitSyncSnapshotPositionMs)) {
-                        hasPendingPortraitSync = false
+                // 竖屏轮询很密；只有身份变化或进度跨过阈值时才写回巨型详情页状态，
+                // 避免每 200ms 重组 VideoDetailScreenStateHolder 把主线程打到 ANR。
+                val shouldCommit = com.android.purebilibili.feature.video.ui.pager
+                    .shouldCommitPortraitProgressToDetailState(
+                        previousBvid = portraitSyncSnapshotBvid,
+                        previousCid = portraitSyncSnapshotCid,
+                        previousPositionMs = portraitSyncSnapshotPositionMs,
+                        nextBvid = updatedBvid,
+                        nextCid = updatedCid,
+                        nextPositionMs = positionMs,
+                    )
+                if (shouldCommit) {
+                    portraitPendingSelectionBvid = updatedBvid
+                    portraitSyncSnapshotBvid = updatedBvid
+                    portraitSyncSnapshotCid = updatedCid
+                    portraitSyncSnapshotPositionMs = positionMs.coerceAtLeast(0L)
+                    // 竖屏滑到第 N 个视频时冻结其封面，切回横屏时勿回落到路由首个视频封面。
+                    if (updatedCoverUrl.isNotBlank()) {
+                        pendingInPageSwitchCoverUrl = updatedCoverUrl
+                    }
+                    if (shouldMirrorPortraitProgressToMainPlayer) {
+                        hasPendingPortraitSync = true
+                        if (tryApplyPortraitProgressSync(updatedBvid, portraitSyncSnapshotPositionMs)) {
+                            hasPendingPortraitSync = false
+                        }
                     }
                 }
             },

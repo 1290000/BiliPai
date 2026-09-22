@@ -1065,23 +1065,41 @@ class DanmakuManager private constructor(
             //  [关键修复] fontScale/displayArea/viewHeight 改变时，需要重新设置弹幕数据
             // 因为引擎的 config.text.size 只对新弹幕生效，已显示的弹幕不会更新
             if (reason == "fontScale" || reason == "fontWeight" || reason == "displayArea" || reason == "batch" || reason == "resize" || reason == "merge_changed" || reason == "filter_changed" || reason == "smart_occlusion_toggle" || reason == "strokeWidth" || reason == "lineHeight" || reason == "staticDuration" || reason == "scrollDuration" || reason == "scrollFixedVelocity" || reason == "staticDanmakuToScroll" || reason == "massiveMode") {
-                // 如果是合并状态改变，需要重新计算 cachedList
+                // 如果是合并/过滤状态改变，需要重新计算 cachedList。
+                // 正则屏蔽在整表扫描上非常重，禁止在主线程同步 rebuild（ANR）。
                 if (reason == "merge_changed" || reason == "filter_changed" || reason == "staticDanmakuToScroll") {
-                    buildDanmakuCacheFromSource()?.let { commitDanmakuCacheRebuild(it, reason) }
-                }
-            
-                cachedDanmakuList?.let { list ->
-                    val currentPos = player?.currentPosition ?: 0L
-                    Log.w(TAG, " Re-applying danmaku data after $reason change at ${currentPos}ms")
-                    resyncDanmakuTimeline(
-                        list = list,
-                        positionMs = currentPos,
-                        shouldPlay = shouldStartDanmakuOnDataReady(
-                            isPlaying = player?.isPlaying == true,
-                            playWhenReady = player?.playWhenReady == true
-                        ),
-                        reason = "config:$reason"
-                    )
+                    val rebuildReason = reason
+                    scope.launch {
+                        val rebuild = withContext(Dispatchers.Default) {
+                            buildDanmakuCacheFromSource()
+                        } ?: return@launch
+                        if (!commitDanmakuCacheRebuild(rebuild, rebuildReason)) return@launch
+                        val list = cachedDanmakuList ?: return@launch
+                        val currentPos = player?.currentPosition ?: 0L
+                        resyncDanmakuTimeline(
+                            list = list,
+                            positionMs = currentPos,
+                            shouldPlay = shouldStartDanmakuOnDataReady(
+                                isPlaying = player?.isPlaying == true,
+                                playWhenReady = player?.playWhenReady == true
+                            ),
+                            reason = "config:$rebuildReason"
+                        )
+                    }
+                } else {
+                    cachedDanmakuList?.let { list ->
+                        val currentPos = player?.currentPosition ?: 0L
+                        Log.w(TAG, " Re-applying danmaku data after $reason change at ${currentPos}ms")
+                        resyncDanmakuTimeline(
+                            list = list,
+                            positionMs = currentPos,
+                            shouldPlay = shouldStartDanmakuOnDataReady(
+                                isPlaying = player?.isPlaying == true,
+                                playWhenReady = player?.playWhenReady == true
+                            ),
+                            reason = "config:$reason"
+                        )
+                    }
                 }
             } else {
                 ctrl.invalidate()

@@ -118,6 +118,18 @@ class PortraitDetailPresentationPolicyTest {
         ).readText()
 
         assertTrue(source.contains("shouldSuppressPhoneDetailBodyUnderStandalonePortraitPager"))
+        assertTrue(source.contains("if (!suppressPhoneDetailBodyForDirectPortrait && !isPortraitFullscreen)"))
+        assertTrue(source.contains("shouldCommitPortraitProgressToDetailState("))
+    }
+
+    @Test
+    fun inlineHost_exitsCompositionWhenPortraitFullscreenOwnsPlayback() {
+        val source = java.io.File(
+            "src/main/java/com/android/purebilibili/feature/video/screen/VideoDetailPlayerTransitionHost.kt"
+        ).readText()
+
+        assertTrue(source.contains("if (isPortraitFullscreen) {"))
+        assertTrue(source.contains("PortraitInlineVideoPlayerHost("))
     }
 
     @Test
