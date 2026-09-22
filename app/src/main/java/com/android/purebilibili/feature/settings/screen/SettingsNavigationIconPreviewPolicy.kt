@@ -50,6 +50,7 @@ internal fun resolveSettingsNavigationPreviewMaterialSymbolResource(
     "PARTITION" -> if (selected) R.drawable.ms_grid_view_fill_24 else R.drawable.ms_grid_view_24
     "KNOWLEDGE" -> if (selected) R.drawable.ms_lightbulb_fill_24 else R.drawable.ms_lightbulb_24
     "TECH" -> if (selected) R.drawable.ms_smart_toy_fill_24 else R.drawable.ms_smart_toy_24
+    "SUBSCRIPTIONS" -> if (selected) R.drawable.ms_history_fill_24 else R.drawable.ms_history_24
     else -> if (selected) R.drawable.ms_home_fill_24 else R.drawable.ms_home_24
 }
 
@@ -79,6 +80,7 @@ internal fun resolveSettingsNavigationPreviewIcon(
         "PARTITION" -> SettingsNavigationIconRole.PARTITION
         "KNOWLEDGE" -> SettingsNavigationIconRole.KNOWLEDGE
         "TECH" -> SettingsNavigationIconRole.TECH
+        "SUBSCRIPTIONS" -> SettingsNavigationIconRole.HISTORY
         else -> SettingsNavigationIconRole.HOME
     }
 
