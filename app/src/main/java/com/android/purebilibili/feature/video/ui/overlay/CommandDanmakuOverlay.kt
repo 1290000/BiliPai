@@ -14,7 +14,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -85,14 +84,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
-import androidx.compose.foundation.clickable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
-import com.android.purebilibili.core.ui.AppAlertDialog
-import com.android.purebilibili.core.ui.AppDialogAction
 import com.android.purebilibili.feature.video.danmaku.DanmakuViewport
 
 @Composable
@@ -136,45 +129,6 @@ internal fun CommandDanmakuOverlay(
             }
         }
     }
-    val expandedItem = items.firstOrNull { it.id == state.expandedItemId && !state.isDismissed(it.id) }
-    if (expandedItem != null) {
-        AppAlertDialog(
-            onDismissRequest = state::collapse,
-            title = { AppText("弹幕互动") },
-            text = {
-                BoxWithConstraints(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
-                    val density = LocalDensity.current
-                    if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) return@BoxWithConstraints
-                    val panelViewport = DanmakuViewport(
-                        constraints.maxWidth, constraints.maxHeight, density.density, 1f
-                    )
-                    CommandDanmakuCard(
-                        item = expandedItem,
-                        viewport = panelViewport,
-                        state = state,
-                        fontScale = fontScale,
-                        onFollowClick = onFollowClick,
-                        onTripleClick = onTripleClick,
-                        onVoteSubmit = onVoteSubmit,
-                        isFollowing = isFollowing,
-                        onDismiss = { state.dismiss(expandedItem.id) },
-                        inPanel = true
-                    )
-                }
-            },
-            confirmButton = {
-                AppDialogAction(onClick = state::collapse, modifier = Modifier.heightIn(min = 48.dp)) {
-                    AppText("收起")
-                }
-            },
-            dismissButton = {
-                AppDialogAction(
-                    onClick = { state.dismiss(expandedItem.id) },
-                    modifier = Modifier.heightIn(min = 48.dp)
-                ) { AppText("关闭这条弹幕") }
-            }
-        )
-    }
 }
 
 @Composable
@@ -187,13 +141,10 @@ private fun CommandDanmakuCard(
     onTripleClick: () -> Unit,
     onVoteSubmit: (CommandDanmakuItem, VoteOption) -> Unit,
     isFollowing: Boolean,
-    onDismiss: () -> Unit,
-    inPanel: Boolean = false
+    onDismiss: () -> Unit
 ) {
     val containerWidth = viewport.widthPx
     val containerHeight = viewport.heightPx
-    if (!canShowCommandDanmaku(containerWidth, containerHeight, viewport.density)) return
-    val preview = !inPanel && shouldExpandCommandDanmaku(viewport.scale)
     val (xRatio, yRatio) = when (item.type) {
         CommandDanmakuType.ATTENTION -> mapAttentionPosition(item.posX, item.posY)
         CommandDanmakuType.VOTE -> 0.08f to 0.10f
@@ -214,7 +165,7 @@ private fun CommandDanmakuCard(
     val requestedCardWidthPx = with(visualDensity) { requestedCardWidthDp.dp.roundToPx() }
     val cardWidthPx = resolveCommandDanmakuCardWidthPx(
         containerWidthPx = containerWidth,
-        requestedCardWidthPx = requestedCardWidthPx.coerceAtLeast(with(density) { 48.dp.roundToPx() })
+        requestedCardWidthPx = requestedCardWidthPx
     )
     val cardWidthDp = with(density) { cardWidthPx.toDp() }
     val maxCardHeightDp = with(visualDensity) { containerHeight.toDp() }
@@ -223,8 +174,8 @@ private fun CommandDanmakuCard(
     var measuredCardHeightPx by remember(item.id, viewport, density.fontScale) {
         mutableIntStateOf(containerHeight)
     }
-    val x = if (inPanel) 0 else resolveCommandDanmakuHorizontalOffsetPx(containerWidth, cardWidthPx, xRatio)
-    val y = if (inPanel) 0 else resolveCommandDanmakuVerticalOffsetPx(
+    val x = resolveCommandDanmakuHorizontalOffsetPx(containerWidth, cardWidthPx, xRatio)
+    val y = resolveCommandDanmakuVerticalOffsetPx(
         containerHeightPx = containerHeight,
         cardHeightPx = measuredCardHeightPx,
         yRatio = yRatio
@@ -234,16 +185,12 @@ private fun CommandDanmakuCard(
         modifier = Modifier
             .offset { IntOffset(x, y) }
             .width(cardWidthDp)
-            .heightIn(min = if (preview) 48.dp else 0.dp, max = with(density) { containerHeight.toDp() })
+            .heightIn(max = with(density) { containerHeight.toDp() })
             .onSizeChanged { measuredCardHeightPx = it.height }
     ) {
         CompositionLocalProvider(LocalDensity provides visualDensity) {
             AppSurface(
-                modifier = Modifier.width(
-                    with(visualDensity) { requestedCardWidthPx.coerceAtMost(containerWidth).toDp() }
-                ).then(
-                    if (preview) Modifier.clearAndSetSemantics { } else Modifier
-                ),
+                modifier = Modifier.fillMaxWidth(),
                 color = resolveCommandDanmakuContainerColor(item.type),
                 contentColor = Color.White,
                 shape = AppShapes.container(ContainerLevel.Chip)
@@ -253,36 +200,25 @@ private fun CommandDanmakuCard(
                 CommandDanmakuType.ATTENTION -> AttentionCommandCard(
                     item = item,
                     isFollowing = isFollowing,
-                    onFollowClick = { if (!preview) onFollowClick() },
-                    onTripleClick = { if (!preview) onTripleClick() }
+                    onFollowClick = onFollowClick,
+                    onTripleClick = onTripleClick
                 )
                 CommandDanmakuType.VOTE -> VoteCommandCard(
                     item = item,
                     state = state,
-                    interactive = !preview,
                     maxHeightDp = maxCardHeightDp,
                     onVoteSubmit = onVoteSubmit
                 )
                 else -> InfoCommandCard(item)
             }
             CommandDanmakuCloseButton(
-                onDismiss = { if (!preview) onDismiss() },
+                onDismiss = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(1.dp)
             )
         }
             }
-        }
-        if (preview) {
-            // Topmost sibling owns hit testing; no tiny child control can submit an action.
-            Box(
-                Modifier.matchParentSize()
-                    .clickable(onClickLabel = "展开弹幕互动") { state.expand(item.id) }
-                    .semantics {
-                        contentDescription = item.voteTitle.ifBlank { item.content }.ifBlank { "弹幕互动" }
-                    }
-            )
         }
     }
 }
@@ -566,7 +502,6 @@ private fun VoteCommandCard(
     item: CommandDanmakuItem,
     maxHeightDp: Dp,
     state: CommandDanmakuOverlayState,
-    interactive: Boolean,
     onVoteSubmit: (CommandDanmakuItem, VoteOption) -> Unit
 ) {
     val selectedOptionId = state.selection(item.id)?.id
@@ -610,7 +545,7 @@ private fun VoteCommandCard(
                 starOptions = gradeStarOptions,
                 selectedScore = selectedGradeScore,
                 onSelect = { option ->
-                    if (interactive && state.select(item.id, option)) {
+                    if (state.select(item.id, option)) {
                         onVoteSubmit(item, option)
                     }
                 }
@@ -626,7 +561,7 @@ private fun VoteCommandCard(
                 val isSubmitted = selectedOptionId != null
                 AppButton(
                     onClick = {
-                        if (interactive && state.select(item.id, option)) {
+                        if (state.select(item.id, option)) {
                             onVoteSubmit(item, option)
                         }
                     },
