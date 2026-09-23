@@ -168,7 +168,8 @@ internal val LocalOfficialVideoCoverTransitionActive = compositionLocalOf { fals
 
 /**
  * The source is a click-time Compose snapshot, including the bottom now-playing bar when its
- * real composable leaves the tree. The destination deliberately contains no AndroidView player.
+ * real composable leaves the tree. The destination is only an invisible bounds target: the real
+ * detail screen owns its cover, title, and player chrome during the handoff.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -198,7 +199,7 @@ internal fun SharedTransitionScope.OfficialVideoSharedBoundsOverlay(
         transition.AnimatedContent(
             transitionSpec = {
                 fadeIn(tween(duration, easing = LinearEasing)) togetherWith
-                    fadeOut(tween(duration, easing = LinearEasing))
+                    fadeOut(tween((duration * 0.55f).roundToInt().coerceAtLeast(1), easing = LinearEasing))
             },
             modifier = modifier.fillMaxSize(),
         ) { expanded ->
@@ -228,31 +229,8 @@ internal fun SharedTransitionScope.OfficialVideoSharedBoundsOverlay(
                                         with(density) { destination.height.toDp() },
                                     )
                                 } else Modifier.fillMaxSize()
-                            )
-                            .background(AppSurfaceTokens.surface()),
-                    ) {
-                        val cover = session.sourceChromeSnapshot?.coverUrl
-                            ?.ifBlank { null } ?: session.coverIdentity
-                        Column {
-                            if (!cover.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = cover,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                                )
-                            }
-                            session.sourceChromeSnapshot?.title?.takeIf { it.isNotBlank() }?.let { title ->
-                                AppText(
-                                    title,
-                                    modifier = Modifier.padding(20.dp),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
+                            ),
+                    )
                 } else {
                     val sourceModifier = Modifier
                         .offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }

@@ -770,10 +770,14 @@ internal fun BiliPaiNavDisplayHost(
                                     officialSharedBoundsController != null
                                 ) {
                                     Modifier.graphicsLayer {
-                                        alpha = if (
+                                        val ownsStaticTransition =
                                             officialSharedBoundsController.phase != null &&
                                             officialSharedBoundsController.session?.bvid == key.bvid
-                                        ) 0f else 1f
+                                        alpha = if (ownsStaticTransition) {
+                                            // Reveal the actual detail behind the fading card snapshot.
+                                            ((officialSharedBoundsController.progress - 0.05f) / 0.5f)
+                                                .coerceIn(0f, 1f)
+                                        } else 1f
                                     }
                                 } else Modifier
                             ),
