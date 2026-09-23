@@ -3156,8 +3156,15 @@ private fun SearchResultTypeTabRow(
             itemWidthPx = itemWidthPx,
             viewportWidthPx = viewportWidthPx,
             contentPaddingPx = containerHorizontalPaddingPx,
-            // Continuous indicator follow owns the rail during pager motion; only re-center when idle.
-            enabled = { !pagerState.isScrollInProgress },
+            // Glide with the indicator (page + fraction) while the pager is moving; settle when idle.
+            focusPosition = {
+                if (useScrollableRail) {
+                    pagerState.currentPage + pagerState.currentPageOffsetFraction
+                } else {
+                    0f
+                }
+            },
+            continuousFollow = { useScrollableRail && pagerState.isScrollInProgress },
         )
 
         BottomBarLiquidSegmentedControl(
@@ -3181,7 +3188,9 @@ private fun SearchResultTypeTabRow(
             isScrollInProgressProvider = { pagerState.isScrollInProgress },
             externalPagerMotionEffectsEnabled = true,
             onIndicatorPositionChanged = { position ->
-                if (useScrollableRail) {
+                // Continuous pager motion is owned by KeepScrollableTabSelectionVisible lock-step.
+                // Edge-follow remains only for idle indicator nudges so the two never fight.
+                if (useScrollableRail && !pagerState.isScrollInProgress) {
                     scrollState.dispatchRawDelta(
                         resolveSearchTypeTabDragScrollDeltaPx(
                             indicatorPosition = position,
