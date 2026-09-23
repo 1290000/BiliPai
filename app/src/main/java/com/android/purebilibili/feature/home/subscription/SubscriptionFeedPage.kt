@@ -437,68 +437,67 @@ private fun SubscriptionFeedCard(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        AppSurface(
-            modifier = with(sharedTransitionScope) {
-                Modifier
-                    .widthIn(max = 760.dp)
-                    .fillMaxWidth()
-                    .sharedBounds(
-                        sharedContentState = rememberSharedContentState(subscriptionSharedKey(item)),
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        boundsTransform = { _, _ -> tween(360, easing = LinearEasing) },
-                        clipInOverlayDuringTransition = OverlayClip(AppShapes.container(ContainerLevel.Card)),
-                    )
-                    .clip(AppShapes.container(ContainerLevel.Card))
-                    .clickable(onClick = onClick)
-            },
-            color = AppSurfaceTokens.cardContainer(),
-            tonalElevation = 0.dp,
-        ) {
-            Column {
-                if (!item.imageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    AppText(
-                        text = item.title.ifBlank { item.link },
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    cleanFeedSummary(item.summary).takeIf { it.isNotBlank() }?.let { summary ->
-                        AppText(
-                            text = summary,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    AppText(
-                        text = listOf(if (isRead) "已读" else "未读", item.sourceTitle, formatFeedAge(item.publishedEpochSec))
-                            .filter { it.isNotBlank() }
-                            .joinToString(" · "),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+    AppSurface(
+        modifier = with(sharedTransitionScope) {
+            Modifier
+                .fillMaxWidth()
+                .sharedBounds(
+                    sharedContentState = rememberSharedContentState(subscriptionSharedKey(item)),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    boundsTransform = { _, _ -> tween(360, easing = LinearEasing) },
+                    clipInOverlayDuringTransition = OverlayClip(AppShapes.container(ContainerLevel.Card)),
+                )
+                .clip(AppShapes.container(ContainerLevel.Card))
+                .clickable(onClick = onClick)
+        },
+        color = AppSurfaceTokens.cardContainer(),
+        tonalElevation = 0.dp,
+    ) {
+        Column {
+            if (!item.imageUrl.isNullOrBlank()) {
+                FeedCoverImage(
+                    url = item.imageUrl,
+                    aspectRatio = item.coverAspectRatio,
+                )
+            }
+            Column(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                AppText(
+                    text = item.title.ifBlank { item.link },
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isRead) FontWeight.Normal else FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                AppText(
+                    text = listOf(item.sourceTitle, item.author, formatFeedAge(item.publishedEpochSec))
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
+}
+
+@Composable
+private fun FeedCoverImage(
+    url: String,
+    aspectRatio: Float,
+) {
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspectRatio.coerceIn(0.62f, 1.35f)),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
