@@ -878,7 +878,6 @@ internal fun VideoContentSection(
             HorizontalPager(
                 state = pagerState,
                 beyondViewportPageCount = resolveVideoDetailBeyondViewportPageCount(
-                    isVideoPlaying = isVideoPlaying,
                     selectedTabIndex = pagerState.currentPage
                 ),
                 userScrollEnabled = false,
