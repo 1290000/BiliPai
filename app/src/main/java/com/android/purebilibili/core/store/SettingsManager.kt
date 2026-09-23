@@ -1432,6 +1432,7 @@ object SettingsManager {
     private val KEY_DYNAMIC_TAB_VISIBLE_TABS = stringPreferencesKey("dynamic_tab_visible_tabs")
     private val KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE =
         booleanPreferencesKey("dynamic_image_preview_text_visible")
+    private val KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT = intPreferencesKey("dynamic_detail_image_layout")
     private val KEY_DYNAMIC_ALL_TAB_HORIZONTAL_USER_LIST_VISIBLE =
         booleanPreferencesKey("dynamic_all_tab_horizontal_user_list_visible")
     private val KEY_DYNAMIC_TOP_BAR_COLLAPSE_ON_SCROLL =
@@ -3690,6 +3691,32 @@ object SettingsManager {
     suspend fun setDynamicImagePreviewTextVisible(context: Context, visible: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE] = visible
+        }
+    }
+
+    /**
+     *  动态详情图文图片展示
+     * - 0: 展开大图（默认，按正文段落整宽展开）
+     * - 1: 缩略图（九宫格，便于更快看到评论）
+     */
+    enum class DynamicDetailImageLayout(val value: Int, val label: String) {
+        EXPANDED(0, "展开大图"),
+        THUMBNAIL(1, "缩略图");
+
+        companion object {
+            fun fromValue(value: Int): DynamicDetailImageLayout =
+                entries.find { it.value == value } ?: EXPANDED
+        }
+    }
+
+    fun getDynamicDetailImageLayout(context: Context): Flow<DynamicDetailImageLayout> =
+        context.settingsDataStore.data.map { prefs ->
+            DynamicDetailImageLayout.fromValue(prefs[KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT] ?: 0)
+        }
+
+    suspend fun setDynamicDetailImageLayout(context: Context, layout: DynamicDetailImageLayout) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT] = layout.value
         }
     }
 
