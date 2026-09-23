@@ -79,6 +79,20 @@ class FeedDocumentParserTest {
     }
 
     @Test
+    fun `atom xhtml and relative links retain structure`() {
+        val feed = parseFeedDocument(
+            xml = """<feed xmlns="http://www.w3.org/2005/Atom"><title>源</title><entry><id>1</id><title>文章</title><link href="/post"/><content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml"><p>正文<strong>加粗</strong></p><img src="/a.jpg"/></div></content></entry></feed>""",
+            sourceId = "s",
+            sourceTitle = "源",
+            sourceUrl = "https://example.com/feed",
+        )
+        val item = feed.items.single()
+        assertEquals("https://example.com/post", item.link)
+        assertEquals("https://example.com/a.jpg", item.imageUrl)
+        assertTrue(parseFeedHtml(item.htmlContent, item.link).any { it is FeedBlock.Image })
+    }
+
+    @Test
     fun `html drops scripts and keeps lists`() {
         val blocks = parseFeedHtml(
             """
@@ -167,6 +181,47 @@ class FeedDocumentParserTest {
         assertTrue(isHttpFeedUrl("https://example.com/rss"))
         assertTrue(!isHttpFeedUrl("javascript:alert(1)"))
         assertNull(parseFeedTime(""))
+    }
+
+    @Test
+    fun `nested html preserves text image and embed order`() {
+        val blocks = parseFeedHtml(
+            """<p>甲<strong>粗<a href="/story">链接</a></strong><img data-src="/photo.jpg" alt="图片">乙&amp;丙</p><pre><code>val x = 1\n  x</code></pre><iframe src="/movie"></iframe>""",
+            "https://example.com/post",
+        )
+        assertEquals(5, blocks.size)
+        assertEquals("甲粗链接", (blocks[0] as FeedBlock.Paragraph).inlines.joinToString("") {
+            when (it) { is FeedInline.Text -> it.text; is FeedInline.Link -> it.text }
+        })
+        assertEquals("https://example.com/photo.jpg", (blocks[1] as FeedBlock.Image).url)
+        assertEquals("乙&丙", feedPlainText("<p>乙&amp;丙</p>"))
+        assertTrue(blocks[3] is FeedBlock.Code)
+        assertEquals("https://example.com/movie", (blocks[4] as FeedBlock.EmbeddedLink).url)
+        assertTrue(parseFeedHtml("<a href='javascript:alert(1)'>不安全</a>").none { it is FeedBlock.EmbeddedLink })
+    }
+
+    @Test
+    fun `only clearly truncated content triggers remote fetch`() {
+        val full = sampleItem("full").copy(
+            summary = "简短摘要",
+            htmlContent = "<p>完整正文。</p><p>第二段。</p>",
+        )
+        assertTrue(!feedBodyNeedsRemoteFetch(full))
+        assertTrue(feedBodyNeedsRemoteFetch(full.copy(htmlContent = "<p>开头……阅读全文</p>")))
+        assertTrue(feedBodyNeedsRemoteFetch(full.copy(htmlContent = "")))
+    }
+
+    @Test
+    fun `cached and fresh items deduplicate by source and item id`() {
+        val old = sampleItem("one").copy(title = "旧标题")
+        val updated = old.copy(title = "新标题")
+        val other = sampleItem("two")
+        val merged = mergeCachedFeedItems(listOf(old, other), listOf(updated), setOf("s"))
+        assertEquals(listOf("新标题", "two"), merged.map { it.title })
+        assertEquals(2, merged.map(::feedItemKey).distinct().size)
+        val read = updateReadKeys(emptyList(), feedItemKey(updated), true)
+        assertEquals(listOf(feedItemKey(updated)), read)
+        assertEquals(emptyList(), updateReadKeys(read, feedItemKey(updated), false))
     }
 
     private fun sourceIdEpoch(): Long = parseFeedTime("2026-09-22T08:00:00Z")!!

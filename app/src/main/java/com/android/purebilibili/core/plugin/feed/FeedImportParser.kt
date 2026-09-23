@@ -30,6 +30,10 @@ fun parseOpmlSubscriptions(xml: String): List<ImportedSubscription> {
     factory.isNamespaceAware = false
     runCatching { factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true) }
     runCatching { factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+    runCatching { factory.setFeature("http://xml.org/sax/features/external-general-entities", false) }
+    runCatching { factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
+    factory.isExpandEntityReferences = false
+    runCatching { factory.isXIncludeAware = false }
     val document = factory.newDocumentBuilder()
         .parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
     val found = linkedMapOf<String, ImportedSubscription>()

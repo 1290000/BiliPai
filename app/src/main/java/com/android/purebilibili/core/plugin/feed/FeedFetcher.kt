@@ -28,13 +28,13 @@ private val feedHttpClient: OkHttpClient by lazy {
 }
 
 suspend fun fetchArticleHtml(url: String): Result<String> = withContext(Dispatchers.IO) {
+    val call = if (isHttpFeedUrl(url)) {
+        feedHttpClient.newCall(Request.Builder().url(url.trim()).header("User-Agent", "Mozilla/5.0 BiliPai Feed").build())
+    } else null
+    if (call == null) return@withContext Result.failure(IllegalArgumentException("原文地址无效"))
+    coroutineContext[Job]?.invokeOnCompletion { call.cancel() }
     runCatching {
-        if (!isHttpFeedUrl(url)) error("原文地址无效")
-        val request = Request.Builder()
-            .url(url.trim())
-            .header("User-Agent", "Mozilla/5.0 BiliPai Feed")
-            .build()
-        feedHttpClient.newCall(request).execute().use { response ->
+        call.execute().use { response ->
             if (!response.isSuccessful) error("原文请求失败 ${response.code}")
             val stream = response.body.byteStream()
             val buffer = ByteArray(8 * 1024)
@@ -42,13 +42,14 @@ suspend fun fetchArticleHtml(url: String): Result<String> = withContext(Dispatch
             while (true) {
                 val read = stream.read(buffer)
                 if (read < 0) break
-                if (output.size() + read > FEED_BODY_LIMIT_BYTES) break
+                if (output.size() + read > FEED_BODY_LIMIT_BYTES) error("原文内容超过 2MB")
                 output.write(buffer, 0, read)
             }
-            val page = output.toString(Charsets.UTF_8.name())
+            val charset = response.body.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
+            val page = output.toString(charset.name())
             extractArticleBody(page) ?: error("原文里没有可排版的正文")
         }
-    }
+    }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
 }
 
 suspend fun fetchFeedXml(url: String): Result<String> = withContext(Dispatchers.IO) {
@@ -116,7 +117,7 @@ suspend fun loadFeedSources(
         async(Dispatchers.IO) {
             val outcome = gate.withPermit {
                 fetchFeedXml(source.url).mapCatching { xml ->
-                    parseFeedDocument(xml, source.id, source.title)
+                    parseFeedDocument(xml, source.id, source.title, source.url)
                 }
             }
             val snapshot = synchronized(items) {
