@@ -1789,11 +1789,6 @@ internal fun VideoDetailScreenStateHolder(
             lifecycle = lifecycleOwner.lifecycle
         )
 
-    VideoDetailHighRefreshRateEffect(
-        activity = activity,
-        isScreenActive = isScreenActive,
-    )
-
     DisposableEffect(Unit) {
         //  [沉浸式] 启用边到边显示，让内容延伸到状态栏下方
         if (window != null) {
