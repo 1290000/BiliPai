@@ -123,6 +123,7 @@ import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import com.android.purebilibili.core.ui.rememberAppPlayerChromeProfile
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.navigation3.LocalOfficialVideoCoverTransitionActive
 import com.android.purebilibili.core.ui.AppWindowSystemUiController
 import com.android.purebilibili.core.ui.setWindowNavigationBarColor
 import com.android.purebilibili.core.ui.setWindowStatusBarColor
@@ -1539,6 +1540,7 @@ internal fun VideoDetailScreenStateHolder(
     val detailChildTransitionEnabled = transitionState.detailChildTransitionEnabled
     val coverSharedBoundsActive = transitionState.coverSharedBoundsActive
     val sharedBoundsActive = transitionState.sharedBoundsActive
+    val officialCoverTransitionActive = LocalOfficialVideoCoverTransitionActive.current
     val routeSheetFrameProvider = transitionState.routeSheetFrameProvider
     val detailShellShape = remember(sharedTransitionSourceCornerDp) {
         RoundedCornerShape(sharedTransitionSourceCornerDp.dp)
@@ -2025,7 +2027,7 @@ internal fun VideoDetailScreenStateHolder(
     // 全量 Success 但无首帧 / 强制封面 UI 时禁止 LIVE，避免黑壳缩回。
     val hasRenderableLiveFrameForReturn = shouldTreatLiveSurfaceRenderableForReturnMorph(
         hasRenderedFirstFrame = hasRenderedFirstFrameForReturn,
-        forceCoverUi = forceCoverOnlyForReturn,
+        forceCoverUi = forceCoverOnlyForReturn || officialCoverTransitionActive,
     )
     val returnPlaybackIntent = resolveVideoDetailReturnPlaybackIntent(
         entryPlaybackIntent = videoSharedPlaybackIntent,
@@ -2084,6 +2086,8 @@ internal fun VideoDetailScreenStateHolder(
         forceCoverOnlyOnReturn = forceCoverOnlyForReturn,
         isCommittedCardReturn = isCommittedCardReturn,
     )
+    val forceCoverOnlyForStaticSharedBounds =
+        forceCoverOnlyForLiveSafeReturn || officialCoverTransitionActive
     val videoCardTransitionDensity = LocalDensity.current
     val videoCardDetailChromeAlphaProvider = remember(
         videoCardDepthBackgroundState,
@@ -3309,7 +3313,7 @@ internal fun VideoDetailScreenStateHolder(
                 presentationState.markNavigatingToAudioMode()
                 onNavigateToAudioMode()
             },
-            forceCoverOnly = forceCoverOnlyForLiveSafeReturn ||
+            forceCoverOnly = forceCoverOnlyForStaticSharedBounds ||
                 shouldForceBackPreviewPlayerCover(
                     keepLoadedContentForBackPreview = keepLoadedContentForBackPreview,
                     bindLivePlayerForBackPreview = bindLivePlayerForBackPreview,
@@ -3532,7 +3536,7 @@ internal fun VideoDetailScreenStateHolder(
                         hasFavoritePlaylist = isExternalPlaylist &&
                             externalPlaylistSource == ExternalPlaylistSource.FAVORITE &&
                             playlistItems.size > 1,
-                        forceCoverOnly = forceCoverOnlyForLiveSafeReturn,
+                        forceCoverOnly = forceCoverOnlyForStaticSharedBounds,
                         preserveCurrentFrameOnFullscreenChange = preserveCurrentFrameOnFullscreenChange,
                         useTextureSurfaceForNavigation = useTextureSurfaceForNavigation,
                         predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
@@ -3806,7 +3810,7 @@ internal fun VideoDetailScreenStateHolder(
                                 onPlayModeClick = {
                                     com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode()
                                 },
-                                forceCoverOnlyOnReturn = forceCoverOnlyForLiveSafeReturn,
+                                forceCoverOnlyOnReturn = forceCoverOnlyForStaticSharedBounds,
                                 predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
                                 liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
                                 paneControlsEnabled = isTransitionFinished,
@@ -3879,7 +3883,7 @@ internal fun VideoDetailScreenStateHolder(
                             // 🔁 [新增] 播放模式
                             currentPlayMode = currentPlayMode,
                             onPlayModeClick = { com.android.purebilibili.feature.video.player.PlaylistManager.togglePlayMode() },
-                            forceCoverOnlyOnReturn = forceCoverOnlyForLiveSafeReturn,
+                            forceCoverOnlyOnReturn = forceCoverOnlyForStaticSharedBounds,
                             predictiveBackCancelRecoveryGeneration = predictiveBackCancelRecoveryGeneration,
                             liveSurfaceCardTransitionEnabled = liveSurfaceCardTransitionEnabled,
                             paneControlsEnabled = isTransitionFinished,
