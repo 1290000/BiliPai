@@ -1,14 +1,15 @@
 package com.android.purebilibili.navigation3
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SharedTransitionScope.OverlayClip
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
@@ -168,7 +169,7 @@ internal val LocalOfficialVideoCoverTransitionActive = compositionLocalOf { fals
 
 /**
  * The source is a click-time Compose snapshot, including the bottom now-playing bar when its
- * real composable leaves the tree. The destination is only an invisible bounds target: the real
+ * real composable leaves the tree. The destination owns an opaque moving surface, while the real
  * detail screen owns its cover, title, and player chrome during the handoff.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -197,10 +198,9 @@ internal fun SharedTransitionScope.OfficialVideoSharedBoundsOverlay(
         }
         val transition = rememberTransition(transitionState, label = "official-video-shared-bounds")
         transition.AnimatedContent(
-            transitionSpec = {
-                fadeIn(tween(duration, easing = LinearEasing)) togetherWith
-                    fadeOut(tween((duration * 0.55f).roundToInt().coerceAtLeast(1), easing = LinearEasing))
-            },
+            // sharedBounds owns the only content fade. Fading AnimatedContent as well makes the
+            // source and destination translucent at the same time and exposes the retained page.
+            transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             modifier = modifier.fillMaxSize(),
         ) { expanded ->
             Box(Modifier.fillMaxSize()) {
@@ -219,7 +219,10 @@ internal fun SharedTransitionScope.OfficialVideoSharedBoundsOverlay(
                             .sharedBounds(
                                 sharedContentState = rememberSharedContentState(sharedKey),
                                 animatedVisibilityScope = this@AnimatedContent,
+                                enter = EnterTransition.None,
+                                exit = ExitTransition.None,
                                 boundsTransform = { _, _ -> tween(duration, easing = LinearEasing) },
+                                zIndexInOverlay = 0f,
                                 clipInOverlayDuringTransition = OverlayClip(clipShape),
                             )
                             .then(
@@ -229,7 +232,8 @@ internal fun SharedTransitionScope.OfficialVideoSharedBoundsOverlay(
                                         with(density) { destination.height.toDp() },
                                     )
                                 } else Modifier.fillMaxSize()
-                            ),
+                            )
+                            .background(AppSurfaceTokens.surface().copy(alpha = 1f)),
                     )
                 } else {
                     val sourceModifier = Modifier
@@ -237,7 +241,16 @@ internal fun SharedTransitionScope.OfficialVideoSharedBoundsOverlay(
                         .sharedBounds(
                             sharedContentState = rememberSharedContentState(sharedKey),
                             animatedVisibilityScope = this@AnimatedContent,
+                            enter = androidx.compose.animation.fadeIn(
+                                tween((duration * 0.55f).roundToInt().coerceAtLeast(1),
+                                    easing = LinearEasing),
+                            ),
+                            exit = fadeOut(
+                                tween((duration * 0.55f).roundToInt().coerceAtLeast(1),
+                                    easing = LinearEasing),
+                            ),
                             boundsTransform = { _, _ -> tween(duration, easing = LinearEasing) },
+                            zIndexInOverlay = 1f,
                             clipInOverlayDuringTransition = OverlayClip(clipShape),
                         )
                         .size(

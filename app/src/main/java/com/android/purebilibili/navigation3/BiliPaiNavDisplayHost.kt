@@ -289,13 +289,10 @@ internal fun BiliPaiNavDisplayHost(
                     cancel = NavSettleSpec.Tween(duration, LinearEasing),
                 ),
                 scrim = { 0f },
-            ) { scope ->
-                // Only the official shared bounds overlay moves the card geometry.
-                alpha = if (scope.relativeDepth < 0f) {
-                    (1f + scope.relativeDepth).coerceIn(0f, 1f)
-                } else {
-                    1f
-                }
+            ) {
+                // The shared bounds surface covers the retained page. A second navigation alpha
+                // makes the whole destination translucent underneath that moving surface.
+                alpha = 1f
             },
         )
     }
