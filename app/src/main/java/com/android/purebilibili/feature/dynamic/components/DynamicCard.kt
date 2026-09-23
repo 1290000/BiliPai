@@ -1085,7 +1085,27 @@ fun DynamicCardV2(
                         )
                     }
                 }
+                var thumbnailGridEmitted = false
                 fullOpusContentBlocks.forEach { block ->
+                    if (shouldEmitOpusThumbnailGridAtBlock(
+                            block = block,
+                            thumbnailGridEmitted = thumbnailGridEmitted,
+                            hasThumbnailItems = thumbnailItems.isNotEmpty(),
+                            expandImages = expandOpusDetailImages,
+                        )
+                    ) {
+                        thumbnailGridEmitted = true
+                        DrawGridV2(
+                            items = thumbnailItems,
+                            gifImageLoader = gifImageLoader,
+                            maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
+                            onImageClick = { index, rect ->
+                                fullContentSelectedImageIndex = index
+                                thumbnailSourceRect = rect
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                    }
                     when (block) {
                         is OpusContentBlock.Text -> {
                             val richBlockDesc = resolveDynamicOpusTextBlockRichDesc(
@@ -1317,7 +1337,8 @@ fun DynamicCardV2(
                     }
                 }
 
-                if (!expandOpusDetailImages && thumbnailItems.isNotEmpty()) {
+                if (!expandOpusDetailImages && !thumbnailGridEmitted && thumbnailItems.isNotEmpty()) {
+                    thumbnailGridEmitted = true
                     DrawGridV2(
                         items = thumbnailItems,
                         gifImageLoader = gifImageLoader,

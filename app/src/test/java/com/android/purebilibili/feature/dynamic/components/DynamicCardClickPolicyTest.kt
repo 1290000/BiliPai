@@ -721,6 +721,64 @@ class DynamicCardClickPolicyTest {
     }
 
     @Test
+    fun shouldEmitOpusThumbnailGridAtBlock_atFirstImageOnly() {
+        val imageBlock = OpusContentBlock.Image(OpusPic(url = "https://i0.hdslb.com/a.jpg"))
+        val textBlock = OpusContentBlock.Text("正文")
+        val linkCard = OpusContentBlock.LinkCard(
+            OpusLinkCard(title = "横幅", jumpUrl = "https://www.bilibili.com/")
+        )
+
+        assertTrue(
+            shouldEmitOpusThumbnailGridAtBlock(
+                block = imageBlock,
+                thumbnailGridEmitted = false,
+                hasThumbnailItems = true,
+                expandImages = false,
+            )
+        )
+        assertFalse(
+            shouldEmitOpusThumbnailGridAtBlock(
+                block = imageBlock,
+                thumbnailGridEmitted = true,
+                hasThumbnailItems = true,
+                expandImages = false,
+            )
+        )
+        assertFalse(
+            shouldEmitOpusThumbnailGridAtBlock(
+                block = linkCard,
+                thumbnailGridEmitted = false,
+                hasThumbnailItems = true,
+                expandImages = false,
+            )
+        )
+        assertFalse(
+            shouldEmitOpusThumbnailGridAtBlock(
+                block = textBlock,
+                thumbnailGridEmitted = false,
+                hasThumbnailItems = true,
+                expandImages = false,
+            )
+        )
+        assertFalse(
+            shouldEmitOpusThumbnailGridAtBlock(
+                block = imageBlock,
+                thumbnailGridEmitted = false,
+                hasThumbnailItems = true,
+                expandImages = true,
+            )
+        )
+        assertFalse(
+            shouldEmitOpusThumbnailGridAtBlock(
+                block = imageBlock,
+                thumbnailGridEmitted = false,
+                hasThumbnailItems = false,
+                expandImages = false,
+            )
+        )
+    }
+
+    @Test
     fun resolveOpusThumbnailDrawItems_collectsImagesAndDividerPics() {
         val items = resolveOpusThumbnailDrawItems(
             listOf(

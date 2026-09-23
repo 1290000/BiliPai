@@ -258,6 +258,24 @@ internal fun resolveOpusThumbnailDrawItems(
     }
 }
 
+internal fun isOpusImageContentBlock(block: OpusContentBlock): Boolean {
+    return block is OpusContentBlock.Image ||
+        (block is OpusContentBlock.Divider && block.pic != null)
+}
+
+/**
+ * 缩略图网格插在第一张图块位置，使图后的 LinkCard/横幅仍落在网格下面。
+ */
+internal fun shouldEmitOpusThumbnailGridAtBlock(
+    block: OpusContentBlock,
+    thumbnailGridEmitted: Boolean,
+    hasThumbnailItems: Boolean,
+    expandImages: Boolean,
+): Boolean {
+    if (expandImages || thumbnailGridEmitted || !hasThumbnailItems) return false
+    return isOpusImageContentBlock(block)
+}
+
 private fun OpusPic.toDrawItem(): DrawItem {
     return DrawItem(
         src = url,
