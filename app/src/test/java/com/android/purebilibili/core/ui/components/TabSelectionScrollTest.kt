@@ -2,6 +2,8 @@ package com.android.purebilibili.core.ui.components
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class TabSelectionScrollTest {
     @Test
@@ -55,5 +57,11 @@ class TabSelectionScrollTest {
             0f,
             resolveScrollableTabIndicatorFollowDeltaPx(Float.NaN, 80f, 240f, 0f),
         )
+    }
+
+    @Test
+    fun `selection centering stays available while external follow is idle`() {
+        assertTrue(shouldCenterScrollableTabSelection(autoCenterEnabled = true))
+        assertFalse(shouldCenterScrollableTabSelection(autoCenterEnabled = false))
     }
 }

@@ -1097,7 +1097,13 @@ fun SearchScreen(
 
     LaunchedEffect(state.searchType, searchTabs) {
         val targetPage = resolveSearchPagerPageForType(state.searchType, searchTabs)
-        if (!searchPagerState.isScrollInProgress && searchPagerState.currentPage != targetPage) {
+        // Hard-settle only when the pager is fully idle. Mid-flight corrections would snap the
+        // tab indicator while animatePagerSelection is still gliding.
+        if (
+            !searchPagerState.isScrollInProgress &&
+            kotlin.math.abs(searchPagerState.currentPageOffsetFraction) <= 0.001f &&
+            searchPagerState.currentPage != targetPage
+        ) {
             searchPagerState.scrollToPage(targetPage)
         }
     }
@@ -3150,6 +3156,8 @@ private fun SearchResultTypeTabRow(
             itemWidthPx = itemWidthPx,
             viewportWidthPx = viewportWidthPx,
             contentPaddingPx = containerHorizontalPaddingPx,
+            // Continuous indicator follow owns the rail during pager motion; only re-center when idle.
+            enabled = { !pagerState.isScrollInProgress },
         )
 
         BottomBarLiquidSegmentedControl(

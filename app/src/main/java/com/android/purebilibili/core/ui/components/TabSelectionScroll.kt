@@ -4,6 +4,8 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import kotlinx.coroutines.flow.collectLatest
@@ -26,6 +28,10 @@ internal fun resolveTabSelectionScrollOffsetPx(
         .roundToInt()
         .coerceIn(0, maxScrollPx.coerceAtLeast(0))
 }
+
+/** Selection auto-center is idle-only; continuous indicator follow owns the rail while animating. */
+internal fun shouldCenterScrollableTabSelection(autoCenterEnabled: Boolean): Boolean =
+    autoCenterEnabled
 
 /** Keeps a continuously moving indicator inside the visible rail during a long drag. */
 internal fun resolveScrollableTabIndicatorFollowDeltaPx(
@@ -51,7 +57,12 @@ internal fun resolveScrollableTabIndicatorFollowDeltaPx(
     }
 }
 
-/** Selection and viewport changes move the rail; manual scrolling does not re-trigger it. */
+/**
+ * Selection and viewport changes move the rail; manual scrolling does not re-trigger it.
+ *
+ * [enabled] gates the auto-center hop. While a continuous indicator follow owns the rail
+ * (pager/tab animation), keep this disabled so `animateScrollTo` cannot fight `dispatchRawDelta`.
+ */
 @Composable
 internal fun KeepScrollableTabSelectionVisible(
     scrollState: ScrollState,
@@ -59,14 +70,17 @@ internal fun KeepScrollableTabSelectionVisible(
     itemWidthPx: Float,
     viewportWidthPx: Float,
     contentPaddingPx: Float = 0f,
+    enabled: () -> Boolean = { true },
 ) {
     val animate = LocalAppThemeConfig.current.uiEntranceAnimationEnabled
+    val enabledLatest by rememberUpdatedState(enabled)
     LaunchedEffect(scrollState, selectedIndex, itemWidthPx, viewportWidthPx, contentPaddingPx, animate) {
         // maxValue is unknown before the scroll container is measured. Also follow resizes
         // without restarting this effect on every animation frame or fighting a manual swipe.
-        snapshotFlow { scrollState.maxValue }
-            .filter { it != Int.MAX_VALUE }
-            .collectLatest { maxScrollPx ->
+        snapshotFlow { scrollState.maxValue to enabledLatest() }
+            .filter { (maxScrollPx, _) -> maxScrollPx != Int.MAX_VALUE }
+            .collectLatest { (maxScrollPx, isEnabled) ->
+                if (!shouldCenterScrollableTabSelection(isEnabled)) return@collectLatest
                 val target = resolveTabSelectionScrollOffsetPx(
                     selectedIndex, itemWidthPx, viewportWidthPx, maxScrollPx, contentPaddingPx,
                 )

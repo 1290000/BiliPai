@@ -512,6 +512,7 @@ class SearchScreenPolicyTest {
         assertTrue(typeTabRowBody.contains(".liquidDockViewport()"))
         assertTrue(typeTabRowBody.contains(".horizontalScroll(scrollState)"))
         assertTrue(typeTabRowBody.contains("KeepScrollableTabSelectionVisible("))
+        assertTrue(typeTabRowBody.contains("enabled = { !pagerState.isScrollInProgress }"))
         assertTrue(typeTabRowBody.contains("onIndicatorPositionChanged = { position ->"))
         assertTrue(typeTabRowBody.contains("resolveSearchTypeTabDragScrollDeltaPx("))
         assertFalse(searchSource.contains("androidx.compose.material3.ScrollableTabRow("))
