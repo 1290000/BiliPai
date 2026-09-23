@@ -14,7 +14,7 @@ class AppVersionPolicyTest {
         ).first { it.exists() }.readText()
 
         assertTrue(buildFile.contains("versionCode = 385"))
-        assertTrue(buildFile.contains("versionName = \"0.2.3-beta.46\""))
+        assertTrue(buildFile.contains("versionName = \"0.2.3-alpha.1\""))
         // 语义化 X.Y.Z，不用日历日/四位年当版本号
         assertTrue(!buildFile.contains("versionName = \"26."))
         assertTrue(!buildFile.contains("versionName = \"2026."))
