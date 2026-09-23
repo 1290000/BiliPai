@@ -1429,6 +1429,8 @@ object SettingsManager {
     //  [新增] 顶部标签自定义 - 顺序和可见性
     private val KEY_TOP_TAB_ORDER = stringPreferencesKey("top_tab_order")
     private val KEY_TOP_TAB_VISIBLE_TABS = stringPreferencesKey("top_tab_visible_tabs")
+    //  搜索结果页分类栏顺序（SearchType.value 逗号分隔）
+    private val KEY_SEARCH_FILTER_TAB_ORDER = stringPreferencesKey("search_filter_tab_order")
     private val KEY_DYNAMIC_TAB_VISIBLE_TABS = stringPreferencesKey("dynamic_tab_visible_tabs")
     private val KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE =
         booleanPreferencesKey("dynamic_image_preview_text_visible")
@@ -1474,6 +1476,8 @@ object SettingsManager {
     }
 
     private const val DEFAULT_TOP_TAB_ORDER = "RECOMMEND,FOLLOW,POPULAR,LIVE,GAME"
+    private const val DEFAULT_SEARCH_FILTER_TAB_ORDER =
+        "video,media_bangumi,media_ft,live_room,live_user,bili_user,article,topic,photo"
     private const val DEFAULT_TOP_TAB_VISIBLE = "RECOMMEND,FOLLOW,POPULAR,LIVE,GAME"
     /** 首页顶部 dock 标签数量上限。 */
     const val MAX_TOP_TABS = 5
@@ -3668,6 +3672,19 @@ object SettingsManager {
     suspend fun setTopTabVisibleTabs(context: Context, tabs: Set<String>) {
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_TOP_TAB_VISIBLE_TABS] = tabs.joinToString(",")
+        }
+    }
+
+    //  搜索结果页分类栏顺序
+    fun getSearchFilterTabOrder(context: Context): Flow<List<String>> =
+        context.settingsDataStore.data.map { prefs ->
+            val orderString = prefs[KEY_SEARCH_FILTER_TAB_ORDER] ?: DEFAULT_SEARCH_FILTER_TAB_ORDER
+            orderString.split(",").filter { it.isNotBlank() }
+        }
+
+    suspend fun setSearchFilterTabOrder(context: Context, order: List<String>) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_SEARCH_FILTER_TAB_ORDER] = order.joinToString(",")
         }
     }
 

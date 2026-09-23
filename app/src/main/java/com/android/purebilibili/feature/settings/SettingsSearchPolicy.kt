@@ -75,9 +75,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.NAVIGATION,
         title = "导航与标签",
-        subtitle = "底栏、顶部标签、平板侧边栏与底栏项目顺序",
+        subtitle = "底栏、顶部标签、搜索分类栏、平板侧边栏与项目顺序",
         section = "设置",
-        aliases = listOf("导航", "底栏", "底部栏", "顶部标签", "顶部标签页", "首页搜索框", "全局顶栏显示", "首页顶栏显示", "列表顶部栏", "历史记录顶部栏", "稍后再看顶部栏", "仅回顶显示", "始终显示", "首页顶栏收起", "顶栏收起", "标签排序", "平板侧边栏", "侧边导航栏", "底栏顺序", "底栏项目", "底栏搜索入口", "搜索入口", "悬浮搜索")
+        aliases = listOf("导航", "底栏", "底部栏", "顶部标签", "顶部标签页", "首页搜索框", "全局顶栏显示", "首页顶栏显示", "列表顶部栏", "历史记录顶部栏", "稍后再看顶部栏", "仅回顶显示", "始终显示", "首页顶栏收起", "顶栏收起", "标签排序", "平板侧边栏", "侧边导航栏", "底栏顺序", "底栏项目", "底栏搜索入口", "搜索入口", "悬浮搜索", "搜索分类", "搜索分类顺序")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.PLAYBACK_QUALITY,
@@ -694,6 +694,24 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
             "右上角消息"
         ),
         focusId = SettingsSearchFocusIds.BOTTOM_BAR_TOP_TABS
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.BOTTOM_BAR,
+        title = "搜索分类栏顺序",
+        subtitle = "调整搜索结果页顶部分类标签的显示顺序",
+        section = "导航设置",
+        aliases = listOf(
+            "搜索分类",
+            "搜索分类栏",
+            "搜索分类顺序",
+            "分类顺序",
+            "搜索标签顺序",
+            "搜索Tab",
+            "搜索Tab顺序",
+            "UP主分类",
+            "搜索结果分类",
+        ),
+        focusId = SettingsSearchFocusIds.BOTTOM_BAR_SEARCH_TABS
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.BOTTOM_BAR,

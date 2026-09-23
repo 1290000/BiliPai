@@ -468,18 +468,27 @@ internal enum class SearchFilterControl {
     PHOTO_CATEGORY
 }
 
-internal fun resolveSearchFilterTabs(): List<SearchType> {
-    return listOf(
-        SearchType.VIDEO,
-        SearchType.BANGUMI,
-        SearchType.MEDIA_FT,
-        SearchType.LIVE,
-        SearchType.LIVE_USER,
-        SearchType.UP,
-        SearchType.ARTICLE,
-        SearchType.TOPIC,
-        SearchType.PHOTO
-    )
+internal val defaultSearchFilterTabOrder: List<SearchType> = listOf(
+    SearchType.VIDEO,
+    SearchType.BANGUMI,
+    SearchType.MEDIA_FT,
+    SearchType.LIVE,
+    SearchType.LIVE_USER,
+    SearchType.UP,
+    SearchType.ARTICLE,
+    SearchType.TOPIC,
+    SearchType.PHOTO
+)
+
+internal fun resolveSearchFilterTabs(
+    savedOrder: List<String> = emptyList()
+): List<SearchType> {
+    val knownByValue = SearchType.entries.associateBy(SearchType::value)
+    val ordered = savedOrder.mapNotNull(knownByValue::get).distinct()
+    val remaining = (defaultSearchFilterTabOrder + SearchType.entries)
+        .distinct()
+        .filterNot(ordered::contains)
+    return ordered + remaining
 }
 
 internal fun resolveSearchDefaultPlaceholder(): String {
@@ -758,7 +767,14 @@ fun SearchScreen(
     }.collectAsStateWithLifecycle(initialValue = true)
     val displayedSearchHint = state.defaultSearchHint.takeIf { searchHintEnabled }.orEmpty()
     val scope = rememberCoroutineScope()
-    val searchTabs = remember { resolveSearchFilterTabs() }
+    val savedSearchFilterTabOrder by SettingsManager
+        .getSearchFilterTabOrder(context)
+        .collectAsStateWithLifecycle(
+            initialValue = defaultSearchFilterTabOrder.map { it.value }
+        )
+    val searchTabs = remember(savedSearchFilterTabOrder) {
+        resolveSearchFilterTabs(savedSearchFilterTabOrder)
+    }
     val searchPagerState = rememberPagerState(
         initialPage = resolveSearchPagerPageForType(state.searchType, searchTabs),
         pageCount = { searchTabs.size }
