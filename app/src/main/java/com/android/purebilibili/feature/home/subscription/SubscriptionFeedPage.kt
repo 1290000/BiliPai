@@ -48,6 +48,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -85,6 +86,7 @@ import com.android.purebilibili.core.plugin.feed.FeedInline
 import com.android.purebilibili.core.plugin.feed.ParsedFeedItem
 import com.android.purebilibili.core.plugin.feed.FeedSource
 import com.android.purebilibili.core.plugin.feed.FeedReadingStore
+import com.android.purebilibili.core.plugin.feed.SubscriptionFeedStore
 import com.android.purebilibili.core.plugin.feed.feedItemKey
 import com.android.purebilibili.core.plugin.feed.mergeCachedFeedItems
 import com.android.purebilibili.core.plugin.feed.cleanFeedSummary
@@ -108,6 +110,7 @@ import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
+import com.android.purebilibili.feature.home.homeFeedPinchZoom
 import java.time.Instant
 import java.time.ZoneId
 
@@ -127,6 +130,7 @@ fun SubscriptionFeedPage(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val subscriptionRevision by SubscriptionFeedStore.revision.collectAsStateWithLifecycle()
     var sources by remember { mutableStateOf<List<FeedSource>>(emptyList()) }
     var items by remember { mutableStateOf<List<ParsedFeedItem>>(emptyList()) }
     var readKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -198,11 +202,14 @@ fun SubscriptionFeedPage(
     LaunchedEffect(scrollToTopRequestId) {
         if (scrollToTopRequestId > 0) listState.animateScrollToItem(0)
     }
-    LaunchedEffect(reloadToken) {
+    LaunchedEffect(reloadToken, subscriptionRevision) {
         loading = true
         loadErrors = emptyList()
         val loadedSources = withContext(Dispatchers.IO) { loadEnabledFeedSources(context) }
         sources = loadedSources
+        if (selectedSourceId != null && loadedSources.none { it.id == selectedSourceId }) {
+            selectedSourceId = null
+        }
         val cache = FeedReadingStore.load(context)
         readKeys = cache.readKeys.toSet()
         cachedBodies = cache.fullBodies
@@ -304,6 +311,11 @@ fun SubscriptionFeedPage(
                     },
                     contentPadding = contentPadding,
                     listState = listState,
+                    gridColumns = gridColumns,
+                    pinchEnabled = pinchEnabled,
+                    pinchBounds = pinchBounds,
+                    onColumnsChange = onColumnsChange,
+                    onPinchEnd = onPinchEnd,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this,
                 )
@@ -335,13 +347,26 @@ private fun SubscriptionFeedGrid(
     onOpen: (ParsedFeedItem) -> Unit,
     contentPadding: PaddingValues,
     listState: LazyStaggeredGridState,
+    gridColumns: Int,
+    pinchEnabled: Boolean,
+    pinchBounds: IntRange,
+    onColumnsChange: (Int) -> Unit,
+    onPinchEnd: (Int) -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
     LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(1),
+        columns = StaggeredGridCells.Fixed(gridColumns.coerceAtLeast(1)),
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .homeFeedPinchZoom(
+                enabled = pinchEnabled,
+                currentColumns = gridColumns.coerceAtLeast(1),
+                bounds = pinchBounds,
+                onColumnsChange = onColumnsChange,
+                onGestureEnd = onPinchEnd,
+            ),
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalItemSpacing = 8.dp,

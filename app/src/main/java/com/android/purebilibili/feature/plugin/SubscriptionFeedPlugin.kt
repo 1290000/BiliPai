@@ -5,18 +5,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,7 +27,10 @@ import com.android.purebilibili.core.plugin.Plugin
 import com.android.purebilibili.core.plugin.feed.SubscriptionFeedStore
 import com.android.purebilibili.core.plugin.feed.resolveSubscriptionTitle
 import com.android.purebilibili.core.plugin.feed.resolveImportedSubscriptionTitles
+import com.android.purebilibili.core.ui.AppAlertDialog
+import com.android.purebilibili.core.ui.AppDialogAction
 import com.android.purebilibili.core.ui.components.AppButton
+import com.android.purebilibili.core.ui.components.AppCheckbox
 import com.android.purebilibili.core.ui.components.AppOutlinedTextField
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
@@ -69,14 +75,21 @@ class SubscriptionFeedPlugin : Plugin {
 private fun SubscriptionFeedSettings(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var revision by remember { mutableIntStateOf(0) }
+    val revision by SubscriptionFeedStore.revision.collectAsStateWithLifecycle()
     var title by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var importText by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var adding by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
+    var selecting by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var confirmBatchDelete by remember { mutableStateOf(false) }
     val feeds = remember(revision) { SubscriptionFeedStore.list(context) }
+    LaunchedEffect(feeds) {
+        selectedIds = selectedIds.intersect(feeds.map { it.id }.toSet())
+        if (feeds.isEmpty()) selecting = false
+    }
     val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -91,9 +104,8 @@ private fun SubscriptionFeedSettings(modifier: Modifier = Modifier) {
                         }.orEmpty()
                     }.getOrElse { "" }
                 }
-                applySubscriptionImport(context, text) { message, added ->
+                applySubscriptionImport(context, text) { message, _ ->
                     error = message
-                    if (added) revision += 1
                 }
             } catch (failure: Exception) {
                 if (failure is kotlinx.coroutines.CancellationException) throw failure
@@ -135,7 +147,6 @@ private fun SubscriptionFeedSettings(modifier: Modifier = Modifier) {
                             title = ""
                             url = ""
                             error = null
-                            revision += 1
                         }.onFailure { error = it.message }
                     } catch (failure: Exception) {
                         if (failure is kotlinx.coroutines.CancellationException) throw failure
@@ -179,7 +190,6 @@ private fun SubscriptionFeedSettings(modifier: Modifier = Modifier) {
                                 error = message
                                 if (added) {
                                     importText = ""
-                                    revision += 1
                                 }
                             }
                         } catch (failure: Exception) {
@@ -197,14 +207,59 @@ private fun SubscriptionFeedSettings(modifier: Modifier = Modifier) {
         }
         error?.let { AppText(it) }
         if (feeds.isNotEmpty()) {
-            AppText("已添加 ${feeds.size} 个", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        feeds.forEach { feed ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                AppText(
+                    if (selecting) "已选 ${selectedIds.size} / ${feeds.size} 个" else "已添加 ${feeds.size} 个",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AppTextButton(onClick = {
+                    selecting = !selecting
+                    selectedIds = emptySet()
+                }) { AppText(if (selecting) "取消" else "批量管理") }
+            }
+            if (selecting) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AppTextButton(onClick = {
+                        selectedIds = if (selectedIds.size == feeds.size) {
+                            emptySet()
+                        } else {
+                            feeds.map { it.id }.toSet()
+                        }
+                    }) { AppText(if (selectedIds.size == feeds.size) "取消全选" else "全选") }
+                    AppButton(
+                        onClick = { confirmBatchDelete = true },
+                        enabled = selectedIds.isNotEmpty(),
+                    ) { AppText("删除所选（${selectedIds.size}）") }
+                }
+            }
+        }
+        feeds.forEach { feed ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (selecting) Modifier.toggleable(
+                            value = feed.id in selectedIds,
+                            role = Role.Checkbox,
+                            onValueChange = { checked ->
+                                selectedIds = if (checked) selectedIds + feed.id else selectedIds - feed.id
+                            },
+                        ) else Modifier
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (selecting) {
+                    AppCheckbox(checked = feed.id in selectedIds, onCheckedChange = null)
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     AppText(
                         text = feed.title,
@@ -219,14 +274,33 @@ private fun SubscriptionFeedSettings(modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                AppTextButton(onClick = {
-                    SubscriptionFeedStore.remove(context, feed.id)
-                    revision += 1
-                }) {
-                    AppText("删除")
+                if (!selecting) {
+                    AppTextButton(onClick = {
+                        SubscriptionFeedStore.remove(context, feed.id)
+                    }) {
+                        AppText("删除")
+                    }
                 }
             }
         }
+    }
+    if (confirmBatchDelete) {
+        AppAlertDialog(
+            onDismissRequest = { confirmBatchDelete = false },
+            title = { AppText("删除所选订阅？") },
+            text = { AppText("将删除 ${selectedIds.size} 个订阅来源。") },
+            confirmButton = {
+                AppDialogAction(onClick = {
+                    SubscriptionFeedStore.removeAll(context, selectedIds)
+                    selectedIds = emptySet()
+                    selecting = false
+                    confirmBatchDelete = false
+                }) { AppText("删除") }
+            },
+            dismissButton = {
+                AppDialogAction(onClick = { confirmBatchDelete = false }) { AppText("取消") }
+            },
+        )
     }
 }
 
