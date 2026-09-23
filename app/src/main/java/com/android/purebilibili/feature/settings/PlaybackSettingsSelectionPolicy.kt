@@ -7,6 +7,7 @@ import com.android.purebilibili.core.store.HomeFeedCardWidthPreset
 import com.android.purebilibili.core.store.PortraitPlayerCollapseMode
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TabletCommentPanelWidthPreset
+import com.android.purebilibili.core.store.TabletSecondaryDefaultTab
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppTagChipSize
 import com.android.purebilibili.feature.screenshot.AppScreenshotCaptureMode
@@ -163,6 +164,12 @@ internal fun resolveVideoTagSizeSegmentOptions(): List<AppSegmentOption<AppTagCh
         AppSegmentOption(AppTagChipSize.SMALL, "更小")
     )
 }
+
+internal fun resolveTabletSecondaryDefaultTabOptions(): List<AppSegmentOption<TabletSecondaryDefaultTab>> =
+    listOf(
+        AppSegmentOption(TabletSecondaryDefaultTab.RELATED, "推荐"),
+        AppSegmentOption(TabletSecondaryDefaultTab.COMMENTS, "评论"),
+    )
 
 internal fun resolveAppScreenshotGestureModeSegmentOptions(): List<AppSegmentOption<AppScreenshotGestureMode>> {
     return listOf(

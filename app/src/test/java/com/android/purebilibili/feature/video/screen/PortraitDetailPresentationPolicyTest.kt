@@ -186,6 +186,34 @@ class PortraitDetailPresentationPolicyTest {
     }
 
     @Test
+    fun inlinePortraitPlayerLayout_capsCompactFoldableCoverForScrollableComments() {
+        val expanded = resolvePortraitInlinePlayerLayoutSpec(
+            screenWidthDp = 672f,
+            screenHeightDp = 460f,
+            isCollapsed = false,
+            isFoldableCoverWindow = true,
+        )
+        val collapsed = resolvePortraitInlinePlayerLayoutSpec(
+            screenWidthDp = 672f,
+            screenHeightDp = 460f,
+            isCollapsed = true,
+            isFoldableCoverWindow = true,
+        )
+
+        assertEquals(230f, expanded.heightDp, absoluteTolerance = 0.01f)
+        assertEquals(230f, collapsed.heightDp, absoluteTolerance = 0.01f)
+        assertTrue(expanded.heightDp < 460f)
+
+        val portraitWindowExpanded = resolvePortraitInlinePlayerLayoutSpec(
+            screenWidthDp = 412f,
+            screenHeightDp = 915f,
+            isCollapsed = false,
+            isFoldableCoverWindow = true,
+        )
+        assertEquals(594.75f, portraitWindowExpanded.heightDp, absoluteTolerance = 0.01f)
+    }
+
+    @Test
     fun inlinePortraitPlayerLayout_collapsesToFullWidth16By9Header() {
         val expanded = resolvePortraitInlinePlayerLayoutSpec(
             screenWidthDp = 412f,

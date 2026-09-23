@@ -1173,7 +1173,7 @@ internal fun VideoDetailScreenStateHolder(
         .collectAsStateWithLifecycle(initialValue = true, lifecycle = lifecycleOwner.lifecycle)
     val videoNoteDefaultCollapsed by com.android.purebilibili.core.store.SettingsManager
         .getVideoNoteDefaultCollapsed(context)
-        .collectAsStateWithLifecycle(initialValue = false, lifecycle = lifecycleOwner.lifecycle)
+        .collectAsStateWithLifecycle(initialValue = true, lifecycle = lifecycleOwner.lifecycle)
     val preferredCommentSortMode = remember(commentDefaultSortMode) {
         CommentSortMode.fromApiMode(commentDefaultSortMode)
     }
@@ -3970,11 +3970,16 @@ internal fun VideoDetailScreenStateHolder(
                             )
 
                         // 📏 [Collapsing Player] 上滑隐藏播放器逻辑
-                        val expandedPortraitInlineSpec = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+                        val expandedPortraitInlineSpec = remember(
+                            configuration.screenWidthDp,
+                            configuration.screenHeightDp,
+                            displayContext.isFoldableCoverWindow,
+                        ) {
                             resolvePortraitInlinePlayerLayoutSpec(
                                 screenWidthDp = configuration.screenWidthDp.toFloat(),
                                 screenHeightDp = configuration.screenHeightDp.toFloat(),
-                                isCollapsed = false
+                                isCollapsed = false,
+                                isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
                             )
                         }
                         val collapsedPortraitInlineSpec = remember(
@@ -3982,11 +3987,13 @@ internal fun VideoDetailScreenStateHolder(
                             configuration.screenHeightDp,
                             portraitPlayerCollapseMode,
                             isPlaybackPaused,
+                            displayContext.isFoldableCoverWindow,
                         ) {
                             val standardSpec = resolvePortraitInlinePlayerLayoutSpec(
                                 screenWidthDp = configuration.screenWidthDp.toFloat(),
                                 screenHeightDp = configuration.screenHeightDp.toFloat(),
-                                isCollapsed = true
+                                isCollapsed = true,
+                                isFoldableCoverWindow = displayContext.isFoldableCoverWindow,
                             )
                             standardSpec.copy(
                                 heightDp = resolvePiliPlusCollapsedPlayerViewportHeightDp(

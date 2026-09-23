@@ -82,6 +82,7 @@ import com.android.purebilibili.core.ui.rememberAppHistoryIcon
 import com.android.purebilibili.core.ui.rememberAppDeleteIcon
 import com.android.purebilibili.core.ui.rememberAppLinkIcon
 import com.android.purebilibili.data.model.response.DynamicDesc
+import com.android.purebilibili.core.store.SettingsManager.DynamicDetailImageLayout
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.DrawItem
 import com.android.purebilibili.data.model.response.ReplyInteractionData
@@ -144,6 +145,7 @@ data class DynamicCardPresentation(
     val isLiked: Boolean = false,
     val likeOverride: Boolean? = null,
     val forwardCountDelta: Int = 0,
+    val detailImageLayout: DynamicDetailImageLayout = DynamicDetailImageLayout.EXPANDED,
 )
 
 /**
@@ -186,6 +188,7 @@ fun DynamicCardV2(
     val isLiked = presentation.isLiked
     val likeOverride = presentation.likeOverride
     val forwardCountDelta = presentation.forwardCountDelta
+    val detailImageLayout = presentation.detailImageLayout
 
     if (!item.visible) return
     val openDynamicDetail = remember(item, onDynamicDetailClick) {
@@ -215,15 +218,20 @@ fun DynamicCardV2(
             )
         }.orEmpty()
     }
-    val contentHasImages = content?.major?.draw?.items?.isNotEmpty() == true ||
-        content?.major?.opus?.pics?.isNotEmpty() == true
     val opus = content?.major?.opus
+    val fullOpusContentBlocks = opus?.let { currentOpus ->
+        resolveDynamicOpusPresentationBlocks(opus = currentOpus, isDetail = isDetail)
+    }.orEmpty()
+    val renderableOpusPics = remember(opus, fullOpusContentBlocks) {
+        opus?.let { currentOpus ->
+            resolveDynamicOpusPreviewPics(currentOpus, fullOpusContentBlocks)
+        }.orEmpty()
+    }
+    val contentHasImages = content?.major?.draw?.items?.let(::resolveRenderableDrawItems)?.isNotEmpty() == true ||
+        renderableOpusPics.isNotEmpty()
     val visibleDynamicDesc = content?.desc?.let { desc ->
         resolveDynamicDescForImages(desc, hasImages = contentHasImages)
     }
-    val fullOpusContentBlocks = opus?.let { opus ->
-        resolveDynamicOpusPresentationBlocks(opus = opus, isDetail = isDetail)
-    }.orEmpty()
     // A detail response can provide rich text blocks without embedding the
     // documented `opus.pics` entries in those blocks. In that case use the
     // image-grid path below so pictures are not hidden after the network
@@ -880,13 +888,13 @@ fun DynamicCardV2(
         }
         
         //  动态内容文字（支持@高亮 / 表情）；优先可渲染表情的 desc 或 opus summary
-        val visibleOpusSummaryDescForBody = remember(content?.major?.opus?.summary, content?.major?.opus?.pics) {
-            val opus = content?.major?.opus ?: return@remember null
-            opus.summary?.let { summary ->
+        val visibleOpusSummaryDescForBody = remember(opus?.summary, renderableOpusPics) {
+            val currentOpus = opus ?: return@remember null
+            currentOpus.summary?.let { summary ->
                 resolveDynamicOpusSummaryDescForImages(
                     text = summary.text,
                     richTextNodes = summary.rich_text_nodes,
-                    hasImages = opus.pics.isNotEmpty()
+                    hasImages = renderableOpusPics.isNotEmpty()
                 )
             }
         }
@@ -960,9 +968,21 @@ fun DynamicCardV2(
         }
         
         //  图片类型动态（支持GIF + 点击预览）。详情若已拉到完整 opus 正文，不再叠一层九宫格预览。
-        content?.major?.draw?.takeUnless { hasFullOpusDetailContent }?.let { draw ->
+        content?.major?.draw?.takeIf {
+            shouldRenderDynamicDrawGrid(
+                hasFullOpusImageContent = hasFullOpusDetailContent &&
+                    fullOpusContentBlocks.any {
+                        it is OpusContentBlock.Image ||
+                            (it is OpusContentBlock.Divider && it.pic != null)
+                    },
+                opusPics = renderableOpusPics,
+            )
+        }?.let { draw ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
             var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+            val renderableDrawItems = remember(draw.items) {
+                resolveRenderableDrawItems(draw.items)
+            }
             val drawPreviewText = remember(author?.name, visibleDynamicDesc?.text) {
                 ImagePreviewTextContent(
                     headline = author?.name.orEmpty(),
@@ -971,7 +991,7 @@ fun DynamicCardV2(
             }
             
             DrawGridV2(
-                items = draw.items,
+                items = renderableDrawItems,
                 gifImageLoader = gifImageLoader,
                 maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
                 onImageClick = { index, rect ->
@@ -1001,7 +1021,7 @@ fun DynamicCardV2(
                             }
                         }
                     },
-                    images = draw.items.map { it.src },
+                    images = renderableDrawItems.map { it.src },
                     initialIndex = selectedImageIndex,
                     sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
                     textContent = drawPreviewText,
@@ -1015,12 +1035,12 @@ fun DynamicCardV2(
         content?.major?.opus?.let { opus ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
             var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-            val visibleOpusSummaryDesc = remember(opus.summary, opus.pics) {
+            val visibleOpusSummaryDesc = remember(opus.summary, renderableOpusPics) {
                 opus.summary?.let { summary ->
                     resolveDynamicOpusSummaryDescForImages(
                         text = summary.text,
                         richTextNodes = summary.rich_text_nodes,
-                        hasImages = opus.pics.isNotEmpty()
+                        hasImages = renderableOpusPics.isNotEmpty()
                     )
                 }
             }
@@ -1037,20 +1057,55 @@ fun DynamicCardV2(
             
             // 显示图片 (转换为 DrawItem 格式复用现有组件)
             if (hasFullOpusDetailContent) {
-                val previewImages = remember(opus.pics) { opus.pics.map { it.url } }
+                val expandOpusDetailImages = shouldExpandDynamicOpusDetailImages(detailImageLayout)
+                val previewImages = remember(renderableOpusPics) {
+                    renderableOpusPics.map { it.url }
+                }
                 // The desktop opus API documents width/height as nullable. The
                 // paragraph image can therefore have dimensions while the same
                 // URL in opus.pics does not (or vice versa). Resolve dimensions
                 // once from both payload locations so a recomposition never
                 // leaves an AsyncImage without a measurable height.
-                val opusPicDimensionsByUrl = remember(opus.pics) {
-                    opus.pics
+                val opusPicDimensionsByUrl = remember(renderableOpusPics) {
+                    renderableOpusPics
                         .filter { it.url.isNotBlank() && it.width > 0 && it.height > 0 }
                         .associateBy { it.url }
                 }
                 var fullContentSelectedImageIndex by remember { mutableIntStateOf(-1) }
-                var fullContentImageIndex = 0
+                var thumbnailSourceRect by remember {
+                    mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+                }
+                val thumbnailItems = remember(renderableOpusPics) {
+                    renderableOpusPics.map { pic ->
+                        DrawItem(
+                            src = pic.url,
+                            width = pic.width,
+                            height = pic.height,
+                            live_url = pic.live_url,
+                        )
+                    }
+                }
+                var thumbnailGridEmitted = false
                 fullOpusContentBlocks.forEach { block ->
+                    if (shouldEmitOpusThumbnailGridAtBlock(
+                            block = block,
+                            thumbnailGridEmitted = thumbnailGridEmitted,
+                            hasThumbnailItems = thumbnailItems.isNotEmpty(),
+                            expandImages = expandOpusDetailImages,
+                        )
+                    ) {
+                        thumbnailGridEmitted = true
+                        DrawGridV2(
+                            items = thumbnailItems,
+                            gifImageLoader = gifImageLoader,
+                            maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
+                            onImageClick = { index, rect ->
+                                fullContentSelectedImageIndex = index
+                                thumbnailSourceRect = rect
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                    }
                     when (block) {
                         is OpusContentBlock.Text -> {
                             val richBlockDesc = resolveDynamicOpusTextBlockRichDesc(
@@ -1163,7 +1218,6 @@ fun DynamicCardV2(
                         is OpusContentBlock.Divider -> {
                             val dividerPic = block.pic
                             if (dividerPic != null) {
-                                fullContentImageIndex += 1
                                 val resolvedDividerPic = remember(dividerPic, opusPicDimensionsByUrl) {
                                     opusPicDimensionsByUrl[dividerPic.url]?.let { known ->
                                         if (dividerPic.width > 0 && dividerPic.height > 0) dividerPic
@@ -1181,17 +1235,19 @@ fun DynamicCardV2(
                                         .httpHeaders(NetworkHeaders.Builder().set("Referer", "https://www.bilibili.com/").build())
                                         .build()
                                 }
-                                AsyncImage(
-                                    model = dividerRequest,
-                                    contentDescription = "分割线",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .then(
-                                            Modifier.aspectRatio(dividerAspectRatio)
-                                        )
-                                        .padding(vertical = AppSpacingTokens.Small),
-                                    contentScale = ContentScale.FillWidth,
-                                )
+                                if (expandOpusDetailImages) {
+                                    AsyncImage(
+                                        model = dividerRequest,
+                                        contentDescription = "分割线",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .then(
+                                                Modifier.aspectRatio(dividerAspectRatio)
+                                            )
+                                            .padding(vertical = AppSpacingTokens.Small),
+                                        contentScale = ContentScale.FillWidth,
+                                    )
+                                }
                             } else {
                                 AppHorizontalDivider(
                                     modifier = Modifier.padding(vertical = AppSpacingTokens.Medium),
@@ -1200,14 +1256,13 @@ fun DynamicCardV2(
                             }
                         }
                         is OpusContentBlock.Image -> {
-                            val currentImageIndex = fullContentImageIndex
-                            fullContentImageIndex += 1
                             val resolvedPic = remember(block.pic, opusPicDimensionsByUrl) {
                                 opusPicDimensionsByUrl[block.pic.url]?.let { known ->
                                     if (block.pic.width > 0 && block.pic.height > 0) block.pic
                                     else block.pic.copy(width = known.width, height = known.height)
                                 } ?: block.pic
                             }
+                            val currentImageIndex = previewImages.indexOf(resolvedPic.url)
                             val aspectRatio = remember(resolvedPic.width, resolvedPic.height) {
                                 if (resolvedPic.width > 0 && resolvedPic.height > 0) {
                                     resolvedPic.width.toFloat() / resolvedPic.height.toFloat()
@@ -1224,25 +1279,27 @@ fun DynamicCardV2(
                                     .httpHeaders(NetworkHeaders.Builder().set("Referer", "https://www.bilibili.com/").build())
                                     .build()
                             }
-                            AsyncImage(
-                                model = imageRequest,
-                                contentDescription = opus.title.orEmpty(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .then(
-                                        if (aspectRatio > 0f) {
-                                            Modifier.aspectRatio(aspectRatio)
-                                        } else {
-                                            Modifier
-                                        }
-                                    )
-                                    .clip(AppShapes.container(ContainerLevel.Card))
-                                    .clickable(enabled = currentImageIndex in previewImages.indices) {
-                                        fullContentSelectedImageIndex = currentImageIndex
-                                    },
-                                contentScale = ContentScale.FillWidth
-                            )
-                            Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                            if (expandOpusDetailImages) {
+                                AsyncImage(
+                                    model = imageRequest,
+                                    contentDescription = opus.title.orEmpty(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (aspectRatio > 0f) {
+                                                Modifier.aspectRatio(aspectRatio)
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .clip(AppShapes.container(ContainerLevel.Card))
+                                        .clickable(enabled = currentImageIndex in previewImages.indices) {
+                                            fullContentSelectedImageIndex = currentImageIndex
+                                        },
+                                    contentScale = ContentScale.FillWidth
+                                )
+                                Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                            }
                         }
                         is OpusContentBlock.LinkCard -> {
                             DynamicOpusLinkCard(
@@ -1280,6 +1337,20 @@ fun DynamicCardV2(
                     }
                 }
 
+                if (!expandOpusDetailImages && !thumbnailGridEmitted && thumbnailItems.isNotEmpty()) {
+                    thumbnailGridEmitted = true
+                    DrawGridV2(
+                        items = thumbnailItems,
+                        gifImageLoader = gifImageLoader,
+                        maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
+                        onImageClick = { index, rect ->
+                            fullContentSelectedImageIndex = index
+                            thumbnailSourceRect = rect
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                }
+
                 if (fullContentSelectedImageIndex >= 0) {
                     ImagePreviewDialog(
                         livePhotoVideos = buildMap {
@@ -1298,13 +1369,14 @@ fun DynamicCardV2(
                         },
                         images = previewImages,
                         initialIndex = fullContentSelectedImageIndex,
+                        sourceRect = if (expandOpusDetailImages) null else thumbnailSourceRect,
                         textContent = opusPreviewText,
                         defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { fullContentSelectedImageIndex = -1 }
                     )
                 }
-            } else if (opus.pics.isNotEmpty()) {
-                val drawItems = opus.pics.map { pic ->
+            } else if (renderableOpusPics.isNotEmpty()) {
+                val drawItems = renderableOpusPics.map { pic ->
                     DrawItem(
                         src = pic.url,
                         width = pic.width,
@@ -1343,7 +1415,7 @@ fun DynamicCardV2(
                                 }
                             }
                         },
-                        images = opus.pics.map { it.url },
+                        images = renderableOpusPics.map { it.url },
                         initialIndex = selectedImageIndex,
                         sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
                         textContent = opusPreviewText,
