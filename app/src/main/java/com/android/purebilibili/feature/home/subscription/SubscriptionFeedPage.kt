@@ -23,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,7 +36,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyListItems
@@ -439,66 +439,64 @@ private fun SubscriptionFeedCard(
 ) {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         AppSurface(
-        modifier = with(sharedTransitionScope) {
-            Modifier
-                .widthIn(max = 760.dp)
-                .fillMaxWidth()
-                .sharedBounds(
-                    sharedContentState = rememberSharedContentState(subscriptionSharedKey(item)),
-                    animatedVisibilityScope = animatedVisibilityScope,
-                    boundsTransform = { _, _ -> tween(360, easing = LinearEasing) },
-                    clipInOverlayDuringTransition = OverlayClip(AppShapes.container(ContainerLevel.Card)),
-                )
-                .clip(AppShapes.container(ContainerLevel.Card))
-                .clickable(onClick = onClick)
-        },
-        color = AppSurfaceTokens.cardContainer(),
-        tonalElevation = 0.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
+            modifier = with(sharedTransitionScope) {
+                Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
+                    .sharedBounds(
+                        sharedContentState = rememberSharedContentState(subscriptionSharedKey(item)),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = { _, _ -> tween(360, easing = LinearEasing) },
+                        clipInOverlayDuringTransition = OverlayClip(AppShapes.container(ContainerLevel.Card)),
+                    )
+                    .clip(AppShapes.container(ContainerLevel.Card))
+                    .clickable(onClick = onClick)
+            },
+            color = AppSurfaceTokens.cardContainer(),
+            tonalElevation = 0.dp,
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                AppText(
-                    text = item.title.ifBlank { item.link },
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                cleanFeedSummary(item.summary).takeIf { it.isNotBlank() }?.let { summary ->
+            Column {
+                if (!item.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = item.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
                     AppText(
-                        text = summary,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = item.title.ifBlank { item.link },
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    cleanFeedSummary(item.summary).takeIf { it.isNotBlank() }?.let { summary ->
+                        AppText(
+                            text = summary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    AppText(
+                        text = listOf(if (isRead) "已读" else "未读", item.sourceTitle, formatFeedAge(item.publishedEpochSec))
+                            .filter { it.isNotBlank() }
+                            .joinToString(" · "),
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                AppText(
-                    text = listOf(if (isRead) "已读" else "未读", item.sourceTitle, formatFeedAge(item.publishedEpochSec))
-                        .filter { it.isNotBlank() }
-                        .joinToString(" · "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
-            if (!item.imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(76.dp).clip(MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
         }
     }
 }
