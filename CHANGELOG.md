@@ -1,3 +1,13 @@
+## v0.2.3-alpha.2 (2026-09-24)
+
+更新日志(ChangeLog)
+
+[更改] 版本号 0.2.3-alpha.2，versionCode 387
+
+[修复] 修复合并推荐流 App 半边误带登录 Cookie 取流的问题，已登录时改为 access_key @qyo123oyq
+
+---
+
 ## v0.2.3-alpha.1 (2026-09-23)
 
 更新日志(ChangeLog)
