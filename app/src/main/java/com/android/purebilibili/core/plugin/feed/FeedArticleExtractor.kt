@@ -59,6 +59,14 @@ fun extractArticleBody(pageHtml: String): String? {
     if (mainStart != null) {
         sliceHtmlElement(withoutNoise, mainStart)?.takeIf { feedPlainText(it).length > 40 }?.let { return it }
     }
+    val bodyStart = Regex("""(?i)<body\b""").find(withoutNoise)?.range?.first
+    if (bodyStart != null) {
+        sliceHtmlElement(withoutNoise, bodyStart)?.takeIf { body ->
+            val length = feedPlainText(body).length
+            val paragraphs = Regex("""(?i)<p\b""").findAll(body).count()
+            length > 80 || (paragraphs >= 2 && length > 30)
+        }?.let { return it }
+    }
     return null
 }
 

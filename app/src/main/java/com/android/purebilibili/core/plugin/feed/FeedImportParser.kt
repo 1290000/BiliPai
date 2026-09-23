@@ -19,9 +19,16 @@ fun parseSubscriptionImport(text: String): List<ImportedSubscription> {
     }
     return trimmed.lineSequence()
         .map { it.trim() }
-        .filter { isHttpFeedUrl(it) }
-        .distinct()
-        .map { url -> ImportedSubscription(title = url, url = url) }
+        .mapNotNull { line ->
+            if (isHttpFeedUrl(line)) return@mapNotNull ImportedSubscription(title = line, url = line)
+            val cells = line.trim('|').split('|').map(String::trim)
+            if (cells.size < 2) return@mapNotNull null
+            val url = Regex("""https?://[^\s)\]>|]+""").find(cells[1])?.value ?: return@mapNotNull null
+            if (!isHttpFeedUrl(url)) return@mapNotNull null
+            val name = cells[0].replace(Regex("""[*_`\[\]]"""), "").trim()
+            ImportedSubscription(title = name.ifBlank { url }, url = url)
+        }
+        .distinctBy { it.url }
         .toList()
 }
 

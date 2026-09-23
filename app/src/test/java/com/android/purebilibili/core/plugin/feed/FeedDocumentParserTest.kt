@@ -224,5 +224,35 @@ class FeedDocumentParserTest {
         assertEquals(emptyList(), updateReadKeys(read, feedItemKey(updated), false))
     }
 
+    @Test
+    fun `recommended feed table and automatic names remain usable`() {
+        val imported = parseSubscriptionImport(
+            """名称 | RSS源 | 查看
+               --- | --- | ---
+               阮一峰的网络日志 | [https://www.ruanyifeng.com/blog/atom.xml](https://www.ruanyifeng.com/blog/atom.xml) | [查看](https://example.com)
+               V2EX | https://v2ex.com/index.xml | [查看](https://example.com)""".trimIndent(),
+        )
+        assertEquals(listOf("阮一峰的网络日志", "V2EX"), imported.map { it.title })
+        assertEquals(2, imported.size)
+        val url = "https://www.ruanyifeng.com/blog/atom.xml"
+        val parsed = parseFeedDocument(
+            "<feed xmlns=\"http://www.w3.org/2005/Atom\"><title>阮一峰的网络日志</title></feed>",
+            sourceId = url,
+            sourceTitle = "",
+            sourceUrl = url,
+        )
+        assertEquals("阮一峰的网络日志", chooseSubscriptionTitle("", parsed.title, url))
+        assertEquals("我的命名", chooseSubscriptionTitle("我的命名", parsed.title, url))
+        assertEquals("v2ex.com", chooseSubscriptionTitle("", null, "https://v2ex.com/index.xml"))
+    }
+
+    @Test
+    fun `unknown article container uses readable body fallback`() {
+        val html = """<html><body><nav>菜单</nav><div class="unknown"><p>这是一篇能正常阅读的文章，虽然网页没有使用常见的正文类名。</p><p>这是文章的第二段。</p></div><footer>页脚</footer></body></html>"""
+        val body = extractArticleBody(html)!!
+        assertTrue(body.contains("第二段"))
+        assertTrue(!body.contains("菜单") && !body.contains("页脚"))
+    }
+
     private fun sourceIdEpoch(): Long = parseFeedTime("2026-09-22T08:00:00Z")!!
 }

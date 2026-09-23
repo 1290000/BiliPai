@@ -14,6 +14,7 @@ import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayOutputStream
+import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
 private const val FEED_BODY_LIMIT_BYTES = 2 * 1024 * 1024
@@ -47,7 +48,7 @@ suspend fun fetchArticleHtml(url: String): Result<String> = withContext(Dispatch
             }
             val charset = response.body.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
             val page = output.toString(charset.name())
-            extractArticleBody(page) ?: error("原文里没有可排版的正文")
+            extractArticleBody(page) ?: error("暂时无法提取原文正文")
         }
     }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
 }
@@ -76,7 +77,13 @@ suspend fun fetchFeedXml(url: String): Result<String> = withContext(Dispatchers.
                         if (output.size() + read > FEED_BODY_LIMIT_BYTES) error("订阅内容超过 2MB")
                         output.write(buffer, 0, read)
                     }
-                    output.toString(Charsets.UTF_8.name())
+                    val bytes = output.toByteArray()
+                    val declaration = bytes.copyOfRange(0, minOf(bytes.size, 256)).toString(Charsets.ISO_8859_1)
+                    val declaredCharset = Regex("""encoding\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+                        .find(declaration)?.groupValues?.getOrNull(1)
+                        ?.let { runCatching { Charset.forName(it) }.getOrNull() }
+                    val charset = response.body.contentType()?.charset() ?: declaredCharset ?: Charsets.UTF_8
+                    String(bytes, charset).removePrefix("\uFEFF")
                 }
             }
         }
