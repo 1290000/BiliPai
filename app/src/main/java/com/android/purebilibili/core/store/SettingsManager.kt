@@ -6215,7 +6215,7 @@ object SettingsManager {
     }
 
     fun getVideoNoteDefaultCollapsed(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_VIDEO_NOTE_DEFAULT_COLLAPSED] ?: false }
+        .map { preferences -> preferences[KEY_VIDEO_NOTE_DEFAULT_COLLAPSED] ?: true }
 
     suspend fun setVideoNoteDefaultCollapsed(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
@@ -6229,11 +6229,11 @@ object SettingsManager {
 
     fun getVideoNoteDefaultCollapsedSync(context: Context): Boolean {
         return context.getSharedPreferences(VIDEO_NOTE_CACHE_PREFS, Context.MODE_PRIVATE)
-            .getBoolean(CACHE_KEY_VIDEO_NOTE_DEFAULT_COLLAPSED, false)
+            .getBoolean(CACHE_KEY_VIDEO_NOTE_DEFAULT_COLLAPSED, true)
     }
 
     fun getVideoInfoDefaultExpanded(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_VIDEO_INFO_DEFAULT_EXPANDED] ?: true }
+        .map { preferences -> preferences[KEY_VIDEO_INFO_DEFAULT_EXPANDED] ?: false }
 
     suspend fun setVideoInfoDefaultExpanded(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
