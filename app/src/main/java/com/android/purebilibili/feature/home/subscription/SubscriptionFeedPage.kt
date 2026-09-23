@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -65,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -89,8 +92,13 @@ import com.android.purebilibili.core.plugin.feed.parseFeedHtml
 import com.android.purebilibili.core.plugin.feed.stabilizeFeedOrder
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.ContainerLevel
+import com.android.purebilibili.core.ui.ImmersiveAppScaffold
+import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.components.AppAssistChip
+import com.android.purebilibili.core.ui.components.AppIcon
+import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
@@ -444,6 +452,7 @@ private fun SubscriptionArticleScreen(
     val imageUrls = remember(blocks) {
         blocks.filterIsInstance<FeedBlock.Image>().map { it.url }.distinct()
     }
+    val layoutDirection = LocalLayoutDirection.current
     AppSurface(
         modifier = with(sharedTransitionScope) {
             modifier
@@ -458,88 +467,116 @@ private fun SubscriptionArticleScreen(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppTextButton(onClick = onBack) { AppText("返回") }
-                    Spacer(Modifier.weight(1f))
-                    AppTextButton(onClick = {
-                        copyFeedText(context, feedBlocksPlainText(blocks).ifBlank { item.title })
-                    }) { AppText("复制正文") }
-                    if (item.link.isNotBlank()) {
-                        AppTextButton(onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(item.link)))
+        ImmersiveAppScaffold(
+            containerColor = MaterialTheme.colorScheme.surface,
+            topBarSurfaceColor = MaterialTheme.colorScheme.surface,
+            topBar = {
+                AppTopBar(
+                    title = "文章",
+                    navigationIcon = {
+                        AppIconButton(onClick = onBack) {
+                            AppIcon(rememberAppBackIcon(), contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        AppTextButton(
+                            onClick = {
+                                copyFeedText(context, feedBlocksPlainText(blocks).ifBlank { item.title })
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            AppText("复制")
+                        }
+                        if (item.link.isNotBlank()) {
+                            AppTextButton(
+                                onClick = {
+                                    runCatching {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(item.link)))
+                                    }
+                                },
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                AppText("原文")
                             }
-                        }) { AppText("打开原文") }
-                    }
-                }
-                AppText(item.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                AppText(
-                    text = listOf(item.sourceTitle, item.author, formatFeedAge(item.publishedEpochSec))
-                        .filter { it.isNotBlank() }
-                        .joinToString(" · "),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (loadingBody) {
-                    AppText("正在读取正文", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                bodyError?.let { AppText(it, color = MaterialTheme.colorScheme.error) }
-            }
-            lazyListItems(blocks) { block ->
-            when (block) {
-                is FeedBlock.Heading -> SelectionContainer {
-                    FeedInlineText(
-                        block.inlines,
-                        style = when (block.level) {
-                            1 -> MaterialTheme.typography.headlineSmall
-                            2 -> MaterialTheme.typography.titleLarge
-                            else -> MaterialTheme.typography.titleMedium
-                        },
-                    )
-                }
-                is FeedBlock.Paragraph -> SelectionContainer { FeedInlineText(block.inlines) }
-                is FeedBlock.Quote -> SelectionContainer {
-                    FeedInlineText(
-                        block.inlines,
-                        modifier = Modifier.padding(start = 12.dp),
-                        italic = true,
-                    )
-                }
-                is FeedBlock.Code -> SelectionContainer {
-                    AppText(block.text, fontWeight = FontWeight.Medium)
-                }
-                is FeedBlock.Image -> FeedArticleImage(
-                    url = block.url,
-                    alt = block.alt,
-                    onClick = {
-                        val index = imageUrls.indexOf(block.url).coerceAtLeast(0)
-                        onOpenImages(imageUrls, index)
+                        }
                     },
                 )
-                is FeedBlock.BulletList -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    block.items.forEach { line ->
-                        Row {
-                            AppText("• ")
-                            FeedInlineText(line, modifier = Modifier.weight(1f))
+            },
+        ) { scaffoldPadding ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = contentPadding.calculateStartPadding(layoutDirection),
+                    top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                    end = contentPadding.calculateEndPadding(layoutDirection),
+                    bottom = contentPadding.calculateBottomPadding(),
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item {
+                    AppText(item.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    AppText(
+                        text = listOf(item.sourceTitle, item.author, formatFeedAge(item.publishedEpochSec))
+                            .filter { it.isNotBlank() }
+                            .joinToString(" · "),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (loadingBody) {
+                        AppText("正在读取正文", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    bodyError?.let { AppText(it, color = MaterialTheme.colorScheme.error) }
+                }
+                lazyListItems(blocks) { block ->
+                    when (block) {
+                        is FeedBlock.Heading -> SelectionContainer {
+                            FeedInlineText(
+                                block.inlines,
+                                style = when (block.level) {
+                                    1 -> MaterialTheme.typography.headlineSmall
+                                    2 -> MaterialTheme.typography.titleLarge
+                                    else -> MaterialTheme.typography.titleMedium
+                                },
+                            )
+                        }
+                        is FeedBlock.Paragraph -> SelectionContainer { FeedInlineText(block.inlines) }
+                        is FeedBlock.Quote -> SelectionContainer {
+                            FeedInlineText(
+                                block.inlines,
+                                modifier = Modifier.padding(start = 12.dp),
+                                italic = true,
+                            )
+                        }
+                        is FeedBlock.Code -> SelectionContainer {
+                            AppText(block.text, fontWeight = FontWeight.Medium)
+                        }
+                        is FeedBlock.Image -> FeedArticleImage(
+                            url = block.url,
+                            alt = block.alt,
+                            onClick = {
+                                val index = imageUrls.indexOf(block.url).coerceAtLeast(0)
+                                onOpenImages(imageUrls, index)
+                            },
+                        )
+                        is FeedBlock.BulletList -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            block.items.forEach { line ->
+                                Row {
+                                    AppText("• ")
+                                    FeedInlineText(line, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        is FeedBlock.NumberedList -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            block.items.forEachIndexed { index, line ->
+                                Row {
+                                    AppText("${index + 1}. ")
+                                    FeedInlineText(line, modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
                     }
                 }
-                is FeedBlock.NumberedList -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    block.items.forEachIndexed { index, line ->
-                        Row {
-                            AppText("${index + 1}. ")
-                            FeedInlineText(line, modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
+                item { Spacer(Modifier.height(28.dp)) }
             }
-        }
-            item { Spacer(Modifier.height(28.dp)) }
         }
     }
 }
