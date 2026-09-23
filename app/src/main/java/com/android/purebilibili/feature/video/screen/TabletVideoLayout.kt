@@ -25,6 +25,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -302,6 +303,9 @@ internal fun TabletVideoLayout(
     
     // 🖥️ [修复] 使用 LocalContext 获取 Activity，而非 playerState.context
     val context = LocalContext.current
+    val secondaryDefaultTab by SettingsManager
+        .getTabletSecondaryDefaultTab(context)
+        .collectAsStateWithLifecycle(initialValue = com.android.purebilibili.core.store.TabletSecondaryDefaultTab.RELATED)
     val activity = remember(context) {
         (context as? android.app.Activity)
             ?: (context as? android.content.ContextWrapper)?.baseContext as? android.app.Activity
@@ -525,7 +529,8 @@ internal fun TabletVideoLayout(
                         onDanmakuSendClick = playbackActions.showDanmakuSendDialog,
                         onDanmakuToggle = danmakuChrome.onToggle,
                         fixedTab = if (useThreePaneLayout) TabletSecondaryTab.COMMENTS else null,
-                        relatedTabFirst = true,
+                        relatedTabFirst = secondaryDefaultTab ==
+                            com.android.purebilibili.core.store.TabletSecondaryDefaultTab.RELATED,
                         introContent = if (layoutPolicy.useTabletopLayout) {
                             {
                                 TabletVideoInfoPane(
@@ -753,9 +758,12 @@ internal fun TabletSecondaryContent(
         }
     }
     val relatedTabIndex = tabs.indexOf(TabletSecondaryTab.RELATED).coerceAtLeast(0)
-    var selectedTab by rememberSaveable(success.info.bvid, fixedTab) {
+    var selectedTab by rememberSaveable(success.info.bvid, fixedTab, relatedTabFirst) {
         mutableIntStateOf(
-            if (fixedTab != null) 0 else resolveTabletSecondaryDefaultTab()
+            if (fixedTab != null) 0 else resolveTabletSecondaryDefaultTabIndex(
+                tabs = tabs,
+                preferRelated = relatedTabFirst,
+            )
         )
     }
     val pagerState = rememberPagerState(
@@ -797,7 +805,9 @@ internal fun TabletSecondaryContent(
     }
     LaunchedEffect(subReplyState.visible) {
         if (subReplyState.visible && fixedTab != TabletSecondaryTab.RELATED) {
-            selectedTab = 0
+            resolveTabletCommentTabIndex(tabs)
+                .takeIf { it >= 0 }
+                ?.let { selectedTab = it }
             if (paneMode == TabletSecondaryPaneMode.COLLAPSED) {
                 onPaneModeChange(TabletSecondaryPaneMode.COMPACT)
             }

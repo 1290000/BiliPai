@@ -927,6 +927,16 @@ enum class TabletCommentPanelWidthPreset(
     }
 }
 
+enum class TabletSecondaryDefaultTab(val value: Int, val label: String) {
+    COMMENTS(0, "评论"),
+    RELATED(1, "推荐");
+
+    companion object {
+        fun fromValue(value: Int): TabletSecondaryDefaultTab =
+            entries.find { it.value == value } ?: RELATED
+    }
+}
+
 internal fun normalizeDanmakuFullscreenPanelWidthMode(
     mode: DanmakuPanelWidthMode
 ): DanmakuPanelWidthMode = DanmakuPanelWidthMode.THIRD
@@ -6530,6 +6540,7 @@ object SettingsManager {
         booleanPreferencesKey("portrait_letterbox_ambient_haze")
     private val KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET =
         intPreferencesKey("tablet_comment_panel_width_preset")
+    private val KEY_TABLET_SECONDARY_DEFAULT_TAB = intPreferencesKey("tablet_secondary_default_tab")
     private val KEY_AUTO_ENTER_FULLSCREEN = booleanPreferencesKey("auto_enter_fullscreen")
     private val KEY_AUTO_EXIT_FULLSCREEN = booleanPreferencesKey("auto_exit_fullscreen")
     private val KEY_AUTO_EXIT_FULLSCREEN_MODE = intPreferencesKey("auto_exit_fullscreen_mode")
@@ -6765,6 +6776,23 @@ object SettingsManager {
     ) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET] = preset.value
+        }
+    }
+
+    fun getTabletSecondaryDefaultTab(context: Context): Flow<TabletSecondaryDefaultTab> =
+        context.settingsDataStore.data
+            .map { preferences ->
+                TabletSecondaryDefaultTab.fromValue(
+                    preferences[KEY_TABLET_SECONDARY_DEFAULT_TAB] ?: TabletSecondaryDefaultTab.RELATED.value
+                )
+            }
+
+    suspend fun setTabletSecondaryDefaultTab(
+        context: Context,
+        tab: TabletSecondaryDefaultTab,
+    ) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_TABLET_SECONDARY_DEFAULT_TAB] = tab.value
         }
     }
 
@@ -7630,6 +7658,7 @@ object SettingsManager {
             BooleanShareablePreferenceDefinition(KEY_HORIZONTAL_ADAPTATION, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_HIDE_VIDEO_PAGE_STATUS_BAR, SettingsShareSection.PLAYBACK),
             IntShareablePreferenceDefinition(KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET, SettingsShareSection.PLAYBACK),
+            IntShareablePreferenceDefinition(KEY_TABLET_SECONDARY_DEFAULT_TAB, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_SHOW_ONLINE_COUNT, SettingsShareSection.PLAYBACK),
             IntShareablePreferenceDefinition(KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT, SettingsShareSection.PLAYBACK),
 
