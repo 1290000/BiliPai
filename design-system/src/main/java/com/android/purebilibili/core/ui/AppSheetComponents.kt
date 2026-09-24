@@ -354,6 +354,7 @@ fun AppBottomSheetDragHandle() {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AppDefaultBottomSheetDragHandle() {
     when (LocalAppUiStyle.current) {
         AppUiStyle.MIUIX -> AppBottomSheetDragHandle()
