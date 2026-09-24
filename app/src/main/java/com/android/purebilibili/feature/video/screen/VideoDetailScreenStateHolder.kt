@@ -4548,6 +4548,8 @@ internal fun VideoDetailScreenStateHolder(
                                 sourceLayout = landingLayoutForMedia?.layout
                                     ?: miuixLandingState.sourceLayout,
                                 detailContentLoading = uiState is VideoPlaybackUiState.Loading,
+                                isNowPlayingBar =
+                                    miuixLandingState.sourceChromeSnapshot?.isNowPlayingBar == true,
                             )
                         }
                         Box(

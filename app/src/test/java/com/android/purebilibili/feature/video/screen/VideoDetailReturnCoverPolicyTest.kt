@@ -61,6 +61,32 @@ class VideoDetailReturnCoverPolicyTest {
     }
 
     @Test
+    fun nowPlayingBarRevealsItsChromeDuringReturnWithoutChangingOpening() {
+        assertEquals(
+            1f,
+            resolveVideoDetailFlyingSourceChromeAlpha(
+                morphDepthProgress = 0.7f,
+                phase = VideoCardTransitionBackgroundPhase.RETURNING,
+                isReturnGestureInProgress = false,
+                sourceLayout = VideoCardSourceLayout.SIDE_BY_SIDE,
+                isNowPlayingBar = true,
+            ),
+            0.001f,
+        )
+        assertEquals(
+            0f,
+            resolveVideoDetailFlyingSourceChromeAlpha(
+                morphDepthProgress = 0.7f,
+                phase = VideoCardTransitionBackgroundPhase.OPENING,
+                isReturnGestureInProgress = false,
+                sourceLayout = VideoCardSourceLayout.SIDE_BY_SIDE,
+                isNowPlayingBar = true,
+            ),
+            0.001f,
+        )
+    }
+
+    @Test
     fun flyingSourceChromeOwnsClickFrameAndReturnLandingFrame() {
         assertEquals(
             1f,

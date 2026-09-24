@@ -175,6 +175,7 @@ internal fun resolveVideoDetailFlyingSourceChromeAlpha(
     isReturnGestureInProgress: Boolean,
     sourceLayout: VideoCardSourceLayout,
     detailContentLoading: Boolean = false,
+    isNowPlayingBar: Boolean = false,
 ): Float {
     // Opening, settled-detail return, quick reverse, and predictive seek all hide the
     // list slot. The flying entry must keep the complementary info band or the morph
@@ -184,14 +185,14 @@ internal fun resolveVideoDetailFlyingSourceChromeAlpha(
         phase = phase,
         isReturnGestureInProgress = isReturnGestureInProgress,
     )
-    if (!detailContentLoading || !isVideoCardReturnContentYieldActive(
+    if ((!detailContentLoading && !isNowPlayingBar) || !isVideoCardReturnContentYieldActive(
             phase = phase,
             isReturnGestureInProgress = isReturnGestureInProgress,
             morphDepthProgress = morphDepthProgress,
         )
     ) return regularAlpha
-    // A quick back can reverse the entry before detail data arrives. There is no detail chrome
-    // to hand off, so reveal the frozen source card during the first part of the return.
+    // A loading detail or compact playback bar otherwise leaves a black flying shell until
+    // the last few return frames. Reveal its frozen source chrome during the return instead.
     val returnProgress = (1f - morphDepthProgress.coerceIn(0f, 1f)) / 0.18f
     return maxOf(regularAlpha, returnProgress.coerceIn(0f, 1f))
 }
@@ -216,6 +217,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
     isReturnGestureInProgressProvider: () -> Boolean = { true },
 ) {
     val model = resolveVideoDetailReturnSourceCardChromeModel(info, sourceChromeSnapshot) ?: return
+    val isNowPlayingBar = sourceChromeSnapshot?.isNowPlayingBar == true
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val miuixHost = LocalMiuixVideoCardTransitionState.current
@@ -284,6 +286,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
             isReturnGestureInProgress = isReturnGestureInProgress,
             sourceLayout = layout.layout,
             detailContentLoading = detailContentLoading,
+            isNowPlayingBar = isNowPlayingBar,
         )
     }
 
@@ -317,6 +320,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
                 isReturnGestureInProgress = isReturnGestureInProgress,
                 sourceLayout = layout.layout,
                 detailContentLoading = detailContentLoading,
+                isNowPlayingBar = isNowPlayingBar,
             )
         }.drawWithContent {
             val inverse = currentInverseScale()
