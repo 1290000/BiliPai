@@ -34,10 +34,10 @@ private const val CARD_META_BLOCK_HEIGHT = 52
 private const val CARD_GAP_TITLE_META = 18f
 private const val CARD_GAP_META_COVER_WITH_META = 28f
 private const val CARD_GAP_META_COVER_WITHOUT_META = 36f
-private const val CARD_GAP_COVER_FOOTER = 40f
-private const val CARD_FOOTER_HEIGHT = 168
-private const val CARD_QR_SIZE = 144
+private const val CARD_BOTTOM_PADDING = 56f
+private const val CARD_QR_SIZE = 136
 private const val CARD_QR_CORNER = 18f
+private const val CARD_QR_TEXT_GAP = 28f
 
 /**
  * 合成可分享的视频卡片图（标题 + 数据 + 封面 + 署名 + 二维码）。
@@ -96,10 +96,12 @@ internal fun renderVideoShareCardBitmap(
         color = Color.parseColor("#7A7A7A")
         textSize = 36f
     }
+    // 右侧留给二维码，标题/数据行限宽，避免与码重叠。
+    val textMaxWidth = (contentWidth - CARD_QR_SIZE - CARD_QR_TEXT_GAP).toInt().coerceAtLeast(1)
     val titleLayout = buildShareCardTitleLayout(
         title = payload.title,
         paint = titlePaint,
-        maxWidth = contentWidth
+        maxWidth = textMaxWidth
     )
     val metaLine = resolveVideoShareCardMetaLine(payload)
     val titleLineCount = titleLayout.lineCount
@@ -111,20 +113,19 @@ internal fun renderVideoShareCardBitmap(
     } else {
         CARD_GAP_META_COVER_WITH_META
     }
-    val cardHeight = (CARD_PADDING * 2 +
-        titleBlockHeight +
-        gapTitleMeta +
-        metaBlockHeight +
-        gapMetaCover +
-        coverHeight +
-        CARD_GAP_COVER_FOOTER +
-        CARD_FOOTER_HEIGHT).toInt()
+    val headerTextHeight = titleBlockHeight + gapTitleMeta + metaBlockHeight
+
+    // 与绘制共用同一套基线坐标，再反推总高，避免底部被裁切。
+    var contentY = CARD_TITLE_FIRST_BASELINE + titleBlockHeight + gapTitleMeta + metaBlockHeight
+    contentY += gapMetaCover
+    val coverTop = CARD_PADDING + contentY
+    val cardHeight = (coverTop + coverHeight + CARD_BOTTOM_PADDING).toInt()
 
     val bitmap = Bitmap.createBitmap(CARD_WIDTH, cardHeight, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     canvas.drawColor(Color.WHITE)
 
-    // 标题按基线逐行绘制，保证与数据行的间距与旧版一致。
+    // 标题按基线逐行绘制，保证与数据行的间距稳定。
     var baseline = CARD_PADDING + CARD_TITLE_FIRST_BASELINE
     for (index in 0 until titleLineCount) {
         val line = titleLayout.text
@@ -138,8 +139,6 @@ internal fun renderVideoShareCardBitmap(
         canvas.drawText(metaLine, CARD_PADDING.toFloat(), baseline, metaPaint)
         baseline += metaBlockHeight
     }
-    baseline += gapMetaCover
-    val coverTop = baseline
     drawRoundedBitmap(
         canvas = canvas,
         bitmap = coverBitmap,
@@ -150,14 +149,16 @@ internal fun renderVideoShareCardBitmap(
         radius = CARD_CORNER_RADIUS
     )
 
-    val footerTop = coverTop + coverHeight + CARD_GAP_COVER_FOOTER
+    // 二维码置于标题区右侧，与标题+数据块垂直居中。
+    val textBlockTop = CARD_PADDING.toFloat()
+    val textBlockBottom = CARD_PADDING + headerTextHeight
     val qrLeft = (CARD_WIDTH - CARD_PADDING - CARD_QR_SIZE).toFloat()
-    val qrTop = footerTop + ((CARD_FOOTER_HEIGHT - CARD_QR_SIZE) / 2f)
+    val qrTop = textBlockTop + (textBlockBottom - textBlockTop - CARD_QR_SIZE) / 2f
     drawShareCardQrPlate(
         canvas = canvas,
         url = payload.url,
         left = qrLeft,
-        top = qrTop,
+        top = qrTop.coerceAtLeast(textBlockTop),
         size = CARD_QR_SIZE.toFloat()
     )
     return bitmap

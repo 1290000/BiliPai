@@ -149,7 +149,7 @@ internal fun VideoShareSheet(
             )
             AppText(
                 text = if (shareStyle == VideoShareStyle.CARD) {
-                    "以封面卡片图分享，并附上标题与链接"
+                    "以封面卡片图分享，并附上标题与二维码"
                 } else {
                     "以标题 + 链接分享，方便直接打开"
                 },

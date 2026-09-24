@@ -602,6 +602,7 @@ fun VideoPlayerOverlay(
     showDislikeAction: Boolean = true,
     // [New] Cover URL for Download
     coverUrl: String = "",
+    videoSharePlayCountText: String = "",
     //  [新增] 视频设置面板回调
     onReloadVideo: () -> Unit = {},
     sleepTimerMinutes: Int? = null,
@@ -724,6 +725,8 @@ fun VideoPlayerOverlay(
             title = title,
             bvid = bvid,
             coverUrl = coverUrl,
+            upName = videoOwnerName,
+            playCountText = videoSharePlayCountText,
         )
     }
     var showChapterList by remember { mutableStateOf(false) }  // 📖 章节列表
