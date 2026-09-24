@@ -88,6 +88,7 @@ import com.android.purebilibili.core.theme.PureBiliBiliTheme
 import com.android.purebilibili.core.ui.blur.rememberRecoverableHazeState
 import com.android.purebilibili.core.ui.motion.AppMotionEasing
 import com.android.purebilibili.core.ui.performance.AppRuntimeVisualGuardTracker
+import com.android.purebilibili.core.ui.performance.applyPreferredDisplayMode
 import com.android.purebilibili.core.ui.wallpaper.SplashWallpaperLayout
 import com.android.purebilibili.core.ui.wallpaper.resolveSplashWallpaperLayout
 import com.android.purebilibili.core.util.BilibiliNavigationTarget
@@ -1041,6 +1042,9 @@ open class MainActivity : AppCompatActivity() {
         VideoRepository.preloadHomeData()
         
         super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            applyPreferredDisplayMode(SettingsManager.getScreenDisplayModeId(this@MainActivity).first())
+        }
         //  初始调用，后续会根据主题动态更新
         enableEdgeToEdge()
         AppWindowSystemUiController.configureEdgeToEdgeHost(this)
