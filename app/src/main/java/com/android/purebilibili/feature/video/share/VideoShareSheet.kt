@@ -52,6 +52,21 @@ import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.common.copyPlainTextToClipboard
 import kotlinx.coroutines.launch
 
+@Composable
+internal fun VideoShareSheetHost(
+    payload: VideoSharePayload?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    payload?.let { sharePayload ->
+        VideoShareSheet(
+            payload = sharePayload,
+            onDismiss = onDismiss,
+            modifier = modifier,
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun VideoShareSheet(

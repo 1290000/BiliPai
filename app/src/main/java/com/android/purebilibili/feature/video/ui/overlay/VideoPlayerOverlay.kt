@@ -107,7 +107,9 @@ import com.android.purebilibili.core.store.player.PlayerSettingsStore
 import com.android.purebilibili.core.ui.adaptive.MotionTier
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
-import com.android.purebilibili.core.util.ShareUtils
+import com.android.purebilibili.feature.video.share.VideoSharePayload
+import com.android.purebilibili.feature.video.share.VideoShareSheetHost
+import com.android.purebilibili.feature.video.share.buildVideoSharePayload
 import com.android.purebilibili.core.util.WindowWidthSizeClass
 import com.android.purebilibili.core.util.Logger
 import com.android.purebilibili.core.util.NetworkUtils
@@ -715,6 +717,15 @@ fun VideoPlayerOverlay(
     var showRatioMenu by remember { mutableStateOf(false) }
     var showDanmakuSettings by remember { mutableStateOf(false) }
     var showVideoSettings by remember { mutableStateOf(false) }  //  新增
+    var pendingVideoShare by remember { mutableStateOf<VideoSharePayload?>(null) }
+    fun openVideoShareSheet() {
+        if (bvid.isEmpty()) return
+        pendingVideoShare = buildVideoSharePayload(
+            title = title,
+            bvid = bvid,
+            coverUrl = coverUrl,
+        )
+    }
     var showChapterList by remember { mutableStateOf(false) }  // 📖 章节列表
     var showCastDialog by remember { mutableStateOf(false) }   // 📺 投屏对话框
     var activeCastPlugin by remember { mutableStateOf<CastPluginApi?>(null) }
@@ -1437,8 +1448,8 @@ fun VideoPlayerOverlay(
                         onShareClick = {
                             if (onShare != null) {
                                 onShare()
-                            } else if (bvid.isNotEmpty()) {
-                                ShareUtils.shareVideo(context, title, bvid)
+                            } else {
+                                openVideoShareSheet()
                             }
                         },
                         onCommentClick = onLandscapeCommentClick,
@@ -1459,9 +1470,7 @@ fun VideoPlayerOverlay(
                         onHome = onHomeClick,
                         onSettings = { showVideoSettings = true },
                         onShare = onShare ?: {
-                            if (bvid.isNotEmpty()) {
-                                ShareUtils.shareVideo(context, title, bvid)
-                            }
+                            openVideoShareSheet()
                         },
                         onAudioMode = onAudioOnlyToggle,
                         isAudioOnly = isAudioOnly,
@@ -1936,6 +1945,11 @@ fun VideoPlayerOverlay(
                 }
             }
         }
+
+        VideoShareSheetHost(
+            payload = pendingVideoShare,
+            onDismiss = { pendingVideoShare = null },
+        )
 
         // --- 6. 清晰度菜单 ---
         if (showQualityMenu) {

@@ -16,6 +16,8 @@ import android.text.TextUtils
 import android.util.Log
 import androidx.core.content.FileProvider
 import com.android.purebilibili.core.util.FormatUtils
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -25,11 +27,20 @@ import kotlinx.coroutines.withContext
 private const val CARD_WIDTH = 1080
 private const val CARD_PADDING = 56
 private const val CARD_CORNER_RADIUS = 28f
-private const val CARD_BRAND = "BiliPai"
 private const val CARD_TITLE_MAX_LINES = 3
+private const val CARD_TITLE_LINE_HEIGHT = 64f
+private const val CARD_TITLE_FIRST_BASELINE = 48f
+private const val CARD_META_BLOCK_HEIGHT = 52
+private const val CARD_GAP_TITLE_META = 18f
+private const val CARD_GAP_META_COVER_WITH_META = 28f
+private const val CARD_GAP_META_COVER_WITHOUT_META = 36f
+private const val CARD_GAP_COVER_FOOTER = 40f
+private const val CARD_FOOTER_HEIGHT = 168
+private const val CARD_QR_SIZE = 144
+private const val CARD_QR_CORNER = 18f
 
 /**
- * 合成可分享的视频卡片图（标题 + 数据 + 封面 + 应用署名）。
+ * 合成可分享的视频卡片图（标题 + 数据 + 封面 + 署名 + 二维码）。
  * 成功时返回可被微信/QQ 当作图片消息接收的 FileProvider Uri。
  */
 internal suspend fun prepareVideoShareCardFile(
@@ -85,59 +96,70 @@ internal fun renderVideoShareCardBitmap(
         color = Color.parseColor("#7A7A7A")
         textSize = 36f
     }
-    val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#9A9A9A")
-        textSize = 32f
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    }
     val titleLayout = buildShareCardTitleLayout(
         title = payload.title,
         paint = titlePaint,
         maxWidth = contentWidth
     )
     val metaLine = resolveVideoShareCardMetaLine(payload)
-    val titleBlockHeight = titleLayout.height
-    val metaBlockHeight = if (metaLine.isBlank()) 0 else 52
-    val gapTitleMeta = if (metaBlockHeight == 0) 0f else 18f
-    val gapMetaCover = if (metaBlockHeight == 0) 36f else 28f
-    val gapCoverBrand = 36f
-    val brandHeight = 44
+    val titleLineCount = titleLayout.lineCount
+    val titleBlockHeight = (titleLineCount * CARD_TITLE_LINE_HEIGHT).toInt()
+    val metaBlockHeight = if (metaLine.isBlank()) 0 else CARD_META_BLOCK_HEIGHT
+    val gapTitleMeta = if (metaBlockHeight == 0) 0f else CARD_GAP_TITLE_META
+    val gapMetaCover = if (metaBlockHeight == 0) {
+        CARD_GAP_META_COVER_WITHOUT_META
+    } else {
+        CARD_GAP_META_COVER_WITH_META
+    }
     val cardHeight = (CARD_PADDING * 2 +
         titleBlockHeight +
         gapTitleMeta +
         metaBlockHeight +
         gapMetaCover +
         coverHeight +
-        gapCoverBrand +
-        brandHeight).toInt()
+        CARD_GAP_COVER_FOOTER +
+        CARD_FOOTER_HEIGHT).toInt()
 
     val bitmap = Bitmap.createBitmap(CARD_WIDTH, cardHeight, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     canvas.drawColor(Color.WHITE)
 
-    var y = CARD_PADDING + 48f
-    canvas.save()
-    canvas.translate(CARD_PADDING.toFloat(), y)
-    titleLayout.draw(canvas)
-    canvas.restore()
-    y += titleBlockHeight
-    if (metaBlockHeight > 0) {
-        y += gapTitleMeta
-        canvas.drawText(metaLine, CARD_PADDING.toFloat(), y, metaPaint)
-        y += metaBlockHeight
+    // 标题按基线逐行绘制，保证与数据行的间距与旧版一致。
+    var baseline = CARD_PADDING + CARD_TITLE_FIRST_BASELINE
+    for (index in 0 until titleLineCount) {
+        val line = titleLayout.text
+            .subSequence(titleLayout.getLineStart(index), titleLayout.getLineEnd(index))
+            .toString()
+        canvas.drawText(line, CARD_PADDING.toFloat(), baseline, titlePaint)
+        baseline += CARD_TITLE_LINE_HEIGHT
     }
-    y += gapMetaCover
+    if (metaBlockHeight > 0) {
+        baseline += gapTitleMeta
+        canvas.drawText(metaLine, CARD_PADDING.toFloat(), baseline, metaPaint)
+        baseline += metaBlockHeight
+    }
+    baseline += gapMetaCover
+    val coverTop = baseline
     drawRoundedBitmap(
         canvas = canvas,
         bitmap = coverBitmap,
         left = CARD_PADDING.toFloat(),
-        top = y,
+        top = coverTop,
         width = contentWidth.toFloat(),
         height = coverHeight.toFloat(),
         radius = CARD_CORNER_RADIUS
     )
-    y += coverHeight + gapCoverBrand
-    canvas.drawText(CARD_BRAND, CARD_PADDING.toFloat(), y, brandPaint)
+
+    val footerTop = coverTop + coverHeight + CARD_GAP_COVER_FOOTER
+    val qrLeft = (CARD_WIDTH - CARD_PADDING - CARD_QR_SIZE).toFloat()
+    val qrTop = footerTop + ((CARD_FOOTER_HEIGHT - CARD_QR_SIZE) / 2f)
+    drawShareCardQrPlate(
+        canvas = canvas,
+        url = payload.url,
+        left = qrLeft,
+        top = qrTop,
+        size = CARD_QR_SIZE.toFloat()
+    )
     return bitmap
 }
 
@@ -154,6 +176,51 @@ internal fun buildShareCardTitleLayout(
         .setAlignment(Layout.Alignment.ALIGN_NORMAL)
         .setIncludePad(false)
         .build()
+}
+
+private fun drawShareCardQrPlate(
+    canvas: Canvas,
+    url: String,
+    left: Float,
+    top: Float,
+    size: Float
+) {
+    val platePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+    }
+    val plateRect = RectF(left, top, left + size, top + size)
+    canvas.drawRoundRect(plateRect, CARD_QR_CORNER, CARD_QR_CORNER, platePaint)
+
+    val qrBitmap = createShareCardQrBitmap(url, CARD_QR_SIZE)
+    val qrPadding = 8f
+    val dst = RectF(
+        left + qrPadding,
+        top + qrPadding,
+        left + size - qrPadding,
+        top + size - qrPadding
+    )
+    canvas.drawBitmap(qrBitmap, null, dst, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+    qrBitmap.recycle()
+}
+
+private fun createShareCardQrBitmap(url: String, size: Int): Bitmap {
+    val matrix = QRCodeWriter().encode(
+        url,
+        BarcodeFormat.QR_CODE,
+        size,
+        size,
+        mapOf(
+            com.google.zxing.EncodeHintType.MARGIN to 1,
+            com.google.zxing.EncodeHintType.ERROR_CORRECTION to "M",
+        )
+    )
+    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmap ->
+        for (x in 0 until size) {
+            for (y in 0 until size) {
+                bitmap.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
+            }
+        }
+    }
 }
 
 private fun drawRoundedBitmap(
