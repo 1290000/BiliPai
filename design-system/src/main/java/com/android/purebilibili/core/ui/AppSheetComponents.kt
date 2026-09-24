@@ -301,7 +301,7 @@ fun AppModalBottomSheet(
                 contentColor = contentColor,
                 tonalElevation = tonalElevation,
             ) {
-                Column {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     resolvedDragHandle()
                     content()
                 }

@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,9 +48,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.android.purebilibili.core.ui.AppModalBottomSheet
 import com.android.purebilibili.core.ui.components.AppNativeSegmentedControl
 import com.android.purebilibili.core.ui.components.AppSegmentOption
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
+import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.core.ui.common.copyPlainTextToClipboard
 import kotlinx.coroutines.launch
 
@@ -139,14 +144,23 @@ internal fun VideoShareSheet(
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
             )
 
-            AppNativeSegmentedControl(
-                options = styleOptions,
-                selectedValue = shareStyle,
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth(),
-                onSelectionChange = { shareStyle = it },
-            )
+            val segmentModifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()
+            if (LocalAppThemeConfig.current.liquidGlassEnabled) {
+                BottomBarLiquidSegmentedControl(
+                    items = styleOptions.map { it.label },
+                    selectedIndex = shareStyle.ordinal,
+                    onSelected = { shareStyle = VideoShareStyle.entries[it] },
+                    modifier = segmentModifier,
+                    forceEqualWidth = true,
+                )
+            } else {
+                AppNativeSegmentedControl(
+                    options = styleOptions,
+                    selectedValue = shareStyle,
+                    modifier = segmentModifier,
+                    onSelectionChange = { shareStyle = it },
+                )
+            }
             AppText(
                 text = if (shareStyle == VideoShareStyle.CARD) {
                     "以封面卡片图分享，并附上标题与二维码"
@@ -272,6 +286,16 @@ private fun VideoShareSheetItemView(
     item: VideoShareSheetItem,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val appIcon = remember(context, item.target) {
+        item.target.packageName?.let { packageName ->
+            try {
+                context.packageManager.getApplicationIcon(packageName)
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            }
+        }
+    }
     Column(
         modifier = Modifier.width(72.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -284,7 +308,15 @@ private fun VideoShareSheetItemView(
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            if (item.iconVector != null) {
+            if (appIcon != null) {
+                AndroidView(
+                    factory = { viewContext -> ImageView(viewContext).apply {
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                    } },
+                    update = { it.setImageDrawable(appIcon) },
+                    modifier = Modifier.size(58.dp),
+                )
+            } else if (item.iconVector != null) {
                 AppIcon(
                     imageVector = item.iconVector,
                     contentDescription = item.label,
