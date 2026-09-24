@@ -3260,7 +3260,18 @@ private fun VideoPageItem(
                         )
                     ) {
                         PortraitFavoriteAction.ToggleFavorite -> {
+                            val currentFavoriteState = resolvedInteractionState.isFavorited
+                            val currentFavoriteCount = resolvedInteractionState.favoriteCount
                             viewModel.toggleFavorite()
+                            val nextFavorited = !currentFavoriteState
+                            val nextFavoriteCount = (
+                                currentFavoriteCount +
+                                    if (nextFavorited) 1 else -1
+                                ).coerceAtLeast(0)
+                            portraitInteractionOverride = portraitInteractionOverride.copy(
+                                isFavorited = nextFavorited,
+                                favoriteCount = nextFavoriteCount
+                            )
                         }
                         PortraitFavoriteAction.OpenFavoriteFolders -> {
                             viewModel.showFavoriteFolderDialog(activeAid)
@@ -3726,7 +3737,7 @@ internal fun resolvePortraitVideoInteractionUiState(
     localOverride: PortraitVideoInteractionOverride? = null
 ): PortraitVideoInteractionUiState {
     val currentSharedState = sharedState?.takeIf { it.info.bvid == targetBvid }
-    return if (currentSharedState != null) {
+    val base = if (currentSharedState != null) {
         PortraitVideoInteractionUiState(
             isLiked = currentSharedState.isLiked,
             isFavorited = currentSharedState.isFavorited,
@@ -3735,12 +3746,21 @@ internal fun resolvePortraitVideoInteractionUiState(
         )
     } else {
         PortraitVideoInteractionUiState(
-            isLiked = localOverride?.isLiked ?: false,
-            isFavorited = localOverride?.isFavorited ?: false,
-            likeCount = localOverride?.likeCount ?: fallbackStat.like,
-            favoriteCount = localOverride?.favoriteCount ?: fallbackStat.favorite
+            isLiked = false,
+            isFavorited = false,
+            likeCount = fallbackStat.like,
+            favoriteCount = fallbackStat.favorite
         )
     }
+    if (localOverride == null) {
+        return base
+    }
+    return PortraitVideoInteractionUiState(
+        isLiked = localOverride.isLiked ?: base.isLiked,
+        isFavorited = localOverride.isFavorited ?: base.isFavorited,
+        likeCount = localOverride.likeCount ?: base.likeCount,
+        favoriteCount = localOverride.favoriteCount ?: base.favoriteCount
+    )
 }
 
 internal fun resolvePortraitTripleActionOverride(

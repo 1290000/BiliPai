@@ -1550,9 +1550,9 @@ private fun PlaybackInteractionSettingsSection(
             icon = rememberSettingsSemanticIcon(SettingsIconRole.FAVORITE_TAP_MODE),
             title = "点按收藏进默认收藏夹",
             subtitle = if (favoriteQuickSaveDefaultFolder) {
-                "点按直接收藏到默认收藏夹，长按选择收藏夹"
+                "点按直接收藏到默认收藏夹，长按可选择收藏夹"
             } else {
-                "点按打开收藏夹选择，长按同样可选择"
+                "点按打开收藏夹选择"
             },
             checked = favoriteQuickSaveDefaultFolder,
             onCheckedChange = {

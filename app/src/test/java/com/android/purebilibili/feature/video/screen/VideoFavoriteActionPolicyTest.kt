@@ -68,6 +68,26 @@ class VideoFavoriteActionPolicyTest {
     }
 
     @Test
+    fun audioMode_alwaysOpensFolderPickerEvenWithQuickSave() {
+        assertEquals(
+            VideoFavoriteAction.OpenFavoriteFolders,
+            resolveVideoFavoriteAction(
+                entryPoint = VideoFavoriteEntryPoint.AudioMode,
+                isLongPress = false,
+                quickSaveDefaultFolder = true,
+            )
+        )
+        assertEquals(
+            VideoFavoriteAction.OpenFavoriteFolders,
+            resolveVideoFavoriteAction(
+                entryPoint = VideoFavoriteEntryPoint.AudioMode,
+                isLongPress = false,
+                quickSaveDefaultFolder = false,
+            )
+        )
+    }
+
+    @Test
     fun portraitFavoriteAction_followsQuickSaveAndLongPress() {
         assertEquals(
             PortraitFavoriteAction.OpenFavoriteFolders,

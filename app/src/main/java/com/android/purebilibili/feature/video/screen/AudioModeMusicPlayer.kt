@@ -382,7 +382,7 @@ internal fun AudioModeMusicPlayer(
         onFavoriteClick = {
             when (
                 resolveVideoFavoriteAction(
-                    entryPoint = VideoFavoriteEntryPoint.DetailActionRow,
+                    entryPoint = VideoFavoriteEntryPoint.AudioMode,
                     isLongPress = false,
                     quickSaveDefaultFolder = favoriteQuickSaveDefaultFolder,
                 )

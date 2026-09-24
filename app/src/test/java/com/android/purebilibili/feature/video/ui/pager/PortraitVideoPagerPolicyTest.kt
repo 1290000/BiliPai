@@ -534,6 +534,36 @@ class PortraitVideoPagerPolicyTest {
     }
 
     @Test
+    fun portraitInteractionUi_appliesLocalOverrideOnMatchingSharedState() {
+        val sharedState = VideoPlaybackUiState.Success(
+            info = ViewInfo(
+                bvid = "BV_CUR",
+                aid = 2002L,
+                owner = Owner(mid = 1L, name = "up"),
+                stat = Stat(like = 20, favorite = 10)
+            ),
+            playUrl = "https://example.com/video.mp4",
+            isLiked = false,
+            isFavorited = false
+        )
+
+        val resolved = resolvePortraitVideoInteractionUiState(
+            targetBvid = "BV_CUR",
+            fallbackStat = Stat(like = 20, favorite = 10),
+            sharedState = sharedState,
+            localOverride = PortraitVideoInteractionOverride(
+                isFavorited = true,
+                favoriteCount = 11
+            )
+        )
+
+        assertFalse(resolved.isLiked)
+        assertTrue(resolved.isFavorited)
+        assertEquals(20, resolved.likeCount)
+        assertEquals(11, resolved.favoriteCount)
+    }
+
+    @Test
     fun portraitTripleActionOverride_updatesLocalLikeAndFavoriteCounts() {
         val resolved = resolvePortraitTripleActionOverride(
             currentState = PortraitVideoInteractionUiState(
