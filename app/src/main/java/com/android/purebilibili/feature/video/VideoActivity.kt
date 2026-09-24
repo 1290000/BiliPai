@@ -15,7 +15,6 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
-import android.view.MotionEvent
 import com.android.purebilibili.core.util.Logger
 import android.util.Rational
 import androidx.activity.ComponentActivity
@@ -39,7 +38,6 @@ import com.android.purebilibili.core.ui.AppWindowSystemUiController
 import com.android.purebilibili.core.ui.ProvideAppThemeConfig
 import com.android.purebilibili.core.ui.blur.BlurIntensity
 import com.android.purebilibili.core.ui.performance.AppRuntimeVisualGuardTracker
-import com.android.purebilibili.core.ui.performance.InteractionRefreshRateController
 import com.android.purebilibili.core.ui.performance.ProvideRuntimeVisualGuard
 import com.android.purebilibili.core.ui.adaptive.toAdaptiveFoldPosture
 import com.android.purebilibili.core.ui.transition.LocalVideoTransitionAdaptiveInfo
@@ -71,7 +69,6 @@ private const val CONTROL_TYPE_PAUSE = 2
 class VideoActivity : ComponentActivity() {
 
     private val viewModel: VideoPlaybackViewModel by viewModels()
-    private val interactionRefreshRateController by lazy { InteractionRefreshRateController(this) }
     private var isFullscreen by mutableStateOf(false)
     private var isInPipMode by mutableStateOf(false)
     private var runtimeJankStats: JankStats? = null
@@ -312,33 +309,6 @@ class VideoActivity : ComponentActivity() {
             return true
         }
         return super.dispatchKeyEvent(event)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        interactionRefreshRateController.onResume()
-    }
-
-    override fun onPause() {
-        interactionRefreshRateController.onPause()
-        super.onPause()
-    }
-
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        interactionRefreshRateController.onTouchEvent(ev)
-        return super.dispatchTouchEvent(ev)
-    }
-
-    override fun dispatchGenericMotionEvent(ev: MotionEvent): Boolean {
-        if (ev.actionMasked == MotionEvent.ACTION_SCROLL) {
-            interactionRefreshRateController.onOtherInteraction()
-        }
-        return super.dispatchGenericMotionEvent(ev)
-    }
-
-    override fun onUserInteraction() {
-        super.onUserInteraction()
-        interactionRefreshRateController.onOtherInteraction()
     }
 
     override fun onStop() {
