@@ -13,7 +13,9 @@ class VideoSharePolicyTest {
         val payload = buildVideoSharePayload(
             title = " Uzi回应送老婆贵价项链 ",
             bvid = " BV1aRG46aEnz ",
-            coverUrl = " https://i0.hdslb.com/bfs/archive/test.jpg "
+            coverUrl = " https://i0.hdslb.com/bfs/archive/test.jpg ",
+            upName = " 鹿乃ちゃん ",
+            playCountText = " 36.3万 ",
         )
 
         assertEquals("Uzi回应送老婆贵价项链", payload.title)
@@ -24,6 +26,31 @@ class VideoSharePolicyTest {
             "【Uzi回应送老婆贵价项链】\nhttps://www.bilibili.com/video/BV1aRG46aEnz",
             payload.text
         )
+        assertEquals("鹿乃ちゃん", payload.upName)
+        assertEquals("36.3万", payload.playCountText)
+        assertEquals("UP主：鹿乃ちゃん  ·  播放：36.3万", resolveVideoShareCardMetaLine(payload))
+    }
+
+    @Test
+    fun resolveVideoShareCardMetaLine_omitsMissingFields() {
+        assertEquals(
+            "UP主：测试",
+            resolveVideoShareCardMetaLine(
+                buildVideoSharePayload(title = "标题", bvid = "BV1", upName = "测试")
+            )
+        )
+        assertEquals(
+            "",
+            resolveVideoShareCardMetaLine(
+                buildVideoSharePayload(title = "标题", bvid = "BV1")
+            )
+        )
+    }
+
+    @Test
+    fun videoShareStyle_defaultsToLinkAndCard() {
+        assertEquals(VideoShareStyle.LINK, VideoShareStyle.valueOf("LINK"))
+        assertEquals(VideoShareStyle.CARD, VideoShareStyle.valueOf("CARD"))
     }
 
     @Test

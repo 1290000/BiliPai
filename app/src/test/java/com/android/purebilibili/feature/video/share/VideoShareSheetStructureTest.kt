@@ -7,26 +7,56 @@ import kotlin.test.assertTrue
 class VideoShareSheetStructureTest {
 
     @Test
-    fun moreSharePath_preparesCoverBeforeOpeningSystemChooser() {
+    fun shareSheet_exposesLinkAndCardStylePicker() {
+        val source = loadVideoShareSheetSource()
+
+        assertTrue(
+            source.contains("VideoShareStyle.LINK"),
+            "Share sheet should offer the legacy link style"
+        )
+        assertTrue(
+            source.contains("VideoShareStyle.CARD"),
+            "Share sheet should offer the card style"
+        )
+        assertTrue(
+            source.contains("AppNativeSegmentedControl"),
+            "Share style should be selectable before choosing a target"
+        )
+        assertTrue(
+            source.contains("prepareVideoShareCardFile"),
+            "Card style should synthesize a share card image"
+        )
+        assertTrue(
+            source.contains("prepareVideoShareMedia"),
+            "Share sheet should resolve media by the selected style"
+        )
+    }
+
+    @Test
+    fun moreSharePath_preparesMediaBeforeOpeningSystemChooser() {
         val source = loadVideoShareSheetSource()
         val moreBranch = source
             .substringAfter("VideoShareTarget.MORE -> {")
-            .substringBefore("}")
+            .substringBefore("VideoShareSheetItemView")
         val startMoreFunction = source
             .substringAfter("private fun Context.startMoreVideoShare")
             .substringBefore("private fun Context.startActivityWithTaskFlag")
 
         assertTrue(
-            moreBranch.contains("prepareVideoShareCoverFile"),
-            "More share should prepare cover before opening the system sharesheet"
+            moreBranch.contains("prepareVideoShareMedia"),
+            "More share should prepare style-aware media before opening the system sharesheet"
         )
         assertTrue(
-            startMoreFunction.contains("coverFile: VideoShareCoverFile?"),
-            "More share should receive a prepared cover file"
+            startMoreFunction.contains("shareMedia: VideoShareCoverFile?"),
+            "More share should receive prepared share media"
         )
         assertTrue(
             startMoreFunction.contains("buildVideoCoverShareIntent"),
-            "More share should use cover image intent when cover is available"
+            "More share should use image intent when card media is available"
+        )
+        assertTrue(
+            startMoreFunction.contains("buildVideoShareIntent(payload)"),
+            "More share should fall back to link text intent"
         )
     }
 

@@ -13,7 +13,9 @@ internal data class VideoSharePayload(
     val bvid: String,
     val coverUrl: String,
     val url: String,
-    val text: String
+    val text: String,
+    val upName: String = "",
+    val playCountText: String = "",
 )
 
 internal enum class VideoShareTarget(val packageName: String?) {
@@ -23,10 +25,17 @@ internal enum class VideoShareTarget(val packageName: String?) {
     MORE(null)
 }
 
+internal enum class VideoShareStyle {
+    LINK,
+    CARD,
+}
+
 internal fun buildVideoSharePayload(
     title: String,
     bvid: String,
-    coverUrl: String = ""
+    coverUrl: String = "",
+    upName: String = "",
+    playCountText: String = "",
 ): VideoSharePayload {
     val cleanTitle = title.trim()
     val cleanBvid = bvid.trim()
@@ -37,8 +46,22 @@ internal fun buildVideoSharePayload(
         bvid = cleanBvid,
         coverUrl = coverUrl.trim(),
         url = url,
-        text = "【$fallbackTitle】\n$url"
+        text = "【$fallbackTitle】\n$url",
+        upName = upName.trim(),
+        playCountText = playCountText.trim(),
     )
+}
+
+internal fun resolveVideoShareCardMetaLine(payload: VideoSharePayload): String {
+    val parts = buildList {
+        if (payload.upName.isNotBlank()) {
+            add("UP主：${payload.upName}")
+        }
+        if (payload.playCountText.isNotBlank()) {
+            add("播放：${payload.playCountText}")
+        }
+    }
+    return parts.joinToString("  ·  ")
 }
 
 internal fun buildVideoShareIntent(payload: VideoSharePayload): Intent {

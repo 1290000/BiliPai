@@ -251,7 +251,7 @@ import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.core.util.applyPlayerRequestedOrientation
 import com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy
-import com.android.purebilibili.core.util.ShareUtils
+
 import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
 import com.android.purebilibili.feature.video.ui.components.DanmakuContextMenu
@@ -4914,13 +4914,6 @@ internal fun VideoDetailScreenStateHolder(
                                         openCommentUrl = openCommentUrl,
                                         onSearchKeywordClick = navigateToSearchKeywordFromVideo,
                                         onOpenBilibiliLink = onOpenBilibiliLink,
-                                        onShareVideo = { payload ->
-                                            ShareUtils.shareVideo(
-                                                context = context,
-                                                title = payload.title,
-                                                bvid = payload.bvid,
-                                            )
-                                        },
                                         externalPlaylistQueueTitle = externalPlaylistQueueTitle,
                                         playlistItems = playlistItems,
                                         onShowExternalPlaylistQueueSheet = {

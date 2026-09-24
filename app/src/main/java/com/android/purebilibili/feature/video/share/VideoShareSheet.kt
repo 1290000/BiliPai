@@ -45,8 +45,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.purebilibili.core.ui.AppModalBottomSheet
+import com.android.purebilibili.core.ui.components.AppNativeSegmentedControl
+import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.common.copyPlainTextToClipboard
 import kotlinx.coroutines.launch
 
@@ -60,8 +61,15 @@ internal fun VideoShareSheet(
     val context = LocalContext.current
     val shareScope = rememberCoroutineScope()
     var sharingTarget by remember { mutableStateOf<VideoShareTarget?>(null) }
+    var shareStyle by remember { mutableStateOf(VideoShareStyle.LINK) }
     val neutralIconBackground = MaterialTheme.colorScheme.surfaceContainerHighest
     val neutralIconContent = MaterialTheme.colorScheme.onSurface
+    val styleOptions = remember {
+        listOf(
+            AppSegmentOption(VideoShareStyle.LINK, "链接"),
+            AppSegmentOption(VideoShareStyle.CARD, "卡片"),
+        )
+    }
     val items = listOf(
         VideoShareSheetItem(
             target = VideoShareTarget.WECHAT,
@@ -109,10 +117,30 @@ internal fun VideoShareSheet(
         ) {
             AppText(
                 text = "分享",
-                modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 18.dp),
+                modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
             )
 
+            AppNativeSegmentedControl(
+                options = styleOptions,
+                selectedValue = shareStyle,
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth(),
+                onSelectionChange = { shareStyle = it },
+            )
+            AppText(
+                text = if (shareStyle == VideoShareStyle.CARD) {
+                    "以封面卡片图分享，对方更直观"
+                } else {
+                    "以标题 + 链接分享，方便直接打开"
+                },
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -130,22 +158,18 @@ internal fun VideoShareSheet(
                                     val packageName = item.target.packageName ?: return@VideoShareSheetItemView
                                     if (sharingTarget != null) return@VideoShareSheetItemView
                                     sharingTarget = item.target
-                                    copyPlainTextToClipboard(context, payload.url, "视频链接")
-                                    Toast.makeText(context, "链接已复制，正在准备视频封面", Toast.LENGTH_SHORT).show()
                                     shareScope.launch {
-                                        val coverFile = prepareVideoShareCoverFile(context, payload)
-                                        if (coverFile == null && payload.coverUrl.isNotBlank()) {
-                                            Toast.makeText(
-                                                context,
-                                                "封面加载失败，已改用链接分享",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
+                                        val shareMedia = prepareVideoShareMedia(
+                                            context = context,
+                                            payload = payload,
+                                            style = shareStyle,
+                                            progressMessage = "正在准备视频封面",
+                                        )
                                         context.startTargetedVideoShare(
                                             payload = payload,
                                             packageName = packageName,
                                             appName = item.label,
-                                            coverFile = coverFile,
+                                            shareMedia = shareMedia,
                                             onSuccess = onDismiss
                                         )
                                         sharingTarget = null
@@ -159,20 +183,16 @@ internal fun VideoShareSheet(
                                 VideoShareTarget.MORE -> {
                                     if (sharingTarget != null) return@VideoShareSheetItemView
                                     sharingTarget = item.target
-                                    copyPlainTextToClipboard(context, payload.url, "视频链接")
-                                    Toast.makeText(context, "链接已复制，正在准备视频封面", Toast.LENGTH_SHORT).show()
                                     shareScope.launch {
-                                        val coverFile = prepareVideoShareCoverFile(context, payload)
-                                        if (coverFile == null && payload.coverUrl.isNotBlank()) {
-                                            Toast.makeText(
-                                                context,
-                                                "封面加载失败，已改用链接分享",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
+                                        val shareMedia = prepareVideoShareMedia(
+                                            context = context,
+                                            payload = payload,
+                                            style = shareStyle,
+                                            progressMessage = "正在准备视频封面",
+                                        )
                                         context.startMoreVideoShare(
                                             payload = payload,
-                                            coverFile = coverFile,
+                                            shareMedia = shareMedia,
                                             onSuccess = onDismiss
                                         )
                                         sharingTarget = null
@@ -256,19 +276,41 @@ private fun VideoShareSheetItemView(
     }
 }
 
+/**
+ * 按分享形态准备媒体：链接模式不附图；卡片模式合成卡片图，失败时回退空（走链接）。
+ */
+private suspend fun prepareVideoShareMedia(
+    context: Context,
+    payload: VideoSharePayload,
+    style: VideoShareStyle,
+    progressMessage: String,
+): VideoShareCoverFile? {
+    return when (style) {
+        VideoShareStyle.LINK -> null
+        VideoShareStyle.CARD -> {
+            Toast.makeText(context, progressMessage, Toast.LENGTH_SHORT).show()
+            val cardFile = prepareVideoShareCardFile(context, payload)
+            if (cardFile == null) {
+                Toast.makeText(context, "卡片生成失败，已改用链接分享", Toast.LENGTH_SHORT).show()
+            }
+            cardFile
+        }
+    }
+}
+
 private fun Context.startTargetedVideoShare(
     payload: VideoSharePayload,
     packageName: String,
     appName: String,
-    coverFile: VideoShareCoverFile?,
+    shareMedia: VideoShareCoverFile?,
     onSuccess: () -> Unit
 ) {
     try {
-        val intent = if (coverFile != null) {
+        val intent = if (shareMedia != null) {
             buildVideoCoverShareIntent(
                 payload = payload,
-                coverUri = coverFile.uri,
-                mimeType = coverFile.mimeType,
+                coverUri = shareMedia.uri,
+                mimeType = shareMedia.mimeType,
                 packageName = packageName,
                 contentResolver = contentResolver
             )
@@ -286,22 +328,22 @@ private fun Context.startTargetedVideoShare(
 
 private fun Context.startMoreVideoShare(
     payload: VideoSharePayload,
-    coverFile: VideoShareCoverFile?,
+    shareMedia: VideoShareCoverFile?,
     onSuccess: () -> Unit
 ) {
     try {
-        val sendIntent = if (coverFile != null) {
+        val sendIntent = if (shareMedia != null) {
             buildVideoCoverShareIntent(
                 payload = payload,
-                coverUri = coverFile.uri,
-                mimeType = coverFile.mimeType,
+                coverUri = shareMedia.uri,
+                mimeType = shareMedia.mimeType,
                 contentResolver = contentResolver
             )
         } else {
             buildVideoShareIntent(payload)
         }
         val chooser = Intent.createChooser(sendIntent, "分享视频到")
-        if (coverFile != null) {
+        if (shareMedia != null) {
             chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivityWithTaskFlag(chooser)

@@ -455,7 +455,11 @@ internal fun AudioModeMusicPlayer(
             payload = buildVideoSharePayload(
                 title = displayTitle,
                 bvid = info.bvid,
-                coverUrl = coverUrl
+                coverUrl = coverUrl,
+                upName = info.owner.name,
+                playCountText = com.android.purebilibili.core.util.FormatUtils.formatStat(
+                    info.stat.view.toLong()
+                ),
             ),
             onDismiss = { showShare = false }
         )
