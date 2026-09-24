@@ -175,6 +175,104 @@ class VideoSharePolicyTest {
         )
     }
 
+    @Test
+    fun buildTargetedShareIntent_pinsFriendShareComponentWhenResolved() {
+        val source = loadVideoSharePolicySource()
+
+        assertTrue(
+            source.contains("setComponent(ComponentName(packageName, activityClassName))"),
+            "Targeted WeChat/QQ sharing should pin the friend-share activity component"
+        )
+    }
+
+    @Test
+    fun resolvePreferredShareActivity_prefersQqFriendOverUtilities() {
+        val picked = resolvePreferredShareActivity(
+            listOf(
+                ShareActivityCandidate(
+                    packageName = QQ_PACKAGE_NAME,
+                    className = "com.tencent.mobileqq.activity.FavoriteActivity",
+                    label = "保存到QQ收藏",
+                ),
+                ShareActivityCandidate(
+                    packageName = QQ_PACKAGE_NAME,
+                    className = "com.tencent.mobileqq.activity.JumpActivity",
+                    label = "发送给好友",
+                ),
+                ShareActivityCandidate(
+                    packageName = QQ_PACKAGE_NAME,
+                    className = "com.tencent.mobileqq.activity.QfileJumpActivity",
+                    label = "发送到我的电脑",
+                ),
+                ShareActivityCandidate(
+                    packageName = QQ_PACKAGE_NAME,
+                    className = "com.tencent.mobileqq.flash.FlashTransferActivity",
+                    label = "QQ闪传·大文件无损传",
+                ),
+            )
+        )
+
+        assertEquals("发送给好友", picked?.label)
+        assertEquals("com.tencent.mobileqq.activity.JumpActivity", picked?.className)
+    }
+
+    @Test
+    fun resolvePreferredShareActivity_prefersWeChatSendToFriend() {
+        val picked = resolvePreferredShareActivity(
+            listOf(
+                ShareActivityCandidate(
+                    packageName = WECHAT_PACKAGE_NAME,
+                    className = "com.tencent.mm.ui.tools.AddFavoriteUI",
+                    label = "添加到微信收藏",
+                ),
+                ShareActivityCandidate(
+                    packageName = WECHAT_PACKAGE_NAME,
+                    className = "com.tencent.mm.ui.tools.ShareImgUI",
+                    label = "发送给朋友",
+                ),
+            )
+        )
+
+        assertEquals("com.tencent.mm.ui.tools.ShareImgUI", picked?.className)
+    }
+
+    @Test
+    fun resolvePreferredShareActivity_returnsNullWhenOnlyExcludedEntries() {
+        assertNull(
+            resolvePreferredShareActivity(
+                listOf(
+                    ShareActivityCandidate(
+                        packageName = WECHAT_PACKAGE_NAME,
+                        className = "com.tencent.mm.ui.tools.AddFavoriteUI",
+                        label = "添加到微信收藏",
+                    ),
+                )
+            )
+        )
+    }
+
+    @Test
+    fun scoreShareActivityCandidate_excludesFavoriteTimelineAndFlashEntries() {
+        assertEquals(
+            0,
+            scoreShareActivityCandidate(
+                ShareActivityCandidate(QQ_PACKAGE_NAME, "com.tencent.mobileqq.activity.FavoriteActivity", "保存到QQ收藏")
+            )
+        )
+        assertEquals(
+            0,
+            scoreShareActivityCandidate(
+                ShareActivityCandidate(WECHAT_PACKAGE_NAME, "com.tencent.mm.ui.tools.SendToTimeLineUI", "分享到朋友圈")
+            )
+        )
+        assertEquals(
+            0,
+            scoreShareActivityCandidate(
+                ShareActivityCandidate(QQ_PACKAGE_NAME, "com.tencent.mobileqq.flash.FlashTransferActivity", "QQ闪传")
+            )
+        )
+    }
+
     private fun loadVideoSharePolicySource(): String {
         val candidates = listOf(
             File("src/main/java/com/android/purebilibili/feature/video/share/VideoSharePolicy.kt"),

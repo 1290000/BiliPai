@@ -64,6 +64,43 @@ class VideoShareSheetStructureTest {
         )
     }
 
+    @Test
+    fun targetedShare_resolvesFriendComponentWithoutMiniWindowLaunch() {
+        val source = loadVideoShareSheetSource()
+        val startTargetedFunction = source
+            .substringAfter("private fun Context.startTargetedVideoShare")
+            .substringBefore("private fun Context.startMoreVideoShare")
+
+        assertTrue(
+            source.contains("resolveShareActivityClassName"),
+            "Targeted WeChat/QQ share should resolve a single friend-share activity"
+        )
+        assertTrue(
+            source.contains("resolvePreferredShareActivity"),
+            "Targeted WeChat/QQ share should prefer friend-share entries over favorites/tools"
+        )
+        assertTrue(
+            startTargetedFunction.contains("activityClassName = activityClassName"),
+            "Targeted share should pass the resolved activity class into the share intent"
+        )
+        assertTrue(
+            startTargetedFunction.contains("startActivityWithTaskFlag(intent)"),
+            "Targeted share should use ordinary activity start"
+        )
+        assertTrue(
+            !source.contains("startActivityAsShareMiniWindow"),
+            "Mini-window launch helper should stay removed"
+        )
+        assertTrue(
+            !source.contains("createShareMiniWindowOptions"),
+            "Freeform launch options should stay removed"
+        )
+        assertTrue(
+            !source.contains("SHARE_LAUNCH_WINDOWING_MODE_FREEFORM"),
+            "Freeform windowing mode should stay removed"
+        )
+    }
+
     private fun loadVideoShareSheetSource(): String {
         val candidates = listOf(
             File("src/main/java/com/android/purebilibili/feature/video/share/VideoShareSheet.kt"),
