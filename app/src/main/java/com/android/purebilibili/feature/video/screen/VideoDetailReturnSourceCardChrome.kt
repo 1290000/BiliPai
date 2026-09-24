@@ -73,6 +73,7 @@ import com.android.purebilibili.core.ui.transition.VideoCardSourceCoverPresentat
 import com.android.purebilibili.core.ui.transition.VideoCardSourceInfoPresentation
 import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.ui.transition.VideoCardTransitionBackgroundPhase
+import com.android.purebilibili.core.ui.transition.isVideoCardReturnContentYieldActive
 import com.android.purebilibili.core.ui.transition.resolveVideoCardDetailChromeAlpha
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSourceChromeVisualFrame
 import com.android.purebilibili.navigation3.predictiveback.MiuixVideoCardInverseScale
@@ -173,15 +174,26 @@ internal fun resolveVideoDetailFlyingSourceChromeAlpha(
     phase: VideoCardTransitionBackgroundPhase,
     isReturnGestureInProgress: Boolean,
     sourceLayout: VideoCardSourceLayout,
+    detailContentLoading: Boolean = false,
 ): Float {
     // Opening, settled-detail return, quick reverse, and predictive seek all hide the
     // list slot. The flying entry must keep the complementary info band or the morph
     // is cover-only. COVER_ONLY has no info band; its cover badges still use this alpha.
-    return 1f - resolveVideoCardDetailChromeAlpha(
+    val regularAlpha = 1f - resolveVideoCardDetailChromeAlpha(
         morphDepthProgress = morphDepthProgress,
         phase = phase,
         isReturnGestureInProgress = isReturnGestureInProgress,
     )
+    if (!detailContentLoading || !isVideoCardReturnContentYieldActive(
+            phase = phase,
+            isReturnGestureInProgress = isReturnGestureInProgress,
+            morphDepthProgress = morphDepthProgress,
+        )
+    ) return regularAlpha
+    // A quick back can reverse the entry before detail data arrives. There is no detail chrome
+    // to hand off, so reveal the frozen source card during the first part of the return.
+    val returnProgress = (1f - morphDepthProgress.coerceIn(0f, 1f)) / 0.18f
+    return maxOf(regularAlpha, returnProgress.coerceIn(0f, 1f))
 }
 
 /**
@@ -197,6 +209,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
     sourceLayout: VideoCardSourceLayout? = null,
     info: ViewInfo? = null,
     sourceChromeSnapshot: VideoCardSourceChromeSnapshot? = null,
+    detailContentLoading: Boolean = false,
     phaseProvider: () -> VideoCardTransitionBackgroundPhase = {
         VideoCardTransitionBackgroundPhase.RETURNING
     },
@@ -270,6 +283,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
             phase = phase,
             isReturnGestureInProgress = isReturnGestureInProgress,
             sourceLayout = layout.layout,
+            detailContentLoading = detailContentLoading,
         )
     }
 
@@ -302,6 +316,7 @@ internal fun BoxScope.VideoDetailReturnSourceCardChrome(
                 phase = phase,
                 isReturnGestureInProgress = isReturnGestureInProgress,
                 sourceLayout = layout.layout,
+                detailContentLoading = detailContentLoading,
             )
         }.drawWithContent {
             val inverse = currentInverseScale()

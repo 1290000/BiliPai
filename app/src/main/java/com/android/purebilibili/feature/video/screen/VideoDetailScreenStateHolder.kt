@@ -4547,6 +4547,7 @@ internal fun VideoDetailScreenStateHolder(
                                             .isGestureRestoreInProgressProvider(),
                                 sourceLayout = landingLayoutForMedia?.layout
                                     ?: miuixLandingState.sourceLayout,
+                                detailContentLoading = uiState is VideoPlaybackUiState.Loading,
                             )
                         }
                         Box(
@@ -5089,6 +5090,7 @@ internal fun VideoDetailScreenStateHolder(
                         VideoDetailReturnSourceCardChrome(
                             info = sourceCardInfo,
                             sourceChromeSnapshot = miuixCardTransitionState.sourceChromeSnapshot,
+                            detailContentLoading = uiState is VideoPlaybackUiState.Loading,
                             sourceLayout = miuixCardTransitionState.sourceLayout,
                             sourceBounds = miuixCardTransitionState.sourceBoundsProvider(),
                             sourceCoverBounds =
