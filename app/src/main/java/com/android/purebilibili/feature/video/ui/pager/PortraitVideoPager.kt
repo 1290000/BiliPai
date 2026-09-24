@@ -242,6 +242,7 @@ internal data class PortraitVideoInteractionUiState(
 )
 
 internal enum class PortraitFavoriteAction {
+    ToggleFavorite,
     OpenFavoriteFolders
 }
 
@@ -291,6 +292,9 @@ fun PortraitVideoPager(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
+    val favoriteQuickSaveDefaultFolder by com.android.purebilibili.core.store.FavoriteInteractionSettingsStore
+        .getQuickSaveDefaultFolder(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val activity = remember(context) { context.findActivity() }
     val window = activity?.window
     val insetsController = remember(window, view) {
@@ -1590,6 +1594,7 @@ fun PortraitVideoPager(
                 viewModel = viewModel,
                 commentViewModel = commentViewModel,
                 engagementState = engagementState,
+                favoriteQuickSaveDefaultFolder = favoriteQuickSaveDefaultFolder,
                 onToggleFollow = engagementViewModel::toggleFollow,
                 onToggleLike = engagementViewModel::toggleLike,
                 onTripleAction = engagementViewModel::doTripleAction,
@@ -1718,6 +1723,7 @@ private fun VideoPageItem(
     viewModel: VideoPlaybackViewModel,
     commentViewModel: VideoCommentViewModel,
     engagementState: VideoEngagementUiState,
+    favoriteQuickSaveDefaultFolder: Boolean,
     onToggleFollow: (Long?, Boolean?) -> Unit,
     onToggleLike: (Long?, String?, Boolean?, ((Boolean) -> Unit)?) -> Unit,
     onTripleAction: (Long?, String?, Boolean?, Int?, Boolean?, ((TripleActionResult) -> Unit)?) -> Unit,
@@ -3247,11 +3253,24 @@ private fun VideoPageItem(
             },
             onFavoriteClick = {
                 if (canHandlePortraitInteraction) {
-                    when (resolvePortraitFavoriteAction()) {
+                    when (
+                        resolvePortraitFavoriteAction(
+                            isLongPress = false,
+                            quickSaveDefaultFolder = favoriteQuickSaveDefaultFolder,
+                        )
+                    ) {
+                        PortraitFavoriteAction.ToggleFavorite -> {
+                            viewModel.toggleFavorite()
+                        }
                         PortraitFavoriteAction.OpenFavoriteFolders -> {
                             viewModel.showFavoriteFolderDialog(activeAid)
                         }
                     }
+                }
+            },
+            onFavoriteLongClick = {
+                if (canHandlePortraitInteraction) {
+                    viewModel.showFavoriteFolderDialog(activeAid)
                 }
             },
             onCommentClick = { showCommentSheet = true },
@@ -3689,8 +3708,15 @@ internal fun resolvePortraitOverlayVisibilityAfterTap(currentlyVisible: Boolean)
     return !currentlyVisible
 }
 
-internal fun resolvePortraitFavoriteAction(): PortraitFavoriteAction {
-    return PortraitFavoriteAction.OpenFavoriteFolders
+internal fun resolvePortraitFavoriteAction(
+    isLongPress: Boolean,
+    quickSaveDefaultFolder: Boolean,
+): PortraitFavoriteAction {
+    return when {
+        isLongPress -> PortraitFavoriteAction.OpenFavoriteFolders
+        quickSaveDefaultFolder -> PortraitFavoriteAction.ToggleFavorite
+        else -> PortraitFavoriteAction.OpenFavoriteFolders
+    }
 }
 
 internal fun resolvePortraitVideoInteractionUiState(

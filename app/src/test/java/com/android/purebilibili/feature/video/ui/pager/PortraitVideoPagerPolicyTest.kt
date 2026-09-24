@@ -491,10 +491,13 @@ class PortraitVideoPagerPolicyTest {
     }
 
     @Test
-    fun portraitFavoriteTap_opensFavoriteFoldersInsteadOfImmediateDefaultFavorite() {
+    fun portraitFavoriteTap_withoutQuickSave_opensFavoriteFolders() {
         assertEquals(
             PortraitFavoriteAction.OpenFavoriteFolders,
-            resolvePortraitFavoriteAction()
+            resolvePortraitFavoriteAction(
+                isLongPress = false,
+                quickSaveDefaultFolder = false,
+            )
         )
     }
 

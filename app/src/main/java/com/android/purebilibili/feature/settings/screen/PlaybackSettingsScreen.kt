@@ -1543,6 +1543,27 @@ private fun PlaybackInteractionSettingsSection(
             iconTint = com.android.purebilibili.core.theme.iOSPink
         )
         AppPreferenceDivider()
+        val favoriteQuickSaveDefaultFolder by com.android.purebilibili.core.store.FavoriteInteractionSettingsStore
+            .getQuickSaveDefaultFolder(context)
+            .collectAsStateWithLifecycle(initialValue = false)
+        AppSwitchPreference(
+            icon = rememberSettingsSemanticIcon(SettingsIconRole.FAVORITE_TAP_MODE),
+            title = "点按收藏进默认收藏夹",
+            subtitle = if (favoriteQuickSaveDefaultFolder) {
+                "点按直接收藏到默认收藏夹，长按选择收藏夹"
+            } else {
+                "点按打开收藏夹选择，长按同样可选择"
+            },
+            checked = favoriteQuickSaveDefaultFolder,
+            onCheckedChange = {
+                scope.launch {
+                    com.android.purebilibili.core.store.FavoriteInteractionSettingsStore
+                        .setQuickSaveDefaultFolder(context, it)
+                }
+            },
+            iconTint = com.android.purebilibili.core.theme.iOSYellow
+        )
+        AppPreferenceDivider()
         AppSwitchPreference(
             icon = rememberSettingsSemanticIcon(SettingsIconRole.AUTO_SKIP_OP_ED),
             title = "自动跳过片头片尾",

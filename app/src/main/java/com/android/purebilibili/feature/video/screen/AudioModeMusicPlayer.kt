@@ -261,6 +261,9 @@ internal fun AudioModeMusicPlayer(
             selectedAudioQuality = successState.selectedAudioQuality
         )
     }
+    val favoriteQuickSaveDefaultFolder by com.android.purebilibili.core.store.FavoriteInteractionSettingsStore
+        .getQuickSaveDefaultFolder(LocalContext.current)
+        .collectAsStateWithLifecycle(initialValue = false)
 
     val subtitleLyrics = remember(
         successState.subtitlePrimaryCues,
@@ -376,7 +379,18 @@ internal fun AudioModeMusicPlayer(
         },
         onCommentsClick = { showComments = true },
         isFavorited = engagementState.isFavorited,
-        onFavoriteClick = { engagementViewModel.toggleFavorite() },
+        onFavoriteClick = {
+            when (
+                resolveVideoFavoriteAction(
+                    entryPoint = VideoFavoriteEntryPoint.DetailActionRow,
+                    isLongPress = false,
+                    quickSaveDefaultFolder = favoriteQuickSaveDefaultFolder,
+                )
+            ) {
+                VideoFavoriteAction.ToggleFavorite -> engagementViewModel.toggleFavorite()
+                VideoFavoriteAction.OpenFavoriteFolders -> viewModel.showFavoriteFolderDialog()
+            }
+        },
         onDownloadClick = { viewModel.downloadAudio(context) },
         onShareClick = { showShare = true },
         onSpeedClick = { showSpeedMenu = true },
