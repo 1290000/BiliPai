@@ -558,7 +558,9 @@ fun HomeScreen(
 
                         if (!isAtTop) {
                             val listState = requireNotNull(gridState)
-                            listState.animateScrollToTop(fast = true)
+                            listState.animateScrollToTop(
+                                fast = request != HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH,
+                            )
                         }
                         val shouldRefresh = request == HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH ||
                             (request == HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH && isAtTop)
@@ -2637,7 +2639,7 @@ fun HomeScreen(
             onStatusBarDoubleTap = {
                 coroutineScope.launch {
                     withHomeScrollToTopLock {
-                        activeGridState?.animateScrollToTop(fast = true)
+                        activeGridState?.animateScrollToTop()
                     }
                 }
             },
