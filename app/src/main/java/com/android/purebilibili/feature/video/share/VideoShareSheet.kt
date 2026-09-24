@@ -131,7 +131,7 @@ internal fun VideoShareSheet(
             )
             AppText(
                 text = if (shareStyle == VideoShareStyle.CARD) {
-                    "以封面卡片图分享，对方更直观"
+                    "以封面卡片图分享，并附上标题与链接"
                 } else {
                     "以标题 + 链接分享，方便直接打开"
                 },
@@ -163,7 +163,7 @@ internal fun VideoShareSheet(
                                             context = context,
                                             payload = payload,
                                             style = shareStyle,
-                                            progressMessage = "正在准备视频封面",
+                                            progressMessage = "正在生成分享卡片",
                                         )
                                         context.startTargetedVideoShare(
                                             payload = payload,
@@ -188,7 +188,7 @@ internal fun VideoShareSheet(
                                             context = context,
                                             payload = payload,
                                             style = shareStyle,
-                                            progressMessage = "正在准备视频封面",
+                                            progressMessage = "正在生成分享卡片",
                                         )
                                         context.startMoreVideoShare(
                                             payload = payload,
@@ -342,7 +342,7 @@ private fun Context.startMoreVideoShare(
         } else {
             buildVideoShareIntent(payload)
         }
-        val chooser = Intent.createChooser(sendIntent, "分享视频到")
+        val chooser = Intent.createChooser(sendIntent, resolveVideoShareChooserTitle(payload))
         if (shareMedia != null) {
             chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }

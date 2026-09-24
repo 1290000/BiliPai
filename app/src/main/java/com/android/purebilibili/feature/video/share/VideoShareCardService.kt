@@ -9,6 +9,10 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.TextUtils
 import android.util.Log
 import androidx.core.content.FileProvider
 import com.android.purebilibili.core.util.FormatUtils
@@ -22,7 +26,7 @@ private const val CARD_WIDTH = 1080
 private const val CARD_PADDING = 56
 private const val CARD_CORNER_RADIUS = 28f
 private const val CARD_BRAND = "BiliPai"
-private const val CARD_TITLE_LINE_HEIGHT = 64f
+private const val CARD_TITLE_MAX_LINES = 3
 
 /**
  * 合成可分享的视频卡片图（标题 + 数据 + 封面 + 应用署名）。
@@ -49,10 +53,7 @@ internal suspend fun prepareVideoShareCardFile(
             coverBitmap.recycle()
             val cacheDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
             cleanupVideoShareCardCache(cacheDir)
-            val outputFile = File(
-                cacheDir,
-                "BiliPai_share_card_${payload.bvid.ifBlank { "video" }}.jpg"
-            )
+            val outputFile = File(cacheDir, resolveVideoShareCardFileName(payload))
             outputFile.outputStream().use { output ->
                 cardBitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)
             }
@@ -75,7 +76,7 @@ internal fun renderVideoShareCardBitmap(
 ): Bitmap {
     val contentWidth = CARD_WIDTH - CARD_PADDING * 2
     val coverHeight = (contentWidth * 9f / 16f).toInt()
-    val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#1F1F1F")
         textSize = 52f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -89,9 +90,13 @@ internal fun renderVideoShareCardBitmap(
         textSize = 32f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
-    val titleLines = wrapShareCardTitle(payload.title, titlePaint, contentWidth, maxLines = 3)
+    val titleLayout = buildShareCardTitleLayout(
+        title = payload.title,
+        paint = titlePaint,
+        maxWidth = contentWidth
+    )
     val metaLine = resolveVideoShareCardMetaLine(payload)
-    val titleBlockHeight = (titleLines.size * CARD_TITLE_LINE_HEIGHT).toInt()
+    val titleBlockHeight = titleLayout.height
     val metaBlockHeight = if (metaLine.isBlank()) 0 else 52
     val gapTitleMeta = if (metaBlockHeight == 0) 0f else 18f
     val gapMetaCover = if (metaBlockHeight == 0) 36f else 28f
@@ -111,10 +116,11 @@ internal fun renderVideoShareCardBitmap(
     canvas.drawColor(Color.WHITE)
 
     var y = CARD_PADDING + 48f
-    titleLines.forEach { line ->
-        canvas.drawText(line, CARD_PADDING.toFloat(), y, titlePaint)
-        y += CARD_TITLE_LINE_HEIGHT
-    }
+    canvas.save()
+    canvas.translate(CARD_PADDING.toFloat(), y)
+    titleLayout.draw(canvas)
+    canvas.restore()
+    y += titleBlockHeight
     if (metaBlockHeight > 0) {
         y += gapTitleMeta
         canvas.drawText(metaLine, CARD_PADDING.toFloat(), y, metaPaint)
@@ -135,65 +141,19 @@ internal fun renderVideoShareCardBitmap(
     return bitmap
 }
 
-internal fun wrapShareCardTitle(
+internal fun buildShareCardTitleLayout(
     title: String,
-    paint: Paint,
-    maxWidth: Int,
-    maxLines: Int
-): List<String> {
-    val normalized = title.trim().ifBlank { return listOf("") }
-    if (maxLines <= 0) return emptyList()
-    val lines = mutableListOf<String>()
-    val builder = StringBuilder()
-    var truncated = false
-
-    fun commitLine() {
-        if (builder.isEmpty()) return
-        if (lines.size < maxLines) {
-            lines += builder.toString()
-        } else {
-            truncated = true
-        }
-        builder.clear()
-    }
-
-    for (char in normalized) {
-        if (char == '\n') {
-            commitLine()
-            continue
-        }
-        builder.append(char)
-        if (paint.measureText(builder.toString()) > maxWidth) {
-            builder.deleteCharAt(builder.length - 1)
-            commitLine()
-            if (lines.size >= maxLines) {
-                truncated = true
-                break
-            }
-            builder.append(char)
-        }
-    }
-    if (builder.isNotEmpty()) {
-        commitLine()
-    }
-    if (lines.isEmpty()) return listOf("")
-    if (truncated) {
-        lines[lines.lastIndex] = ellipsizeLine(lines.last(), paint, maxWidth)
-    }
-    return lines
-}
-
-private fun ellipsizeLine(
-    line: String,
-    paint: Paint,
+    paint: TextPaint,
     maxWidth: Int
-): String {
-    val ellipsis = "…"
-    var result = line
-    while (result.isNotEmpty() && paint.measureText(result + ellipsis) > maxWidth) {
-        result = result.dropLast(1)
-    }
-    return result + ellipsis
+): StaticLayout {
+    val source = title.trim().ifBlank { " " }
+    return StaticLayout.Builder
+        .obtain(source, 0, source.length, paint, maxWidth.coerceAtLeast(1))
+        .setMaxLines(CARD_TITLE_MAX_LINES)
+        .setEllipsize(TextUtils.TruncateAt.END)
+        .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+        .setIncludePad(false)
+        .build()
 }
 
 private fun drawRoundedBitmap(

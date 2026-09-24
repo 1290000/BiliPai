@@ -64,6 +64,24 @@ internal fun resolveVideoShareCardMetaLine(payload: VideoSharePayload): String {
     return parts.joinToString("  ·  ")
 }
 
+/**
+ * 宿主 App 常把 Display Name / 文件名当消息标题，因此用净化后的视频标题命名。
+ */
+internal fun resolveVideoShareCardFileName(payload: VideoSharePayload): String {
+    val rawTitle = payload.title.ifBlank { payload.bvid }.ifBlank { "video" }
+    val sanitized = rawTitle
+        .map { ch ->
+            if (ch.isLetterOrDigit() || ch in "._- 《》【】（）()、，。！？") ch else '_'
+        }
+        .joinToString("")
+        .trim()
+        .replace(Regex("\\s+"), "_")
+        .take(40)
+        .trim('_')
+        .ifBlank { payload.bvid.ifBlank { "video" } }
+    return "BiliPai_share_card_$sanitized.jpg"
+}
+
 internal fun buildVideoShareIntent(payload: VideoSharePayload): Intent {
     return Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -81,6 +99,9 @@ internal fun buildTargetedShareIntent(
     }
 }
 
+/**
+ * 卡片图分享：附带标题元数据与「标题 + 链接」正文，便于宿主展示正确标题并可跳转。
+ */
 internal fun buildVideoCoverShareIntent(
     payload: VideoSharePayload,
     coverUri: Uri,
@@ -90,9 +111,16 @@ internal fun buildVideoCoverShareIntent(
 ): Intent {
     return Intent(Intent.ACTION_SEND).apply {
         type = mimeType
+        putExtra(Intent.EXTRA_SUBJECT, payload.title)
+        putExtra(Intent.EXTRA_TITLE, payload.title)
+        putExtra(Intent.EXTRA_TEXT, payload.text)
         putExtra(Intent.EXTRA_STREAM, coverUri)
-        clipData = ClipData.newUri(contentResolver, "Video cover", coverUri)
+        clipData = ClipData.newUri(contentResolver, payload.title, coverUri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         packageName?.let { setPackage(it) }
     }
+}
+
+internal fun resolveVideoShareChooserTitle(payload: VideoSharePayload): String {
+    return "分享「${payload.title}」"
 }
