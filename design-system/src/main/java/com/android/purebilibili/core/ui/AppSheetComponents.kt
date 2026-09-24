@@ -203,15 +203,11 @@ fun AppModalBottomSheet(
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
     presentationProgress: Float = 1f,
     dismissOnBackPress: Boolean = true,
-    dragHandle: @Composable (() -> Unit)? = null,
+    dragHandle: @Composable (() -> Unit)? = { AppDefaultBottomSheetDragHandle() },
     windowInsets: androidx.compose.foundation.layout.WindowInsets = androidx.compose.material3.BottomSheetDefaults.modalWindowInsets,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val uiStyle = LocalAppUiStyle.current
-    val resolvedDragHandle = dragHandle ?: when (uiStyle) {
-        AppUiStyle.MIUIX -> { { AppBottomSheetDragHandle() } }
-        AppUiStyle.MATERIAL3 -> { { BottomSheetDefaults.DragHandle() } }
-    }
     val miuixNonGlass = isMiuixNonGlassEnabled()
     val configuration = LocalConfiguration.current
     val layoutSpec = remember(configuration.screenWidthDp, miuixNonGlass) {
@@ -302,7 +298,7 @@ fun AppModalBottomSheet(
                 tonalElevation = tonalElevation,
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    resolvedDragHandle()
+                    dragHandle?.invoke()
                     content()
                 }
             }
@@ -354,5 +350,13 @@ fun AppBottomSheetDragHandle() {
                 .clip(RoundedCornerShape(50))
                 .background(MaterialTheme.colorScheme.outlineVariant)
         )
+    }
+}
+
+@Composable
+private fun AppDefaultBottomSheetDragHandle() {
+    when (LocalAppUiStyle.current) {
+        AppUiStyle.MIUIX -> AppBottomSheetDragHandle()
+        AppUiStyle.MATERIAL3 -> BottomSheetDefaults.DragHandle()
     }
 }
