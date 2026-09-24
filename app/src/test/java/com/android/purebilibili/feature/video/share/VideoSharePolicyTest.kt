@@ -115,8 +115,8 @@ class VideoSharePolicyTest {
             "Card share should expose the video subject for host apps"
         )
         assertTrue(
-            coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.text)"),
-            "Card share should attach title + link text so recipients can jump"
+            coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.url)"),
+            "Card share should attach link-only text so recipients can jump"
         )
         assertTrue(
             coverShareIntentBody.contains("clipData = ClipData.newUri"),
@@ -145,6 +145,23 @@ class VideoSharePolicyTest {
             resolveVideoShareCardFileName(
                 buildVideoSharePayload(title = "鹿乃 翻唱《 我、和我们 》", bvid = "BV1")
             )
+        )
+    }
+
+    @Test
+    fun buildVideoCoverShareIntent_usesLinkOnlyExtraText() {
+        val source = loadVideoSharePolicySource()
+        val coverShareIntentBody = source
+            .substringAfter("internal fun buildVideoCoverShareIntent")
+            .substringBefore("\n}")
+
+        assertTrue(
+            coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.url)"),
+            "Card share EXTRA_TEXT should be the bare link"
+        )
+        assertTrue(
+            !coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.text)"),
+            "Card share EXTRA_TEXT should not repeat the bracketed title"
         )
     }
 

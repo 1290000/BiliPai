@@ -70,6 +70,14 @@ internal fun resolveAudioModeTrackTitle(
         ?: videoTitle
 }
 
+/** 对外分享用视频标题，避免分 P 名/曲目 override 顶掉真实标题。 */
+internal fun resolveAudioModeShareTitle(
+    videoTitle: String,
+    displayTitle: String,
+): String {
+    return videoTitle.trim().ifBlank { displayTitle.trim() }
+}
+
 internal data class AudioModeLyricMetadata(
     val title: String,
     val artist: String
@@ -453,7 +461,10 @@ internal fun AudioModeMusicPlayer(
     if (showShare) {
         VideoShareSheet(
             payload = buildVideoSharePayload(
-                title = displayTitle,
+                title = resolveAudioModeShareTitle(
+                    videoTitle = info.title,
+                    displayTitle = displayTitle,
+                ),
                 bvid = info.bvid,
                 coverUrl = coverUrl,
                 upName = info.owner.name,

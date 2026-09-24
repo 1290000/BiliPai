@@ -47,6 +47,10 @@ class VideoShareSheetStructureTest {
             "More share should prepare style-aware media before opening the system sharesheet"
         )
         assertTrue(
+            moreBranch.contains("hideVideoShareSheet(sheetState)"),
+            "Share sheet must hide before programmatic dismiss so it can reopen later"
+        )
+        assertTrue(
             startMoreFunction.contains("shareMedia: VideoShareCoverFile?"),
             "More share should receive prepared share media"
         )

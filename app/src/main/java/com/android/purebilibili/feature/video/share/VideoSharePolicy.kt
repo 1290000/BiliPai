@@ -100,7 +100,7 @@ internal fun buildTargetedShareIntent(
 }
 
 /**
- * 卡片图分享：附带标题元数据与「标题 + 链接」正文，便于宿主展示正确标题并可跳转。
+ * 卡片图分享：标题走 EXTRA_TITLE/SUBJECT，正文只带链接便于跳转。
  */
 internal fun buildVideoCoverShareIntent(
     payload: VideoSharePayload,
@@ -113,7 +113,7 @@ internal fun buildVideoCoverShareIntent(
         type = mimeType
         putExtra(Intent.EXTRA_SUBJECT, payload.title)
         putExtra(Intent.EXTRA_TITLE, payload.title)
-        putExtra(Intent.EXTRA_TEXT, payload.text)
+        putExtra(Intent.EXTRA_TEXT, payload.url)
         putExtra(Intent.EXTRA_STREAM, coverUri)
         clipData = ClipData.newUri(contentResolver, payload.title, coverUri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
