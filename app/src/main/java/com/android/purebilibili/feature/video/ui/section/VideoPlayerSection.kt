@@ -5342,6 +5342,8 @@ private fun VideoPlayerSectionContent(
                 bvid = bvid,
                 cid = uiState.info.cid,
                 videoOwnerName = uiState.info.owner.name,
+                videoSharePlayCountText = com.android.purebilibili.core.util.FormatUtils
+                    .formatStat(uiState.info.stat.view.toLong()),
                 videoOwnerFace = uiState.info.owner.face,
                 videoDuration = uiState.videoDurationMs,
                 videoTitle = uiState.info.title,

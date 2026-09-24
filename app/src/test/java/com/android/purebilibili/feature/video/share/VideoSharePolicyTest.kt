@@ -13,7 +13,9 @@ class VideoSharePolicyTest {
         val payload = buildVideoSharePayload(
             title = " Uzi回应送老婆贵价项链 ",
             bvid = " BV1aRG46aEnz ",
-            coverUrl = " https://i0.hdslb.com/bfs/archive/test.jpg "
+            coverUrl = " https://i0.hdslb.com/bfs/archive/test.jpg ",
+            upName = " 鹿乃ちゃん ",
+            playCountText = " 36.3万 ",
         )
 
         assertEquals("Uzi回应送老婆贵价项链", payload.title)
@@ -24,6 +26,31 @@ class VideoSharePolicyTest {
             "【Uzi回应送老婆贵价项链】\nhttps://www.bilibili.com/video/BV1aRG46aEnz",
             payload.text
         )
+        assertEquals("鹿乃ちゃん", payload.upName)
+        assertEquals("36.3万", payload.playCountText)
+        assertEquals("UP主：鹿乃ちゃん  ·  播放：36.3万", resolveVideoShareCardMetaLine(payload))
+    }
+
+    @Test
+    fun resolveVideoShareCardMetaLine_omitsMissingFields() {
+        assertEquals(
+            "UP主：测试",
+            resolveVideoShareCardMetaLine(
+                buildVideoSharePayload(title = "标题", bvid = "BV1", upName = "测试")
+            )
+        )
+        assertEquals(
+            "",
+            resolveVideoShareCardMetaLine(
+                buildVideoSharePayload(title = "标题", bvid = "BV1")
+            )
+        )
+    }
+
+    @Test
+    fun videoShareStyle_defaultsToLinkAndCard() {
+        assertEquals(VideoShareStyle.LINK, VideoShareStyle.valueOf("LINK"))
+        assertEquals(VideoShareStyle.CARD, VideoShareStyle.valueOf("CARD"))
     }
 
     @Test
@@ -80,12 +107,61 @@ class VideoSharePolicyTest {
             .substringAfter("internal fun buildVideoCoverShareIntent")
             .substringBefore("\n}")
         assertTrue(
-            !coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT"),
-            "Cover sharing should not include text extras because WeChat/QQ render that as a text bubble"
+            coverShareIntentBody.contains("putExtra(Intent.EXTRA_TITLE, payload.title)"),
+            "Card share should expose the video title for host apps"
+        )
+        assertTrue(
+            coverShareIntentBody.contains("putExtra(Intent.EXTRA_SUBJECT, payload.title)"),
+            "Card share should expose the video subject for host apps"
+        )
+        assertTrue(
+            coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.url)"),
+            "Card share should attach link-only text so recipients can jump"
+        )
+        assertTrue(
+            coverShareIntentBody.contains("clipData = ClipData.newUri"),
+            "Card share clip label should use the video title"
+        )
+        assertTrue(
+            coverShareIntentBody.contains("payload.title, coverUri"),
+            "Card share clip label should use the video title"
         )
         assertTrue(
             !source.contains("哔哩哔哩"),
             "Generated cover share intent should not inject a bottom-left Bilibili brand label"
+        )
+    }
+
+    @Test
+    fun resolveVideoShareCardFileName_prefersSanitizedTitle() {
+        assertEquals(
+            "BiliPai_share_card_Uzi回应送老婆贵价项链.jpg",
+            resolveVideoShareCardFileName(
+                buildVideoSharePayload(title = "Uzi回应送老婆贵价项链", bvid = "BV1aRG46aEnz")
+            )
+        )
+        assertEquals(
+            "BiliPai_share_card_鹿乃_翻唱《_我、和我们_》.jpg",
+            resolveVideoShareCardFileName(
+                buildVideoSharePayload(title = "鹿乃 翻唱《 我、和我们 》", bvid = "BV1")
+            )
+        )
+    }
+
+    @Test
+    fun buildVideoCoverShareIntent_usesLinkOnlyExtraText() {
+        val source = loadVideoSharePolicySource()
+        val coverShareIntentBody = source
+            .substringAfter("internal fun buildVideoCoverShareIntent")
+            .substringBefore("\n}")
+
+        assertTrue(
+            coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.url)"),
+            "Card share EXTRA_TEXT should be the bare link"
+        )
+        assertTrue(
+            !coverShareIntentBody.contains("putExtra(Intent.EXTRA_TEXT, payload.text)"),
+            "Card share EXTRA_TEXT should not repeat the bracketed title"
         )
     }
 

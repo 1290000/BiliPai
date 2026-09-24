@@ -45,6 +45,9 @@ import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppSingleChoiceRow
 import com.android.purebilibili.core.ui.components.AppTextButton
 import com.android.purebilibili.core.ui.common.verticalPriorityHorizontalPagerSwipe
+import com.android.purebilibili.feature.video.share.VideoSharePayload
+import com.android.purebilibili.feature.video.share.VideoShareSheetHost
+import com.android.purebilibili.feature.video.share.buildVideoSharePayload
 import com.android.purebilibili.core.util.ShareUtils
 import com.android.purebilibili.core.util.LocalWindowSizeClass
 import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
@@ -300,6 +303,7 @@ internal fun TabletVideoLayout(
         useTabletopLayout = layoutPolicy.useTabletopLayout,
     )
     val danmakuChrome = rememberTabletDanmakuChromeState(bvid)
+    var pendingVideoShare by remember { mutableStateOf<VideoSharePayload?>(null) }
     
     // 🖥️ [修复] 使用 LocalContext 获取 Activity，而非 playerState.context
     val context = LocalContext.current
@@ -630,6 +634,11 @@ internal fun TabletVideoInfoPane(
     val currentPageIndex = success.info.pages
         .indexOfFirst { it.cid == success.info.cid }
         .coerceAtLeast(0)
+    var pendingVideoShare by remember { mutableStateOf<VideoSharePayload?>(null) }
+    VideoShareSheetHost(
+        payload = pendingVideoShare,
+        onDismiss = { pendingVideoShare = null },
+    )
     ScrollableVideoInfoSection(
         info = engagementSuccess.info,
         isFollowing = engagementState.isFollowing,
@@ -639,6 +648,16 @@ internal fun TabletVideoInfoPane(
         currentPageIndex = currentPageIndex,
         downloadProgress = downloadProgress,
         isInWatchLater = engagementState.isInWatchLater,
+        onShareClick = {
+            pendingVideoShare = buildVideoSharePayload(
+                title = success.info.title,
+                bvid = success.info.bvid,
+                coverUrl = success.info.pic,
+                upName = success.info.owner.name,
+                playCountText = com.android.purebilibili.core.util.FormatUtils
+                    .formatStat(success.info.stat.view.toLong()),
+            )
+        },
         videoTags = success.videoTags,
         ownerFollowerCount = success.ownerFollowerCount,
         ownerVideoCount = success.ownerVideoCount,
@@ -733,6 +752,7 @@ internal fun TabletSecondaryContent(
     onDanmakuToggle: () -> Unit = {},
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
+    var pendingVideoShare by remember { mutableStateOf<VideoSharePayload?>(null) }
     val tabs = remember(
         success.info.ugc_season,
         success.info.owner.mid,
@@ -1157,7 +1177,14 @@ internal fun TabletSecondaryContent(
                             onFavoriteClick = engagementActions.toggleFavorite,
                             onCoinClick = engagementActions.openCoinDialog,
                             onShareClick = {
-                                ShareUtils.shareVideo(context, success.info.title, success.info.bvid)
+                                pendingVideoShare = buildVideoSharePayload(
+                                    title = success.info.title,
+                                    bvid = success.info.bvid,
+                                    coverUrl = success.info.pic,
+                                    upName = success.info.owner.name,
+                                    playCountText = com.android.purebilibili.core.util.FormatUtils
+                                        .formatStat(success.info.stat.view.toLong()),
+                                )
                             },
                             onCommentClick = playbackActions.openRootCommentComposer,
                             backdrop = commentChromeBackdrop,
@@ -1166,6 +1193,11 @@ internal fun TabletSecondaryContent(
                                 listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
                             },
                             showActionButtons = false,
+                        )
+
+                        VideoShareSheetHost(
+                            payload = pendingVideoShare,
+                            onDismiss = { pendingVideoShare = null },
                         )
 
                         if (showCommentSearchSheet) {
@@ -1378,6 +1410,7 @@ private fun ScrollableVideoInfoSection(
     onDeleteVideoNoteClick: () -> Unit = {},
     onShareVideoNote: (VideoNoteEditorDocument) -> Unit = {},
     onPublicVideoNoteClick: (Long, String) -> Unit = { _, _ -> },
+    onShareClick: () -> Unit = {},
     relatedVideos: List<com.android.purebilibili.data.model.response.RelatedVideo> = emptyList(),
     showRelatedVideos: Boolean = true,
     modifier: Modifier = Modifier,
@@ -1475,13 +1508,7 @@ private fun ScrollableVideoInfoSection(
                     downloadProgress = downloadProgress ?: -1f,
                     onCommentClick = { /* 平板模式不需要跳转评论 */ },
                     showCommentAction = false,
-                    onShareClick = {
-                        ShareUtils.shareVideo(
-                            context,
-                            info.title,
-                            info.bvid
-                        )
-                    }
+                    onShareClick = onShareClick
                 )
             }
         }
