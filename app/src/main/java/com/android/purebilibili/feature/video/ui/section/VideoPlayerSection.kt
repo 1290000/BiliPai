@@ -908,6 +908,12 @@ private fun VideoPlayerSectionContent(
             lifecycle = lifecycleOwner.lifecycle
         )
 
+    val playbackSpeedOptions by SettingsManager
+        .getPlaybackSpeedOptions(context)
+        .collectAsStateWithLifecycle(
+            initialValue = emptyList(),
+            lifecycle = lifecycleOwner.lifecycle
+        )
     val playerInteractionSettings by com.android.purebilibili.core.store.SettingsManager
         .getPlayerInteractionSettings(context)
         .collectAsStateWithLifecycle(
@@ -2114,6 +2120,7 @@ private fun VideoPlayerSectionContent(
                 isInPipMode,
                 isScreenLocked,
                 twoFingerSpeedMode,
+                playbackSpeedOptions,
                 isPortraitFullscreen,
             ) {
                 if (!shouldEnableInlinePlayerGestures(isPortraitFullscreen)) {
@@ -2186,7 +2193,8 @@ private fun VideoPlayerSectionContent(
                                 totalDragX = totalPanX,
                                 totalDragY = totalPanY,
                                 containerWidthPx = size.width.toFloat(),
-                                containerHeightPx = size.height.toFloat()
+                                containerHeightPx = size.height.toFloat(),
+                                supportedSpeeds = playbackSpeedOptions
                             )
                             val effectiveSpeed = resolveEffectivePlaybackSpeed(
                                 requestedSpeed = resolvedSpeed,
