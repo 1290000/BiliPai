@@ -203,7 +203,8 @@ fun AppModalBottomSheet(
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
     presentationProgress: Float = 1f,
     dismissOnBackPress: Boolean = true,
-    dragHandle: @Composable (() -> Unit)? = { AppDefaultBottomSheetDragHandle() },
+    // Reserve the former handle space without drawing a line; ModalBottomSheet owns swipe gestures.
+    dragHandle: @Composable (() -> Unit)? = { Spacer(Modifier.height(24.dp)) },
     windowInsets: androidx.compose.foundation.layout.WindowInsets = androidx.compose.material3.BottomSheetDefaults.modalWindowInsets,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -357,14 +358,5 @@ fun AppBottomSheetDragHandle() {
                 .clip(RoundedCornerShape(50))
                 .background(MaterialTheme.colorScheme.outlineVariant)
         )
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun AppDefaultBottomSheetDragHandle() {
-    when (LocalAppUiStyle.current) {
-        AppUiStyle.MIUIX -> AppBottomSheetDragHandle()
-        AppUiStyle.MATERIAL3 -> BottomSheetDefaults.DragHandle()
     }
 }
