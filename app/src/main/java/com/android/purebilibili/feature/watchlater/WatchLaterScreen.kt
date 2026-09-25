@@ -978,38 +978,14 @@ fun WatchLaterScreen(
                 )
                 if (hideListTopSearchBar) {
                     if (showListScopedSearchActiveBar) {
-                        AppSurface(
-                            onClick = { searchQuery = "" },
+                        com.android.purebilibili.feature.list.ListScopedSearchActiveBar(
+                            searchQuery = searchQuery,
+                            onClear = { searchQuery = "" },
+                            backdrop = watchLaterChromeBackdrop,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = AppSpacingTokens.Medium),
-                            shape = AppShapes.container(ContainerLevel.Pill),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                                alpha = 0.92f
-                            ),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = AppSpacingTokens.Medium,
-                                        vertical = AppSpacingTokens.Small
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                AppText(
-                                    text = com.android.purebilibili.feature.list
-                                        .resolveListScopedSearchActiveBarLabel(searchQuery),
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                AppIcon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "清除搜索",
-                                )
-                            }
-                        }
+                        )
                     }
                 } else {
                     AppLiquidAwareSearchField(

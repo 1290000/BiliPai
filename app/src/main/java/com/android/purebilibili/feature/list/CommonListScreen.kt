@@ -688,11 +688,13 @@ fun CommonListScreen(
         WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
     }
     val commonListHeaderMaxCollapsePx = if (supportsCollapsibleCommonListHeader) {
-        if (homeSettings.homeHeaderCollapseMode == HomeHeaderCollapseMode.SEARCH_ONLY) {
-            searchBarHeightPx.toFloat().coerceAtLeast(0f)
-        } else {
-            (fixedTopBarHeightPx.toFloat() - statusBarHeightPx).coerceAtLeast(0f)
-        }
+        resolveCommonListHeaderMaxCollapsePxForMode(
+            homeHeaderMode = homeSettings.homeHeaderCollapseMode,
+            topSearchBarVisible = !hideListTopSearchBar,
+            searchBarHeightPx = searchBarHeightPx,
+            fixedTopBarHeightPx = fixedTopBarHeightPx,
+            statusBarHeightPx = statusBarHeightPx,
+        )
     } else {
         resolveCommonListHeaderMaxCollapsePx(
             headerHeightPx = headerHeightPx,
@@ -896,6 +898,7 @@ fun CommonListScreen(
     }
     val historyUsesFloatingLiquidDocks = shouldUseFloatingCommonListHeaderChrome(
         isHistoryPage = historyViewModel != null,
+        isFavoritePage = favoriteViewModel != null,
         globalLiquidGlassReuseEnabled = historyFilterChrome.useLiquidDock,
     )
     val blurIntensity = currentUnifiedBlurIntensity()
@@ -1678,7 +1681,10 @@ fun CommonListScreen(
                     // 显示轻量结果条以便确认与清除。
                     if (hideListTopSearchBar) {
                         if (showListScopedSearchActiveBar) {
-                            Box(
+                            ListScopedSearchActiveBar(
+                                searchQuery = searchQuery,
+                                onClear = { searchQuery = "" },
+                                backdrop = commonListChromeBackdrop,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .onGloballyPositioned { coordinates ->
@@ -1691,38 +1697,8 @@ fun CommonListScreen(
                                             favoriteHeaderLayout.searchBarHorizontalPaddingDp.dp
                                         },
                                         vertical = favoriteHeaderLayout.searchBarVerticalPaddingDp.dp
-                                    )
-                            ) {
-                                AppSurface(
-                                    onClick = { searchQuery = "" },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = AppShapes.container(ContainerLevel.Pill),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                                        alpha = 0.92f
                                     ),
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(
-                                                horizontal = AppSpacingTokens.Medium,
-                                                vertical = AppSpacingTokens.Small
-                                            ),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        AppText(
-                                            text = resolveListScopedSearchActiveBarLabel(searchQuery),
-                                            modifier = Modifier.weight(1f),
-                                            maxLines = 1,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                        )
-                                        AppIcon(
-                                            imageVector = Icons.Rounded.Close,
-                                            contentDescription = "清除搜索",
-                                        )
-                                    }
-                                }
-                            }
+                            )
                         }
                     } else {
                         Box(
@@ -1925,7 +1901,8 @@ fun CommonListScreen(
                         ?: constraints.minWidth
                     if (supportsCollapsibleCommonListHeader && placeables.isNotEmpty()) {
                         val titleHeight = placeables.first().height
-                        val isSearchOnly = homeSettings.homeHeaderCollapseMode == HomeHeaderCollapseMode.SEARCH_ONLY
+                        val isSearchOnly = homeSettings.homeHeaderCollapseMode == HomeHeaderCollapseMode.SEARCH_ONLY &&
+                            !hideListTopSearchBar
                         if (isSearchOnly && placeables.size >= 2 && commonListHeaderMaxCollapsePx > 0f) {
                             // 仅折叠搜索：标题栏停留在顶部，搜索行上滑折叠，标签页停在标题栏下方
                             val searchBarHeight = placeables[1].height

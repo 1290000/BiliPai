@@ -56,8 +56,28 @@ internal fun shouldUseCommonListHeaderLocalBlur(
 
 internal fun shouldUseFloatingCommonListHeaderChrome(
     isHistoryPage: Boolean,
+    isFavoritePage: Boolean = false,
     globalLiquidGlassReuseEnabled: Boolean,
-): Boolean = isHistoryPage && globalLiquidGlassReuseEnabled
+): Boolean = (isHistoryPage || isFavoritePage) && globalLiquidGlassReuseEnabled
+
+/**
+ * 顶部搜索栏已隐藏时，「仅收起搜索」不再有搜索行可折，改为收起标题栏，
+ * 避免标题一直钉在顶部跟内容叠在一起。
+ */
+internal fun resolveCommonListHeaderMaxCollapsePxForMode(
+    homeHeaderMode: HomeHeaderCollapseMode,
+    topSearchBarVisible: Boolean,
+    searchBarHeightPx: Int,
+    fixedTopBarHeightPx: Int,
+    statusBarHeightPx: Float,
+): Float {
+    val collapseSearchOnly = homeHeaderMode == HomeHeaderCollapseMode.SEARCH_ONLY && topSearchBarVisible
+    return if (collapseSearchOnly) {
+        searchBarHeightPx.toFloat().coerceAtLeast(0f)
+    } else {
+        (fixedTopBarHeightPx.toFloat() - statusBarHeightPx).coerceAtLeast(0f)
+    }
+}
 
 internal fun resolveCommonListViewportTopPadding(headerHeight: Dp): Dp {
     return headerHeight.coerceAtLeast(0.dp)

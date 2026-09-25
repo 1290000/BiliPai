@@ -34,6 +34,54 @@ class CommonListAppearancePolicyTest {
                 globalLiquidGlassReuseEnabled = true,
             )
         )
+        assertTrue(
+            shouldUseFloatingCommonListHeaderChrome(
+                isHistoryPage = false,
+                isFavoritePage = true,
+                globalLiquidGlassReuseEnabled = true,
+            )
+        )
+        assertFalse(
+            shouldUseFloatingCommonListHeaderChrome(
+                isHistoryPage = false,
+                isFavoritePage = true,
+                globalLiquidGlassReuseEnabled = false,
+            )
+        )
+    }
+
+    @Test
+    fun hiddenTopSearch_collapsesTitleEvenWhenSearchOnlyMode() {
+        assertEquals(
+            40f,
+            resolveCommonListHeaderMaxCollapsePxForMode(
+                homeHeaderMode = com.android.purebilibili.core.store.HomeHeaderCollapseMode.SEARCH_ONLY,
+                topSearchBarVisible = true,
+                searchBarHeightPx = 40,
+                fixedTopBarHeightPx = 96,
+                statusBarHeightPx = 24f,
+            ),
+        )
+        assertEquals(
+            72f,
+            resolveCommonListHeaderMaxCollapsePxForMode(
+                homeHeaderMode = com.android.purebilibili.core.store.HomeHeaderCollapseMode.SEARCH_ONLY,
+                topSearchBarVisible = false,
+                searchBarHeightPx = 0,
+                fixedTopBarHeightPx = 96,
+                statusBarHeightPx = 24f,
+            ),
+        )
+        assertEquals(
+            72f,
+            resolveCommonListHeaderMaxCollapsePxForMode(
+                homeHeaderMode = com.android.purebilibili.core.store.HomeHeaderCollapseMode.BOTH,
+                topSearchBarVisible = false,
+                searchBarHeightPx = 0,
+                fixedTopBarHeightPx = 96,
+                statusBarHeightPx = 24f,
+            ),
+        )
     }
 
     @Test
