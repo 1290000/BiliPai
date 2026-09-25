@@ -961,95 +961,55 @@ internal fun VideoContentSection(
                         showInteractionActions = showInteractionActions,
                         animateVideoDetailLayout = animateVideoDetailLayout
                     )
-                    1 -> Box(modifier = Modifier.fillMaxSize()) {
-                        VideoCommentTab(
-                            listState = commentListState,
-                            modifier = Modifier,
-                            info = info,
-                            replies = replies,
-                            replyCount = replyCount,
-                            emoteMap = emoteMap,
-                            isRepliesLoading = isRepliesLoading,
-                            isRepliesEnd = isRepliesEnd,
-                            videoTags = videoTags,
-                            onUpClick = onUpClick,
-                            onSubReplyClick = onSubReplyClick,
-                            onCommentReplyClick = onCommentReplyClick,
-                            onLoadMoreReplies = onLoadMoreReplies,
-                            onImagePreview = { images, index, rect, textContent ->
-                                previewImages = images
-                                previewInitialIndex = index
-                                sourceRect = rect
-                                previewTextContent = textContent
-                                showImagePreview = true
-                            },
-                            onTimestampClick = onTimestampClick,
-                            showUpFlag = showUpFlag,
-                            contentPadding = PaddingValues(
-                                top = if (immersiveVideoContentChromeEnabled) tabBarVisibleHeightDp else 0.dp,
-                                bottom = bottomContentPadding,
-                            ),
-                            currentMid = currentMid,
-                            dissolvingIds = dissolvingIds,
-                            onDeleteComment = onDeleteComment,
-                            onDissolveStart = onDissolveStart,
-                            onCommentLike = onCommentLike,
-                            onCommentHate = onCommentHate,
-                            likedComments = likedComments,
-                            hatedComments = hatedComments,
-                            onCommentUrlClick = onCommentUrlClick,
-                            onReportComment = onReportComment,
-                            onToggleTopComment = onToggleTopComment,
-                            onCheckCommentFraud = onCheckCommentFraud,
-                            showIdentityDecorations = showIdentityDecorations,
-                            lightweightCommentRendering = lightweightCommentRendering,
-                            sortMode = sortMode,
-                            onSortModeChange = onSortModeChange,
-                            showNativeSortHeader = !liquidGlassEnabled,
-                            showSortControlInHeader = true,
-                            showHeader = !immersiveVideoContentChromeEnabled,
-                            floatingHeaderContentPadding = if (immersiveVideoContentChromeEnabled) 46.dp else 0.dp,
-                            onSearchClick = { showCommentSearchSheet = true },
-                        )
-                        if (liquidGlassEnabled || immersiveVideoContentChromeEnabled) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        top = if (immersiveVideoContentChromeEnabled) {
-                                            tabBarVisibleHeightDp
-                                        } else {
-                                            0.dp
-                                        }
-                                    )
-                                    .heightIn(min = 46.dp),
-                            ) {
-                                if (immersiveVideoContentChromeEnabled && commentListAtTop) {
-                                    CommentListHeader(
-                                        count = replyCount,
-                                        title = "${sortMode.label}评论",
-                                        modifier = Modifier.align(Alignment.TopStart),
-                                    )
-                                }
-                                CommentSortFilterBar(
-                                    sortMode = sortMode,
-                                    onSortModeChange = onSortModeChange,
-                                    // Keep sorting attached to the comment page through horizontal swipes.
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(top = 6.dp, end = 16.dp)
-                                        .offset(y = (-commentSortDockLiftDp).dp),
-                                    miuixBackdrop = if (liquidGlassEnabled) {
-                                        videoContentMiuixBackdrop
-                                    } else {
-                                        null
-                                    },
-                                    liquidGlassEffectsEnabled = liquidGlassEnabled,
-                                    onSearchClick = { showCommentSearchSheet = true },
-                                )
-                            }
-                        }
-                    }
+                    1 -> VideoCommentTab(
+                        listState = commentListState,
+                        modifier = Modifier,
+                        info = info,
+                        replies = replies,
+                        replyCount = replyCount,
+                        emoteMap = emoteMap,
+                        isRepliesLoading = isRepliesLoading,
+                        isRepliesEnd = isRepliesEnd,
+                        videoTags = videoTags,
+                        onUpClick = onUpClick,
+                        onSubReplyClick = onSubReplyClick,
+                        onCommentReplyClick = onCommentReplyClick,
+                        onLoadMoreReplies = onLoadMoreReplies,
+                        onImagePreview = { images, index, rect, textContent ->
+                            previewImages = images
+                            previewInitialIndex = index
+                            sourceRect = rect
+                            previewTextContent = textContent
+                            showImagePreview = true
+                        },
+                        onTimestampClick = onTimestampClick,
+                        showUpFlag = showUpFlag,
+                        contentPadding = PaddingValues(
+                            top = if (immersiveVideoContentChromeEnabled) tabBarVisibleHeightDp else 0.dp,
+                            bottom = bottomContentPadding,
+                        ),
+                        currentMid = currentMid,
+                        dissolvingIds = dissolvingIds,
+                        onDeleteComment = onDeleteComment,
+                        onDissolveStart = onDissolveStart,
+                        onCommentLike = onCommentLike,
+                        onCommentHate = onCommentHate,
+                        likedComments = likedComments,
+                        hatedComments = hatedComments,
+                        onCommentUrlClick = onCommentUrlClick,
+                        onReportComment = onReportComment,
+                        onToggleTopComment = onToggleTopComment,
+                        onCheckCommentFraud = onCheckCommentFraud,
+                        showIdentityDecorations = showIdentityDecorations,
+                        lightweightCommentRendering = lightweightCommentRendering,
+                        sortMode = sortMode,
+                        onSortModeChange = onSortModeChange,
+                        showNativeSortHeader = !liquidGlassEnabled,
+                        showSortControlInHeader = true,
+                        showHeader = !immersiveVideoContentChromeEnabled,
+                        floatingHeaderContentPadding = if (immersiveVideoContentChromeEnabled) 46.dp else 0.dp,
+                        onSearchClick = { showCommentSearchSheet = true },
+                    )
                 }
             }
         }
@@ -1134,6 +1094,39 @@ internal fun VideoContentSection(
                 },
                 isScrollInProgressProvider = { pagerState.isScrollInProgress },
             )
+        }
+
+        // Keep the glass dock outside the backdrop capture subtree to avoid recursive RenderNode
+        // sampling, while translating it with the comment page's actual pager position.
+        if (liquidGlassEnabled || immersiveVideoContentChromeEnabled) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = tabBarVisibleHeightDp)
+                    .heightIn(min = 46.dp)
+                    .graphicsLayer {
+                        translationX = pagerState.getOffsetDistanceInPages(1) * size.width
+                    },
+            ) {
+                if (immersiveVideoContentChromeEnabled && commentListAtTop) {
+                    CommentListHeader(
+                        count = replyCount,
+                        title = "${sortMode.label}评论",
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
+                CommentSortFilterBar(
+                    sortMode = sortMode,
+                    onSortModeChange = onSortModeChange,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 6.dp, end = 16.dp)
+                        .offset(y = (-commentSortDockLiftDp).dp),
+                    miuixBackdrop = if (liquidGlassEnabled) videoContentMiuixBackdrop else null,
+                    liquidGlassEffectsEnabled = liquidGlassEnabled,
+                    onSearchClick = { showCommentSearchSheet = true },
+                )
+            }
         }
 
         val isBackToTopVisible = backToTopButtonEnabled && when (pagerState.currentPage) {
