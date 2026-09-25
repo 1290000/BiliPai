@@ -1097,6 +1097,16 @@ fun CommonListScreen(
                                     pagerState.scrollToPage(targetPage)
                                     hasSyncedFavoritePager = true
                                 } else if (pagerState.currentPage != targetPage) {
+                                    // Cap intermediate folder traversal so distant switches
+                                    // only animate the final window instead of every folder.
+                                    resolveFavoriteFolderSwitchPreJumpPage(
+                                        currentPage = pagerState.currentPage,
+                                        targetPage = targetPage,
+                                    )?.let { preJumpPage ->
+                                        pagerState.scrollToPage(
+                                            preJumpPage.coerceIn(0, pagerState.pageCount - 1)
+                                        )
+                                    }
                                     animatePagerSelection(pagerState, targetPage)
                                 }
                             }
