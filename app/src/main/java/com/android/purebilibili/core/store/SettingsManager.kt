@@ -1440,6 +1440,8 @@ object SettingsManager {
         booleanPreferencesKey("dynamic_all_tab_horizontal_user_list_visible")
     private val KEY_DYNAMIC_TOP_BAR_COLLAPSE_ON_SCROLL =
         booleanPreferencesKey("dynamic_top_bar_collapse_on_scroll")
+    private val KEY_DYNAMIC_TOP_ACTIONS_COLLAPSED =
+        booleanPreferencesKey("dynamic_top_actions_collapsed")
     private val KEY_LIVE_FAVORITE_TAGS = stringPreferencesKey("live_favorite_tags")
     
     //  [新增] 开屏壁纸
@@ -3781,6 +3783,21 @@ object SettingsManager {
     suspend fun setDynamicTopBarCollapseOnScroll(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_TOP_BAR_COLLAPSE_ON_SCROLL] = enabled
+        }
+    }
+
+    /**
+     * 动态顶栏操作坞（布局切换/发布/折叠开关）是否处于折叠态。
+     * 默认展开；折叠后跨冷启动与版本更新保持。
+     */
+    fun getDynamicTopActionsCollapsed(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[KEY_DYNAMIC_TOP_ACTIONS_COLLAPSED] ?: false
+        }
+
+    suspend fun setDynamicTopActionsCollapsed(context: Context, collapsed: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_DYNAMIC_TOP_ACTIONS_COLLAPSED] = collapsed
         }
     }
 

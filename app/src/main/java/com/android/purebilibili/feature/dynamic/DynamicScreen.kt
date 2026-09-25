@@ -257,7 +257,6 @@ fun DynamicScreen(
     val likeOverrides by viewModel.likeOverrides.collectAsStateWithLifecycle()
     var showRepostDialog by remember { mutableStateOf<String?>(null) }  // 存储要转发的动态ID
     var showPublishDialog by remember { mutableStateOf(false) }
-    var dynamicTopActionsCollapsed by rememberSaveable { mutableStateOf(false) }
     var editingDynamicId by remember { mutableStateOf<String?>(null) }
     var editingDraft by remember {
         mutableStateOf(com.android.purebilibili.data.model.response.DynamicPublishDraft(text = ""))
@@ -295,6 +294,9 @@ fun DynamicScreen(
         .collectAsStateWithLifecycle(initialValue = false)
     val dynamicTopBarCollapseOnScroll by SettingsManager
         .getDynamicTopBarCollapseOnScroll(context)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val dynamicTopActionsCollapsed by SettingsManager
+        .getDynamicTopActionsCollapsed(context)
         .collectAsStateWithLifecycle(initialValue = false)
     val visibleTabs = remember(dynamicVisibleTabIds) {
         resolveDynamicVisibleTabs(dynamicVisibleTabIds)
@@ -390,6 +392,11 @@ fun DynamicScreen(
         null
     }
     val scope = rememberCoroutineScope()
+    val onDynamicTopActionsCollapsedChange: (Boolean) -> Unit = { collapsed ->
+        scope.launch {
+            SettingsManager.setDynamicTopActionsCollapsed(context, collapsed)
+        }
+    }
     val onDynamicTabSelected: (Int) -> Unit = { visibleIndex ->
         scope.launch {
             when (resolveDynamicTabReselectAction(displayedTabIndex, visibleIndex)) {
@@ -962,7 +969,7 @@ fun DynamicScreen(
                                     onDisplayModeChange = { viewModel.setDisplayMode(it) },
                                     onPublishClick = { showPublishDialog = true },
                                     actionDockCollapsed = dynamicTopActionsCollapsed,
-                                    onActionDockCollapsedChange = { dynamicTopActionsCollapsed = it },
+                                    onActionDockCollapsedChange = onDynamicTopActionsCollapsedChange,
                                     publishSkinDecoration = publishSkinDecoration,
                                     dockBackdrop = dynamicDockBackdrop,
                                     hazeState = dynamicTopBarHazeState,
@@ -1166,7 +1173,7 @@ fun DynamicScreen(
                                     onDisplayModeChange = { viewModel.setDisplayMode(it) },
                                     onPublishClick = { showPublishDialog = true },
                                     actionDockCollapsed = dynamicTopActionsCollapsed,
-                                    onActionDockCollapsedChange = { dynamicTopActionsCollapsed = it },
+                                    onActionDockCollapsedChange = onDynamicTopActionsCollapsedChange,
                                     publishSkinDecoration = publishSkinDecoration,
                                     dockBackdrop = dynamicDockBackdrop,
                                     hazeState = dynamicTopBarHazeState,
