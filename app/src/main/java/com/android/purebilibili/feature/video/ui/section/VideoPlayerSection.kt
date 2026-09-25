@@ -447,6 +447,7 @@ private fun BoxScope.VideoSubtitleOverlayHost(
         val success = uiState as? VideoPlaybackUiState.Success ?: return@remember false
         success.subtitlePrimaryCues.isNotEmpty() || success.subtitleSecondaryCues.isNotEmpty()
     }
+    val subtitleLifecycle = LocalLifecycleOwner.current.lifecycle
     // Keep the fast playback-position read inside this restart scope so the player, video
     // surface and danmaku hosts are not recomposed on every subtitle tick.
     val subtitlePositionMs by produceState(
@@ -455,14 +456,17 @@ private fun BoxScope.VideoSubtitleOverlayHost(
         subtitlePollingIdentity,
         subtitleFeatureEnabled,
         hasSubtitleCues,
+        subtitleLifecycle,
     ) {
         value = player.currentPosition.coerceAtLeast(0L)
         if (!subtitleFeatureEnabled || !hasSubtitleCues) {
             return@produceState
         }
-        while (isActive) {
-            value = player.currentPosition.coerceAtLeast(0L)
-            delay(if (player.isPlaying) 120L else 1500L)
+        subtitleLifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                value = player.currentPosition.coerceAtLeast(0L)
+                delay(if (player.isPlaying) 120L else 1500L)
+            }
         }
     }
     val subtitlePrimaryRawText = remember(
@@ -1522,23 +1526,25 @@ private fun VideoPlayerSectionContent(
 
     val latestShowControls = rememberUpdatedState(showControls)
     val latestGestureVisible = rememberUpdatedState(isGestureVisible)
-    LaunchedEffect(playerState.player, bvid, currentSeekSessionCid) {
-        while (isActive) {
-            val currentSession = sharedSeekSession
-            val shouldPollProgress = shouldPollVideoPlayerProgress(
-                controlsVisible = latestShowControls.value,
-                gestureVisible = latestGestureVisible.value,
-                isSliderMoving = currentSession.isSliderMoving,
-                hasPendingSeek = currentSession.pendingSeekPositionMs != null
-            )
-            if (shouldPollProgress) {
-                sharedSeekSession = syncPlaybackSeekSession(
-                    state = currentSession,
-                    playbackPositionMs = playerState.player.currentPosition.coerceAtLeast(0L),
-                    hasPlaybackResumedAfterPendingSeek = playerState.player.isPlaying
+    LaunchedEffect(playerState.player, bvid, currentSeekSessionCid, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                val currentSession = sharedSeekSession
+                val shouldPollProgress = shouldPollVideoPlayerProgress(
+                    controlsVisible = latestShowControls.value,
+                    gestureVisible = latestGestureVisible.value,
+                    isSliderMoving = currentSession.isSliderMoving,
+                    hasPendingSeek = currentSession.pendingSeekPositionMs != null
                 )
+                if (shouldPollProgress) {
+                    sharedSeekSession = syncPlaybackSeekSession(
+                        state = currentSession,
+                        playbackPositionMs = playerState.player.currentPosition.coerceAtLeast(0L),
+                        hasPlaybackResumedAfterPendingSeek = playerState.player.isPlaying
+                    )
+                }
+                delay(200)
             }
-            delay(200)
         }
     }
 
