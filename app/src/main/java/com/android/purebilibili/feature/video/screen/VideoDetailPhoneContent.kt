@@ -108,7 +108,7 @@ internal fun VideoDetailPhoneSuccessContentLayer(
     isVideoPlaying: Boolean,
     onSelectedTabChange: (Int) -> Unit,
     onIntroScrollThresholdChange: (Boolean) -> Unit,
-    openFavoriteFolders: (VideoFavoriteEntryPoint) -> Unit,
+    openFavoriteFolders: (VideoFavoriteEntryPoint, isLongPress: Boolean) -> Unit,
     navigateToUserSpaceFromVideo: (Long) -> Unit,
     navigateToRelatedVideo: (String, android.os.Bundle?) -> Unit,
     openCommentUrl: (String) -> Unit,
@@ -286,7 +286,9 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                 ),
                                 primaryActions = VideoContentPrimaryActions(
                                     onFollowClick = engagementActions.toggleFollow,
-                                    onFavoriteClick = { openFavoriteFolders(VideoFavoriteEntryPoint.DetailActionRow) },
+                                    onFavoriteClick = {
+                                        openFavoriteFolders(VideoFavoriteEntryPoint.DetailActionRow, false)
+                                    },
                                     onLikeClick = engagementActions.toggleLike,
                                     onCoinClick = engagementActions.openCoinDialog,
                                     onTripleClick = engagementActions.doTripleAction,
@@ -321,7 +323,9 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                             )
                                         }
                                     },
-                                    onFavoriteLongClick = playbackActions.showFavoriteFolderDialog,
+                                    onFavoriteLongClick = {
+                                        openFavoriteFolders(VideoFavoriteEntryPoint.DetailActionRow, true)
+                                    },
                                     onBgmClick = onBgmClick,
                                 ),
                                 commentActions = VideoContentCommentActions(
@@ -374,7 +378,10 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                 isCoined = engagementState.coinCount > 0,
                                 onLikeClick = engagementActions.toggleLike,
                                 onFavoriteClick = {
-                                    openFavoriteFolders(VideoFavoriteEntryPoint.BottomInputBar)
+                                    openFavoriteFolders(VideoFavoriteEntryPoint.BottomInputBar, false)
+                                },
+                                onFavoriteLongClick = {
+                                    openFavoriteFolders(VideoFavoriteEntryPoint.BottomInputBar, true)
                                 },
                                 onCoinClick = engagementActions.openCoinDialog,
                                 onShareClick = {

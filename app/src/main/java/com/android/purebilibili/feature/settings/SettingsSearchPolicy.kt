@@ -96,9 +96,9 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry(
         target = SettingsSearchTarget.INTERACTION_COMMENT,
         title = "互动与评论",
-        subtitle = "评论发送检测、评论装扮、AI 总结、双击点赞、视频简介与笔记",
+        subtitle = "评论发送检测、评论装扮、AI 总结、双击点赞、收藏点按、视频简介与笔记",
         section = "设置",
-        aliases = listOf("互动", "评论", "楼中楼", "评论楼中楼", "评论检测", "发评反诈", "评论发送检测", "评论装扮", "个性装扮", "ai总结", "视频总结", "双击点赞", "视频简介", "简介默认展开", "视频笔记", "显示视频笔记", "默认折叠视频笔记", "笔记折叠", "视频标签", "视频标签大小", "标签大小", "标签紧凑", "标签更小", "tag")
+        aliases = listOf("互动", "评论", "楼中楼", "评论楼中楼", "评论检测", "发评反诈", "评论发送检测", "评论装扮", "个性装扮", "ai总结", "视频总结", "双击点赞", "收藏", "收藏夹", "快速收藏", "点按收藏", "收藏点按", "默认收藏夹", "视频简介", "简介默认展开", "视频笔记", "显示视频笔记", "默认折叠视频笔记", "笔记折叠", "视频标签", "视频标签大小", "标签大小", "标签紧凑", "标签更小", "tag")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.DATA_BACKUP,

@@ -591,6 +591,10 @@ internal fun VideoDetailScreenStateHolder(
     val subjectSnapshot by viewModel.subjectSnapshot.collectAsStateWithLifecycle()
     val engagementState by engagementViewModel.uiState.collectAsStateWithLifecycle()
     val favoriteFolderSaveEvent by viewModel.favoriteFolderSaveEvent.collectAsStateWithLifecycle()
+    val favoriteQuickSaveDefaultFolder by com.android.purebilibili.core.store.FavoriteInteractionSettingsStore
+        .getQuickSaveDefaultFolder(context)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val latestFavoriteQuickSaveDefaultFolder = rememberUpdatedState(favoriteQuickSaveDefaultFolder)
     DisposableEffect(viewModel, presentationState) {
         viewModel.setPageIdentityCommitListener(presentationState::syncPlaybackIdentity)
         onDispose {
@@ -651,10 +655,22 @@ internal fun VideoDetailScreenStateHolder(
             recallDanmaku = { viewModel.recallDanmaku(it) }
         )
     }
-    val engagementActions = remember(engagementViewModel) {
+    val engagementActions = remember(engagementViewModel, viewModel) {
         VideoDetailEngagementActions(
             toggleFollow = engagementViewModel::toggleFollow,
             toggleFavorite = engagementViewModel::toggleFavorite,
+            onFavoriteAction = { isLongPress ->
+                when (
+                    resolveVideoFavoriteAction(
+                        entryPoint = VideoFavoriteEntryPoint.DetailActionRow,
+                        isLongPress = isLongPress,
+                        quickSaveDefaultFolder = latestFavoriteQuickSaveDefaultFolder.value,
+                    )
+                ) {
+                    VideoFavoriteAction.ToggleFavorite -> engagementViewModel.toggleFavorite()
+                    VideoFavoriteAction.OpenFavoriteFolders -> viewModel.showFavoriteFolderDialog()
+                }
+            },
             toggleLike = engagementViewModel::toggleLike,
             openCoinDialog = engagementViewModel::openCoinDialog,
             doTripleAction = engagementViewModel::doTripleAction,
@@ -1357,8 +1373,14 @@ internal fun VideoDetailScreenStateHolder(
             commentViewModel.closeSubReply()
         }
     }
-    val openFavoriteFolders: (VideoFavoriteEntryPoint) -> Unit = { entryPoint ->
-        when (resolveVideoFavoriteAction(entryPoint)) {
+    val openFavoriteFolders: (VideoFavoriteEntryPoint, Boolean) -> Unit = { entryPoint, isLongPress ->
+        when (
+            resolveVideoFavoriteAction(
+                entryPoint = entryPoint,
+                isLongPress = isLongPress,
+                quickSaveDefaultFolder = favoriteQuickSaveDefaultFolder,
+            )
+        ) {
             VideoFavoriteAction.ToggleFavorite -> engagementViewModel.toggleFavorite()
             VideoFavoriteAction.OpenFavoriteFolders -> viewModel.showFavoriteFolderDialog()
         }
@@ -3357,7 +3379,7 @@ internal fun VideoDetailScreenStateHolder(
                 onDislike = viewModel::markVideoNotInterested,
                 onCoin = engagementViewModel::openCoinDialog,
                 onToggleFavorite = {
-                    openFavoriteFolders(VideoFavoriteEntryPoint.FullscreenOverlay)
+                    openFavoriteFolders(VideoFavoriteEntryPoint.FullscreenOverlay, false)
                 },
                 onTriple = engagementViewModel::doTripleAction,
                 onRelatedVideoClick = navigateToRelatedVideo,
@@ -3609,7 +3631,7 @@ internal fun VideoDetailScreenStateHolder(
                         onDislike = { viewModel.markVideoNotInterested() },
                         onCoin = { engagementViewModel.openCoinDialog() },
                         onToggleFavorite = {
-                            openFavoriteFolders(VideoFavoriteEntryPoint.FullscreenOverlay)
+                            openFavoriteFolders(VideoFavoriteEntryPoint.FullscreenOverlay, false)
                         },
                         onTriple = { engagementViewModel.doTripleAction() },
                         onRelatedVideoClick = navigateToRelatedVideo,
