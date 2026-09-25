@@ -232,23 +232,9 @@ val LocalHomeWallpaperIsStatic = staticCompositionLocalOf { false }
 val LocalHomeScrollOffset = compositionLocalOf { androidx.compose.runtime.mutableFloatStateOf(0f) }
 val LocalHomeFeedScrollInProgress = compositionLocalOf { mutableStateOf(false) }
 
-private const val HOME_SCROLL_LITE_RELEASE_DELAY_MS = 120L
-
-@Composable
-private fun rememberHomeScrollLiteMode(gridState: LazyStaggeredGridState): Boolean {
-    var enabled by remember(gridState) { mutableStateOf(gridState.isScrollInProgress) }
-    LaunchedEffect(gridState) {
-        snapshotFlow { gridState.isScrollInProgress }.collectLatest { isScrolling ->
-            if (!isScrolling) delay(HOME_SCROLL_LITE_RELEASE_DELAY_MS)
-            enabled = isScrolling
-        }
-    }
-    return enabled
-}
-
-@Composable
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
+@Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onVideoClick: (HomeVideoClickRequest) -> Unit,
@@ -2339,7 +2325,6 @@ fun HomeScreen(
                                      PopularSubCategory,
                                      () -> Unit
                                  ) -> Unit = { pageCategoryState, contentGridState, selectedPopularSubCategory, onPageLoadMore ->
-                                 val scrollLiteModeEnabled = rememberHomeScrollLiteMode(contentGridState)
                                  val pageShowsHeroCarousel = shouldShowHomeHeroCarousel(
                                      enabled = homeSettings.homeHeroCarouselEnabled,
                                      category = category,
@@ -2358,7 +2343,6 @@ fun HomeScreen(
                                      category = category,
                                      categoryState = pageCategoryState,
                                      gridState = contentGridState,
-                                     scrollLiteModeEnabled = scrollLiteModeEnabled,
                                      gridColumns = effectiveGridColumns,
                                      contentPadding = pageContentPadding,
                                      dissolvingVideos = dissolvingVideos,

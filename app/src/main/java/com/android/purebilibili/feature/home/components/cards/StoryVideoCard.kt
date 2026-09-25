@@ -143,9 +143,9 @@ internal fun StoryVideoCard(
         TextStyle(shadow = resolveVideoCardCoverOverlayTextShadow())
     }
     val showDurationOutside = homeDurationStyle == HomeDurationStyle.OUTSIDE_COVER
-    val scrollLitePolicy = remember(scrollLiteModeEnabled) {
+    val scrollLitePolicy = remember {
         resolveStoryVideoCardScrollLiteVisualPolicy(
-            scrollLiteModeEnabled = scrollLiteModeEnabled
+            scrollLiteModeEnabled = false
         )
     }
     val badgeStylePolicy = remember(showCoverGlassBadges, showInfoGlassBadges) {
@@ -259,7 +259,7 @@ internal fun StoryVideoCard(
         )
     }
     val coverCrossfadeEnabled = shouldEnableVideoCardCoverCrossfade(
-        isScrollInProgress = scrollLiteModeEnabled,
+        isScrollInProgress = false,
         isReturningFromDetail = isReturningFromVideoDetail,
         useCoverSharedBounds = useCardShellSharedBounds ||
             (LocalMiuixVideoCardTransitionState.current.enabled && isSharedReturnTarget),
