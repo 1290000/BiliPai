@@ -961,55 +961,95 @@ internal fun VideoContentSection(
                         showInteractionActions = showInteractionActions,
                         animateVideoDetailLayout = animateVideoDetailLayout
                     )
-                    1 -> VideoCommentTab(
-                        listState = commentListState,
-                        modifier = Modifier,
-                        info = info,
-                        replies = replies,
-                        replyCount = replyCount,
-                        emoteMap = emoteMap,
-                        isRepliesLoading = isRepliesLoading,
-                        isRepliesEnd = isRepliesEnd,
-                        videoTags = videoTags,
-                        onUpClick = onUpClick,
-                        onSubReplyClick = onSubReplyClick,
-                        onCommentReplyClick = onCommentReplyClick,
-                        onLoadMoreReplies = onLoadMoreReplies,
-                        onImagePreview = { images, index, rect, textContent ->
-                            previewImages = images
-                            previewInitialIndex = index
-                            sourceRect = rect
-                            previewTextContent = textContent
-                            showImagePreview = true
-                        },
-                        onTimestampClick = onTimestampClick,
-                        showUpFlag = showUpFlag,
-                        contentPadding = PaddingValues(
-                            top = if (immersiveVideoContentChromeEnabled) tabBarVisibleHeightDp else 0.dp,
-                            bottom = bottomContentPadding,
-                        ),
-                        currentMid = currentMid,
-                        dissolvingIds = dissolvingIds,
-                        onDeleteComment = onDeleteComment,
-                        onDissolveStart = onDissolveStart,
-                        onCommentLike = onCommentLike,
-                        onCommentHate = onCommentHate,
-                        likedComments = likedComments,
-                        hatedComments = hatedComments,
-                        onCommentUrlClick = onCommentUrlClick,
-                        onReportComment = onReportComment,
-                        onToggleTopComment = onToggleTopComment,
-                        onCheckCommentFraud = onCheckCommentFraud,
-                        showIdentityDecorations = showIdentityDecorations,
-                        lightweightCommentRendering = lightweightCommentRendering,
-                        sortMode = sortMode,
-                        onSortModeChange = onSortModeChange,
-                        showNativeSortHeader = !liquidGlassEnabled,
-                        showSortControlInHeader = true,
-                        showHeader = !immersiveVideoContentChromeEnabled,
-                        floatingHeaderContentPadding = if (immersiveVideoContentChromeEnabled) 46.dp else 0.dp,
-                        onSearchClick = { showCommentSearchSheet = true },
-                    )
+                    1 -> Box(modifier = Modifier.fillMaxSize()) {
+                        VideoCommentTab(
+                            listState = commentListState,
+                            modifier = Modifier,
+                            info = info,
+                            replies = replies,
+                            replyCount = replyCount,
+                            emoteMap = emoteMap,
+                            isRepliesLoading = isRepliesLoading,
+                            isRepliesEnd = isRepliesEnd,
+                            videoTags = videoTags,
+                            onUpClick = onUpClick,
+                            onSubReplyClick = onSubReplyClick,
+                            onCommentReplyClick = onCommentReplyClick,
+                            onLoadMoreReplies = onLoadMoreReplies,
+                            onImagePreview = { images, index, rect, textContent ->
+                                previewImages = images
+                                previewInitialIndex = index
+                                sourceRect = rect
+                                previewTextContent = textContent
+                                showImagePreview = true
+                            },
+                            onTimestampClick = onTimestampClick,
+                            showUpFlag = showUpFlag,
+                            contentPadding = PaddingValues(
+                                top = if (immersiveVideoContentChromeEnabled) tabBarVisibleHeightDp else 0.dp,
+                                bottom = bottomContentPadding,
+                            ),
+                            currentMid = currentMid,
+                            dissolvingIds = dissolvingIds,
+                            onDeleteComment = onDeleteComment,
+                            onDissolveStart = onDissolveStart,
+                            onCommentLike = onCommentLike,
+                            onCommentHate = onCommentHate,
+                            likedComments = likedComments,
+                            hatedComments = hatedComments,
+                            onCommentUrlClick = onCommentUrlClick,
+                            onReportComment = onReportComment,
+                            onToggleTopComment = onToggleTopComment,
+                            onCheckCommentFraud = onCheckCommentFraud,
+                            showIdentityDecorations = showIdentityDecorations,
+                            lightweightCommentRendering = lightweightCommentRendering,
+                            sortMode = sortMode,
+                            onSortModeChange = onSortModeChange,
+                            showNativeSortHeader = !liquidGlassEnabled,
+                            showSortControlInHeader = true,
+                            showHeader = !immersiveVideoContentChromeEnabled,
+                            floatingHeaderContentPadding = if (immersiveVideoContentChromeEnabled) 46.dp else 0.dp,
+                            onSearchClick = { showCommentSearchSheet = true },
+                        )
+                        if (liquidGlassEnabled || immersiveVideoContentChromeEnabled) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        top = if (immersiveVideoContentChromeEnabled) {
+                                            tabBarVisibleHeightDp
+                                        } else {
+                                            0.dp
+                                        }
+                                    )
+                                    .heightIn(min = 46.dp),
+                            ) {
+                                if (immersiveVideoContentChromeEnabled && commentListAtTop) {
+                                    CommentListHeader(
+                                        count = replyCount,
+                                        title = "${sortMode.label}评论",
+                                        modifier = Modifier.align(Alignment.TopStart),
+                                    )
+                                }
+                                CommentSortFilterBar(
+                                    sortMode = sortMode,
+                                    onSortModeChange = onSortModeChange,
+                                    // Keep sorting attached to the comment page through horizontal swipes.
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(top = 6.dp, end = 16.dp)
+                                        .offset(y = (-commentSortDockLiftDp).dp),
+                                    miuixBackdrop = if (liquidGlassEnabled) {
+                                        videoContentMiuixBackdrop
+                                    } else {
+                                        null
+                                    },
+                                    liquidGlassEffectsEnabled = liquidGlassEnabled,
+                                    onSearchClick = { showCommentSearchSheet = true },
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1017,7 +1057,9 @@ internal fun VideoContentSection(
         if (immersiveVideoContentChromeEnabled) {
             // 顶部标签与评论标题/排序共用同一张渐进模糊材质，避免两个独立渐变
             // 在相邻边界重新起算而形成断层。
-            val commentChromeHeight = if (pagerState.currentPage == 1) 46.dp else 0.dp
+            val commentChromeHeight = if (
+                pagerState.currentPage == 1 || pagerState.isScrollInProgress
+            ) 46.dp else 0.dp
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1092,40 +1134,6 @@ internal fun VideoContentSection(
                 },
                 isScrollInProgressProvider = { pagerState.isScrollInProgress },
             )
-        }
-
-        // The pager has only intro and comments. Keep comment chrome composed from the first
-        // swipe frame through settling, even before currentPage or targetPage changes.
-        val commentChromeVisible = pagerState.currentPage == 1 || pagerState.isScrollInProgress
-        if (commentChromeVisible && (liquidGlassEnabled || immersiveVideoContentChromeEnabled)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = tabBarVisibleHeightDp)
-                    .heightIn(min = 46.dp),
-            ) {
-                if (immersiveVideoContentChromeEnabled) {
-                    if (commentListAtTop) {
-                        CommentListHeader(
-                            count = replyCount,
-                            title = "${sortMode.label}评论",
-                            modifier = Modifier.align(Alignment.TopStart),
-                        )
-                    }
-                }
-                CommentSortFilterBar(
-                    sortMode = sortMode,
-                    onSortModeChange = onSortModeChange,
-                    // Keep sorting attached to the viewport chrome while the comment list moves.
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 6.dp, end = 16.dp)
-                        .offset(y = (-commentSortDockLiftDp).dp),
-                    miuixBackdrop = if (liquidGlassEnabled) videoContentMiuixBackdrop else null,
-                    liquidGlassEffectsEnabled = liquidGlassEnabled,
-                    onSearchClick = { showCommentSearchSheet = true },
-                )
-            }
         }
 
         val isBackToTopVisible = backToTopButtonEnabled && when (pagerState.currentPage) {
