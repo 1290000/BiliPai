@@ -1549,6 +1549,15 @@ fun AppNavigation(
         val favoriteScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val liveScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
         val watchLaterScrollChannel = remember { kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED) }
+        val historyListScopedSearchChannel = remember {
+            kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.CONFLATED)
+        }
+        val favoriteListScopedSearchChannel = remember {
+            kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.CONFLATED)
+        }
+        val watchLaterListScopedSearchChannel = remember {
+            kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.CONFLATED)
+        }
         var dynamicUnreadCount by remember { mutableIntStateOf(0) }
         val dynamicUnreadPollingEnabled = visibleBottomBarItems.contains(BottomNavItem.DYNAMIC)
         LaunchedEffect(currentBottomNavItem, dynamicUnreadPollingEnabled) {
@@ -1633,6 +1642,30 @@ fun AppNavigation(
                 SearchSubmitAction.Ignore -> Unit
                 is SearchSubmitAction.OpenSearch -> pushSearchRouteInNavigation3(action.keyword)
                 is SearchSubmitAction.OpenNativeTarget -> openBilibiliNativeTargetInNavigation3(action.target)
+            }
+        }
+        val submitBottomBarSearchKeyword: (String) -> Unit = { keyword ->
+            val listScopedSearchActive = com.android.purebilibili.feature.list.isListScopedSearchActive(
+                bottomBarSearchEnabled = effectiveHomeSettings.isBottomBarSearchEnabled,
+                listScopedSearchEnabled = effectiveHomeSettings.listScopedSearchEnabled,
+            )
+            val scopedChannel = if (
+                listScopedSearchActive &&
+                currentNavigation3Key == BiliPaiNavKey.MainHost
+            ) {
+                when (currentBottomNavItem) {
+                    BottomNavItem.HISTORY -> historyListScopedSearchChannel
+                    BottomNavItem.FAVORITE -> favoriteListScopedSearchChannel
+                    BottomNavItem.WATCHLATER -> watchLaterListScopedSearchChannel
+                    else -> null
+                }
+            } else {
+                null
+            }
+            if (scopedChannel != null) {
+                scopedChannel.trySend(keyword.trim())
+            } else {
+                submitSearchKeywordInNavigation3(keyword)
             }
         }
         fun openBilibiliLinkInNavigation3(rawLink: String) {
@@ -2407,6 +2440,11 @@ fun AppNavigation(
                                     onOpenSearchDestination = if (historySearchKey == null) {
                                         { query -> pushNavigation3Key(BiliPaiNavKey.HistorySearch(query)) }
                                     } else null,
+                                    listScopedSearchChannel = if (historySearchKey == null) {
+                                        historyListScopedSearchChannel
+                                    } else {
+                                        null
+                                    },
                                     onUpClick = { mid -> pushNavigation3Route(ScreenRoutes.Space.createRoute(mid)) },
                                     onVideoClick = { lookupKey, cid, cover, isVertical ->
                                         val historyItem = historyViewModel.getHistoryItem(lookupKey)
@@ -3263,9 +3301,15 @@ fun AppNavigation(
                                 com.android.purebilibili.feature.watchlater.WatchLaterScreen(
                                     onBack = { performSystemBackAction() },
                                     initialSearchQuery = watchLaterSearchKey?.query.orEmpty(),
+                                    isSearchDestination = watchLaterSearchKey != null,
                                     onOpenSearchDestination = if (watchLaterSearchKey == null) {
                                         { query -> pushNavigation3Key(BiliPaiNavKey.WatchLaterSearch(query)) }
                                     } else null,
+                                    listScopedSearchChannel = if (watchLaterSearchKey == null) {
+                                        watchLaterListScopedSearchChannel
+                                    } else {
+                                        null
+                                    },
                                     onVideoClick = { bvid, cid, resumePositionMs ->
                                         navigateToVideoInNavigation3(
                                             bvid = bvid,
@@ -3463,6 +3507,11 @@ fun AppNavigation(
                                     onOpenSearchDestination = if (favoriteSearchKey == null) {
                                         { query -> pushNavigation3Key(BiliPaiNavKey.FavoriteSearch(query)) }
                                     } else null,
+                                    listScopedSearchChannel = if (favoriteSearchKey == null) {
+                                        favoriteListScopedSearchChannel
+                                    } else {
+                                        null
+                                    },
                                     onVideoClick = { bvid, cid, cover, isVertical ->
                                         navigateToVideoInNavigation3(
                                             bvid = bvid,
@@ -4383,7 +4432,7 @@ fun AppNavigation(
                                         )
                                     },
                                     onSearchClick = { requestSearchFromBottomBar() },
-                                    onSearchKeywordSubmit = submitSearchKeywordInNavigation3,
+                                    onSearchKeywordSubmit = submitBottomBarSearchKeyword,
                                     searchLaunchKey = bottomBarSearchLaunchKey,
                                     hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                     isFloating = true,
@@ -4436,7 +4485,7 @@ fun AppNavigation(
                                     )
                                 },
                                 onSearchClick = { requestSearchFromBottomBar() },
-                                onSearchKeywordSubmit = submitSearchKeywordInNavigation3,
+                                onSearchKeywordSubmit = submitBottomBarSearchKeyword,
                                 searchLaunchKey = bottomBarSearchLaunchKey,
                                 hazeState = if (isBottomBarBlurEnabled) mainHazeState else null,
                                 isFloating = false,

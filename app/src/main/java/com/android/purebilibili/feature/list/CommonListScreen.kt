@@ -94,6 +94,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
@@ -231,6 +232,7 @@ fun CommonListScreen(
     initialFavoriteSubscribed: Boolean = false,
     isSearchDestination: Boolean = false,
     onOpenSearchDestination: ((String) -> Unit)? = null,
+    listScopedSearchChannel: kotlinx.coroutines.channels.Channel<String>? = null,
     onPlayAllAudioClick: ((String, Long) -> Unit)? = null,
     globalHazeState: HazeState? = null, // [新增] 接收全局 HazeState
     scrollToTopChannel: Channel<Unit>? = null,
@@ -636,6 +638,21 @@ fun CommonListScreen(
     var searchQuery by rememberSaveable { androidx.compose.runtime.mutableStateOf(initialSearchQuery) }
     var favoriteSearchScope by rememberSaveable {
         androidx.compose.runtime.mutableStateOf(initialFavoriteSearchScope)
+    }
+    val hideListTopSearchBar = shouldHideListTopSearchBar(
+        bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+        listScopedSearchEnabled = homeSettings.listScopedSearchEnabled,
+        isSearchDestination = isSearchDestination,
+    )
+    val showListScopedSearchActiveBar = shouldShowListScopedSearchActiveBar(
+        bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+        listScopedSearchEnabled = homeSettings.listScopedSearchEnabled,
+        searchQuery = searchQuery,
+    )
+    LaunchedEffect(listScopedSearchChannel) {
+        listScopedSearchChannel?.receiveAsFlow()?.collect { query ->
+            searchQuery = query
+        }
     }
     LaunchedEffect(
         searchQuery,
@@ -1657,38 +1674,90 @@ fun CommonListScreen(
 
                     // 🔍 搜索栏。历史页开启全局液态玻璃复用后，搜索与筛选各自成为
                     // 一条独立 Dock，结构与首页顶部一致。
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onGloballyPositioned { coordinates ->
-                                searchBarHeightPx = coordinates.size.height
+                    // 「列表精简搜索」开启后隐藏顶栏搜索，由底栏胶囊页内搜索；有关键词时
+                    // 显示轻量结果条以便确认与清除。
+                    if (hideListTopSearchBar) {
+                        if (showListScopedSearchActiveBar) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onGloballyPositioned { coordinates ->
+                                        searchBarHeightPx = coordinates.size.height
+                                    }
+                                    .padding(
+                                        horizontal = if (historyViewModel != null && historyFilterChrome.useLiquidDock) {
+                                            historyFilterChrome.horizontalPaddingDp.dp
+                                        } else {
+                                            favoriteHeaderLayout.searchBarHorizontalPaddingDp.dp
+                                        },
+                                        vertical = favoriteHeaderLayout.searchBarVerticalPaddingDp.dp
+                                    )
+                            ) {
+                                AppSurface(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = AppShapes.container(ContainerLevel.Pill),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+                                        alpha = 0.92f
+                                    ),
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                horizontal = AppSpacingTokens.Medium,
+                                                vertical = AppSpacingTokens.Small
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        AppText(
+                                            text = resolveListScopedSearchActiveBarLabel(searchQuery),
+                                            modifier = Modifier.weight(1f),
+                                            maxLines = 1,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        AppIcon(
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = "清除搜索",
+                                        )
+                                    }
+                                }
                             }
-                            .padding(
-                                horizontal = if (historyViewModel != null && historyFilterChrome.useLiquidDock) {
-                                    historyFilterChrome.horizontalPaddingDp.dp
-                                } else {
-                                    favoriteHeaderLayout.searchBarHorizontalPaddingDp.dp
-                                },
-                                vertical = favoriteHeaderLayout.searchBarVerticalPaddingDp.dp
-                            )
-                    ) {
-                        val searchPlaceholder = when {
-                            isSubscribedBrowse -> "搜索追更"
-                            historyViewModel != null -> "搜索历史"
-                            favoriteViewModel != null && favoriteSection != FavoriteSection.VIDEO ->
-                                "搜索${favoriteSection.label}收藏"
-                            else -> "搜索视频"
                         }
-                        AppLiquidAwareSearchField(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = searchPlaceholder,
-                            backdrop = commonListChromeBackdrop,
-                            isScrollInProgressProvider = {
-                                primaryGridState.isScrollInProgress
-                            },
-                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { coordinates ->
+                                    searchBarHeightPx = coordinates.size.height
+                                }
+                                .padding(
+                                    horizontal = if (historyViewModel != null && historyFilterChrome.useLiquidDock) {
+                                        historyFilterChrome.horizontalPaddingDp.dp
+                                    } else {
+                                        favoriteHeaderLayout.searchBarHorizontalPaddingDp.dp
+                                    },
+                                    vertical = favoriteHeaderLayout.searchBarVerticalPaddingDp.dp
+                                )
+                        ) {
+                            val searchPlaceholder = when {
+                                isSubscribedBrowse -> "搜索追更"
+                                historyViewModel != null -> "搜索历史"
+                                favoriteViewModel != null && favoriteSection != FavoriteSection.VIDEO ->
+                                    "搜索${favoriteSection.label}收藏"
+                                else -> "搜索视频"
+                            }
+                            AppLiquidAwareSearchField(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = searchPlaceholder,
+                                backdrop = commonListChromeBackdrop,
+                                isScrollInProgressProvider = {
+                                    primaryGridState.isScrollInProgress
+                                },
+                            )
+                        }
                     }
 
                     if (favoriteViewModel != null) {
