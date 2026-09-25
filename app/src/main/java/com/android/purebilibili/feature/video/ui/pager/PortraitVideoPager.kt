@@ -110,6 +110,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -2305,6 +2306,7 @@ private fun VideoPageItem(
         isPlayerReadyForThisVideo = isPlayerReadyForThisVideo,
     )
     LaunchedEffect(
+        lifecycleOwner,
         playerViewRef,
         shouldCaptureLetterboxAmbient,
         isPlaying,
@@ -2315,16 +2317,18 @@ private fun VideoPageItem(
             return@LaunchedEffect
         }
         val playerView = playerViewRef ?: return@LaunchedEffect
-        while (isActive) {
-            if (playerView.isAttachedToWindow && playerView.width > 0 && playerView.height > 0) {
-                letterboxAmbientFrame.value = captureVideoAmbientFrame(
-                    playerView = playerView,
-                    targetWidth = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_WIDTH_PX,
-                    targetHeight = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_HEIGHT_PX,
-                )?.asImageBitmap()
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                if (playerView.isAttachedToWindow && playerView.width > 0 && playerView.height > 0) {
+                    letterboxAmbientFrame.value = captureVideoAmbientFrame(
+                        playerView = playerView,
+                        targetWidth = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_WIDTH_PX,
+                        targetHeight = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_HEIGHT_PX,
+                    )?.asImageBitmap()
+                }
+                if (!isPlaying) break
+                delay(VIDEO_STATUS_BAR_AMBIENT_CAPTURE_INTERVAL_MS)
             }
-            if (!isPlaying) break
-            delay(VIDEO_STATUS_BAR_AMBIENT_CAPTURE_INTERVAL_MS)
         }
     }
 

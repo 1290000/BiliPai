@@ -156,6 +156,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -1348,6 +1350,7 @@ private fun VideoPlayerSectionContent(
         statusBarHazeEnabled = statusBarHazeEnabled,
     )
     LaunchedEffect(
+        lifecycleOwner,
         playerViewRef,
         shouldCaptureStatusBarAmbientFrame,
         observedIsPlaying,
@@ -1358,16 +1361,18 @@ private fun VideoPlayerSectionContent(
             return@LaunchedEffect
         }
         val playerView = playerViewRef ?: return@LaunchedEffect
-        while (isActive) {
-            if (playerView.isAttachedToWindow && playerView.width > 0 && playerView.height > 0) {
-                statusBarAmbientFrame.value = captureVideoAmbientFrame(
-                    playerView = playerView,
-                    targetWidth = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_WIDTH_PX,
-                    targetHeight = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_HEIGHT_PX,
-                )?.asImageBitmap()
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                if (playerView.isAttachedToWindow && playerView.width > 0 && playerView.height > 0) {
+                    statusBarAmbientFrame.value = captureVideoAmbientFrame(
+                        playerView = playerView,
+                        targetWidth = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_WIDTH_PX,
+                        targetHeight = VIDEO_STATUS_BAR_AMBIENT_SAMPLE_HEIGHT_PX,
+                    )?.asImageBitmap()
+                }
+                if (!observedIsPlaying) break
+                delay(VIDEO_STATUS_BAR_AMBIENT_CAPTURE_INTERVAL_MS)
             }
-            if (!observedIsPlaying) break
-            delay(VIDEO_STATUS_BAR_AMBIENT_CAPTURE_INTERVAL_MS)
         }
     }
 
