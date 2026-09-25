@@ -9,8 +9,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSpacingTokens
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppSurface
@@ -19,7 +21,9 @@ import com.android.purebilibili.feature.home.components.BottomBarMatchedReusable
 import com.android.purebilibili.feature.home.components.resolveFloatingDockGeometryScale
 
 /**
- * 「列表精简搜索」激活后顶部轻量结果条。液态玻璃开启时与搜索框/收藏夹栏共用悬浮 Dock 材质。
+ * 「列表精简搜索」激活后顶部轻量结果条。
+ * 液态玻璃时共用悬浮 Dock；非玻璃时走 [AppSurfaceTokens] 搜索容器语义，
+ * 随 MIUIX / MD3 主题各自适配。
  */
 @Composable
 internal fun ListScopedSearchActiveBar(
@@ -41,9 +45,9 @@ internal fun ListScopedSearchActiveBar(
             modifier = Modifier.fillMaxWidth(),
             shape = AppShapes.container(ContainerLevel.Pill),
             color = if (liquidChromeActive) {
-                androidx.compose.ui.graphics.Color.Transparent
+                Color.Transparent
             } else {
-                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f)
+                AppSurfaceTokens.searchContainer()
             },
         ) {
             Row(
@@ -59,6 +63,11 @@ internal fun ListScopedSearchActiveBar(
                     text = resolveListScopedSearchActiveBarLabel(searchQuery),
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
+                    color = if (liquidChromeActive) {
+                        Color.Unspecified
+                    } else {
+                        AppSurfaceTokens.searchContent()
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 AppIcon(
