@@ -382,16 +382,26 @@ private fun Context.startTargetedVideoShare(
     shareMedia: VideoShareCoverFile?,
 ) {
     try {
+        val mimeType = shareMedia?.mimeType ?: "text/plain"
+        val activityClassName = resolveShareActivityClassName(
+            packageName = packageName,
+            mimeType = mimeType,
+        )
         val intent = if (shareMedia != null) {
             buildVideoCoverShareIntent(
                 payload = payload,
                 coverUri = shareMedia.uri,
                 mimeType = shareMedia.mimeType,
                 packageName = packageName,
+                activityClassName = activityClassName,
                 contentResolver = contentResolver
             )
         } else {
-            buildTargetedShareIntent(payload, packageName)
+            buildTargetedShareIntent(
+                payload = payload,
+                packageName = packageName,
+                activityClassName = activityClassName,
+            )
         }
         startActivityWithTaskFlag(intent)
     } catch (_: ActivityNotFoundException) {
@@ -433,4 +443,27 @@ private fun Context.startActivityWithTaskFlag(intent: Intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     startActivity(intent)
+}
+
+/**
+ * 锁定「发给好友 / 选一个聊天」入口，避免同包多 Activity 触发系统 Resolver。
+ */
+private fun Context.resolveShareActivityClassName(
+    packageName: String,
+    mimeType: String,
+): String? {
+    val query = Intent(Intent.ACTION_SEND).apply {
+        type = mimeType
+        setPackage(packageName)
+    }
+    val resolveInfos = packageManager.queryIntentActivities(query, 0)
+    if (resolveInfos.isEmpty()) return null
+    val candidates = resolveInfos.map { info ->
+        ShareActivityCandidate(
+            packageName = info.activityInfo.packageName,
+            className = info.activityInfo.name,
+            label = info.loadLabel(packageManager).toString(),
+        )
+    }
+    return resolvePreferredShareActivity(candidates)?.className
 }

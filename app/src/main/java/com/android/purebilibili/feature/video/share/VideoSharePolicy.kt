@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.video.share
 
 import android.content.ClipData
+import android.content.ComponentName
 import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
@@ -92,10 +93,14 @@ internal fun buildVideoShareIntent(payload: VideoSharePayload): Intent {
 
 internal fun buildTargetedShareIntent(
     payload: VideoSharePayload,
-    packageName: String
+    packageName: String,
+    activityClassName: String? = null,
 ): Intent {
     return buildVideoShareIntent(payload).apply {
         setPackage(packageName)
+        if (activityClassName != null) {
+            setComponent(ComponentName(packageName, activityClassName))
+        }
     }
 }
 
@@ -107,6 +112,7 @@ internal fun buildVideoCoverShareIntent(
     coverUri: Uri,
     mimeType: String,
     packageName: String? = null,
+    activityClassName: String? = null,
     contentResolver: ContentResolver? = null
 ): Intent {
     return Intent(Intent.ACTION_SEND).apply {
@@ -118,9 +124,122 @@ internal fun buildVideoCoverShareIntent(
         clipData = ClipData.newUri(contentResolver, payload.title, coverUri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         packageName?.let { setPackage(it) }
+        if (packageName != null && activityClassName != null) {
+            setComponent(ComponentName(packageName, activityClassName))
+        }
     }
 }
 
 internal fun resolveVideoShareChooserTitle(payload: VideoSharePayload): String {
     return "分享「${payload.title}」"
+}
+
+/**
+ * 同一分享包下可响应 ACTION_SEND 的 Activity 候选。
+ */
+internal data class ShareActivityCandidate(
+    val packageName: String,
+    val className: String,
+    val label: String,
+)
+
+private val SHARE_EXCLUDE_LABEL_TOKENS = listOf(
+    "收藏",
+    "电脑",
+    "闪传",
+    "传输",
+    "空间",
+    "朋友圈",
+    "时间线",
+    "卡包",
+    "表情",
+    "钱包",
+    "Favorite",
+    "Timeline",
+    "TimeLine",
+    "Flash",
+    "Wallet",
+)
+
+private val SHARE_EXCLUDE_CLASS_TOKENS = listOf(
+    "AddFavorite",
+    "Favorite",
+    "Fav",
+    "Timeline",
+    "TimeLine",
+    "FlashTransfer",
+    "QfileJump",
+    "MyComputer",
+    "Wallet",
+    "QZone",
+    "Qzone",
+)
+
+private val SHARE_FRIEND_LABEL_TOKENS = listOf(
+    "发送给",
+    "发给",
+    "朋友",
+    "好友",
+    "聊天",
+    "SendTo",
+    "Send to",
+    "Friend",
+    "Chat",
+)
+
+private val SHARE_FRIEND_CLASS_TOKENS = listOf(
+    "SendToFriend",
+    "ShareToFriend",
+    "ShareImgUI",
+    "SendToFriendUI",
+    "JumpActivity",
+    "ShareUI",
+)
+
+private fun containsAnyToken(value: String, tokens: List<String>): Boolean {
+    return tokens.any { token -> value.contains(token, ignoreCase = true) }
+}
+
+/**
+ * 排除收藏 / 闪传 / 我的电脑等非「发给好友」入口，避免系统 Resolver 二次选择。
+ */
+internal fun isExcludedShareActivity(candidate: ShareActivityCandidate): Boolean {
+    return containsAnyToken(candidate.label, SHARE_EXCLUDE_LABEL_TOKENS) ||
+        containsAnyToken(candidate.className, SHARE_EXCLUDE_CLASS_TOKENS)
+}
+
+/**
+ * 为分享入口打分：好友聊天入口优先；被排除的入口返回 0。
+ */
+internal fun scoreShareActivityCandidate(candidate: ShareActivityCandidate): Int {
+    if (isExcludedShareActivity(candidate)) return 0
+    var score = 1
+    if (containsAnyToken(candidate.label, SHARE_FRIEND_LABEL_TOKENS)) {
+        score += 12
+    }
+    val simpleName = candidate.className.substringAfterLast('.')
+    if (containsAnyToken(candidate.className, SHARE_FRIEND_CLASS_TOKENS) ||
+        containsAnyToken(simpleName, SHARE_FRIEND_CLASS_TOKENS)
+    ) {
+        score += 10
+    }
+    if (simpleName.length <= 20) {
+        score += 1
+    }
+    return score
+}
+
+/**
+ * 从候选中选出最接近「发送给好友 / 选一个聊天」的 Activity；全部不达标时返回 null，回退包级分享。
+ */
+internal fun resolvePreferredShareActivity(
+    candidates: List<ShareActivityCandidate>,
+): ShareActivityCandidate? {
+    return candidates
+        .mapNotNull { candidate ->
+            val score = scoreShareActivityCandidate(candidate)
+            if (score <= 0) null else candidate to score
+        }
+        .maxByOrNull { it.second }
+        ?.first
 }
