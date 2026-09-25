@@ -695,9 +695,9 @@ internal fun ElegantVideoCard(
     // The global card switch is authoritative. Older per-card glass settings must not
     // re-enable frosted surfaces after the user turns the shared setting off.
     val shouldUseFrostedGlass = homeCardDynamicTintEnabled
-    val scrollLitePolicy = remember(compactStatsOnCover) {
+    val scrollLitePolicy = remember(scrollLiteModeEnabled, compactStatsOnCover) {
         resolveVideoCardScrollLiteVisualPolicy(
-            scrollLiteModeEnabled = false,
+            scrollLiteModeEnabled = scrollLiteModeEnabled,
             compactStatsOnCover = compactStatsOnCover
         )
     }
@@ -1074,7 +1074,7 @@ internal fun ElegantVideoCard(
         val miuixCardPixelOwnership =
             LocalMiuixVideoCardTransitionState.current.enabled && isCoverSharedReturnTarget
         val coverCrossfadeEnabled = shouldEnableVideoCardCoverCrossfade(
-            isScrollInProgress = false,
+            isScrollInProgress = scrollLiteModeEnabled,
             isReturningFromDetail = isReturningFromVideoDetail,
             useCoverSharedBounds = useCardShellSharedBounds || miuixCardPixelOwnership,
             isSharedReturnTarget = isCoverSharedReturnTarget
