@@ -298,7 +298,14 @@ fun AppModalBottomSheet(
                 tonalElevation = tonalElevation,
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    dragHandle?.invoke()
+                    if (dragHandle != null) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            dragHandle()
+                        }
+                    }
                     content()
                 }
             }
