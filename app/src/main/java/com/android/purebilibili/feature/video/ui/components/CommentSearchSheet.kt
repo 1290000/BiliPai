@@ -210,6 +210,9 @@ fun CommentSearchSheet(
                     placeholder = "搜索本视频评论内容或作者昵称...",
                     onClear = { searchQuery = "" },
                     backdrop = sheetBackdrop,
+                    // The input captures the video layer for refraction; protect its text from
+                    // the sampled comments, independently of the sheet surface behind it.
+                    liquidContentContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f),
                     leadingIconHorizontalOffset = 8.dp,
                 )
 

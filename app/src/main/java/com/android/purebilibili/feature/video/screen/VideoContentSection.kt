@@ -1094,11 +1094,10 @@ internal fun VideoContentSection(
             )
         }
 
-        if (
-            pagerState.currentPage == 1 &&
-            !pagerState.isScrollInProgress &&
-            (liquidGlassEnabled || immersiveVideoContentChromeEnabled)
-        ) {
+        // The pager has only intro and comments. Keep comment chrome composed from the first
+        // swipe frame through settling, even before currentPage or targetPage changes.
+        val commentChromeVisible = pagerState.currentPage == 1 || pagerState.isScrollInProgress
+        if (commentChromeVisible && (liquidGlassEnabled || immersiveVideoContentChromeEnabled)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1106,15 +1105,11 @@ internal fun VideoContentSection(
                     .heightIn(min = 46.dp),
             ) {
                 if (immersiveVideoContentChromeEnabled) {
-                    AnimatedVisibility(
-                        visible = commentListAtTop,
-                        enter = fadeIn(animationSpec = tween(durationMillis = 120)),
-                        exit = fadeOut(animationSpec = tween(durationMillis = 90)),
-                        modifier = Modifier.align(Alignment.TopStart),
-                    ) {
+                    if (commentListAtTop) {
                         CommentListHeader(
                             count = replyCount,
                             title = "${sortMode.label}评论",
+                            modifier = Modifier.align(Alignment.TopStart),
                         )
                     }
                 }
