@@ -357,7 +357,6 @@ internal fun resolveNativeMiuixColors(
         onPrimaryContainer = accent.onPrimaryContainer,
         tertiaryContainer = accentContainer,
         onTertiaryContainer = scheme.primary,
-        onBackgroundVariant = scheme.primary,
         sliderKeyPoint = scheme.primary.copy(alpha = base.sliderKeyPoint.alpha),
         sliderKeyPointForeground = scheme.primary,
     )
@@ -473,7 +472,7 @@ internal fun resolveMiuixColorsFromMaterialBridge(
         onError = bridge.onError,
         background = bridge.background,
         onBackground = bridge.onBackground,
-        onBackgroundVariant = bridge.primary,
+        onBackgroundVariant = bridge.onSurfaceVariant,
         surface = bridge.surface,
         onSurface = bridge.onSurface,
         surfaceVariant = bridge.surfaceVariant,

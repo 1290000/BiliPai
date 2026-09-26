@@ -40,11 +40,13 @@ class MiuixThemeBridgePolicyTest {
         val primary = Color(0xFFB3261E)
         listOf(false, true).forEach { dark ->
             val scheme = if (dark) darkColorScheme(primary = primary) else lightColorScheme(primary = primary)
+            val expected = if (dark) top.yukonga.miuix.kmp.theme.darkColorScheme()
+                else top.yukonga.miuix.kmp.theme.lightColorScheme()
             val colors = resolveNativeMiuixColors(scheme, dark)
             assertEquals(primary, colors.onPrimaryVariant)
             assertEquals(primary, colors.onTertiaryContainer)
             assertEquals(primary, colors.sliderKeyPointForeground)
-            assertEquals(primary, colors.onBackgroundVariant)
+            assertEquals(expected.onBackgroundVariant, colors.onBackgroundVariant)
             val material = alignMaterialSurfacesWithMiuix(scheme, colors)
             assertEquals(colors.primaryContainer, material.primaryContainer)
             assertEquals(colors.tertiaryContainer, material.tertiaryContainer)
@@ -161,6 +163,7 @@ class MiuixThemeBridgePolicyTest {
         assertEquals(Color.Black, miuixColors.background)
         assertEquals(Color.Black, miuixColors.surface)
         assertEquals(Color(0xFF090909), miuixColors.surfaceContainer)
+        assertEquals(amoledScheme.onSurfaceVariant, miuixColors.onBackgroundVariant)
     }
 
     @Test
