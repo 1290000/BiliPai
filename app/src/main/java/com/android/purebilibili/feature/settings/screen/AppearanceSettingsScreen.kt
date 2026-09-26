@@ -64,6 +64,7 @@ import com.android.purebilibili.core.store.ThemeRoleOverrides
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.theme.deleteStoredAppFont
 import com.android.purebilibili.core.theme.importAppFontFromUri
+import com.android.purebilibili.core.theme.resolveAppFontCoverageNotice
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.ui.adaptive.resolveDeviceUiProfile
 import com.android.purebilibili.core.ui.adaptive.resolveEffectiveMotionTier
@@ -544,7 +545,13 @@ fun AppearanceSettingsContent(
         importAppFontFromUri(context, uri)
             .onSuccess { imported ->
                 viewModel.setAppFontFile(imported.fileName, imported.displayName)
-                Toast.makeText(context, "已导入字体：${imported.displayName}", Toast.LENGTH_SHORT).show()
+                val coverageNotice = resolveAppFontCoverageNotice(imported.coversCjk)
+                val message = if (coverageNotice == null) {
+                    "已导入字体：${imported.displayName}"
+                } else {
+                    "已导入字体：${imported.displayName}（$coverageNotice）"
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
             .onFailure { error ->
                 Toast.makeText(
