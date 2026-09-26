@@ -221,10 +221,6 @@ fun VideoTitleSection(
             title = info.title
         )
     }
-    // PiliPlus 同款：信息行直接展示完整 yyyy-MM-dd HH:mm
-    val fullPublishTimeText = remember(info.pubdate) {
-        FormatUtils.formatPrecisePublishTime(timestampSeconds = info.pubdate)
-    }
     val emphasizePublishTime = remember(info.tname, info.title) {
         shouldEmphasizePrecisePublishTime(
             partitionName = info.tname,
@@ -630,7 +626,7 @@ fun VideoTitleWithDesc(
                     }
                 } else {
                     AppText(
-                        text = fullPublishTimeText.ifBlank { publishTimeRowText },
+                        text = publishTimeRowText,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
