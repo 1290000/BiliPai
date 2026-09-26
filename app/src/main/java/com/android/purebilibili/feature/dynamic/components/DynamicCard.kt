@@ -916,21 +916,26 @@ fun DynamicCardV2(
         }
         if (!hasFullOpusDetailContent) preferredBodyDesc?.let { desc ->
             if (shouldRenderDynamicRichText(desc)) {
-                RichTextContent(
-                    desc = desc,
-                    onUserClick = onUserClick,
-                    onTopicClick = onTopicClick,
-                    onTopicKeywordClick = onTopicKeywordClick,
-                    onVoteClick = { voteId -> pendingVoteId = voteId },
-                    onVideoClick = onVideoClick,
-                    onDynamicDetailClick = openDynamicDetail,
-                    onBangumiClick = onBangumiClick,
-                    onArticleClick = onArticleClick,
-                    onLiveClick = onLiveClick,
-                    onMusicClick = onMusicClick,
-                    extraEmoteUrlMap = dynamicCardEmoteMap,
-                )
-                Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = AppSpacingTokens.Medium),
+                ) {
+                    RichTextContent(
+                        desc = desc,
+                        onUserClick = onUserClick,
+                        onTopicClick = onTopicClick,
+                        onTopicKeywordClick = onTopicKeywordClick,
+                        onVoteClick = { voteId -> pendingVoteId = voteId },
+                        onVideoClick = onVideoClick,
+                        onDynamicDetailClick = openDynamicDetail,
+                        onBangumiClick = onBangumiClick,
+                        onArticleClick = onArticleClick,
+                        onLiveClick = onLiveClick,
+                        onMusicClick = onMusicClick,
+                        extraEmoteUrlMap = dynamicCardEmoteMap,
+                    )
+                }
             }
         }
         
@@ -1108,8 +1113,9 @@ fun DynamicCardV2(
                     }
                     when (block) {
                         is OpusContentBlock.Text -> {
+                            val blockText = normalizeDynamicBodyText(block.text)
                             val richBlockDesc = resolveDynamicOpusTextBlockRichDesc(
-                                blockText = block.text,
+                                blockText = blockText,
                                 preferredDesc = preferredBodyDesc,
                                 blockRichTextNodes = block.richTextNodes,
                             )
@@ -1134,9 +1140,9 @@ fun DynamicCardV2(
                                         extraEmoteUrlMap = dynamicCardEmoteMap,
                                     )
                                 }
-                            } else {
+                            } else if (blockText.isNotBlank()) {
                                 AppText(
-                                    text = block.text,
+                                    text = blockText,
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = resolveOpusTextAlign(block.alignment),

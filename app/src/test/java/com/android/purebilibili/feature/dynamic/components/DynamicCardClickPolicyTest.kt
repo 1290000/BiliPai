@@ -493,6 +493,26 @@ class DynamicCardClickPolicyTest {
     }
 
     @Test
+    fun resolveDynamicOpusPresentationBlocks_dropsBlankTextAndTrimsEdges() {
+        val blocks = listOf(
+            OpusContentBlock.Text("  "),
+            OpusContentBlock.Text("\n正文\n\n"),
+            OpusContentBlock.Image(OpusPic(url = "https://i0.hdslb.com/a.jpg")),
+        )
+
+        assertEquals(
+            listOf(
+                OpusContentBlock.Text("正文"),
+                OpusContentBlock.Image(OpusPic(url = "https://i0.hdslb.com/a.jpg")),
+            ),
+            resolveDynamicOpusPresentationBlocks(
+                opus = OpusMajor(contentBlocks = blocks),
+                isDetail = true,
+            ),
+        )
+    }
+
+    @Test
     fun detailPreviewUsesTheSameValidImagesAsRenderedBodyBlocks() {
         val opus = OpusMajor(
             pics = listOf(

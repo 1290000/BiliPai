@@ -199,6 +199,14 @@ internal fun resolveDynamicOpusPresentationBlocks(
     return buildList {
         opus.contentBlocks.forEach { block ->
             when (block) {
+                is OpusContentBlock.Text -> {
+                    // 空白段落不参与布局，避免在文末/图前多出一行高度。
+                    if (normalizeDynamicBodyText(block.text).isNotBlank() ||
+                        block.richTextNodes.any { resolveDynamicRichTextNodeToken(it).isNotBlank() }
+                    ) {
+                        add(block.copy(text = normalizeDynamicBodyText(block.text)))
+                    }
+                }
                 is OpusContentBlock.Image -> keepImage(block.pic)?.let { add(block.copy(pic = it)) }
                 is OpusContentBlock.Divider -> {
                     val dividerPic = block.pic
