@@ -84,11 +84,11 @@ fun CollectionRow(
         } else {
             androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
         },
-        // PiliPlus 同款：非沉浸时为 onInverseSurface 圆角单行卡片
+        // PiliPlus 同款：非沉浸时为圆角单行卡片（略浅于页面背景的容器色）
         color = if (immersive) {
             Color.Transparent
         } else {
-            MaterialTheme.colorScheme.onInverseSurface
+            MaterialTheme.colorScheme.surfaceContainerLow
         }
     ) {
         Row(
