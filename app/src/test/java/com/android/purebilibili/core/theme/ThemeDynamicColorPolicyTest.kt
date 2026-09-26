@@ -269,6 +269,13 @@ class ThemeDynamicColorPolicyTest {
         assertEquals(Color.Black, result.surface)
         assertEquals(Color(0xFF050505), result.surfaceVariant)
         assertEquals(Color(0xFF090909), result.surfaceContainer)
+        // 容器层五级 + Bright/Dim 也必须压进 AMOLED 暗部阶梯,避免纯黑底上突兀的亮灰层。
+        assertEquals(Color.Black, result.surfaceContainerLowest)
+        assertEquals(Color(0xFF050505), result.surfaceContainerLow)
+        assertEquals(Color(0xFF121212), result.surfaceContainerHigh)
+        assertEquals(Color(0xFF1A1A1A), result.surfaceContainerHighest)
+        assertEquals(Color(0xFF0D0D0D), result.surfaceBright)
+        assertEquals(Color.Black, result.surfaceDim)
     }
 
     @Test

@@ -513,7 +513,13 @@ internal fun applyAmoledSurfaceOverrides(
     background = Black,
     surface = Black,
     surfaceVariant = Color(0xFF050505),
+    surfaceContainerLowest = Black,
+    surfaceContainerLow = Color(0xFF050505),
     surfaceContainer = Color(0xFF090909),
+    surfaceContainerHigh = Color(0xFF121212),
+    surfaceContainerHighest = Color(0xFF1A1A1A),
+    surfaceBright = Color(0xFF0D0D0D),
+    surfaceDim = Black,
     outline = Color(0xFF262626),
     outlineVariant = Color(0xFF1A1A1A)
 )
