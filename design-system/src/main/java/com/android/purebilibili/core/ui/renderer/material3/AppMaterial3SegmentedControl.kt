@@ -116,10 +116,14 @@ internal fun <T> AppMaterial3TabRow(
             // Keep Tab's `text =` slot so TabRow can subtract HorizontalTextPadding
             // when sizing the underline. Overflow the 16.dp padding instead of
             // ellipsizing 直播间 / UP主 / 默认排序 when many tabs share one row.
+            // TabRow's default contentColor is primary for every tab; pin the M3
+            // standard so only the selected label carries the theme color.
             Tab(
                 selected = selected,
                 onClick = { onSelectionChange(option.value) },
                 enabled = enabled,
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 text = {
                     Text(
                         text = option.label,
