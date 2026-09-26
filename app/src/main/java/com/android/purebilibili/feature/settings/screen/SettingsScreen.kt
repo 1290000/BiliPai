@@ -160,7 +160,7 @@ fun SettingsScreen(
     val dynamicImagePreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
         .collectAsStateWithLifecycle(initialValue = true)
     val dynamicDetailImageLayout by SettingsManager.getDynamicDetailImageLayout(context)
-        .collectAsStateWithLifecycle(initialValue = SettingsManager.DynamicDetailImageLayout.EXPANDED)
+        .collectAsStateWithLifecycle(initialValue = SettingsManager.peekDynamicDetailImageLayout(context))
     val dynamicAllTabHorizontalUserListVisible by SettingsManager
         .getDynamicAllTabHorizontalUserListVisible(context)
         .collectAsStateWithLifecycle(initialValue = false)

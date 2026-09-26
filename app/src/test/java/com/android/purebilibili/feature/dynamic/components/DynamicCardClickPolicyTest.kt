@@ -709,6 +709,28 @@ class DynamicCardClickPolicyTest {
     }
 
     @Test
+    fun shouldExpandDynamicOpusFallbackImages_onlyOnDetailExpandedLayout() {
+        assertTrue(
+            shouldExpandDynamicOpusFallbackImages(
+                isDetail = true,
+                imageLayout = DynamicDetailImageLayout.EXPANDED,
+            )
+        )
+        assertFalse(
+            shouldExpandDynamicOpusFallbackImages(
+                isDetail = true,
+                imageLayout = DynamicDetailImageLayout.THUMBNAIL,
+            )
+        )
+        assertFalse(
+            shouldExpandDynamicOpusFallbackImages(
+                isDetail = false,
+                imageLayout = DynamicDetailImageLayout.EXPANDED,
+            )
+        )
+    }
+
+    @Test
     fun toggleDynamicDetailImageLayout_flipsBetweenExpandedAndThumbnail() {
         assertEquals(
             DynamicDetailImageLayout.THUMBNAIL,

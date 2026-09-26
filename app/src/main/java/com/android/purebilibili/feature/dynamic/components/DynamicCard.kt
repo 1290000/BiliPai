@@ -1376,28 +1376,66 @@ fun DynamicCardV2(
                     )
                 }
             } else if (renderableOpusPics.isNotEmpty()) {
-                val drawItems = renderableOpusPics.map { pic ->
-                    DrawItem(
-                        src = pic.url,
-                        width = pic.width,
-                        height = pic.height,
-                        live_url = pic.live_url
-                    )
-                }
-                DrawGridV2(
-                    items = drawItems,
-                    gifImageLoader = gifImageLoader,
-                    maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
-                    onImageClick = { index, rect ->
-                        val action = resolveDynamicCardMediaAction(item, index)
-                        if (action is DynamicCardMediaAction.PreviewImages) {
-                            selectedImageIndex = action.initialIndex
-                            sourceRect = rect
-                        }
-                    }
+                val expandOpusFallbackImages = shouldExpandDynamicOpusFallbackImages(
+                    isDetail = isDetail,
+                    imageLayout = detailImageLayout,
                 )
-                Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
-                
+                if (expandOpusFallbackImages) {
+                    renderableOpusPics.forEachIndexed { index, pic ->
+                        val aspectRatio = if (pic.width > 0 && pic.height > 0) {
+                            pic.width.toFloat() / pic.height.toFloat()
+                        } else {
+                            4f / 3f
+                        }
+                        val imageRequest = remember(pic.url) {
+                            coil3.request.ImageRequest.Builder(context)
+                                .data(pic.url)
+                                .httpHeaders(
+                                    NetworkHeaders.Builder()
+                                        .set("Referer", "https://www.bilibili.com/")
+                                        .build()
+                                )
+                                .build()
+                        }
+                        AsyncImage(
+                            model = imageRequest,
+                            contentDescription = opus.title.orEmpty(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(aspectRatio)
+                                .clip(AppShapes.container(ContainerLevel.Card))
+                                .clickable {
+                                    selectedImageIndex = index
+                                    sourceRect = null
+                                },
+                            contentScale = ContentScale.FillWidth,
+                        )
+                        Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                    }
+                } else {
+                    val drawItems = renderableOpusPics.map { pic ->
+                        DrawItem(
+                            src = pic.url,
+                            width = pic.width,
+                            height = pic.height,
+                            live_url = pic.live_url
+                        )
+                    }
+                    DrawGridV2(
+                        items = drawItems,
+                        gifImageLoader = gifImageLoader,
+                        maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
+                        onImageClick = { index, rect ->
+                            val action = resolveDynamicCardMediaAction(item, index)
+                            if (action is DynamicCardMediaAction.PreviewImages) {
+                                selectedImageIndex = action.initialIndex
+                                sourceRect = rect
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
+                }
+
                 // 全屏图片预览
                 if (selectedImageIndex >= 0) {
                     ImagePreviewDialog(
@@ -1417,7 +1455,7 @@ fun DynamicCardV2(
                         },
                         images = renderableOpusPics.map { it.url },
                         initialIndex = selectedImageIndex,
-                        sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
+                        sourceRect = sourceRect,
                         textContent = opusPreviewText,
                         defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { selectedImageIndex = -1 }

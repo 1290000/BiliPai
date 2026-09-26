@@ -167,7 +167,7 @@ fun DynamicDetailScreen(
     val gifImageLoader = context.imageLoader
     val defaultDetailImageLayout by SettingsManager.getDynamicDetailImageLayout(context)
         .collectAsStateWithLifecycle(
-            initialValue = SettingsManager.DynamicDetailImageLayout.EXPANDED
+            initialValue = SettingsManager.peekDynamicDetailImageLayout(context)
         )
     var detailImageLayoutOverrideName by rememberSaveable(dynamicId) { mutableStateOf<String?>(null) }
     val effectiveDetailImageLayout = remember(

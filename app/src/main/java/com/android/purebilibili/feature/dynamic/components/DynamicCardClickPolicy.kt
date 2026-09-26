@@ -234,6 +234,17 @@ internal fun shouldExpandDynamicOpusDetailImages(
     return imageLayout == DynamicDetailImageLayout.EXPANDED
 }
 
+/**
+ * 仅有 opus.pics、尚未解析出正文块时（seed / 部分详情），详情页仍按图片布局设置展开，
+ * 避免先画九宫格再在完整详情到达后整块跳成大图。
+ */
+internal fun shouldExpandDynamicOpusFallbackImages(
+    isDetail: Boolean,
+    imageLayout: DynamicDetailImageLayout,
+): Boolean {
+    return isDetail && shouldExpandDynamicOpusDetailImages(imageLayout)
+}
+
 internal fun toggleDynamicDetailImageLayout(
     current: DynamicDetailImageLayout,
 ): DynamicDetailImageLayout {
