@@ -3766,18 +3766,8 @@ internal fun VideoDetailScreenStateHolder(
                             appWindowAdaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Tabletop
                         ) {
                             // Book/Tabletop：由 AppSplitLayout 按真实铰链位置切分窗格。
-                            // 整卡 morph 期间详情文字列若同步入场，会跟着 shell 的
-                            // FillWidth 缩放漂移、与飞行中的卡片抢戏；推迟到落位附近再
-                            // 播放入场，观感对齐 iOS container transform。
-                            val infoEntranceStartDelayMillis =
-                                if (detailShellSharedBoundsEnabled && !isExitTransitionInProgress) {
-                                    homeSharedTransitionMotionSpec.durationMillis.toLong() * 85L / 100L
-                                } else {
-                                    0L
-                                }
                             TabletVideoLayout(
                                 playerState = playerState,
-                                infoEntranceStartDelayMillis = infoEntranceStartDelayMillis,
                                 uiState = uiState,
                                 commentState = commentState,
                                 engagementState = engagementState,
