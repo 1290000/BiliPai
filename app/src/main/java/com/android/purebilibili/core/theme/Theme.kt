@@ -193,7 +193,7 @@ internal fun resolvePaletteStylePreference(rawValue: String?): PaletteStyle {
 internal fun resolveColorSpecPreference(rawValue: String?): ColorSpec.SpecVersion {
     return runCatching {
         rawValue?.let(ColorSpec.SpecVersion::valueOf)
-    }.getOrNull() ?: ColorSpec.SpecVersion.SPEC_2021
+    }.getOrNull() ?: ColorSpec.SpecVersion.SPEC_2025
 }
 
 internal data class MiuixMaterialBridge(
@@ -787,7 +787,7 @@ fun PureBiliBiliTheme(
     md3CustomColorHex: String = "#007AFF",
     themeRoleOverrides: ThemeRoleOverrides = ThemeRoleOverrides(),
     colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
+    colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     fontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
     appFontFileName: String = "",
     appIconStyle: AppIconStyle = AppIconStyle.AUTO,

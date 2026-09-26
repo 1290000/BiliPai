@@ -237,12 +237,12 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
-    fun `color spec preference defaults to spec 2021 and rejects invalid values`() {
-        assertEquals(ColorSpec.SpecVersion.SPEC_2021, resolveColorSpecPreference(null))
-        assertEquals(ColorSpec.SpecVersion.SPEC_2021, resolveColorSpecPreference("not-a-spec"))
+    fun `color spec preference defaults to spec 2025 and rejects invalid values`() {
+        assertEquals(ColorSpec.SpecVersion.SPEC_2025, resolveColorSpecPreference(null))
+        assertEquals(ColorSpec.SpecVersion.SPEC_2025, resolveColorSpecPreference("not-a-spec"))
         assertEquals(
-            ColorSpec.SpecVersion.SPEC_2025,
-            resolveColorSpecPreference(ColorSpec.SpecVersion.SPEC_2025.name)
+            ColorSpec.SpecVersion.SPEC_2021,
+            resolveColorSpecPreference(ColorSpec.SpecVersion.SPEC_2021.name)
         )
     }
 

@@ -72,7 +72,7 @@ data class SettingsUiState(
     val md3ColorSource: Md3ColorSource = Md3ColorSource.FOLLOW_WALLPAPER,
     val md3CustomColorHex: String = "#007AFF",
     val colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
+    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val appFontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
     val appFontFileName: String = "",
     val appFontDisplayName: String = "",

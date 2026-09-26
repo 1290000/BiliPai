@@ -705,7 +705,7 @@ data class AppThemeSettings(
     val md3CustomColorHex: String = "#007AFF",
     val themeRoleOverrides: ThemeRoleOverrides = ThemeRoleOverrides(),
     val colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
+    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val themeColorIndex: Int = 0,
     val appFontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
     val appFontFileName: String = "",
