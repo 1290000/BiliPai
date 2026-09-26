@@ -478,7 +478,6 @@ internal fun TabletVideoLayout(
                         success = uiState,
                         engagementState = engagementState,
                         downloadProgress = downloadProgress,
-                        infoEntranceStartDelayMillis = infoEntranceStartDelayMillis,
                         playbackActions = playbackActions,
                         engagementActions = engagementActions,
                         onBgmClick = onBgmClick,
@@ -541,7 +540,6 @@ internal fun TabletVideoLayout(
                                     success = success,
                                     engagementState = engagementState,
                                     downloadProgress = downloadProgress,
-                                    infoEntranceStartDelayMillis = infoEntranceStartDelayMillis,
                                     playbackActions = playbackActions,
                                     engagementActions = engagementActions,
                                     onBgmClick = onBgmClick,
@@ -613,7 +611,6 @@ internal fun TabletVideoInfoPane(
     videoAiSummaryEntryEnabled: Boolean = true,
     videoNoteEnabled: Boolean = true,
     videoNoteDefaultCollapsed: Boolean = true,
-    infoEntranceStartDelayMillis: Long = 0L,
     modifier: Modifier = Modifier,
     showRelatedVideos: Boolean = true,
 ) {
