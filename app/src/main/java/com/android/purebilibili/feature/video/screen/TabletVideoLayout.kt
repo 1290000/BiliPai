@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -272,6 +273,7 @@ internal fun TabletVideoLayout(
     videoNoteEnabled: Boolean = true,
     videoNoteDefaultCollapsed: Boolean = true,
     playerContent: (@Composable (Modifier) -> Unit)? = null,
+    infoEntranceStartDelayMillis: Long = 0L,
 ) {
     val adaptiveInfo = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current
     val foldHalfOpened = adaptiveInfo.posture == com.android.purebilibili.core.util.AppFoldPosture.Book ||
@@ -640,6 +642,7 @@ internal fun TabletVideoInfoPane(
     )
     ScrollableVideoInfoSection(
         info = engagementSuccess.info,
+        entranceStartDelayMillis = infoEntranceStartDelayMillis,
         isFollowing = engagementState.isFollowing,
         isFavorited = engagementState.isFavorited,
         isLiked = engagementState.isLiked,
@@ -1421,6 +1424,7 @@ private fun ScrollableVideoInfoSection(
     showRelatedVideos: Boolean = true,
     modifier: Modifier = Modifier,
     ownerTrailingContent: (@Composable RowScope.() -> Unit)? = null,
+    entranceStartDelayMillis: Long = 0L,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val windowSizeClass = LocalWindowSizeClass.current
@@ -1441,6 +1445,10 @@ private fun ScrollableVideoInfoSection(
     }
     var entranceVisible by remember(info.bvid) { mutableStateOf(false) }
     LaunchedEffect(info.bvid) {
+        // shell morph 进行中时等到落位附近再开始文字入场
+        if (entranceSpec.enabled && entranceStartDelayMillis > 0L) {
+            delay(entranceStartDelayMillis)
+        }
         entranceVisible = true
     }
     var showAiSummarySheet by remember(info.bvid) { mutableStateOf(false) }
