@@ -9,7 +9,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,10 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -29,15 +26,10 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.sin
 
-import com.android.purebilibili.core.store.SettingsManager
-import com.android.purebilibili.core.ui.rememberAppShareIcon
-import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.data.model.response.UgcSeason
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Folder
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  *  视频合集展示行
@@ -53,9 +45,6 @@ fun CollectionRow(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val shareIcon = rememberAppShareIcon()
-    val collectionSubscriptionId = remember(ugcSeason) { resolveCollectionSubscriptionId(ugcSeason) }
     val allEpisodes = remember(ugcSeason.sections) { ugcSeason.sections.flatMap { it.episodes } }
     val currentAid = remember(allEpisodes, currentBvid, currentCid) {
         resolveCurrentUgcEpisodeAid(
@@ -94,7 +83,7 @@ fun CollectionRow(
         Row(
             modifier = Modifier
                 .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             //  合集信息（PiliPlus 式单行：合集：标题 …… 播放指示 n/total >）
@@ -129,43 +118,12 @@ fun CollectionRow(
             }
 
 
-            Spacer(modifier = Modifier.width(6.dp))
-
-            CollectionSubscriptionButton(
-                collectionId = collectionSubscriptionId,
-                currentBvid = currentBvid,
-                currentAid = currentAid,
-                fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                immersive = immersive,
-            )
-
-            //  分享按钮
-            AppIconButton(
-                onClick = {
-                    val shareUrl = "https://space.bilibili.com/${ugcSeason.mid}/lists/${ugcSeason.id}?type=season"
-                    val shareText = "${ugcSeason.title}\n$shareUrl"
-                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                    }
-                    context.startActivity(android.content.Intent.createChooser(intent, "分享合集"))
-                },
-                modifier = Modifier.size(28.dp)
-            ) {
-                AppIcon(
-                    shareIcon,
-                    contentDescription = "分享合集",
-                    modifier = Modifier.size(16.dp),
-                    tint = accentColor.copy(alpha = if (immersive) 0.9f else 1f)
-                )
-            }
-            
-            //  右侧箭头
+            //  右侧箭头（PiliPlus 行内无订阅/分享，订阅入口在合集面板）
             AppIcon(
                 Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = "查看合集",
                 tint = secondaryColor.copy(alpha = if (immersive) 0.8f else 0.5f),
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(14.dp)
             )
         }
     }
