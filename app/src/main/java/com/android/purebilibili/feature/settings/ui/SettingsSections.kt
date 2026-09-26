@@ -2,21 +2,12 @@ package com.android.purebilibili.feature.settings
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppText
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -29,8 +20,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,17 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.android.purebilibili.R
-import com.android.purebilibili.core.ui.rememberAppCollectionIcon
-import com.android.purebilibili.core.ui.rememberAppDynamicIcon
-import com.android.purebilibili.core.ui.rememberAppInfoIcon
-import com.android.purebilibili.core.ui.rememberAppLockIcon
-import com.android.purebilibili.core.ui.rememberAppNotificationIcon
-import com.android.purebilibili.core.ui.rememberAppRefreshIcon
 import com.android.purebilibili.core.ui.rememberAppShareIcon
-import com.android.purebilibili.core.ui.rememberAppSparklesIcon
-import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
-import com.android.purebilibili.core.ui.rememberAppWarningIcon
-import com.android.purebilibili.core.ui.rememberAppAnalyticsIcon
 import com.android.purebilibili.core.ui.animation.entrance
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.adaptiveSquircleBackground
@@ -59,7 +38,6 @@ import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.theme.*
 import com.android.purebilibili.core.util.EasterEggs
-import com.android.purebilibili.core.ui.common.copyOnLongPress
 import com.android.purebilibili.core.ui.components.AppAdaptiveSwitch
 import com.android.purebilibili.core.ui.components.AppCard
 import com.android.purebilibili.core.ui.components.AppCardDefaults
@@ -70,7 +48,6 @@ import com.android.purebilibili.core.ui.components.rememberAdaptivePreferenceIco
 import com.android.purebilibili.core.ui.components.rememberAdaptivePreferenceIconContainerColor
 import com.android.purebilibili.core.ui.components.rememberAdaptivePreferenceIconTint
 import com.android.purebilibili.core.ui.components.rememberAdaptiveListVisualCapabilities
-import androidx.compose.ui.res.stringResource
 import com.android.purebilibili.core.ui.AppAlertDialog
 import com.android.purebilibili.core.ui.AppDialogAction
 import com.android.purebilibili.core.ui.components.AppTextField
@@ -88,10 +65,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.feature.dynamic.allDynamicTabSpecs
 import com.android.purebilibili.feature.dynamic.shouldAllowDynamicTabVisibilityToggleOff
 import kotlin.math.roundToInt
-
-// ═══════════════════════════════════════════════════
-//  UI 组件 (Stateless Components)
-// ═══════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════
 //  UI 组件 (Stateless Components)
@@ -133,47 +106,6 @@ internal fun SettingsCardGroup(
         },
     ) {
         content()
-    }
-}
-
-@Composable
-fun GeneralSection(
-    onAppearanceClick: () -> Unit,
-    onPlaybackClick: () -> Unit,
-    onBottomBarClick: () -> Unit
-) {
-    val appearanceVisual = rememberSettingsEntryVisual(SettingsSearchTarget.APPEARANCE)
-    val playbackVisual = rememberSettingsEntryVisual(SettingsSearchTarget.PLAYBACK)
-    val bottomBarVisual = rememberSettingsEntryVisual(SettingsSearchTarget.BOTTOM_BAR)
-    val siblingTints = remember { resolveSettingsSiblingIconTints(3) }
-
-    SettingsCardGroup {
-        SettingClickableItem(
-            icon = appearanceVisual.icon,
-            iconPainter = appearanceVisual.iconResId?.let { painterResource(id = it) },
-            title = "外观设置",
-            value = "界面风格、颜色、字体和显示大小",
-            onClick = onAppearanceClick,
-            iconTint = siblingTints[0]
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = playbackVisual.icon,
-            iconPainter = playbackVisual.iconResId?.let { painterResource(id = it) },
-            title = "播放设置",
-            value = "清晰度、倍速、小窗、后台播放和全屏操作",
-            onClick = onPlaybackClick,
-            iconTint = siblingTints[1]
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = bottomBarVisual.icon,
-            iconPainter = bottomBarVisual.iconResId?.let { painterResource(id = it) },
-            title = "导航设置",
-            value = "底栏、顶部入口、图标文字和排列顺序",
-            onClick = onBottomBarClick,
-            iconTint = siblingTints[2]
-        )
     }
 }
 
@@ -281,98 +213,6 @@ internal data class SettingsRootCategoryState(
 )
 
 @Composable
-internal fun SettingsRootCategoryNavigationSection(
-    category: SettingsRootCategory,
-    isExpanded: Boolean,
-    onToggle: () -> Unit,
-    actions: SettingsRootCategoryActions,
-    state: SettingsRootCategoryState
-) {
-    val visual = rememberSettingsEntryVisual(category.searchTarget)
-    val effectiveIconTint = rememberAdaptivePreferenceIconContainerColor(visual.iconTint)
-    val iconContentColor = rememberAdaptivePreferenceIconContentColor(effectiveIconTint)
-    val chevronRotation by animateFloatAsState(
-        targetValue = if (isExpanded) 90f else 0f,
-        animationSpec = tween(durationMillis = 200),
-        label = "chevronRotation"
-    )
-
-    Column {
-        // Header row
-        SettingsCardGroup {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggle)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(AppShapes.container(ContainerLevel.Chip))
-                        .background(effectiveIconTint),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        visual.icon != null -> AppIcon(
-                            imageVector = visual.icon,
-                            contentDescription = null,
-                            tint = iconContentColor,
-                            modifier = Modifier.size(visual.iconSizeDp.dp)
-                        )
-                        visual.iconResId != null -> AppIcon(
-                            painter = painterResource(id = visual.iconResId),
-                            contentDescription = null,
-                            tint = iconContentColor,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    AppText(
-                        text = category.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    AppText(
-                        text = category.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                AppIcon(
-                    imageVector = com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_keyboard_arrow_right_24),
-                    contentDescription = if (isExpanded) "收起${category.title}" else "展开${category.title}",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                    modifier = Modifier
-                        .size(20.dp)
-                        .graphicsLayer { rotationZ = chevronRotation }
-                )
-            }
-        }
-
-        // Expandable content
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = expandVertically(clip = false) + fadeIn(),
-            exit = shrinkVertically(clip = false) + fadeOut()
-        ) {
-            Box(modifier = Modifier.padding(top = 12.dp)) {
-                SettingsRootCategoryContent(
-                    category = category,
-                    actions = actions,
-                    state = state
-                )
-            }
-        }
-    }
-}
-
-@Composable
 internal fun SettingsRootCategoryListSection(
     categories: List<SettingsRootCategory>,
     onCategoryClick: (SettingsRootCategory) -> Unit,
@@ -474,113 +314,6 @@ private fun SettingsRootCategoryRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
             modifier = Modifier.size(14.dp),
         )
-    }
-}
-
-@Composable
-internal fun SettingsAboutHomeSection(
-    onGithubClick: () -> Unit,
-    onTelegramClick: () -> Unit,
-    onTelegramGroupClick: () -> Unit = {},
-    onCheckUpdateClick: () -> Unit,
-    onDonateClick: () -> Unit
-) {
-    val githubVisual = rememberSettingsEntryVisual(SettingsSearchTarget.OPEN_SOURCE_HOME)
-    val telegramVisual = rememberSettingsEntryVisual(SettingsSearchTarget.TELEGRAM)
-    val updateVisual = rememberSettingsEntryVisual(SettingsSearchTarget.CHECK_UPDATE)
-    val donateVisual = rememberSettingsEntryVisual(SettingsSearchTarget.DONATE)
-
-    SettingsDetailGroup(title = "关于") {
-        SettingsCardGroup {
-            SettingClickableItem(
-                icon = telegramVisual.icon,
-                iconPainter = telegramVisual.iconResId?.let { painterResource(id = it) },
-                title = "Telegram 频道",
-                value = "@bilipai666",
-                onClick = onTelegramClick,
-                iconTint = telegramVisual.iconTint
-            )
-            SettingsAdaptiveDivider()
-            SettingClickableItem(
-                icon = telegramVisual.icon,
-                iconPainter = telegramVisual.iconResId?.let { painterResource(id = it) },
-                title = "Telegram 交流群",
-                value = "@bilipai888",
-                onClick = onTelegramGroupClick,
-                iconTint = telegramVisual.iconTint
-            )
-            SettingsAdaptiveDivider()
-            SettingClickableItem(
-                icon = githubVisual.icon,
-                iconPainter = githubVisual.iconResId?.let { painterResource(id = it) },
-                title = "开源主页",
-                value = "GitHub",
-                onClick = onGithubClick,
-                iconTint = githubVisual.iconTint
-            )
-            SettingsAdaptiveDivider()
-            SettingClickableItem(
-                icon = updateVisual.icon,
-                iconPainter = updateVisual.iconResId?.let { painterResource(id = it) },
-                title = "检查更新",
-                value = "查看最新版本",
-                onClick = onCheckUpdateClick,
-                iconTint = updateVisual.iconTint
-            )
-            SettingsAdaptiveDivider()
-            SettingClickableItem(
-                icon = donateVisual.icon,
-                iconPainter = donateVisual.iconResId?.let { painterResource(id = it) },
-                title = "打赏作者",
-                value = "支持开发",
-                onClick = onDonateClick,
-                iconTint = donateVisual.iconTint,
-                enableCopy = false
-            )
-        }
-    }
-}
-
-@Composable
-internal fun SettingsBackupHomeSection(
-    onSettingsShareClick: () -> Unit,
-    onWebDavBackupClick: () -> Unit,
-    onClearCacheClick: () -> Unit,
-    cacheSize: String
-) {
-    val shareVisual = rememberSettingsEntryVisual(SettingsSearchTarget.SETTINGS_SHARE)
-    val webDavVisual = rememberSettingsEntryVisual(SettingsSearchTarget.WEBDAV_BACKUP)
-    val cacheVisual = rememberSettingsEntryVisual(SettingsSearchTarget.CLEAR_CACHE)
-
-    SettingsDetailGroup(title = "设置") {
-        SettingsCardGroup {
-            SettingClickableItem(
-                icon = shareVisual.icon,
-                iconPainter = shareVisual.iconResId?.let { painterResource(id = it) },
-                title = "设置分享",
-                value = "导入、导出与迁移",
-                onClick = onSettingsShareClick,
-                iconTint = shareVisual.iconTint
-            )
-            SettingsAdaptiveDivider()
-            SettingClickableItem(
-                icon = webDavVisual.icon,
-                iconPainter = webDavVisual.iconResId?.let { painterResource(id = it) },
-                title = "WebDAV 备份",
-                value = "云端同步",
-                onClick = onWebDavBackupClick,
-                iconTint = webDavVisual.iconTint
-            )
-            SettingsAdaptiveDivider()
-            SettingClickableItem(
-                icon = cacheVisual.icon,
-                iconPainter = cacheVisual.iconResId?.let { painterResource(id = it) },
-                title = "清理缓存",
-                value = cacheSize,
-                onClick = onClearCacheClick,
-                iconTint = cacheVisual.iconTint
-            )
-        }
     }
 }
 
@@ -1248,54 +981,6 @@ fun ReleaseChannelPinnedCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun SettingsSubpageEntrySection(
-    onContentAndStorageClick: () -> Unit,
-    onPrivacyAndSecurityClick: () -> Unit,
-    onExtensionsAndDebugClick: () -> Unit,
-    onAboutAndSupportClick: () -> Unit
-) {
-    val siblingTints = remember { resolveSettingsSiblingIconTints(4, paletteOffset = 2) }
-    val contentAndStorageIcon = rememberSettingsSemanticIcon(SettingsIconRole.DATA_BACKUP)
-    val privacyIcon = rememberSettingsSemanticIcon(SettingsIconRole.PRIVACY_PERMISSION)
-    val developerVisual = rememberSettingsEntryVisual(SettingsSearchTarget.DIAGNOSTICS)
-    val aboutIcon = rememberSettingsSemanticIcon(SettingsIconRole.ABOUT_SUPPORT)
-    SettingsCardGroup {
-        SettingClickableItem(
-            icon = contentAndStorageIcon,
-            title = "内容与存储",
-            value = "推荐流、下载与缓存",
-            onClick = onContentAndStorageClick,
-            iconTint = siblingTints[0]
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = privacyIcon,
-            title = "隐私与安全",
-            value = "无痕模式、权限与黑名单",
-            onClick = onPrivacyAndSecurityClick,
-            iconTint = siblingTints[1]
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = developerVisual.icon,
-            iconPainter = developerVisual.iconResId?.let { painterResource(id = it) },
-            title = "扩展与调试",
-            value = "插件、日志与数据采集",
-            onClick = onExtensionsAndDebugClick,
-            iconTint = siblingTints[2]
-        )
-        SettingsAdaptiveDivider()
-        SettingClickableItem(
-            icon = aboutIcon,
-            title = "关于与支持",
-            value = "版本、开源、帮助与作者",
-            onClick = onAboutAndSupportClick,
-            iconTint = siblingTints[3]
-        )
     }
 }
 
@@ -1974,43 +1659,6 @@ private fun NetworkProxyEditDialog(
             }
         },
     )
-}
-
-@Composable
-fun DeveloperSection(
-    crashTrackingEnabled: Boolean,
-    analyticsEnabled: Boolean,
-    enhancedDiagnosticLoggingEnabled: Boolean,
-    pluginCount: Int,
-    onCrashTrackingChange: (Boolean) -> Unit,
-    onAnalyticsChange: (Boolean) -> Unit,
-    onEnhancedDiagnosticLoggingChange: (Boolean) -> Unit,
-    onPluginsClick: () -> Unit,
-    onExportLogsClick: () -> Unit
-) {
-    // Keep public API for older call sites; diagnostics + proxy live in DiagnosticsSection.
-    val pluginsVisual = rememberSettingsEntryVisual(SettingsSearchTarget.PLUGINS)
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        DiagnosticsSection(
-            crashTrackingEnabled = crashTrackingEnabled,
-            analyticsEnabled = analyticsEnabled,
-            enhancedDiagnosticLoggingEnabled = enhancedDiagnosticLoggingEnabled,
-            onCrashTrackingChange = onCrashTrackingChange,
-            onAnalyticsChange = onAnalyticsChange,
-            onEnhancedDiagnosticLoggingChange = onEnhancedDiagnosticLoggingChange,
-            onExportLogsClick = onExportLogsClick,
-        )
-        SettingsCardGroup {
-            SettingClickableItem(
-                icon = pluginsVisual.icon,
-                iconPainter = pluginsVisual.iconResId?.let { painterResource(id = it) },
-                title = "插件中心",
-                value = "$pluginCount 个已启用",
-                onClick = onPluginsClick,
-                iconTint = pluginsVisual.iconTint
-            )
-        }
-    }
 }
 
 @Composable

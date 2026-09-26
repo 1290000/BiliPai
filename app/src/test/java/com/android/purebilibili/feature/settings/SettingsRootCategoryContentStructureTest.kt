@@ -177,14 +177,14 @@ class SettingsRootCategoryContentStructureTest {
             File("app/src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt"),
             File("src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt")
         ).first { it.exists() }.readText().replace("\r\n", "\n")
-        val navigationSection = source
-            .substringAfter("internal fun SettingsRootCategoryNavigationSection(")
-            .substringBefore("internal fun SettingsRootCategoryListSection(")
+        val listSection = source
+            .substringAfter("internal fun SettingsRootCategoryListSection(")
+            .substringBefore("@Composable\nprivate fun SettingsRootCategoryRow(")
         val categoryRow = source
             .substringAfter("private fun SettingsRootCategoryRow(")
-            .substringBefore("internal fun SettingsAboutHomeSection(")
+            .substringBefore("@Composable\ninternal fun SettingsDetailGroup(")
 
-        assertFalse(navigationSection.contains("maxLines = 2"))
+        assertFalse(listSection.contains("maxLines = 2"))
         assertFalse(categoryRow.contains("maxLines = 2"))
     }
 
@@ -473,7 +473,7 @@ class SettingsRootCategoryContentStructureTest {
 
         val pinnedCardBlock = source
             .substringAfter("fun ReleaseChannelPinnedCard(")
-            .substringBefore("@Composable\nfun SettingsSubpageEntrySection(")
+            .substringBefore("@Composable\nfun FeedApiSection(")
 
         assertTrue(pinnedCardBlock.contains("modifier = Modifier.fillMaxWidth()"))
         assertTrue(pinnedCardBlock.contains("modifier = Modifier.weight(1f)"))
