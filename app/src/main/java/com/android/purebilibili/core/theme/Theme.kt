@@ -328,11 +328,15 @@ internal fun resolveMaterialColorSchemeFromMiuixBridge(
     }
 }
 
-/** Keep upstream neutral/control roles; only the user's accent is adapted from Material. */
+/**
+ * Keep upstream neutral/control roles; only the user's accent is adapted from Material.
+ * `background`/`surface` keep the upstream values, so the page canvas follows the
+ * upstream `surface` role and grouped cards on `surfaceContainer` retain the upstream
+ * tonal hierarchy when liquid glass is disabled.
+ */
 internal fun resolveNativeMiuixColors(
     scheme: ColorScheme,
     darkTheme: Boolean,
-    amoledDarkTheme: Boolean = false,
 ): top.yukonga.miuix.kmp.theme.Colors {
     val base = if (darkTheme) miuixDarkColorScheme() else miuixLightColorScheme()
     val accentContainer = opaqueCompositeOver(scheme.primary.copy(alpha = 0.2f), base.surface)
@@ -344,11 +348,6 @@ internal fun resolveNativeMiuixColors(
         onPrimaryContainer = scheme.onPrimary,
     )
     val accent = resolveMiuixColorsFromMaterialBridge(createMiuixMaterialBridge(accentScheme), darkTheme)
-    val pageCanvas = resolveNativeMiuixPageCanvas(
-        darkTheme = darkTheme,
-        amoledDarkTheme = amoledDarkTheme,
-        upstreamBackground = base.background,
-    )
     return base.copy(
         primary = accent.primary,
         onPrimary = accent.onPrimary,
@@ -361,18 +360,12 @@ internal fun resolveNativeMiuixColors(
         onBackgroundVariant = scheme.primary,
         sliderKeyPoint = scheme.primary.copy(alpha = base.sliderKeyPoint.alpha),
         sliderKeyPointForeground = scheme.primary,
-        background = pageCanvas,
-        surface = pageCanvas,
     )
 }
 
-internal fun resolveNativeMiuixPageCanvas(
-    darkTheme: Boolean,
-    amoledDarkTheme: Boolean,
-    upstreamBackground: Color,
-): Color = if (darkTheme && amoledDarkTheme) Color.Black else upstreamBackground
-
-/** Material-backed content consumes the same semantic palette as native Miuix components. */
+/** Material-backed content consumes the same semantic palette as native Miuix components.
+ *  The Material canvas maps to the upstream `surface` role so chrome, lists, and the top
+ *  bar share one tone while cards stay on `surfaceContainer`. */
 internal fun alignMaterialSurfacesWithMiuix(
     scheme: ColorScheme,
     colors: top.yukonga.miuix.kmp.theme.Colors,
@@ -397,8 +390,8 @@ internal fun alignMaterialSurfacesWithMiuix(
         onError = colors.onError,
         errorContainer = colors.errorContainer,
         onErrorContainer = colors.onErrorContainer,
-        background = colors.background,
-        onBackground = colors.onBackground,
+        background = colors.surface,
+        onBackground = colors.onSurface,
         surface = colors.surface,
         onSurface = colors.onSurface,
         surfaceVariant = colors.surfaceVariant,
@@ -412,7 +405,7 @@ internal fun alignMaterialSurfacesWithMiuix(
         scrim = colors.windowDimming,
         surfaceBright = if (isDark) colors.surfaceContainerHighest else colors.surface,
         surfaceDim = if (isDark) colors.surface else colors.surfaceContainerHighest,
-        surfaceContainerLowest = colors.surface,
+        surfaceContainerLowest = if (isDark) colors.surface else colors.surfaceContainer,
         surfaceContainerLow = colors.surfaceContainer,
         surfaceContainer = colors.surfaceContainer,
         surfaceContainerHigh = colors.surfaceContainerHigh,
@@ -900,14 +893,11 @@ fun PureBiliBiliTheme(
             resolveMiuixColorsFromMaterialBridge(createMiuixMaterialBridge(resolvedLightMaterialScheme), false)
         }
     }
-    val miuixDarkColors = remember(
-        resolvedDarkMaterialScheme, useNativeMiuix, amoledDarkTheme,
-    ) {
+    val miuixDarkColors = remember(resolvedDarkMaterialScheme, useNativeMiuix) {
         if (useNativeMiuix) {
             resolveNativeMiuixColors(
                 resolvedDarkMaterialScheme,
                 darkTheme = true,
-                amoledDarkTheme = amoledDarkTheme,
             )
         } else {
             resolveMiuixColorsFromMaterialBridge(createMiuixMaterialBridge(resolvedDarkMaterialScheme), true)

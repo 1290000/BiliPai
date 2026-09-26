@@ -10,32 +10,23 @@ import kotlin.test.assertTrue
 class MiuixThemeBridgePolicyTest {
 
     @Test
-    fun `miuix page canvas unifies surface with background`() {
-        val canvas = Color(0xFF242424)
-        assertEquals(
-            canvas,
-            resolveNativeMiuixPageCanvas(
-                darkTheme = true,
-                amoledDarkTheme = false,
-                upstreamBackground = canvas,
-            ),
-        )
-        assertEquals(
-            Color.Black,
-            resolveNativeMiuixPageCanvas(
-                darkTheme = true,
-                amoledDarkTheme = true,
-                upstreamBackground = canvas,
-            ),
-        )
-        assertEquals(
-            canvas,
-            resolveNativeMiuixPageCanvas(
-                darkTheme = false,
-                amoledDarkTheme = true,
-                upstreamBackground = canvas,
-            ),
-        )
+    fun `miuix page canvas follows upstream surface role`() {
+        listOf(false, true).forEach { dark ->
+            val scheme = if (dark) darkColorScheme() else lightColorScheme()
+            val expected = if (dark) top.yukonga.miuix.kmp.theme.darkColorScheme()
+                else top.yukonga.miuix.kmp.theme.lightColorScheme()
+            val colors = resolveNativeMiuixColors(scheme, dark)
+            assertEquals(expected.background, colors.background)
+            assertEquals(expected.surface, colors.surface)
+            assertEquals(expected.surfaceContainer, colors.surfaceContainer)
+            val material = alignMaterialSurfacesWithMiuix(scheme, colors)
+            assertEquals(colors.surface, material.background)
+            assertEquals(colors.onSurface, material.onBackground)
+            assertEquals(
+                if (dark) colors.surface else colors.surfaceContainer,
+                material.surfaceContainerLowest,
+            )
+        }
     }
 
     @Test
@@ -68,7 +59,7 @@ class MiuixThemeBridgePolicyTest {
                 else top.yukonga.miuix.kmp.theme.lightColorScheme()
             val colors = resolveNativeMiuixColors(scheme, dark)
             assertEquals(expected.background, colors.background)
-            assertEquals(colors.background, colors.surface)
+            assertEquals(expected.surface, colors.surface)
             assertEquals(expected.surfaceContainer, colors.surfaceContainer)
             assertEquals(expected.secondary, colors.secondary)
             assertEquals(expected.secondaryVariant, colors.secondaryVariant)
@@ -97,16 +88,13 @@ class MiuixThemeBridgePolicyTest {
     }
 
     @Test
-    fun `native miuix ignores custom material surfaces and honors amoled preference`() {
+    fun `native miuix ignores custom material surfaces`() {
         val scheme = darkColorScheme(background = Color(0xFF123456))
         val upstream = top.yukonga.miuix.kmp.theme.darkColorScheme()
-        val amoled = resolveNativeMiuixColors(scheme, true, amoledDarkTheme = true)
-        assertEquals(Color.Black, amoled.background)
-        assertEquals(Color.Black, amoled.surface)
-        val standard = resolveNativeMiuixColors(scheme, true)
-        assertEquals(upstream.background, standard.background)
-        assertEquals(standard.background, standard.surface)
-        assertEquals(upstream.surfaceContainerHigh, standard.surfaceContainerHigh)
+        val colors = resolveNativeMiuixColors(scheme, true)
+        assertEquals(upstream.background, colors.background)
+        assertEquals(upstream.surface, colors.surface)
+        assertEquals(upstream.surfaceContainerHigh, colors.surfaceContainerHigh)
     }
 
     @Test
