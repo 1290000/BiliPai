@@ -3768,12 +3768,46 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
         }
     }
 
+    private const val DYNAMIC_DETAIL_IMAGE_LAYOUT_PREFS = "dynamic_detail_image_layout_cache"
+    private const val CACHE_KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT = "layout"
+
+    @Volatile
+    private var dynamicDetailImageLayoutMemoryCache: DynamicDetailImageLayout? = null
+
+    private fun dynamicDetailImageLayoutPrefs(context: Context) =
+        context.getSharedPreferences(DYNAMIC_DETAIL_IMAGE_LAYOUT_PREFS, Context.MODE_PRIVATE)
+
+    private fun cacheDynamicDetailImageLayout(context: Context, layout: DynamicDetailImageLayout) {
+        if (dynamicDetailImageLayoutMemoryCache == layout) return
+        dynamicDetailImageLayoutMemoryCache = layout
+        dynamicDetailImageLayoutPrefs(context)
+            .edit()
+            .putInt(CACHE_KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT, layout.value)
+            .apply()
+    }
+
+    /**
+     * 同步读取当前图片布局，供详情页首帧使用，避免 DataStore 异步到达前闪一下默认展开布局。
+     */
+    fun peekDynamicDetailImageLayout(context: Context): DynamicDetailImageLayout {
+        dynamicDetailImageLayoutMemoryCache?.let { return it }
+        val layout = DynamicDetailImageLayout.fromValue(
+            dynamicDetailImageLayoutPrefs(context)
+                .getInt(CACHE_KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT, DynamicDetailImageLayout.EXPANDED.value)
+        )
+        dynamicDetailImageLayoutMemoryCache = layout
+        return layout
+    }
+
     fun getDynamicDetailImageLayout(context: Context): Flow<DynamicDetailImageLayout> =
         context.settingsDataStore.data.map { prefs ->
             DynamicDetailImageLayout.fromValue(prefs[KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT] ?: 0)
+        }.onEach { layout ->
+            cacheDynamicDetailImageLayout(context, layout)
         }
 
     suspend fun setDynamicDetailImageLayout(context: Context, layout: DynamicDetailImageLayout) {
+        cacheDynamicDetailImageLayout(context, layout)
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT] = layout.value
         }
