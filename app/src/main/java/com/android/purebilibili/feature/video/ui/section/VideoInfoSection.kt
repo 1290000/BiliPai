@@ -517,7 +517,7 @@ fun VideoTitleWithDesc(
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (isMaterial3) 10.dp else 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             itemVerticalAlignment = Alignment.CenterVertically
         ) {
             // Stats Row split for shared element transitions
@@ -544,10 +544,7 @@ fun VideoTitleWithDesc(
                         )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = viewsModifier.padding(end = 10.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = viewsModifier) {
                     AppIcon(
                         imageVector = Icons.Outlined.PlayCircleOutline,
                         contentDescription = null,
@@ -584,10 +581,7 @@ fun VideoTitleWithDesc(
                         )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = danmakuModifier.padding(end = 10.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = danmakuModifier) {
                     AppIcon(
                         imageVector = Icons.Outlined.Subtitles,
                         contentDescription = null,
