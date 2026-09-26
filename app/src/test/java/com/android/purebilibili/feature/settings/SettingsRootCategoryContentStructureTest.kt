@@ -458,9 +458,13 @@ class SettingsRootCategoryContentStructureTest {
             File("app/src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt"),
             File("src/main/java/com/android/purebilibili/feature/settings/ui/SettingsSections.kt")
         ).first { it.exists() }.readText().replace("\r\n", "\n")
+        val copySource = listOf(
+            File("app/src/main/java/com/android/purebilibili/feature/settings/SettingsDestinationCopy.kt"),
+            File("src/main/java/com/android/purebilibili/feature/settings/SettingsDestinationCopy.kt")
+        ).first { it.exists() }.readText().replace("\r\n", "\n")
 
-        assertTrue(source.contains("title = \"首页样式与壁纸\""))
-        assertTrue(source.contains("value = \"设置自动横屏、亮度音量手势和全屏返回方式\""))
+        assertTrue(copySource.contains("title = \"首页样式与推荐卡片\""))
+        assertTrue(copySource.contains("title = \"全屏与手势\""))
         assertTrue(source.contains("value = \"出现黑屏、卡顿或画质切换失败时用于排查问题\""))
     }
 

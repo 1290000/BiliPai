@@ -237,8 +237,8 @@ internal fun SettingsRootCategoryListSection(
             SettingsAdaptiveDivider()
         }
         SettingsRootCategoryRow(
-            title = "打赏作者",
-            subtitle = "支持项目后续持续开发和维护",
+            title = settingsDestinationCopy(SettingsSearchTarget.DONATE).title,
+            subtitle = settingsDestinationCopy(SettingsSearchTarget.DONATE).summary,
             icon = donateVisual.icon,
             iconPainter = donateVisual.iconResId?.let { painterResource(id = it) },
             iconTint = siblingTints.last(),
@@ -383,8 +383,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.INTERFACE_THEME,
-                                    title = "外观设置",
-                                    value = "选择界面风格、颜色、字体、显示大小和启动画面",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.APPEARANCE).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.APPEARANCE).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.APPEARANCE,
                                         SettingsSearchFocusIds.APPEARANCE_THEME,
@@ -403,8 +403,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.PLAYBACK_QUALITY,
-                                    title = "播放器设置",
-                                    value = "调整解码、清晰度、倍速、小窗和全屏操作",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.PLAYBACK).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.PLAYBACK).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.PLAYBACK,
                                         SettingsSearchFocusIds.PLAYBACK_DECODER,
@@ -422,8 +422,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.INTERACTION_COMMENT,
-                                    title = "互动、评论与内容预览",
-                                    value = "调整评论显示、点赞操作、视频简介和内容入口",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.INTERACTION_COMMENT).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.INTERACTION_COMMENT).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.PLAYBACK,
                                         SettingsSearchFocusIds.PLAYBACK_INTERACTION,
@@ -442,8 +442,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.HOME_FEED,
-                                    title = "首页样式与推荐卡片",
-                                    value = "调整卡片布局、壁纸、UP 信息和视频时长",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.HOME_FEED).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.HOME_FEED).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.HOME_FEED,
                                         SettingsSearchFocusIds.HOME_OVERVIEW,
@@ -489,8 +489,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.NAVIGATION,
-                                    title = "导航与标签",
-                                    value = "选择底栏和顶部入口，并调整图标、文字和顺序",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.BOTTOM_BAR).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.BOTTOM_BAR).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.BOTTOM_BAR,
                                         SettingsSearchFocusIds.BOTTOM_BAR_START,
@@ -508,8 +508,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.ANIMATION,
-                                    title = "动效与触感",
-                                    value = "控制页面动画、视频转场、振动反馈和玻璃效果",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.ANIMATION).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.ANIMATION).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.ANIMATION,
                                         SettingsSearchFocusIds.ANIMATION_START,
@@ -576,8 +576,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.INTERFACE_THEME,
-                                    title = "外观设置",
-                                    value = "选择界面风格、颜色、字体、显示大小和启动画面",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.APPEARANCE).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.APPEARANCE).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.APPEARANCE,
                                         SettingsSearchFocusIds.APPEARANCE_THEME,
@@ -595,8 +595,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.ANIMATION,
-                                    title = "动效与图标",
-                                    value = "控制页面动画、视频转场、振动反馈和玻璃效果",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.ANIMATION).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.ANIMATION).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.ANIMATION,
                                         SettingsSearchFocusIds.ANIMATION_START,
@@ -614,8 +614,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.NAVIGATION,
-                                    title = "导航与标签",
-                                    value = "选择底栏和顶部入口，并调整图标、文字和顺序",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.BOTTOM_BAR).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.BOTTOM_BAR).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.BOTTOM_BAR,
                                         SettingsSearchFocusIds.BOTTOM_BAR_START,
@@ -633,8 +633,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.FULLSCREEN_GESTURE,
-                                    title = "全屏与手势",
-                                    value = "设置自动横屏、亮度音量手势和全屏返回方式",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.FULLSCREEN_GESTURE).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.FULLSCREEN_GESTURE).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.PLAYBACK,
                                         SettingsSearchFocusIds.PLAYBACK_FULLSCREEN,
@@ -653,8 +653,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.HOME_FEED,
-                                    title = "首页样式与壁纸",
-                                    value = "调整卡片布局、壁纸、UP 信息和视频时长",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.HOME_FEED).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.HOME_FEED).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.HOME_FEED,
                                         SettingsSearchFocusIds.HOME_OVERVIEW,
@@ -699,8 +699,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.PLAYBACK_QUALITY,
-                                    title = "播放与画质",
-                                    value = "选择解码方式、默认清晰度、音质和播放速度",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.PLAYBACK).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.PLAYBACK).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.PLAYBACK,
                                         SettingsSearchFocusIds.PLAYBACK_NETWORK,
@@ -718,8 +718,8 @@ internal fun SettingsRootCategoryContent(
                             entries = listOf(
                                 SettingsDetailEntry(
                                     target = SettingsSearchTarget.INTERACTION_COMMENT,
-                                    title = "互动与评论",
-                                    value = "调整评论显示、点赞操作、视频简介和内容入口",
+                                    title = settingsDestinationCopy(SettingsSearchTarget.INTERACTION_COMMENT).title,
+                                    value = settingsDestinationCopy(SettingsSearchTarget.INTERACTION_COMMENT).summary,
                                     openFocus = SettingsSceneDetailFocus(
                                         SettingsSearchTarget.PLAYBACK,
                                         SettingsSearchFocusIds.PLAYBACK_INTERACTION,
@@ -869,8 +869,8 @@ fun SupportToolsSection(
         SettingClickableItem(
             icon = tipsVisual.icon,
             iconPainter = tipsVisual.iconResId?.let { painterResource(id = it) },
-            title = "小贴士 & 隐藏操作",
-            value = "探索更多功能",
+            title = settingsDestinationCopy(SettingsSearchTarget.TIPS).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.TIPS).summary,
             onClick = onTipsClick,
             iconTint = siblingTints[0]
         )
@@ -878,8 +878,8 @@ fun SupportToolsSection(
         SettingClickableItem(
             icon = openLinksVisual.icon,
             iconPainter = openLinksVisual.iconResId?.let { painterResource(id = it) },
-            title = "默认打开链接",
-            value = "设置应用链接支持",
+            title = settingsDestinationCopy(SettingsSearchTarget.OPEN_LINKS).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.OPEN_LINKS).summary,
             onClick = onOpenLinksClick,
             iconTint = siblingTints[1]
         )
@@ -1271,8 +1271,7 @@ fun PrivacySection(
         SettingClickableItem(
             icon = permissionVisual.icon,
             iconPainter = permissionVisual.iconResId?.let { painterResource(id = it) },
-            title = "权限管理",
-            value = "查看应用权限",
+            title = settingsDestinationCopy(SettingsSearchTarget.PERMISSION).title,
             onClick = onPermissionClick,
             iconTint = siblingTints[2]
         )
@@ -1280,8 +1279,8 @@ fun PrivacySection(
         SettingClickableItem(
             icon = messageNotificationVisual.icon,
             iconPainter = messageNotificationVisual.iconResId?.let { painterResource(id = it) },
-            title = "消息通知",
-            value = "后台消息、关注更新与开播提醒",
+            title = settingsDestinationCopy(SettingsSearchTarget.MESSAGE_NOTIFICATION).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.MESSAGE_NOTIFICATION).summary,
             onClick = onMessageNotificationClick,
             iconTint = messageNotificationVisual.iconTint
         )
@@ -1289,8 +1288,8 @@ fun PrivacySection(
         SettingClickableItem(
             icon = blockedListVisual.icon,
             iconPainter = blockedListVisual.iconResId?.let { painterResource(id = it) },
-            title = "黑名单管理",
-            value = "管理已屏蔽的 UP 主",
+            title = settingsDestinationCopy(SettingsSearchTarget.BLOCKED_LIST).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.BLOCKED_LIST).summary,
             onClick = onBlockedListClick,
             iconTint = siblingTints[3]
         )
@@ -1333,8 +1332,8 @@ fun DataStorageSection(
         SettingClickableItem(
             icon = settingsShareVisual.icon,
             iconPainter = settingsShareVisual.iconResId?.let { painterResource(id = it) },
-            title = "设置分享",
-            value = "导出并导入可分享设置",
+            title = settingsDestinationCopy(SettingsSearchTarget.SETTINGS_SHARE).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.SETTINGS_SHARE).summary,
             onClick = onSettingsShareClick,
             iconTint = siblingTints[0]
         )
@@ -1343,8 +1342,8 @@ fun DataStorageSection(
         SettingClickableItem(
             icon = webDavVisual.icon,
             iconPainter = webDavVisual.iconResId?.let { painterResource(id = it) },
-            title = "WebDAV 云备份",
-            value = "备份与恢复设置/插件",
+            title = settingsDestinationCopy(SettingsSearchTarget.WEBDAV_BACKUP).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.WEBDAV_BACKUP).summary,
             onClick = onWebDavBackupClick,
             iconTint = siblingTints[1]
         )
@@ -1352,7 +1351,7 @@ fun DataStorageSection(
         SettingClickableItem(
             icon = downloadPathVisual.icon,
             iconPainter = downloadPathVisual.iconResId?.let { painterResource(id = it) },
-            title = "下载位置",
+            title = settingsDestinationCopy(SettingsSearchTarget.DOWNLOAD_PATH).title,
             value = if (customDownloadPath != null) "自定义" else "默认",
             onClick = onDownloadPathClick,
             iconTint = siblingTints[2],
@@ -1362,7 +1361,7 @@ fun DataStorageSection(
         SettingClickableItem(
             icon = imageSavePathVisual.icon,
             iconPainter = imageSavePathVisual.iconResId?.let { painterResource(id = it) },
-            title = "图片保存位置",
+            title = settingsDestinationCopy(SettingsSearchTarget.IMAGE_SAVE_PATH).title,
             value = if (customImageSavePath != null) "已选择目录" else "默认",
             onClick = onImageSavePathClick,
             iconTint = siblingTints[3],
@@ -1372,7 +1371,7 @@ fun DataStorageSection(
         SettingClickableItem(
             icon = clearCacheVisual.icon,
             iconPainter = clearCacheVisual.iconResId?.let { painterResource(id = it) },
-            title = "清除缓存",
+            title = settingsDestinationCopy(SettingsSearchTarget.CLEAR_CACHE).title,
             value = cacheSize,
             onClick = onClearCacheClick,
             iconTint = siblingTints[4],
@@ -1418,7 +1417,7 @@ private fun PluginCenterSection(
         SettingClickableItem(
             icon = pluginsVisual.icon,
             iconPainter = pluginsVisual.iconResId?.let { painterResource(id = it) },
-            title = "插件中心",
+            title = settingsDestinationCopy(SettingsSearchTarget.PLUGINS).title,
             value = "$pluginCount 个已启用",
             onClick = onPluginsClick,
             iconTint = pluginsVisual.iconTint,
@@ -1510,7 +1509,7 @@ private fun DiagnosticsSection(
         SettingClickableItem(
             icon = exportLogsVisual.icon,
             iconPainter = exportLogsVisual.iconResId?.let { painterResource(id = it) },
-            title = "导出日志",
+            title = settingsDestinationCopy(SettingsSearchTarget.EXPORT_LOGS).title,
             subtitle = exportLogsDescription.takeIf { useMd3ExportLogsDescription },
             value = exportLogsDescription.takeUnless { useMd3ExportLogsDescription },
             onClick = onExportLogsClick,
@@ -1799,8 +1798,8 @@ fun AboutSection(
         SettingClickableItem(
             icon = openSourceHomeVisual.icon,
             iconPainter = openSourceHomeVisual.iconResId?.let { painterResource(id = it) },
-            title = "开源主页",
-            value = "GitHub",
+            title = settingsDestinationCopy(SettingsSearchTarget.OPEN_SOURCE_HOME).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.OPEN_SOURCE_HOME).summary,
             onClick = onGithubClick,
             iconTint = openSourceHomeVisual.iconTint,
             enableCopy = true,
@@ -1810,8 +1809,7 @@ fun AboutSection(
         SettingClickableItem(
             icon = licensesVisual.icon,
             iconPainter = licensesVisual.iconResId?.let { painterResource(id = it) },
-            title = "开源许可证",
-            value = "License",
+            title = settingsDestinationCopy(SettingsSearchTarget.OPEN_SOURCE_LICENSES).title,
             onClick = onLicenseClick,
             iconTint = licensesVisual.iconTint
         )
@@ -1875,7 +1873,7 @@ fun AboutSection(
         SettingClickableItem(
             icon = checkUpdateVisual.icon,
             iconPainter = checkUpdateVisual.iconResId?.let { painterResource(id = it) },
-            title = "检查更新",
+            title = settingsDestinationCopy(SettingsSearchTarget.CHECK_UPDATE).title,
             value = if (isCheckingUpdate) "检查中..." else updateStatusText,
             onClick = onCheckUpdateClick,
             iconTint = updateSiblingTints[1]
@@ -1884,8 +1882,7 @@ fun AboutSection(
         SettingClickableItem(
             icon = releaseNotesVisual.icon,
             iconPainter = releaseNotesVisual.iconResId?.let { painterResource(id = it) },
-            title = "查看更新日志",
-            value = "最新版本说明",
+            title = settingsDestinationCopy(SettingsSearchTarget.VIEW_RELEASE_NOTES).title,
             onClick = onViewReleaseNotesClick,
             iconTint = updateSiblingTints[2]
         )
@@ -1931,8 +1928,8 @@ fun AboutSection(
         SettingClickableItem(
             icon = replayOnboardingVisual.icon,
             iconPainter = replayOnboardingVisual.iconResId?.let { painterResource(id = it) },
-            title = "重看使用须知",
-            value = "开源约定与官方渠道",
+            title = settingsDestinationCopy(SettingsSearchTarget.REPLAY_ONBOARDING).title,
+            value = settingsDestinationCopy(SettingsSearchTarget.REPLAY_ONBOARDING).summary,
             onClick = onReplayOnboardingClick,
             iconTint = replayOnboardingVisual.iconTint
         )
