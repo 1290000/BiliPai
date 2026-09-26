@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.audio.screen
 
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.IntSize
 import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
 import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 
@@ -25,6 +26,16 @@ internal fun resolveAudioNowPlayingPresenceAnimationSpec(
     active: Boolean,
     reduceMotion: Boolean,
 ): TweenSpec<Float> = when {
+    reduceMotion -> tween(AUDIO_NOW_PLAYING_PRESENCE_REDUCED_MOTION_DURATION_MILLIS)
+    active -> emphasizedEnterTween(AUDIO_NOW_PLAYING_PRESENCE_ENTER_DURATION_MILLIS)
+    else -> emphasizedExitTween(AUDIO_NOW_PLAYING_PRESENCE_EXIT_DURATION_MILLIS)
+}
+
+/** presence 几何（独立挂载路径的高度展开/收起）动画规格。 */
+internal fun resolveAudioNowPlayingPresenceGeometrySpec(
+    active: Boolean,
+    reduceMotion: Boolean,
+): TweenSpec<IntSize> = when {
     reduceMotion -> tween(AUDIO_NOW_PLAYING_PRESENCE_REDUCED_MOTION_DURATION_MILLIS)
     active -> emphasizedEnterTween(AUDIO_NOW_PLAYING_PRESENCE_ENTER_DURATION_MILLIS)
     else -> emphasizedExitTween(AUDIO_NOW_PLAYING_PRESENCE_EXIT_DURATION_MILLIS)

@@ -46,6 +46,7 @@ import com.android.purebilibili.feature.article.shouldUseArticleNoOpRouteTransit
 import com.android.purebilibili.feature.audio.library.resolveListenVideoPlaybackSelection
 import com.android.purebilibili.feature.audio.player.AudioNowPlayingSession
 import com.android.purebilibili.feature.audio.screen.AudioNowPlayingBar
+import com.android.purebilibili.feature.audio.screen.AudioNowPlayingBarPresenceHost
 import com.android.purebilibili.feature.audio.screen.AudioNowPlayingBarState
 import com.android.purebilibili.feature.audio.screen.ListenVideoRoute
 import com.android.purebilibili.feature.audio.screen.isAudioNowPlayingPlayerDestination
@@ -4484,9 +4485,15 @@ fun AppNavigation(
                         }
                     }
                 }
-            } else if (showAudioNowPlayingIndependent && audioNowPlayingItem != null) {
+            } else if (audioNowPlayingItem != null) {
                 val playbackManager = miniPlayerManager ?: MiniPlayerManager.getInstance(context)
-                AudioNowPlayingBar(
+                AudioNowPlayingBarPresenceHost(
+                    visible = showAudioNowPlayingIndependent,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .zIndex(2f),
+                ) {
+                    AudioNowPlayingBar(
                     state = AudioNowPlayingBarState(
                         bvid = audioNowPlayingItem.bvid,
                         title = audioNowPlayingItem.title,
@@ -4545,10 +4552,8 @@ fun AppNavigation(
                     liquidGlassTuning = liquidGlassRenderConfig.tuning,
                     liftAboveBottomBar = false,
                     consumeNavigationBarsPadding = true,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .zIndex(2f)
-                )
+                    )
+                }
             }
 
             // BiliPai MainScreenBackHandler: onBackCompleted → animateToPage(home)
