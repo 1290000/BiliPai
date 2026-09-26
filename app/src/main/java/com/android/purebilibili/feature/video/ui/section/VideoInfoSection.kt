@@ -559,6 +559,8 @@ fun VideoTitleWithDesc(
                     )
                 }
 
+                Spacer(Modifier.width(10.dp))
+
                 // Danmaku
                 var danmakuModifier = Modifier.wrapContentSize()
                 if (metadataSharedEnabled) {
