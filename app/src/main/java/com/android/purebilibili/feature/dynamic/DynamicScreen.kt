@@ -128,10 +128,10 @@ import com.android.purebilibili.feature.dynamic.components.resolveDynamicReportR
 import com.android.purebilibili.feature.dynamic.components.DynamicCommentSheet
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
 import com.android.purebilibili.feature.dynamic.components.DynamicSubReplyPreviewHost
+import com.android.purebilibili.feature.home.LocalHomeFeedScrollInProgress
 import com.android.purebilibili.feature.home.LocalHomeScrollOffset
 import com.android.purebilibili.feature.home.components.BottomBarMatchedDockEdge
 import com.android.purebilibili.feature.home.components.BottomBarMatchedDockVisibility
-import com.android.purebilibili.feature.home.policy.resolveBottomBarChromeScrollOffset
 import com.android.purebilibili.core.util.animateScrollToTop
 import com.android.purebilibili.core.util.resolveScrollToTopPlan
 import kotlinx.coroutines.channels.Channel
@@ -661,9 +661,19 @@ fun DynamicScreen(
     val currentShouldAutoCollapseBottomBar by rememberUpdatedState(shouldAutoCollapseBottomBar)
     val currentActiveListState by rememberUpdatedState(activeListState)
     val currentSetBottomBarVisible by rememberUpdatedState(setBottomBarVisible)
+    val currentBottomBarChromeScrollOffset by rememberUpdatedState(bottomBarChromeScrollOffset)
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // 与推荐页相同：连续累计偏移，供搜索胶囊 24dp 阈值双向凑满。
+                val nextOffset = com.android.purebilibili.feature.home.resolveNextHomeGlobalScrollOffset(
+                    currentOffset = currentBottomBarChromeScrollOffset.value,
+                    scrollDeltaY = available.y,
+                    liquidGlassEnabled = false,
+                )
+                if (nextOffset != null) {
+                    currentBottomBarChromeScrollOffset.value = nextOffset
+                }
                 if (!currentShouldAutoCollapseBottomBar) return Offset.Zero
                 val listState = currentActiveListState ?: return Offset.Zero
                 val isAtTop = listState.firstVisibleItemIndex == 0 &&
@@ -696,23 +706,32 @@ fun DynamicScreen(
         }
     }
 
-    // Linked playback strip still follows the same scroll position and can merge globally.
     LaunchedEffect(activeListState, shouldAutoCollapseBottomBar) {
-        val state = activeListState ?: return@LaunchedEffect
         if (!shouldAutoCollapseBottomBar) {
             setBottomBarVisible(true)
             bottomBarChromeScrollOffset.value = 0f
         }
-        snapshotFlow {
-            Pair(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset)
+    }
+
+    // 与推荐页共用「列表正在滑」信号，驱动底栏搜索胶囊展开/收起。
+    val globalFeedScrollInProgress = LocalHomeFeedScrollInProgress.current
+    val isListScrollInProgress by remember(activeListState) {
+        derivedStateOf { activeListState?.isScrollInProgress == true }
+    }
+    if (isCurrentPage) {
+        SideEffect {
+            globalFeedScrollInProgress.value = isListScrollInProgress
         }
-            .distinctUntilChanged()
-            .collect { (firstVisibleItem, scrollOffset) ->
-                bottomBarChromeScrollOffset.value = resolveBottomBarChromeScrollOffset(
-                    firstVisibleItem = firstVisibleItem,
-                    scrollOffset = scrollOffset
-                )
+    }
+    DisposableEffect(isCurrentPage) {
+        if (!isCurrentPage) {
+            globalFeedScrollInProgress.value = false
+        }
+        onDispose {
+            if (isCurrentPage) {
+                globalFeedScrollInProgress.value = false
             }
+        }
     }
 
     // 离开页面时恢复底栏显示 (特别是进入详情页或其他 Tab)

@@ -20,7 +20,8 @@ internal fun resolveLinkedDockRestingPhase(
 ): LinkedDockPhase = when {
     !collapseRequested -> LinkedDockPhase.Expanded
     hasAudio -> LinkedDockPhase.Playback
-    else -> LinkedDockPhase.Compact
+    // 无音频的收起态回到完整底栏：搜索收成小圆钮，避免动态页下滑被 Compact 撑开。
+    else -> LinkedDockPhase.Expanded
 }
 
 fun resolveLinkedDockPhaseOnAudioChange(

@@ -2468,12 +2468,19 @@ fun HomeScreen(
         val isFeedScrollInProgress by remember(activeGridState) {
             derivedStateOf { activeGridState?.isScrollInProgress == true }
         }
-        SideEffect {
-            globalFeedScrollInProgress.value = isFeedScrollInProgress
+        if (isTopLevelActive) {
+            SideEffect {
+                globalFeedScrollInProgress.value = isFeedScrollInProgress
+            }
         }
-        DisposableEffect(Unit) {
-            onDispose {
+        DisposableEffect(isTopLevelActive) {
+            if (!isTopLevelActive) {
                 globalFeedScrollInProgress.value = false
+            }
+            onDispose {
+                if (isTopLevelActive) {
+                    globalFeedScrollInProgress.value = false
+                }
             }
         }
         val homeInteractionMotionBudget = resolveHomeInteractionMotionBudget(
