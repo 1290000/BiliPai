@@ -675,7 +675,7 @@ fun VideoTitleWithDesc(
 
         // [新增] BGM Info Row
         if (bgmList.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             InlineBgmSection(
                 bgmList = bgmList,
                 onBgmClick = onBgmClick,
@@ -1331,12 +1331,18 @@ private fun InlineBgmSection(
                 append(bgmList.size)
                 append("首音乐")
             }
+            // PiliPlus 式单行：艺人内联，避免双行卡片
+            val actor = leadSong.actor.takeIf { it.isNotBlank() && bgmList.size == 1 }
+            if (actor != null) {
+                append(" · ")
+                append(actor)
+            }
         }
     }
 
     BgmInfoRow(
         title = headerText,
-        subtitle = leadSong.actor.takeIf { it.isNotBlank() && bgmList.size == 1 },
+        subtitle = null,
         showIndicator = false,
         onClick = {
             showSheet = true
@@ -1382,16 +1388,16 @@ fun BgmInfoRow(
             .clickable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppIcon(
                 imageVector = Icons.Outlined.MusicNote,
                 contentDescription = "BGM",
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(14.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 AppText(
                     text = title,
