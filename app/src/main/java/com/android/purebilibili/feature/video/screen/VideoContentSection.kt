@@ -106,6 +106,7 @@ import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSo
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
+import com.android.purebilibili.feature.dynamic.components.ImagePreviewSourceAnchor
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.data.model.response.AiSummaryData
 import com.android.purebilibili.feature.video.ui.section.AiSummaryCard
@@ -679,7 +680,7 @@ internal fun VideoContentSection(
     var showImagePreview by remember { mutableStateOf(false) }
     var previewImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var previewInitialIndex by remember { mutableIntStateOf(0) }
-    var sourceRect by remember { mutableStateOf<Rect?>(null) }
+    var sourceRect by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
     
     // 合集展开状态
@@ -1160,8 +1161,9 @@ internal fun VideoContentSection(
             ImagePreviewDialog(
                 images = previewImages,
                 initialIndex = previewInitialIndex,
-                sourceRect = sourceRect,
-                sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
+                sourceRect = sourceRect?.rect,
+                sourceCornerRadiusDp = sourceRect?.cornerRadiusDp
+                    ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
                 textContent = previewTextContent,
                 onDismiss = {
                     showImagePreview = false
@@ -1413,7 +1415,7 @@ internal fun VideoCommentTab(
     onSubReplyClick: (ReplyItem, Long) -> Unit,
     onCommentReplyClick: (ReplyItem) -> Unit,
     onLoadMoreReplies: () -> Unit,
-    onImagePreview: (List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit,
+    onImagePreview: (List<String>, Int, ImagePreviewSourceAnchor?, ImagePreviewTextContent?) -> Unit,
     onTimestampClick: ((Long) -> Unit)?,
     contentPadding: PaddingValues,
     // [新增] 参数
@@ -1631,12 +1633,12 @@ internal fun LandscapeCommentPanel(
     onSwitchSide: () -> Unit,
     isOnLeft: Boolean,
     drawerWidth: Dp,
-    threadContent: (@Composable ((List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit) -> Unit)? = null,
+    threadContent: (@Composable ((List<String>, Int, ImagePreviewSourceAnchor?, ImagePreviewTextContent?) -> Unit) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var previewImages by remember { mutableStateOf(emptyList<String>()) }
     var previewInitialIndex by remember { mutableIntStateOf(0) }
-    var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
+    var previewSourceRect by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
     var showImagePreview by remember { mutableStateOf(false) }
     var showCommentSearchSheet by remember { mutableStateOf(false) }
@@ -1748,8 +1750,9 @@ internal fun LandscapeCommentPanel(
         ImagePreviewDialog(
             images = previewImages,
             initialIndex = previewInitialIndex,
-            sourceRect = previewSourceRect,
-            sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
+            sourceRect = previewSourceRect?.rect,
+            sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
+                ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,
             onDismiss = { showImagePreview = false },
         )

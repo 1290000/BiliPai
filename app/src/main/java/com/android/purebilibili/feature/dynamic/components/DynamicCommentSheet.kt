@@ -274,7 +274,7 @@ fun DynamicCommentSheet(
     var showImagePreview by remember { mutableStateOf(false) }
     var previewImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var previewInitialIndex by remember { mutableIntStateOf(0) }
-    var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
+    var previewSourceRect by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
     val sortModes = remember { listOf(CommentSortMode.HOT, CommentSortMode.NEWEST) }
     val sortModeLabels = remember(sortModes) { sortModes.map { it.label } }
@@ -283,8 +283,9 @@ fun DynamicCommentSheet(
         ImagePreviewDialog(
             images = previewImages,
             initialIndex = previewInitialIndex,
-            sourceRect = previewSourceRect,
-            sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
+            sourceRect = previewSourceRect?.rect,
+            sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
+                ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,
             onDismiss = {
                 showImagePreview = false
@@ -758,7 +759,7 @@ fun LazyListScope.dynamicInlineCommentItems(
     onToggleTop: (ReplyItem) -> Unit = {},
     onReport: (ReplyItem, Int) -> Unit = { _, _ -> },
     onUserClick: (Long) -> Unit,
-    onImagePreview: (List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit,
+    onImagePreview: (List<String>, Int, ImagePreviewSourceAnchor?, ImagePreviewTextContent?) -> Unit,
 ) {
     when {
         isLoading && comments.isEmpty() -> item(key = "dynamic_inline_comment_skeleton") {
@@ -1004,7 +1005,7 @@ private fun CommentItem(
     onToggleTop: (ReplyItem) -> Unit = {},
     onReport: (ReplyItem, Int) -> Unit = { _, _ -> },
     onUserClick: (Long) -> Unit,
-    onImagePreview: (List<String>, Int, Rect?, ImagePreviewTextContent?) -> Unit,
+    onImagePreview: (List<String>, Int, ImagePreviewSourceAnchor?, ImagePreviewTextContent?) -> Unit,
     subReplyState: SubReplyUiState = SubReplyUiState(),
     modifier: Modifier = Modifier,
 ) {

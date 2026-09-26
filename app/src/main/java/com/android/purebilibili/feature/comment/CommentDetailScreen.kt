@@ -37,6 +37,7 @@ import com.android.purebilibili.data.repository.resolveCommentFraudLightMessage
 import com.android.purebilibili.data.repository.shouldShowCommentFraudResultDialog
 import com.android.purebilibili.feature.video.ui.components.CommentFraudResultDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
+import com.android.purebilibili.feature.dynamic.components.ImagePreviewSourceAnchor
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.message.feed.MessageFeedError
 import com.android.purebilibili.feature.video.ui.components.CommentInputDialog
@@ -87,7 +88,7 @@ fun CommentDetailScreen(
 
     var previewImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var previewInitialIndex by remember { mutableIntStateOf(0) }
-    var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
+    var previewSourceRect by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
     var showImagePreview by remember { mutableStateOf(false) }
 
@@ -215,8 +216,9 @@ fun CommentDetailScreen(
                 ImagePreviewDialog(
                     images = previewImages,
                     initialIndex = previewInitialIndex,
-                    sourceRect = previewSourceRect,
-                    sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
+                    sourceRect = previewSourceRect?.rect,
+                    sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
+                        ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
                     textContent = previewTextContent,
                     onDismiss = {
                         showImagePreview = false

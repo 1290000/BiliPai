@@ -102,7 +102,7 @@ fun BangumiPlayerContent(
     var sendPending by remember(currentEpisode.id) { mutableStateOf(false) }
     var previewImages by remember(currentEpisode.id) { mutableStateOf<List<String>>(emptyList()) }
     var previewIndex by remember(currentEpisode.id) { mutableIntStateOf(0) }
-    var previewSourceRect by remember(currentEpisode.id) { mutableStateOf<Rect?>(null) }
+    var previewSourceRect by remember(currentEpisode.id) { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember(currentEpisode.id) { mutableStateOf<ImagePreviewTextContent?>(null) }
 
     LaunchedEffect(currentEpisode.id, commentState.isSending, commentState.sendError) {
@@ -710,7 +710,9 @@ fun BangumiPlayerContent(
         ImagePreviewDialog(
             images = previewImages,
             initialIndex = previewIndex,
-            sourceRect = previewSourceRect,
+            sourceRect = previewSourceRect?.rect,
+            sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
+                ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,
             onDismiss = { previewImages = emptyList() }
         )

@@ -114,6 +114,15 @@ class ImagePreviewSourceAnchorStructureTest {
     }
 
     @Test
+    fun commentPicturesConstructsAnchorsWithRealThumbnailCorners() {
+        val source = readMainSource("feature/video/ui/components/ReplyComponents.kt")
+        assertTrue(source.contains("onImageClick: (List<String>, Int, ImagePreviewSourceAnchor?) -> Unit"))
+        assertTrue(source.contains("ImagePreviewSourceAnchor(it, singleImageCornerDp)"))
+        assertTrue(source.contains("ImagePreviewSourceAnchor(it, gridImageCornerDp)"))
+        assertTrue(source.contains("AppShapes.containerCornerDp(ContainerLevel.Card)"))
+    }
+
+    @Test
     fun bangumiPreviewKeepsRectAndTextFromCallback() {
         val source = readMainSource("feature/bangumi/ui/player/BangumiPlayerContent.kt")
         assertTrue(source.contains("previewSourceRect = rect"))

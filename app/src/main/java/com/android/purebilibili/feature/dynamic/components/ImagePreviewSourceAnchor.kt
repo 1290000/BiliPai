@@ -22,3 +22,13 @@ fun Modifier.imagePreviewSourceBounds(target: MutableState<Rect?>): Modifier =
     onGloballyPositioned { coordinates ->
         target.value = coordinates.boundsInWindow()
     }
+
+/**
+ * 评论图片链路的落位锚点：缩略图窗口坐标 + 缩略图真实圆角。
+ * 由 [CommentPictures] 在捕获处构造（单图 Card / 九宫格 Field 圆角不同），
+ * 经 onImagePreview 回调透传到 ImagePreviewDialog 的 sourceRect/sourceCornerRadiusDp。
+ */
+data class ImagePreviewSourceAnchor(
+    val rect: Rect,
+    val cornerRadiusDp: Float,
+)

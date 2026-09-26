@@ -203,7 +203,7 @@ fun DynamicDetailScreen(
     var showImagePreview by remember { mutableStateOf(false) }
     var previewImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var previewInitialIndex by remember { mutableIntStateOf(0) }
-    var previewSourceRect by remember { mutableStateOf<Rect?>(null) }
+    var previewSourceRect by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
     AppScaffold(
         blurContentReady = uiState !is DynamicDetailUiState.Loading,
@@ -694,8 +694,9 @@ fun DynamicDetailScreen(
                     ImagePreviewDialog(
                         images = previewImages,
                         initialIndex = previewInitialIndex,
-                        sourceRect = previewSourceRect,
-                        sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
+                        sourceRect = previewSourceRect?.rect,
+                        sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
+                            ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
                         textContent = previewTextContent,
                         onDismiss = {
                             showImagePreview = false
