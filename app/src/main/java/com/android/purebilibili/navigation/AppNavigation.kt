@@ -3541,18 +3541,14 @@ fun AppNavigation(
                                 val ownerName = likedVideosKey?.ownerName?.takeIf { it.isNotBlank() }.orEmpty()
                                 val context = androidx.compose.ui.platform.LocalContext.current
                                 val application = context.applicationContext as android.app.Application
-                                val likedVideosViewModel: LikedVideosViewModel = if (targetMid != null) {
-                                    viewModel(
-                                        key = "liked_videos_$targetMid",
-                                        factory = com.android.purebilibili.feature.list.LikedVideosViewModelFactory(
-                                            application = application,
-                                            targetMid = targetMid,
-                                            ownerName = ownerName
-                                        )
+                                val likedVideosViewModel: LikedVideosViewModel = viewModel(
+                                    key = targetMid?.let { "liked_videos_$it" } ?: "liked_videos_self",
+                                    factory = com.android.purebilibili.feature.list.LikedVideosViewModelFactory(
+                                        application = application,
+                                        targetMid = targetMid,
+                                        ownerName = ownerName
                                     )
-                                } else {
-                                    viewModel()
-                                }
+                                )
                                 val sourceRoute = (key as? BiliPaiNavKey)?.toLegacyRoute()
                                     ?: ScreenRoutes.LikedVideos.route
                                 CommonListScreen(
