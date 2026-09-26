@@ -159,7 +159,9 @@ fun <T> AppTonalPillTabRow(
                         },
                         textStyle = textStyle,
                         onClick = { onSelectionChange(option.value) },
-                        modifier = Modifier.width(itemWidths[index]),
+                        modifier = Modifier
+                            .width(itemWidths[index])
+                            .fillMaxHeight(),
                     )
                 }
             }

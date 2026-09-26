@@ -90,6 +90,9 @@ data class SearchUiState(
     val currentPage: Int = 1,
     val totalPages: Int = 1,
     val hasMoreResults: Boolean = false,
+    // 当前类型的 API 声明总数(-1 = 未知),以及各类型已加载过的计数,用于 Tab 标签展示。
+    val totalResults: Int = -1,
+    val searchTypeCounts: Map<SearchType, Int> = emptyMap(),
     val isLoadingMore: Boolean = false,
     val loadMoreError: String? = null,
     val emptyStateReason: SearchEmptyStateReason = SearchEmptyStateReason.NONE,
@@ -612,6 +615,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -656,6 +661,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -693,6 +700,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -730,6 +739,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -772,6 +783,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -813,6 +826,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -855,6 +870,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -892,6 +909,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 articleResults = emptyList(),
                                 photoResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -934,6 +953,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 articleResults = emptyList(),
                                 topicResults = emptyList(),
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore,
                                 emptyStateReason = resolveSearchEmptyStateReason(
@@ -997,6 +1018,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 searchResults = mergeSearchPageResults(it.searchResults, filteredVideos) { video -> video.bvid },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1023,6 +1046,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 upResults = mergeSearchPageResults(it.upResults, filteredUps) { up -> up.mid },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1042,6 +1067,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 bangumiResults = mergeSearchPageResults(it.bangumiResults, bangumis) { item -> item.seasonId },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1061,6 +1088,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 bangumiResults = mergeSearchPageResults(it.bangumiResults, items) { item -> item.seasonId },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1085,6 +1114,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 liveResults = mergeSearchPageResults(it.liveResults, filteredLive) { room -> room.roomid },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1108,6 +1139,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 liveUserResults = mergeSearchPageResults(it.liveUserResults, filteredLiveUsers) { user -> user.uid },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1132,6 +1165,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 articleResults = mergeSearchPageResults(it.articleResults, articles) { article -> article.id },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1154,6 +1189,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 topicResults = mergeSearchPageResults(it.topicResults, topics) { topic -> topic.topicId },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1178,6 +1215,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 loadMoreError = null,
                                 photoResults = mergeSearchPageResults(it.photoResults, photos) { photo -> photo.id },
                                 currentPage = pageInfo.currentPage,
+                                totalResults = pageInfo.totalResults,
+                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
