@@ -73,7 +73,8 @@ class SettingsShareService(private val context: Context) : SettingsShareServiceC
     suspend fun applyBundledDefaultIfNeeded(): Result<Boolean> = withContext(Dispatchers.IO) {
         runCatching {
             val marker = context.getSharedPreferences(DEFAULT_PROFILE_PREFS, Context.MODE_PRIVATE)
-            if (marker.getBoolean(DEFAULT_PROFILE_APPLIED_KEY, false)) return@runCatching false            if (context.settingsDataStore.data.first().asMap().isNotEmpty()) {
+            if (marker.getBoolean(DEFAULT_PROFILE_APPLIED_KEY, false)) return@runCatching false
+            if (context.settingsDataStore.data.first().asMap().isNotEmpty()) {
                 marker.edit().putBoolean(DEFAULT_PROFILE_APPLIED_KEY, true).apply()
                 return@runCatching false
             }

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -47,7 +48,11 @@ class MessageNotificationService : Service() {
     private fun refreshPowerState() {
         val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
         screenOn.value = pm?.isInteractive ?: true
-        charging.value = pm?.isCharging ?: true
+        // PowerManager 没有 isCharging API，充电态用 ACTION_BATTERY_CHANGED 粘性广播查询。
+        val batteryStatus = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            ?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        charging.value = batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
+            batteryStatus == BatteryManager.BATTERY_STATUS_FULL
     }
 
     override fun onCreate() {

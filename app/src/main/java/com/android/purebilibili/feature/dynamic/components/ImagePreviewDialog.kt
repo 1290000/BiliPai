@@ -1963,11 +1963,8 @@ suspend fun saveImageToGallery(context: android.content.Context, imageUrl: Strin
                     }
                 } catch (e: Exception) {
                     tempFile.delete()
-                    inputStream.close()
-                    connection.disconnect()
                     throw e
                 }
-                inputStream.close()
                 connection.disconnect()
 
                 // 生成文件名
