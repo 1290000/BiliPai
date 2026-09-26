@@ -161,7 +161,7 @@ import com.android.purebilibili.core.ui.resolveOfficialVerifyBadge
 import com.android.purebilibili.core.ui.resolveUserAvatarCornerMark
 import com.android.purebilibili.core.ui.components.AppLiquidAwareSearchField
 import com.android.purebilibili.core.ui.components.AppNativeTabRow
-import com.android.purebilibili.core.ui.AppTabRowIndicatorPresentation
+import com.android.purebilibili.core.ui.components.AppTabRowIndicatorPresentation
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.MiuixNonGlassTabItemWidthMode
 import com.android.purebilibili.core.ui.components.KeepScrollableTabSelectionVisible

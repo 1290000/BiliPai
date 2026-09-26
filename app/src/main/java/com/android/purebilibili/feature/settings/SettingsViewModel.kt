@@ -380,11 +380,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             appIconStyle = values[3] as AppIconStyle,
             appListItemStyle = values[4] as AppListItemStyle,
             appFontSizePreset = values[5] as AppFontSizePreset,
-            appFontWeightPreset = values[10] as AppFontWeightPreset,
-            appFontFileName = values[6] as String,
-            appFontDisplayName = values[7] as String,
-            appUiScalePreset = values[8] as AppUiScalePreset,
-            appDpiOverridePercent = values[9] as Int
+            appFontWeightPreset = values[6] as AppFontWeightPreset,
+            appFontFileName = values[7] as String,
+            appFontDisplayName = values[8] as String,
+            appUiScalePreset = values[9] as AppUiScalePreset,
+            appDpiOverridePercent = values[10] as Int
         )
     }
     

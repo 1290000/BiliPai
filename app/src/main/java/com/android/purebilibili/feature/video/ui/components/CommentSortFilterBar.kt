@@ -6,7 +6,7 @@ import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
 import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
-import com.android.purebilibili.core.ui.AppTabRowIndicatorPresentation
+import com.android.purebilibili.core.ui.components.AppTabRowIndicatorPresentation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
