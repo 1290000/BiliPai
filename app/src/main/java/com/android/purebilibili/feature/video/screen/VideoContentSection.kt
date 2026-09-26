@@ -2094,15 +2094,15 @@ private fun VideoRecommendationHeader() {
             modifier = Modifier.padding(
                 start = horizontalPadding,
                 end = horizontalPadding,
-                top = if (isMaterial3) 16.dp else 12.dp,
-                bottom = 6.dp,
+                top = if (isMaterial3) 8.dp else 6.dp,
+                bottom = 4.dp,
             ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppText(
                 text = "相关推荐",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
