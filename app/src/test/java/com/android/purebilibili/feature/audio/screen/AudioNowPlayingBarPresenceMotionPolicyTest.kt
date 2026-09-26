@@ -8,12 +8,18 @@ import kotlin.test.assertTrue
 class AudioNowPlayingBarPresenceMotionPolicyTest {
 
     @Test
-    fun enterUsesAsymmetricDecelerateCurveAndExitUsesAccelerate() {
-        val enter = resolveAudioNowPlayingPresenceAnimationSpec(active = true, reduceMotion = false)
+    fun enterUsesASlightlyUnderdampedSpringForBounce() {
+        val enter = resolveAudioNowPlayingPresenceEnterSpringSpec()
+        assertEquals(0.7f, enter.dampingRatio)
+        assertTrue(enter.stiffness > 0f)
+        val enterGeometry = resolveAudioNowPlayingPresenceEnterGeometrySpringSpec()
+        assertEquals(0.7f, enterGeometry.dampingRatio)
+    }
+
+    @Test
+    fun exitUsesAsymmetricAccelerateCurve() {
         val exit = resolveAudioNowPlayingPresenceAnimationSpec(active = false, reduceMotion = false)
-        assertEquals(AUDIO_NOW_PLAYING_PRESENCE_ENTER_DURATION_MILLIS, enter.durationMillis)
         assertEquals(AUDIO_NOW_PLAYING_PRESENCE_EXIT_DURATION_MILLIS, exit.durationMillis)
-        assertEquals(0.22f, (enter.easing as CubicBezierEasing).x1)
         assertEquals(0.32f, (exit.easing as CubicBezierEasing).x1)
     }
 

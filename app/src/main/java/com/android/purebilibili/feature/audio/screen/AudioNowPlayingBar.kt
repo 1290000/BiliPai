@@ -530,10 +530,7 @@ internal fun AudioNowPlayingBarPresenceHost(
         active = false,
         reduceMotion = reduceMotion,
     )
-    val geometryEnterSpec = resolveAudioNowPlayingPresenceGeometrySpec(
-        active = true,
-        reduceMotion = reduceMotion,
-    )
+    val geometryEnterSpec = resolveAudioNowPlayingPresenceEnterGeometrySpringSpec()
     val geometryExitSpec = resolveAudioNowPlayingPresenceGeometrySpec(
         active = false,
         reduceMotion = reduceMotion,

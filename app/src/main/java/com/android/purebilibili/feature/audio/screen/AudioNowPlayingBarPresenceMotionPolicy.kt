@@ -1,6 +1,8 @@
 package com.android.purebilibili.feature.audio.screen
 
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.IntSize
 import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
@@ -40,6 +42,20 @@ internal fun resolveAudioNowPlayingPresenceGeometrySpec(
     active -> emphasizedEnterTween(AUDIO_NOW_PLAYING_PRESENCE_ENTER_DURATION_MILLIS)
     else -> emphasizedExitTween(AUDIO_NOW_PLAYING_PRESENCE_EXIT_DURATION_MILLIS)
 }
+
+/** 首次出现的上滑距离：presence 0→1 时小横条从下方此位移上滑落位。 */
+internal const val AUDIO_NOW_PLAYING_PRESENCE_ENTER_SLIDE_DP = 28f
+
+/**
+ * 首次出现的上滑入场弹簧：低阻尼（0.7）产生约 4% 的轻微回弹，
+ * overshoot 由调用方 clamp——宽度/alpha 收在 1，位移越过终点再回落即回弹。
+ */
+internal fun resolveAudioNowPlayingPresenceEnterSpringSpec(): SpringSpec<Float> =
+    spring(dampingRatio = 0.7f, stiffness = 380f)
+
+/** 独立挂载路径的高度展开入场弹簧（expandVertically 自下而上 + 回弹）。 */
+internal fun resolveAudioNowPlayingPresenceEnterGeometrySpringSpec(): SpringSpec<IntSize> =
+    spring(dampingRatio = 0.7f, stiffness = 380f)
 
 /**
  * presence alpha 窗口：几何先展开，alpha 在后半段跟上，避免空壳提前可见。

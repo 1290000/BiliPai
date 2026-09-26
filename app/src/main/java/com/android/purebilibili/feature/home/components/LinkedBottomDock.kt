@@ -38,10 +38,12 @@ import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.motion.iosMorphTween
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
+import com.android.purebilibili.feature.audio.screen.AUDIO_NOW_PLAYING_PRESENCE_ENTER_SLIDE_DP
 import com.android.purebilibili.feature.audio.screen.LINKED_DOCK_MERGE_DURATION_MILLIS
 import com.android.purebilibili.feature.audio.screen.LINKED_DOCK_SEARCH_DURATION_MILLIS
 import com.android.purebilibili.feature.audio.screen.resolveAudioNowPlayingPresenceAlpha
 import com.android.purebilibili.feature.audio.screen.resolveAudioNowPlayingPresenceAnimationSpec
+import com.android.purebilibili.feature.audio.screen.resolveAudioNowPlayingPresenceEnterSpringSpec
 import com.android.purebilibili.feature.home.LocalHomeScrollOffset
 import kotlinx.coroutines.flow.collect
 import dev.chrisbanes.haze.HazeState
@@ -186,31 +188,34 @@ internal fun LinkedBottomDock(
     val zeroProgressProvider = remember { { 0f } }
     val identityIconScaleProvider = remember { { 1f } }
 
-    // Presence 出入场：会话起止时 audio 槽按右缘锚点收放宽度并同步 fade；
-    // 消失动画期间保持组合，动画结束后才卸载小横条，消除旧的零宽硬切。
-    // 共享过渡驱动的路由切换（点条进详情/返回落位）不走动画：morph 是唯一几何
-    // 时间轴，presence 叠加播放会在交接收尾时闪帧，此时直接 snap 到目标值。
+    // Presence 出入场：首次出现时从下方上滑落位并带轻微回弹（低阻尼弹簧），
+    // 关闭时宽度按右缘锚点收起并同步 fade，消失动画期间保持组合到动画结束。
+    // 共享过渡驱动的关闭（点条进详情）不走动画直接 snap：morph 是唯一几何时间轴，
+    // presence 叠加播放会在交接收尾时闪帧。入场始终播放——卡片返回的落点不是
+    // 小横条自身，且小横条自己作为 morph 源时由 handoff alpha 压到落位才显现。
     val presence = remember { Animatable(if (hasAudio) 1f else 0f) }
     var keepSlotComposed by remember { mutableStateOf(hasAudio) }
+    val slotEntering = remember { mutableStateOf(false) }
     LaunchedEffect(hasAudio, animateNowPlayingPresence, reduceMotion) {
         val target = if (hasAudio) 1f else 0f
         when {
             presence.value == target -> keepSlotComposed = hasAudio
-            !animateNowPlayingPresence -> {
-                presence.snapTo(target)
-                keepSlotComposed = hasAudio
-            }
             hasAudio -> {
                 keepSlotComposed = true
-                presence.animateTo(
-                    targetValue = 1f,
-                    animationSpec = resolveAudioNowPlayingPresenceAnimationSpec(
-                        active = true,
-                        reduceMotion = reduceMotion,
-                    ),
-                )
+                if (reduceMotion) {
+                    slotEntering.value = false
+                    presence.snapTo(1f)
+                } else {
+                    slotEntering.value = true
+                    presence.animateTo(
+                        targetValue = 1f,
+                        animationSpec = resolveAudioNowPlayingPresenceEnterSpringSpec(),
+                    )
+                    slotEntering.value = false
+                }
             }
-            else -> {
+            animateNowPlayingPresence -> {
+                slotEntering.value = false
                 presence.animateTo(
                     targetValue = 0f,
                     animationSpec = resolveAudioNowPlayingPresenceAnimationSpec(
@@ -220,10 +225,19 @@ internal fun LinkedBottomDock(
                 )
                 keepSlotComposed = false
             }
+            else -> {
+                slotEntering.value = false
+                presence.snapTo(0f)
+                keepSlotComposed = false
+            }
         }
     }
     val presenceProgressProvider = remember(presence) {
         { presence.value.coerceIn(0f, 1f) }
+    }
+    // 入场期间槽宽直接取目标值（上滑 + fade 已足够），宽度收放只在退出时生效。
+    val slotGeometryPresenceProvider = remember {
+        { if (slotEntering.value) 1f else presence.value.coerceIn(0f, 1f) }
     }
     val latestNowPlayingContent by rememberUpdatedState(nowPlayingContent)
     val nowPlayingSlot = nowPlayingContent
@@ -366,6 +380,14 @@ internal fun LinkedBottomDock(
                     modifier = Modifier
                         .graphicsLayer {
                             alpha = resolveAudioNowPlayingPresenceAlpha(presenceProgressProvider())
+                            // 首次出现：从下方上滑落位，弹簧 overshoot 时越过终点
+                            // 再回落即为轻微回弹；非入场（退出/静止）不附加位移。
+                            translationY = if (!slotEntering.value || reduceMotion) {
+                                0f
+                            } else {
+                                (1f - presence.value) *
+                                    AUDIO_NOW_PLAYING_PRESENCE_ENTER_SLIDE_DP.dp.toPx()
+                            }
                         }
                         .layout { measurable, _ ->
                             // 小横条槽宽度真实随 morph/presence 变化，是唯一保留
@@ -380,7 +402,7 @@ internal fun LinkedBottomDock(
                                 mergeProgress = merge.value,
                                 searchProgress = search.value,
                                 verticalGap = verticalGap,
-                                presenceProgress = presence.value,
+                                presenceProgress = slotGeometryPresenceProvider(),
                             )
                             val placeable = measurable.measure(
                                 Constraints.fixed(geometry.audioWidth, controlHeight)
@@ -400,7 +422,7 @@ internal fun LinkedBottomDock(
                                 mergeProgress = merge.value,
                                 searchProgress = search.value,
                                 verticalGap = verticalGap,
-                                presenceProgress = presence.value,
+                                presenceProgress = slotGeometryPresenceProvider(),
                             )
                             IntOffset(
                                 geometry.audioX,
