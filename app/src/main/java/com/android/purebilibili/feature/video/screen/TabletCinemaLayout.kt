@@ -657,8 +657,6 @@ private fun CinemaMetaPanel(
 ) {
     val context = LocalContext.current
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    var showAiSummarySheet by remember { mutableStateOf(false) }
-    var showNoteListSheet by remember { mutableStateOf(false) }
     val currentPageIndex = remember(success.info.cid, success.info.pages) {
         success.info.pages.indexOfFirst { it.cid == success.info.cid }.coerceAtLeast(0)
     }
@@ -973,6 +971,8 @@ private fun CinemaVideoIntroSection(
     onPublicVideoNoteClick: (Long, String) -> Unit = { _, _ -> }
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    var showAiSummarySheet by remember { mutableStateOf(false) }
+    var showNoteListSheet by remember { mutableStateOf(false) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)

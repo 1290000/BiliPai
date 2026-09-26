@@ -309,8 +309,6 @@ fun VideoTitleSection(
  */
 
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
-@Composable
 /**
  * PiliPlus 风格的标题前缀徽标：盾牌+播放角标图标 + 类别文案（如“赞助/恰饭”）。
  */
@@ -352,6 +350,8 @@ fun VideoDetailSponsorLabelChip(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@Composable
 fun VideoTitleWithDesc(
     info: ViewInfo,
     videoTags: List<VideoTag> = emptyList(),  //  视频标签
