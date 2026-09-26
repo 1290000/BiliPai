@@ -517,7 +517,7 @@ fun VideoTitleWithDesc(
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             itemVerticalAlignment = Alignment.CenterVertically
         ) {
             // Stats Row split for shared element transitions
