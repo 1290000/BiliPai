@@ -272,11 +272,11 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
-    fun `static md3 light scheme derives distinct secondary and tertiary roles from source color`() {
-        val scheme = createStaticMd3ColorScheme(
-            primaryColor = Color(0xFF6750A4),
+    fun `custom seed md3 light scheme derives distinct secondary and tertiary roles from source color`() {
+        val scheme = createBiliPaiStyleColorScheme(
+            seedColor = Color(0xFF6750A4),
             darkTheme = false,
-            amoledDarkTheme = false
+            amoledDarkTheme = false,
         )
 
         assertNotEquals(scheme.primary, scheme.secondary)
@@ -359,16 +359,16 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
-    fun `static md3 surfaces should respond to different source colors instead of staying fixed`() {
-        val blueScheme = createStaticMd3ColorScheme(
-            primaryColor = Color(0xFF007AFF),
+    fun `custom seed md3 surfaces should respond to different source colors instead of staying fixed`() {
+        val blueScheme = createBiliPaiStyleColorScheme(
+            seedColor = Color(0xFF007AFF),
             darkTheme = false,
-            amoledDarkTheme = false
+            amoledDarkTheme = false,
         )
-        val orangeScheme = createStaticMd3ColorScheme(
-            primaryColor = Color(0xFFFF5722),
+        val orangeScheme = createBiliPaiStyleColorScheme(
+            seedColor = Color(0xFFFF5722),
             darkTheme = false,
-            amoledDarkTheme = false
+            amoledDarkTheme = false,
         )
 
         assertNotEquals(blueScheme.background, orangeScheme.background)
@@ -377,11 +377,11 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
-    fun `static md3 dark scheme keeps readable accents and source tinted surfaces`() {
-        val scheme = createStaticMd3ColorScheme(
-            primaryColor = Color(0xFF34C759),
+    fun `custom seed md3 dark scheme keeps readable accents and source tinted surfaces`() {
+        val scheme = createBiliPaiStyleColorScheme(
+            seedColor = Color(0xFF34C759),
             darkTheme = true,
-            amoledDarkTheme = false
+            amoledDarkTheme = false,
         )
 
         assertNotEquals(scheme.primary, scheme.secondary)
@@ -394,17 +394,20 @@ class ThemeDynamicColorPolicyTest {
     }
 
     @Test
-    fun `static md3 dark scheme preserves selected theme color as primary`() {
+    fun `custom seed dark scheme keeps theme identity via surfaceTint instead of raw primary`() {
         val selectedThemeColor = Color(0xFF007AFF)
 
-        val scheme = createStaticMd3ColorScheme(
-            primaryColor = selectedThemeColor,
+        val scheme = createBiliPaiStyleColorScheme(
+            seedColor = selectedThemeColor,
             darkTheme = true,
-            amoledDarkTheme = false
+            amoledDarkTheme = false,
         )
 
-        assertEquals(selectedThemeColor, scheme.primary)
+        // 原始种子色不再强塞进 primary(避免亮色种子产生黑 onPrimary),
+        // 品牌一致性由 surfaceTint 承载,控制色使用 HCT 映射后的可读角色。
+        assertEquals(selectedThemeColor, scheme.surfaceTint)
         assertTrue(calculateContrastRatio(scheme.onPrimary, scheme.primary) >= 4.5f)
+        assertTrue(calculateContrastRatio(scheme.primary, scheme.surface) >= 3f)
     }
 
     @Test
@@ -427,10 +430,10 @@ class ThemeDynamicColorPolicyTest {
             darkTheme = true,
             amoledDarkTheme = false
         )
-        val md3Scheme = createStaticMd3ColorScheme(
-            primaryColor = Color(0xFF34C759),
+        val md3Scheme = createBiliPaiStyleColorScheme(
+            seedColor = Color(0xFF34C759),
             darkTheme = true,
-            amoledDarkTheme = false
+            amoledDarkTheme = false,
         )
 
         assertNotEquals(md3Scheme.background, iosScheme.background)
