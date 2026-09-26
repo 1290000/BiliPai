@@ -2851,7 +2851,7 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
             images = imageUrls,
             initialIndex = selectedImageIndex.coerceIn(imageUrls.indices),
             sourceRect = sourceRect,
-            sourceCornerRadiusDp = 6f,
+            sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Chip).value,
             textContent = previewText,
             defaultTextVisible = dynamicPreviewTextVisible,
             onDismiss = { selectedImageIndex = -1 }

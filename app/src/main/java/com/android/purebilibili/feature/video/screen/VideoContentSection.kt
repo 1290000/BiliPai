@@ -1161,6 +1161,7 @@ internal fun VideoContentSection(
                 images = previewImages,
                 initialIndex = previewInitialIndex,
                 sourceRect = sourceRect,
+                sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
                 textContent = previewTextContent,
                 onDismiss = {
                     showImagePreview = false
@@ -1748,6 +1749,7 @@ internal fun LandscapeCommentPanel(
             images = previewImages,
             initialIndex = previewInitialIndex,
             sourceRect = previewSourceRect,
+            sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,
             onDismiss = { showImagePreview = false },
         )

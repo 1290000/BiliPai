@@ -870,6 +870,7 @@ internal fun TabletSecondaryContent(
             images = previewImages,
             initialIndex = previewInitialIndex,
             sourceRect = sourceRect,
+            sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,
             onDismiss = {
                 showImagePreview = false

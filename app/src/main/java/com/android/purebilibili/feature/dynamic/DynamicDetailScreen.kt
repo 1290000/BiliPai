@@ -1,5 +1,7 @@
 package com.android.purebilibili.feature.dynamic
 
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.AppSpacingTokens
 
 import android.graphics.RenderEffect as AndroidRenderEffect
@@ -693,6 +695,7 @@ fun DynamicDetailScreen(
                         images = previewImages,
                         initialIndex = previewInitialIndex,
                         sourceRect = previewSourceRect,
+                        sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
                         textContent = previewTextContent,
                         onDismiss = {
                             showImagePreview = false

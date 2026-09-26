@@ -23,6 +23,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.ImmersiveAppScaffold as AppScaffold
@@ -214,6 +216,7 @@ fun CommentDetailScreen(
                     images = previewImages,
                     initialIndex = previewInitialIndex,
                     sourceRect = previewSourceRect,
+                    sourceCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Field).value,
                     textContent = previewTextContent,
                     onDismiss = {
                         showImagePreview = false
