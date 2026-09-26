@@ -45,6 +45,7 @@ fun CollectionRow(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val collectionSubscriptionId = remember(ugcSeason) { resolveCollectionSubscriptionId(ugcSeason) }
     val allEpisodes = remember(ugcSeason.sections) { ugcSeason.sections.flatMap { it.episodes } }
     val currentAid = remember(allEpisodes, currentBvid, currentCid) {
         resolveCurrentUgcEpisodeAid(
@@ -118,7 +119,18 @@ fun CollectionRow(
             }
 
 
-            //  右侧箭头（PiliPlus 行内无订阅/分享，订阅入口在合集面板）
+            Spacer(modifier = Modifier.width(6.dp))
+
+            //  订阅按钮（保留行内直达入口）
+            CollectionSubscriptionButton(
+                collectionId = collectionSubscriptionId,
+                currentBvid = currentBvid,
+                currentAid = currentAid,
+                fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                immersive = immersive,
+            )
+
+            //  右侧箭头
             AppIcon(
                 Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = "查看合集",
