@@ -22,11 +22,14 @@ enum class AppFontSizePreset(
     val label: String,
     val multiplier: Float
 ) {
+    SMALLEST(5, "特小", 0.85f),
     SMALLER(0, "更小", 0.92f),
     SMALL(1, "偏小", 0.96f),
     DEFAULT(2, "默认", 1.00f),
     LARGE(3, "偏大", 1.04f),
-    LARGER(4, "更大", 1.08f);
+    LARGER(4, "更大", 1.08f),
+    EXTRA_LARGE(6, "特大", 1.15f),
+    EXTRA_EXTRA_LARGE(7, "超大", 1.25f);
 
     companion object {
         fun fromValue(value: Int): AppFontSizePreset {
