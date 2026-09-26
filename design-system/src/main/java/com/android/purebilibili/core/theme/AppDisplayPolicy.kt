@@ -12,7 +12,9 @@ import top.yukonga.miuix.kmp.theme.TextStyles
 import top.yukonga.miuix.kmp.theme.defaultTextStyles
 
 private const val DISPLAY_NARROW_WIDTH_THRESHOLD_DP = 360
-private const val DISPLAY_DPI_OVERRIDE_PERCENT_MIN = 85
+// 下限与设置段选项(resolveAppDpiOverrideSegmentOptions 的 90..110)对齐;
+// 官方触控目标最小值是物理尺寸,过低的密度缩放会让 48dp 目标缩水到可访问性阈值以下。
+private const val DISPLAY_DPI_OVERRIDE_PERCENT_MIN = 90
 private const val DISPLAY_DPI_OVERRIDE_PERCENT_MAX = 115
 
 enum class AppFontSizePreset(

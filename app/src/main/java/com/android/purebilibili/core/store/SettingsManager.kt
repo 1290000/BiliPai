@@ -2228,7 +2228,7 @@ object SettingsManager {
             appDpiOverridePercent = if (rawDpiOverride == 0) {
                 0
             } else {
-                rawDpiOverride.coerceIn(85, 115)
+                rawDpiOverride.coerceIn(90, 115)
             },
             appGestureScreenshotEnabled = preferences[KEY_APP_GESTURE_SCREENSHOT_ENABLED] ?: false,
             appScreenshotGestureMode = AppScreenshotGestureMode.fromValue(
@@ -2559,12 +2559,12 @@ object SettingsManager {
     fun getAppDpiOverridePercent(context: Context): Flow<Int> = context.settingsDataStore.data
         .map { preferences ->
             val rawValue = preferences[KEY_APP_DPI_OVERRIDE_PERCENT] ?: 0
-            if (rawValue == 0) 0 else rawValue.coerceIn(85, 115)
+            if (rawValue == 0) 0 else rawValue.coerceIn(90, 115)
         }
 
     suspend fun setAppDpiOverridePercent(context: Context, percent: Int) {
         context.settingsDataStore.edit { preferences ->
-            preferences[KEY_APP_DPI_OVERRIDE_PERCENT] = if (percent == 0) 0 else percent.coerceIn(85, 115)
+            preferences[KEY_APP_DPI_OVERRIDE_PERCENT] = if (percent == 0) 0 else percent.coerceIn(90, 115)
         }
     }
 
