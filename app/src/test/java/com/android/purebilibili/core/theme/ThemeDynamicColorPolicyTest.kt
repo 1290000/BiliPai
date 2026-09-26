@@ -284,6 +284,9 @@ class ThemeDynamicColorPolicyTest {
             seedColor = Color(0xFF6750A4),
             darkTheme = false,
             amoledDarkTheme = false,
+            // 生产默认值（Theme.kt）；签名新增必填参数后此处按默认行为补齐。
+            paletteStyle = PaletteStyle.TonalSpot,
+            colorSpec = ColorSpec.SpecVersion.SPEC_2025,
         )
 
         assertNotEquals(scheme.primary, scheme.secondary)
@@ -371,11 +374,17 @@ class ThemeDynamicColorPolicyTest {
             seedColor = Color(0xFF007AFF),
             darkTheme = false,
             amoledDarkTheme = false,
+            // 生产默认值（Theme.kt）；签名新增必填参数后此处按默认行为补齐。
+            paletteStyle = PaletteStyle.TonalSpot,
+            colorSpec = ColorSpec.SpecVersion.SPEC_2025,
         )
         val orangeScheme = createBiliPaiStyleColorScheme(
             seedColor = Color(0xFFFF5722),
             darkTheme = false,
             amoledDarkTheme = false,
+            // 生产默认值（Theme.kt）；签名新增必填参数后此处按默认行为补齐。
+            paletteStyle = PaletteStyle.TonalSpot,
+            colorSpec = ColorSpec.SpecVersion.SPEC_2025,
         )
 
         assertNotEquals(blueScheme.background, orangeScheme.background)
@@ -389,6 +398,9 @@ class ThemeDynamicColorPolicyTest {
             seedColor = Color(0xFF34C759),
             darkTheme = true,
             amoledDarkTheme = false,
+            // 生产默认值（Theme.kt）；签名新增必填参数后此处按默认行为补齐。
+            paletteStyle = PaletteStyle.TonalSpot,
+            colorSpec = ColorSpec.SpecVersion.SPEC_2025,
         )
 
         assertNotEquals(scheme.primary, scheme.secondary)
@@ -408,6 +420,9 @@ class ThemeDynamicColorPolicyTest {
             seedColor = selectedThemeColor,
             darkTheme = true,
             amoledDarkTheme = false,
+            // 生产默认值（Theme.kt）；签名新增必填参数后此处按默认行为补齐。
+            paletteStyle = PaletteStyle.TonalSpot,
+            colorSpec = ColorSpec.SpecVersion.SPEC_2025,
         )
 
         // 原始种子色不再强塞进 primary(避免亮色种子产生黑 onPrimary),
@@ -441,6 +456,9 @@ class ThemeDynamicColorPolicyTest {
             seedColor = Color(0xFF34C759),
             darkTheme = true,
             amoledDarkTheme = false,
+            // 生产默认值（Theme.kt）；签名新增必填参数后此处按默认行为补齐。
+            paletteStyle = PaletteStyle.TonalSpot,
+            colorSpec = ColorSpec.SpecVersion.SPEC_2025,
         )
 
         assertNotEquals(md3Scheme.background, iosScheme.background)
