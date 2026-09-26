@@ -29,8 +29,10 @@ import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
+import com.android.purebilibili.core.ui.transition.NowPlayingBarHandoffState
 import com.android.purebilibili.core.ui.transition.VideoCardSourceChromeSnapshot
 import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
+import com.android.purebilibili.core.ui.transition.resolveNowPlayingBarReturnVisibility
 import com.android.purebilibili.core.util.CardPositionManager
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -87,10 +89,7 @@ internal fun AudioNowPlayingBar(
     onDismiss: () -> Unit,
     expandDestinationLabel: String = "听视频",
     sourceRoute: String? = null,
-    isReturningFromDetail: Boolean = false,
-    returningDetailBvid: String? = null,
-    isSharedTransitionRunning: Boolean = false,
-    isSharedTransitionSourceOwner: Boolean = false,
+    handoff: NowPlayingBarHandoffState = NowPlayingBarHandoffState.Idle,
     glassEnabled: Boolean = LocalSettingsLiquidGlassEnabled.current,
     blurEnabled: Boolean = false,
     hazeState: HazeState? = null,
@@ -162,13 +161,10 @@ internal fun AudioNowPlayingBar(
         }
     }
     val reduceMotion = rememberSystemReduceMotion()
-    val sourceInActiveReturn = shouldHideAudioNowPlayingBarForSharedReturn(
-        isReturningFromDetail = isReturningFromDetail,
-        targetBvid = returningDetailBvid,
+    val sourceInActiveReturn = resolveNowPlayingBarReturnVisibility(
+        handoff = handoff,
         currentBvid = state.bvid,
-        isSharedTransitionRunning = isSharedTransitionRunning,
-        isSharedTransitionSourceOwner = isSharedTransitionSourceOwner,
-    )
+    ) <= 0f
 
     val chrome = resolveMusicPlayerChromeSpec(
         uiStyle = LocalAppUiStyle.current,

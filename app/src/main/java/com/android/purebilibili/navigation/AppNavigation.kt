@@ -120,6 +120,7 @@ import com.android.purebilibili.core.ui.adaptive.toAdaptiveFoldPosture
 import com.android.purebilibili.core.ui.adaptive.HingeOcclusionInputShield
 import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpeedSettings
 import com.android.purebilibili.core.ui.transition.LocalVideoTransitionAdaptiveInfo
+import com.android.purebilibili.core.ui.transition.NowPlayingBarHandoffState
 import com.android.purebilibili.core.ui.transition.VideoTransitionAdaptiveInfo
 import com.android.purebilibili.core.ui.transition.rememberVideoCardTransitionClock
 import com.android.purebilibili.core.ui.transition.VideoCardTransitionVisualTimeline
@@ -4245,6 +4246,16 @@ fun AppNavigation(
                 isPlayerDestination = isPlayerIndependentDestination
             )
 
+            val audioNowPlayingHandoff =
+                if (navigation3ReturnSession.isReturningFromDetail && driveBottomBarByProgress) {
+                    NowPlayingBarHandoffState.Returning(
+                        targetBvid = navigation3ReturnSession.transitionSession?.bvid,
+                        isSourceOwner = videoCardSourceChromeVisible,
+                    )
+                } else {
+                    NowPlayingBarHandoffState.Idle
+                }
+
             if (bottomBarCanMount) {
                 val bottomBarModifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -4293,10 +4304,7 @@ fun AppNavigation(
                                         onCompactClick = compactClick,
                                         isLayoutStable = layoutStable && !driveBottomBarByProgress,
                                         sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
-                                        isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
-                                        returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
-                                        isSharedTransitionRunning = driveBottomBarByProgress,
-                                        isSharedTransitionSourceOwner = videoCardSourceChromeVisible,
+                                        handoff = audioNowPlayingHandoff,
                                         onExpand = {
                                             val expandRoute = resolveAudioNowPlayingBarExpandRoute(
                                                 opensAudioMode = audioNowPlayingBarOpensAudioMode,
@@ -4490,10 +4498,7 @@ fun AppNavigation(
                     ),
                     isLayoutStable = !driveBottomBarByProgress,
                     sourceRoute = currentRoute ?: ScreenRoutes.Home.route,
-                    isReturningFromDetail = navigation3ReturnSession.isReturningFromDetail,
-                    returningDetailBvid = navigation3ReturnSession.transitionSession?.bvid,
-                    isSharedTransitionRunning = driveBottomBarByProgress,
-                    isSharedTransitionSourceOwner = videoCardSourceChromeVisible,
+                    handoff = audioNowPlayingHandoff,
                     onExpand = {
                         val expandRoute = resolveAudioNowPlayingBarExpandRoute(
                             opensAudioMode = audioNowPlayingBarOpensAudioMode,
