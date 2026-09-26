@@ -3,12 +3,7 @@ package com.android.purebilibili.feature.video.ui.components
 import coil3.request.crossfade
 
 import android.widget.Toast
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -226,32 +220,6 @@ fun RelatedVideoItem(
         sourceRoute = sourceRoute,
         transitionEnabled = sharedReady,
     )
-    // sharedBounds 在边界飞行时对两端内容做交叉淡化：源卡文字会被按
-    // 「当前壳宽 / 卡片宽」拉伸（平板分屏下 > 1，出现巨型字形）。
-    // 文字与封面不同，拉伸不可接受——退出 morph 的前 30% 内快速淡出文字。
-    val shellTextAlpha = if (useCardShellSharedBounds && animatedVisibilityScope != null) {
-        with(animatedVisibilityScope) {
-            transition.animateFloat(
-                transitionSpec = {
-                    if (targetState == EnterExitState.PostExit) {
-                        tween(
-                            durationMillis = sharedTransitionMotionSpec.durationMillis
-                                .coerceAtLeast(1),
-                            easing = LinearEasing,
-                        )
-                    } else {
-                        // 预测返回是手势 seek 的过渡：进入方向必须立即回满，
-                        // 否则手势拖动期间卡片只有封面、标题直到落位才出现。
-                        snap()
-                    }
-                },
-                label = "relatedCardTextExitFade",
-            ) { state -> if (state == EnterExitState.PostExit) 0f else 1f }
-        }.value
-    } else {
-        1f
-    }
-    val relatedCardTextAlpha = ((shellTextAlpha - 0.7f) / 0.3f).coerceIn(0f, 1f)
     val cardCoordinatesRef = remember { object { var value: LayoutCoordinates? = null } }
     val coverCoordinatesRef = remember { object { var value: LayoutCoordinates? = null } }
     val nativeCardSnapshot = rememberNativeVideoCardSnapshotController(video.bvid)
@@ -388,14 +356,9 @@ fun RelatedVideoItem(
                     minLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer { alpha = relatedCardTextAlpha },
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                Column(
-                    modifier = Modifier.graphicsLayer { alpha = relatedCardTextAlpha },
-                    verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall),
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
