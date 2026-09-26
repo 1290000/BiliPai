@@ -7,6 +7,7 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -239,7 +240,9 @@ fun RelatedVideoItem(
                             easing = LinearEasing,
                         )
                     } else {
-                        tween(durationMillis = 120)
+                        // 预测返回是手势 seek 的过渡：进入方向必须立即回满，
+                        // 否则手势拖动期间卡片只有封面、标题直到落位才出现。
+                        snap()
                     }
                 },
                 label = "relatedCardTextExitFade",
