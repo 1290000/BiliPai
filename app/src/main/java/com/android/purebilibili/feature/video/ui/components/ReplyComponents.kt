@@ -129,7 +129,16 @@ const val COMMENT_SUB_REPLY_PREVIEW_TAG_PREFIX = "comment_sub_reply_preview_"
 const val COMMENT_VIEW_ALL_REPLIES_TAG_PREFIX = "comment_view_all_replies_"
 internal const val COMMENT_DECORATION_DECODE_MAX_PX = 512
 
-private val replyVideoTitleCache = ConcurrentHashMap<String, String>()
+// 标题缓存有界化：长会话里评论区引用的 BV 号会持续累积且永不重复使用，
+// 超过上限整体清空即可（标题可重新拉取），条目本身很小但不可见地无限增长。
+private const val REPLY_VIDEO_TITLE_CACHE_MAX_ENTRIES = 512
+
+private val replyVideoTitleCache = object : ConcurrentHashMap<String, String>() {
+    override fun put(key: String, value: String): String? {
+        if (size >= REPLY_VIDEO_TITLE_CACHE_MAX_ENTRIES) clear()
+        return super.put(key, value)
+    }
+}
 
 /**
  * 官方 cardbg 经常是 972×162 的透明画布，实际角色图案只占其中一小部分。
