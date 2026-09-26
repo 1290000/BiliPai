@@ -237,6 +237,8 @@ fun Typography.withFontWeight(fontWeight: FontWeight?): Typography {
 /**
  * Maps Miuix-native component roles onto the app's Material typography contract.
  * This keeps native Miuix controls visually consistent with neighboring MD3-backed content.
+ * Title1-4 sizes follow the upstream defaults (32/24/20/18sp); weights stay Medium
+ * (upstream defaults are Normal) so native controls keep matching adjacent MD3 text.
  */
 fun Typography.toMiuixTextStyles(): TextStyles = defaultTextStyles(
     main = bodyLarge,
@@ -249,10 +251,10 @@ fun Typography.toMiuixTextStyles(): TextStyles = defaultTextStyles(
     headline1 = titleMedium,
     headline2 = titleSmall,
     subtitle = labelLarge.copy(fontWeight = FontWeight.Bold),
-    title1 = headlineLarge,
-    title2 = headlineMedium,
-    title3 = headlineSmall,
-    title4 = titleLarge,
+    title1 = displayLarge,
+    title2 = headlineLarge,
+    title3 = headlineMedium,
+    title4 = headlineSmall,
 )
 
 fun TextStyles.scaled(multiplier: Float): TextStyles {

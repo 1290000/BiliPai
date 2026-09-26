@@ -124,5 +124,9 @@ class AppDisplayPolicyTest {
         assertEquals(Md3Typography.bodySmall, textStyles.body2)
         assertEquals(Md3Typography.labelLarge, textStyles.button)
         assertEquals(Md3Typography.titleMedium, textStyles.headline1)
+        assertEquals(Md3Typography.displayLarge, textStyles.title1)
+        assertEquals(Md3Typography.headlineLarge, textStyles.title2)
+        assertEquals(Md3Typography.headlineMedium, textStyles.title3)
+        assertEquals(Md3Typography.headlineSmall, textStyles.title4)
     }
 }
