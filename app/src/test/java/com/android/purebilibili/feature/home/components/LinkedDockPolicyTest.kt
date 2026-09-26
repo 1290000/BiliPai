@@ -227,6 +227,46 @@ class LinkedDockPolicyTest {
     }
 
     @Test
+    fun presenceCollapsesTowardTheRightEdgeWithoutMovingTheAnchor() {
+        val full = resolveLinkedDockGeometry(
+            width = 336, button = 56, barHeight = 64, gap = 8,
+            hasAudio = true, searchEnabled = true,
+            mergeProgress = 1f, searchProgress = 0f,
+            presenceProgress = 1f,
+        )
+        val half = resolveLinkedDockGeometry(
+            width = 336, button = 56, barHeight = 64, gap = 8,
+            hasAudio = true, searchEnabled = true,
+            mergeProgress = 1f, searchProgress = 0f,
+            presenceProgress = 0.5f,
+        )
+        val gone = resolveLinkedDockGeometry(
+            width = 336, button = 56, barHeight = 64, gap = 8,
+            hasAudio = true, searchEnabled = true,
+            mergeProgress = 1f, searchProgress = 0f,
+            presenceProgress = 0f,
+        )
+        // 右缘锚定：胶囊收放时右边界不动，左缘随宽度移动。
+        val rightEdge = full.audioX + full.audioWidth
+        assertEquals(rightEdge, half.audioX + half.audioWidth)
+        assertEquals(full.audioWidth / 2, half.audioWidth)
+        assertEquals(0, gone.audioWidth)
+        assertEquals(rightEdge, gone.audioX)
+    }
+
+    @Test
+    fun expandedPresenceAnchorsToTheContainerRightEdge() {
+        val half = resolveLinkedDockGeometry(
+            width = 336, button = 56, barHeight = 64, gap = 8,
+            hasAudio = true, searchEnabled = true,
+            mergeProgress = 0f, searchProgress = 0f,
+            presenceProgress = 0.5f,
+        )
+        assertEquals(336 / 2, half.audioWidth)
+        assertEquals(336, half.audioX + half.audioWidth)
+    }
+
+    @Test
     fun homeScrollDirectionChangeStartsANewThreshold() {
         assertEquals(16f, accumulateDockScroll(10f, 6f))
         assertEquals(-3f, accumulateDockScroll(16f, -3f))

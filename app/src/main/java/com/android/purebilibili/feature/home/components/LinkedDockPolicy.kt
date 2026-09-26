@@ -113,9 +113,11 @@ internal fun resolveLinkedDockGeometry(
     mergeProgress: Float,
     searchProgress: Float,
     verticalGap: Int = gap,
+    presenceProgress: Float = 1f,
 ): LinkedDockGeometry {
     val merge = mergeProgress.coerceIn(0f, 1f)
     val search = searchProgress.coerceIn(0f, 1f)
+    val presence = presenceProgress.coerceIn(0f, 1f)
     val top = ((if (hasAudio) barHeight + verticalGap else 0) * (1f - merge)).roundToInt()
     val searchWidth = if (!searchEnabled) 0 else (
         button + (width - button * (if (hasAudio) 3 else 2) - gap * (if (hasAudio) 2 else 1)) * search
@@ -124,10 +126,20 @@ internal fun resolveLinkedDockGeometry(
     val playbackGap = gap
     val compactAudioWidth = (width - button - searchWidth -
         playbackGap * (if (searchEnabled) 2 else 1)).coerceAtLeast(0)
+    val targetAudioWidth = if (hasAudio) {
+        (width + (compactAudioWidth - width) * merge).roundToInt()
+    } else {
+        0
+    }
+    // Presence 收放以右缘为锚：出现时胶囊从右缘向左生长，消失时向右收起，
+    // 避免旧实现的零宽硬切；右缘始终落在完整胶囊的右边界上。
+    val audioWidth = (targetAudioWidth * presence).roundToInt()
+    val audioX = ((button + playbackGap) * merge).roundToInt() +
+        targetAudioWidth - audioWidth
     return LinkedDockGeometry(
         searchWidth = searchWidth,
-        audioWidth = if (hasAudio) (width + (compactAudioWidth - width) * merge).roundToInt() else 0,
-        audioX = ((button + playbackGap) * merge).roundToInt(),
+        audioWidth = audioWidth,
+        audioX = audioX,
         audioY = 0,
         top = top,
         height = top + barHeight,
