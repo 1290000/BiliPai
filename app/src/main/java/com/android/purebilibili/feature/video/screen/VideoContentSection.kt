@@ -79,7 +79,6 @@ import com.android.purebilibili.feature.video.ui.section.VideoTitleWithDesc
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
 import com.android.purebilibili.feature.video.ui.section.ActionButtonsRow
 import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
-import com.android.purebilibili.feature.video.ui.section.shouldShowAiSummaryEntry
 import com.android.purebilibili.feature.video.ui.section.resolveVideoDetailMotionBudget
 import com.android.purebilibili.feature.video.ui.section.shouldAnimateVideoDetailLayout
 import com.android.purebilibili.feature.video.ui.components.NativeDanmakuToggleButton
@@ -110,14 +109,13 @@ import com.android.purebilibili.feature.dynamic.components.ImagePreviewSourceAnc
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.data.model.response.AiSummaryData
 import com.android.purebilibili.feature.video.ui.section.AiSummarySheet
-import com.android.purebilibili.feature.video.ui.section.VideoSupplementEntryRow
+import com.android.purebilibili.feature.video.ui.section.VideoSupplementStatsActions
 import com.android.purebilibili.feature.video.ui.section.VideoNoteListSheet
 import com.android.purebilibili.feature.video.ui.section.VideoNoteDeleteConfirmDialog
 import com.android.purebilibili.feature.video.ui.section.VideoNoteEditorSheet
 import com.android.purebilibili.feature.video.note.VideoNoteEditorDocument
 import com.android.purebilibili.feature.video.note.VideoNoteUiState
 import com.android.purebilibili.feature.video.note.buildVideoNoteShareText
-import com.android.purebilibili.feature.video.note.shouldShowVideoNoteCard
 import kotlin.math.abs
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.ui.AppShapes
@@ -455,6 +453,7 @@ internal class VideoContentNoteState(
 )
 
 internal class VideoContentPresentationState(
+    val sponsorVideoLabel: String,
     val danmakuEnabled: Boolean,
     val transitionEnabled: Boolean,
     val isQuickReturnLimitedForSharedElements: Boolean,
@@ -575,6 +574,7 @@ internal fun VideoContentSection(
     val isQuickReturnLimitedForSharedElements = presentationState.isQuickReturnLimitedForSharedElements
     val sourceRouteForSharedElement = presentationState.sourceRouteForSharedElement
     val isPlayerCollapsed = presentationState.isPlayerCollapsed
+    val sponsorVideoLabel = presentationState.sponsorVideoLabel
     val onlineCount = presentationState.onlineCount
     val showOnlineCount = presentationState.showOnlineCount
     val ownerFollowerCount = presentationState.ownerFollowerCount
@@ -943,6 +943,7 @@ internal fun VideoContentSection(
                         ownerVideoCount = ownerVideoCount,
                         showUpBadge = showUpBadge,
                         onFavoriteLongClick = onFavoriteLongClick,
+                        sponsorVideoLabel = sponsorVideoLabel,
                         aiSummary = aiSummary,
                         aiSummaryPrompt = aiSummaryPrompt,
                         onShowAiSummarySheet = { showAiSummarySheet = true },
@@ -1305,6 +1306,7 @@ private fun VideoIntroTab(
     bgmInfoList: List<BgmInfo> = emptyList(),
     onTimestampClick: ((Long) -> Unit)? = null,
     onBgmClick: (BgmInfo) -> Unit = {},
+    sponsorVideoLabel: String = "",
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     showInteractionActions: Boolean = true,
@@ -1354,6 +1356,7 @@ private fun VideoIntroTab(
                 ownerFollowerCount = ownerFollowerCount,
                 ownerVideoCount = ownerVideoCount,
                 onFavoriteLongClick = onFavoriteLongClick,
+                sponsorVideoLabel = sponsorVideoLabel,
                 aiSummary = aiSummary,
                 aiSummaryPrompt = aiSummaryPrompt,
                 onShowAiSummarySheet = onShowAiSummarySheet,
@@ -1831,6 +1834,7 @@ private fun VideoHeaderContent(
     onDescriptionUrlClick: ((String) -> Unit)? = null,
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit = { _, _ -> },
     onSearchKeywordClick: (String) -> Unit = {},
+    sponsorVideoLabel: String = "",
     onlineCount: String = "",
     showOnlineCount: Boolean = true,
     showInteractionActions: Boolean = true,
@@ -1846,7 +1850,7 @@ private fun VideoHeaderContent(
         .collectAsStateWithLifecycle(initialValue = true
         )
     val uiStyle = LocalAppUiStyle.current
-    val sectionSpacing = if (uiStyle == AppUiStyle.MATERIAL3) 8.dp else 4.dp
+    val sectionSpacing = if (uiStyle == AppUiStyle.MATERIAL3) 6.dp else 4.dp
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1873,9 +1877,19 @@ private fun VideoHeaderContent(
         VideoTitleWithDesc(
             info = info,
             videoTags = videoTags,
+            sponsorLabel = sponsorVideoLabel,
             transitionEnabled = transitionEnabled,  // 🔗 传递共享元素开关
             isQuickReturnLimitedForSharedElements = isQuickReturnLimitedForSharedElements,
             sourceRouteForSharedElement = sourceRouteForSharedElement,
+            trailingStatsContent = {
+                // PiliPlus 式：信息行右端的 AI 总结 / 视频笔记小图标，内容在底部抽屉展示
+                VideoSupplementStatsActions(
+                    showAiSummary = videoAiSummaryEntryEnabled,
+                    showNote = videoNoteEnabled,
+                    onAiSummaryClick = onShowAiSummarySheet,
+                    onNoteClick = onShowNoteListSheet,
+                )
+            },
             bgmList = resolveDisplayBgmList(
                 bgmInfo = bgmInfo,
                 bgmInfoList = bgmInfoList
@@ -1927,22 +1941,6 @@ private fun VideoHeaderContent(
                 onPageSelect = onPageSelect
             )
         }
-
-        // Keep auxiliary video tools below the primary engagement actions and episode selectors.
-        // Heavy content opens in bottom sheets hosted by VideoContentSection.
-        val showAiSummaryEntry = videoAiSummaryEntryEnabled &&
-            (shouldShowAiSummaryEntry(
-                aiSummary = aiSummary,
-                isAiSummaryEntryEnabled = true
-            ) || aiSummaryPrompt != null)
-        val showNoteEntry = shouldShowVideoNoteCard(videoNoteEnabled)
-        VideoSupplementEntryRow(
-            showAiSummary = showAiSummaryEntry,
-            showNote = showNoteEntry,
-            onAiSummaryClick = onShowAiSummarySheet,
-            onNoteClick = onShowNoteListSheet,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
 
     }
 

@@ -113,7 +113,6 @@ import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextConte
 import com.android.purebilibili.feature.video.state.VideoPlayerState
 import com.android.purebilibili.feature.video.note.VideoNoteEditorDocument
 import com.android.purebilibili.feature.video.note.buildVideoNoteShareText
-import com.android.purebilibili.feature.video.note.shouldShowVideoNoteCard
 import com.android.purebilibili.feature.video.progress.PbpProgressData
 import com.android.purebilibili.feature.video.ui.components.CommentSortHeader
 import com.android.purebilibili.feature.video.ui.components.CommentSearchSheet
@@ -140,10 +139,9 @@ import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionActio
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionState
 import com.android.purebilibili.feature.video.ui.section.AiSummarySheet
 import com.android.purebilibili.feature.video.ui.section.VideoNoteListSheet
-import com.android.purebilibili.feature.video.ui.section.VideoSupplementEntryRow
+import com.android.purebilibili.feature.video.ui.section.VideoSupplementStatsActions
 import com.android.purebilibili.feature.video.ui.section.VideoNoteDeleteConfirmDialog
 import com.android.purebilibili.feature.video.ui.section.VideoNoteEditorSheet
-import com.android.purebilibili.feature.video.ui.section.shouldShowAiSummaryEntry
 import com.android.purebilibili.feature.video.viewmodel.CommentUiState
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState
 import com.android.purebilibili.feature.video.viewmodel.SponsorContributionUiState
@@ -659,6 +657,8 @@ private fun CinemaMetaPanel(
 ) {
     val context = LocalContext.current
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    var showAiSummarySheet by remember { mutableStateOf(false) }
+    var showNoteListSheet by remember { mutableStateOf(false) }
     val currentPageIndex = remember(success.info.cid, success.info.pages) {
         success.info.pages.indexOfFirst { it.cid == success.info.cid }.coerceAtLeast(0)
     }
@@ -990,6 +990,15 @@ private fun CinemaVideoIntroSection(
             VideoTitleWithDesc(
                 info = success.info,
                 videoTags = success.videoTags,
+                sponsorLabel = success.sponsorVideoLabel,
+                trailingStatsContent = {
+                    VideoSupplementStatsActions(
+                        showAiSummary = videoAiSummaryEntryEnabled,
+                        showNote = videoNoteEnabled,
+                        onAiSummaryClick = { showAiSummarySheet = true },
+                        onNoteClick = { showNoteListSheet = true },
+                    )
+                },
                 onDescriptionUrlClick = onOpenBilibiliLink,
                 bgmList = resolveDisplayBgmList(
                     bgmInfo = success.bgmInfo,
@@ -1000,20 +1009,6 @@ private fun CinemaVideoIntroSection(
                 onTagClick = onSearchKeywordClick
             )
         }
-        val showAiSummaryEntry = videoAiSummaryEntryEnabled &&
-            (shouldShowAiSummaryEntry(
-                aiSummary = success.aiSummary,
-                isAiSummaryEntryEnabled = true
-            ) || success.aiSummaryPrompt != null)
-        val showNoteEntry = shouldShowVideoNoteCard(videoNoteEnabled)
-        var showAiSummarySheet by remember { mutableStateOf(false) }
-        var showNoteListSheet by remember { mutableStateOf(false) }
-        VideoSupplementEntryRow(
-            showAiSummary = showAiSummaryEntry,
-            showNote = showNoteEntry,
-            onAiSummaryClick = { showAiSummarySheet = true },
-            onNoteClick = { showNoteListSheet = true }
-        )
         AiSummarySheet(
             visible = showAiSummarySheet,
             aiSummary = success.aiSummary,

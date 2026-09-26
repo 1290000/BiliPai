@@ -30,12 +30,11 @@ import com.android.purebilibili.feature.video.ui.VideoDetailShapes
 import com.android.purebilibili.feature.video.viewmodel.AiSummaryPromptState
 
 /**
- * Compact entry row replacing the previously inline AI summary / video note cards.
- * Heavy content lives in [AiSummarySheet] / [VideoNoteListSheet], mirroring the
- * PiliPlus detail-page pattern (small trigger + bottom sheet).
+ * PiliPlus 式信息行右端紧凑入口：AI 总结（AutoAwesome）与视频笔记（EditNote）小图标。
+ * 与 PiliPlus 一致，图标只作触发器，内容在 [AiSummarySheet] / [VideoNoteListSheet] 中展示。
  */
 @Composable
-fun VideoSupplementEntryRow(
+fun VideoSupplementStatsActions(
     showAiSummary: Boolean,
     showNote: Boolean,
     onAiSummaryClick: () -> Unit,
@@ -44,22 +43,21 @@ fun VideoSupplementEntryRow(
 ) {
     if (!showAiSummary && !showNote) return
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showAiSummary) {
-            SupplementEntryPill(
+            SupplementEntryIcon(
                 icon = Icons.Outlined.AutoAwesome,
                 label = "AI 总结",
                 onClick = onAiSummaryClick,
             )
         }
         if (showNote) {
-            SupplementEntryPill(
+            SupplementEntryIcon(
                 icon = Icons.Outlined.EditNote,
-                label = "笔记",
+                label = "视频笔记",
                 onClick = onNoteClick,
             )
         }
@@ -67,32 +65,18 @@ fun VideoSupplementEntryRow(
 }
 
 @Composable
-private fun SupplementEntryPill(
+private fun SupplementEntryIcon(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = onClick,
-        shape = VideoDetailShapes.field(),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            androidx.compose.material3.Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-            AppText(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
+    androidx.compose.material3.IconButton(onClick = onClick) {
+        androidx.compose.material3.Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 

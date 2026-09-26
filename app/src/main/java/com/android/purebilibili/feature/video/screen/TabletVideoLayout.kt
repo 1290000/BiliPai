@@ -65,15 +65,13 @@ import com.android.purebilibili.data.model.response.AiSummaryData
 import com.android.purebilibili.feature.video.note.VideoNoteEditorDocument
 import com.android.purebilibili.feature.video.note.VideoNoteUiState
 import com.android.purebilibili.feature.video.note.buildVideoNoteShareText
-import com.android.purebilibili.feature.video.note.shouldShowVideoNoteCard
 import com.android.purebilibili.feature.video.ui.section.ActionButtonsRow
 import com.android.purebilibili.feature.video.ui.section.AiSummarySheet
 import com.android.purebilibili.feature.video.ui.section.VideoNoteListSheet
-import com.android.purebilibili.feature.video.ui.section.VideoSupplementEntryRow
+import com.android.purebilibili.feature.video.ui.section.VideoSupplementStatsActions
 import com.android.purebilibili.feature.video.ui.section.VideoNoteDeleteConfirmDialog
 import com.android.purebilibili.feature.video.ui.section.VideoNoteEditorSheet
 import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
-import com.android.purebilibili.feature.video.ui.section.shouldShowAiSummaryEntry
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSection
 import com.android.purebilibili.feature.video.ui.section.VideoPlayerSectionActions
@@ -679,6 +677,7 @@ internal fun TabletVideoInfoPane(
         onWatchLaterClick = engagementActions.toggleWatchLater,
         onRelatedVideoClick = onRelatedVideoClick,
         onOpenBilibiliLink = onOpenBilibiliLink,
+        sponsorVideoLabel = success.sponsorVideoLabel,
         aiSummary = success.aiSummary,
         aiSummaryPrompt = success.aiSummaryPrompt,
         videoAiSummaryEntryEnabled = videoAiSummaryEntryEnabled,
@@ -1401,6 +1400,7 @@ private fun ScrollableVideoInfoSection(
     onRelatedVideoClick: (String, android.os.Bundle?) -> Unit,
     onSearchKeywordClick: (String) -> Unit = {},
     onOpenBilibiliLink: ((String) -> Unit)?,
+    sponsorVideoLabel: String = "",
     aiSummary: AiSummaryData? = null,
     aiSummaryPrompt: AiSummaryPromptState? = null,
     videoAiSummaryEntryEnabled: Boolean = true,
@@ -1460,6 +1460,15 @@ private fun ScrollableVideoInfoSection(
                 VideoTitleWithDesc(
                     info = info,
                     videoTags = videoTags,
+                    sponsorLabel = sponsorVideoLabel,
+                    trailingStatsContent = {
+                        VideoSupplementStatsActions(
+                            showAiSummary = videoAiSummaryEntryEnabled,
+                            showNote = videoNoteEnabled,
+                            onAiSummaryClick = { showAiSummarySheet = true },
+                            onNoteClick = { showNoteListSheet = true },
+                        )
+                    },
                     bgmList = resolveDisplayBgmList(
                         bgmInfo = bgmInfo,
                         bgmInfoList = bgmInfoList
@@ -1522,29 +1531,6 @@ private fun ScrollableVideoInfoSection(
             }
         }
 
-        // 4/5. AI 总结与视频笔记入口（内容在底部抽屉中展示）
-        val showAiSummaryEntry = videoAiSummaryEntryEnabled &&
-            (shouldShowAiSummaryEntry(
-                aiSummary = aiSummary,
-                isAiSummaryEntryEnabled = true
-            ) || aiSummaryPrompt != null)
-        val showNoteEntry = shouldShowVideoNoteCard(videoNoteEnabled)
-        if (showAiSummaryEntry || showNoteEntry) {
-            item {
-                TabletVideoInfoStaggeredItem(
-                    visible = entranceVisible,
-                    index = 3,
-                    spec = entranceSpec,
-                ) {
-                    VideoSupplementEntryRow(
-                        showAiSummary = showAiSummaryEntry,
-                        showNote = showNoteEntry,
-                        onAiSummaryClick = { showAiSummarySheet = true },
-                        onNoteClick = { showNoteListSheet = true },
-                    )
-                }
-            }
-        }
 
         // 6. 分P选择器（合集已移到右侧内容栏）
         item {
