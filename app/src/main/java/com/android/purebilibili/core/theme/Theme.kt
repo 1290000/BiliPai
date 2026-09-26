@@ -715,7 +715,7 @@ internal fun createStaticMd3ColorScheme(
             candidate = deriveNeutralSurfaceColor(source, lightness = 0.78f, maxSaturation = 0.08f),
             background = surfaceVariant,
             fallback = chooseReadableOnColor(surfaceVariant),
-            minimumContrast = 3.0f
+            minimumContrast = ACCESSIBLE_TEXT_MIN_CONTRAST
         )
 
         darkColorScheme(
@@ -787,7 +787,7 @@ internal fun createStaticMd3ColorScheme(
             candidate = deriveNeutralSurfaceColor(source, lightness = 0.36f, maxSaturation = 0.08f),
             background = surfaceVariant,
             fallback = chooseReadableOnColor(surfaceVariant),
-            minimumContrast = 3.0f
+            minimumContrast = ACCESSIBLE_TEXT_MIN_CONTRAST
         )
 
         lightColorScheme(
@@ -1072,11 +1072,7 @@ internal fun createBiliPaiStyleColorScheme(
         specVersion = colorSpec
     )
 
-    val readableScheme = if (!darkTheme) {
-        enforceDynamicLightTextContrast(scheme)
-    } else {
-        scheme
-    }
+    val readableScheme = enforceDynamicTextContrast(scheme)
     return alignStaticColorSchemeWithThemePrimary(
         scheme = readableScheme,
         themePrimaryColor = seedColor,
