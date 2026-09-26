@@ -443,12 +443,12 @@ fun VideoTitleWithDesc(
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = horizontalPadding, vertical = if (isMaterial3) 4.dp else 3.dp)
     ) {
-        // Title row (expandable)
+        // Title row (expandable); top-aligned so the sponsor badge lines up with the first title line
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(role = Role.Button) { expanded = !expanded },
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             //  共享元素过渡 - 标题
             var titleModifier = if (animateLayout) Modifier.animateContentSize() else Modifier
@@ -478,7 +478,7 @@ fun VideoTitleWithDesc(
             if (sponsorLabel.isNotBlank()) {
                 VideoDetailSponsorLabelChip(
                     label = sponsorLabel,
-                    modifier = Modifier.padding(end = 6.dp)
+                    modifier = Modifier.padding(end = 6.dp, top = 2.dp)
                 )
             }
             SelectionContainer(modifier = Modifier.weight(1f)) {
@@ -503,6 +503,7 @@ fun VideoTitleWithDesc(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier
+                    .align(Alignment.CenterVertically)
                     .rotate(rotateAngle)
                     .size(20.dp)
                     .padding(4.dp)

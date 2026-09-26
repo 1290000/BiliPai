@@ -38,7 +38,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Folder
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.android.purebilibili.feature.video.ui.VideoDetailShapes
 
 /**
  *  视频合集展示行
@@ -65,11 +64,6 @@ fun CollectionRow(
             currentCid = currentCid
         )
     }
-    val sortMode by SettingsManager
-        .getCollectionSortMode(context, collectionSubscriptionId)
-        .collectAsStateWithLifecycle(initialValue = CollectionSortMode.ASCENDING
-        )
-
     // 计算当前视频在合集中的位置
     val currentIndex = resolveCurrentUgcEpisodeIndex(
         episodes = allEpisodes,
@@ -85,8 +79,17 @@ fun CollectionRow(
     AppSurface(
         modifier = modifier
             .fillMaxWidth(),
-        shape = androidx.compose.ui.graphics.RectangleShape,
-        color = Color.Transparent  // 透明背景，与周围统一
+        shape = if (immersive) {
+            androidx.compose.ui.graphics.RectangleShape
+        } else {
+            androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+        },
+        // PiliPlus 同款：非沉浸时为 onInverseSurface 圆角单行卡片
+        color = if (immersive) {
+            Color.Transparent
+        } else {
+            MaterialTheme.colorScheme.onInverseSurface
+        }
     ) {
         Row(
             modifier = Modifier
@@ -94,72 +97,37 @@ fun CollectionRow(
                 .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            //  合集图标
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(VideoDetailShapes.compactIcon())
-                    .background(accentColor.copy(alpha = if (immersive) 0.18f else 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                AppIcon(
-                    Icons.Outlined.Folder,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(18.dp)
+            //  合集信息（PiliPlus 式单行：合集：标题 …… 播放指示 n/total >）
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                AppText(
+                    text = "合集：",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = titleColor,
+                    fontWeight = FontWeight.Medium
+                )
+                AppText(
+                    text = ugcSeason.title,
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            //  合集信息
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppText(
-                        text = "合集",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = accentColor,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    AppText(
-                        text = ugcSeason.title,
-                        modifier = Modifier.weight(1f, fill = false),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = titleColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    CollectionPlaybackIndicator(
-                        isPlaying = isPlaying,
-                        color = accentColor,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (currentPosition > 0 && totalCount > 0) {
-                        AppText(
-                            text = "$currentPosition/$totalCount",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = secondaryColor,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    AppText(
-                        text = resolveCollectionSortLabel(sortMode),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (immersive) secondaryColor else accentColor.copy(alpha = 0.88f)
-                    )
-                }
+            if (currentPosition > 0 && totalCount > 0) {
+                CollectionPlaybackIndicator(
+                    isPlaying = isPlaying,
+                    color = accentColor,
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                AppText(
+                    text = "$currentPosition/$totalCount",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = secondaryColor,
+                    fontWeight = FontWeight.Medium
+                )
             }
+
 
             Spacer(modifier = Modifier.width(6.dp))
 
