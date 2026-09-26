@@ -2086,10 +2086,6 @@ private fun VideoRecommendationHeader() {
     val isMaterial3 = LocalAppUiStyle.current == AppUiStyle.MATERIAL3
     val horizontalPadding = if (isMaterial3) 16.dp else 12.dp
     Column(modifier = Modifier.fillMaxWidth()) {
-        AppHorizontalDivider(
-            modifier = Modifier.padding(horizontal = horizontalPadding),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-        )
         Row(
             modifier = Modifier.padding(
                 start = horizontalPadding,
