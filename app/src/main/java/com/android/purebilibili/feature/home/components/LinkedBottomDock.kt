@@ -226,13 +226,21 @@ internal fun LinkedBottomDock(
         contentAlignment = Alignment.TopCenter,
     ) {
         val density = LocalDensity.current
-        val maximumWidth = constraints.maxWidth.coerceAtMost(600.dp.roundToPx())
-        val button = 56.dp.roundToPx()
-        val barHeight = 64.dp.roundToPx()
-        val controlHeight = 56.dp.roundToPx()
+        val maximumWidth: Int
+        val button: Int
+        val barHeight: Int
+        val controlHeight: Int
+        val gap: Int
+        val verticalGap: Int
+        with(density) {
+            maximumWidth = constraints.maxWidth.coerceAtMost(600.dp.roundToPx())
+            button = 56.dp.roundToPx()
+            barHeight = 64.dp.roundToPx()
+            controlHeight = 56.dp.roundToPx()
+            gap = 8.dp.roundToPx()
+            verticalGap = 4.dp.roundToPx()
+        }
         val searchHeight = button
-        val gap = 8.dp.roundToPx()
-        val verticalGap = 4.dp.roundToPx()
         // 容器高度固定为两行。小横条行收放只改变上方透明区，morph 进度不再进入
         // 容器 measure，导航行/首按钮/搜索胶囊不会被拖动每帧重测量（官方 deferred
         // reads 规范：帧率状态读取只应触发 placement/绘制）。
@@ -240,13 +248,15 @@ internal fun LinkedBottomDock(
         val navRowY = containerHeight - barHeight
         val controlRowY = navRowY + (barHeight - controlHeight) / 2
 
-        val preferredNavigationWidth = resolveBiliPaiFloatingBottomBarWidth(
-            containerWidth = with(density) { maximumWidth.toDp() },
-            itemCount = navigationItemCount,
-            minEdgePadding = navigationMinEdgePadding,
-            labelMode = navigationLabelMode,
-            cornerRadius = 32.dp,
-        ).roundToPx()
+        val preferredNavigationWidth = with(density) {
+            resolveBiliPaiFloatingBottomBarWidth(
+                containerWidth = maximumWidth.toDp(),
+                itemCount = navigationItemCount,
+                minEdgePadding = navigationMinEdgePadding,
+                labelMode = navigationLabelMode,
+                cornerRadius = 32.dp,
+            ).roundToPx()
+        }
         val reservedSearchWidth = if (searchEnabled) button + gap else 0
         val expandedNavigationWidth = preferredNavigationWidth.coerceAtMost(
             (maximumWidth - reservedSearchWidth).coerceAtLeast(0)
