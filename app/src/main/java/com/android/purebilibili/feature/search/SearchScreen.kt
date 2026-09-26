@@ -1,6 +1,7 @@
 // 文件路径: feature/search/SearchScreen.kt
 package com.android.purebilibili.feature.search
 
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.components.resolveVideoListColumns
 import com.android.purebilibili.core.ui.components.rememberVideoListLayoutControl
 import com.android.purebilibili.core.ui.components.videoListItemModifier
@@ -3164,8 +3165,9 @@ private fun SearchResultTypeTabRow(
         val containerHorizontalPaddingPx = with(density) { AppSpacingTokens.ExtraSmall.toPx() }
         val dragFollowEdgePaddingPx = with(density) { 12.dp.toPx() }
 
-        if (LocalAppUiStyle.current == AppUiStyle.MATERIAL3) {
-            // MD3:PiliPlus 搜索页同款 tonal 胶囊分类行(标签自适应宽度 + Pager 跟随)。
+        if (LocalAppUiStyle.current == AppUiStyle.MATERIAL3 && !LocalAppThemeConfig.current.liquidGlassEnabled) {
+            // MD3 非玻璃:PiliPlus 搜索页同款 tonal 胶囊分类行(标签自适应宽度 + Pager 跟随)。
+            // 液态玻璃开启时保持玻璃胶囊指示器,不进入本分支。
             AppTonalPillTabRow(
                 options = tabs.mapIndexed { index, type ->
                     AppSegmentOption(value = type, label = tabLabels[index])
