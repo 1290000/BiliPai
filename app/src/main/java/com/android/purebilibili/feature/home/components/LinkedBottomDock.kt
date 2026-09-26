@@ -33,13 +33,12 @@ import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.motion.iosMorphTween
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
+import com.android.purebilibili.feature.audio.screen.LINKED_DOCK_MERGE_DURATION_MILLIS
+import com.android.purebilibili.feature.audio.screen.LINKED_DOCK_SEARCH_DURATION_MILLIS
 import com.android.purebilibili.feature.home.LocalHomeScrollOffset
 import kotlinx.coroutines.flow.collect
 import dev.chrisbanes.haze.HazeState
 import top.yukonga.miuix.kmp.blur.Backdrop
-
-private const val LINKED_DOCK_MERGE_DURATION_MILLIS = 280
-private const val LINKED_DOCK_SEARCH_DURATION_MILLIS = 240
 
 typealias LinkedDockNowPlayingSlot = @Composable (
     Modifier,
