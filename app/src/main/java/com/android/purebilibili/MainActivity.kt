@@ -1333,6 +1333,7 @@ open class MainActivity : AppCompatActivity() {
             val colorSpec = appThemeSettings.colorSpec
             val themeColorIndex = appThemeSettings.themeColorIndex
             val appFontSizePreset = appThemeSettings.appFontSizePreset
+            val appFontWeightPreset = appThemeSettings.appFontWeightPreset
             val appFontFileName = appThemeSettings.appFontFileName
             val appUiScalePreset = appThemeSettings.appUiScalePreset
             val appDpiOverridePercent = appThemeSettings.appDpiOverridePercent
@@ -1483,6 +1484,7 @@ open class MainActivity : AppCompatActivity() {
                 colorStyle = colorStyle,
                 colorSpec = colorSpec,
                 fontSizePreset = appFontSizePreset,
+                appFontWeightPreset = appFontWeightPreset,
                 appFontFileName = appFontFileName,
                 appIconStyle = appThemeSettings.appIconStyle,
                 appListItemStyle = appThemeSettings.appListItemStyle,

@@ -63,6 +63,7 @@ import com.android.purebilibili.core.store.ThemeModeRoleOverrides
 import com.android.purebilibili.core.store.ThemeRoleOverrides
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.theme.deleteStoredAppFont
+import com.android.purebilibili.core.theme.AppFontWeightPreset
 import com.android.purebilibili.core.theme.importAppFontFromUri
 import com.android.purebilibili.core.theme.resolveAppFontCoverageNotice
 import com.android.purebilibili.core.theme.*
@@ -984,6 +985,17 @@ fun AppearanceSettingsContent(
                             selectedValue = state.appFontSizePreset,
                             onSelectionChange = { preset ->
                                 viewModel.setAppFontSizePreset(preset)
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SettingsSingleChoicePreference(
+                            title = "全局字重：${state.appFontWeightPreset.label}",
+                            subtitle = "统一调整全部文字的字重（跟随默认保留各场景原字重）",
+                            options = resolveAppFontWeightSegmentOptions(),
+                            selectedValue = state.appFontWeightPreset,
+                            onSelectionChange = { preset ->
+                                viewModel.setAppFontWeightPreset(preset)
                             }
                         )
 
@@ -2554,6 +2566,12 @@ private const val DEFAULT_APP_DPI_OVERRIDE_PERCENT = 100
 
 private fun resolveAppFontSizeSegmentOptions(): List<AppSegmentOption<AppFontSizePreset>> {
     return AppFontSizePreset.entries.map { preset ->
+        AppSegmentOption(value = preset, label = preset.label)
+    }
+}
+
+private fun resolveAppFontWeightSegmentOptions(): List<AppSegmentOption<AppFontWeightPreset>> {
+    return AppFontWeightPreset.entries.map { preset ->
         AppSegmentOption(value = preset, label = preset.label)
     }
 }

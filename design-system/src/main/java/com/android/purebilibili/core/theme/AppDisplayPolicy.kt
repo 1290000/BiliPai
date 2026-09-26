@@ -35,6 +35,28 @@ enum class AppFontSizePreset(
     }
 }
 
+/**
+ * 全局字重档位：对全部字阶槽位做统一字重覆盖（PiliPlus 同款交互）。
+ * [FOLLOW_THEME] 表示不覆盖，沿用各槽位的 Material 基线字重。
+ * 细字重（Thin/Light）在中文系统字体上不可靠，仅暴露 Medium 及以上档位。
+ */
+enum class AppFontWeightPreset(
+    val value: Int,
+    val label: String,
+    val fontWeight: FontWeight?
+) {
+    FOLLOW_THEME(-1, "跟随默认", null),
+    MEDIUM(0, "中黑", FontWeight.Medium),
+    SEMI_BOLD(1, "半粗", FontWeight.SemiBold),
+    BOLD(2, "粗体", FontWeight.Bold);
+
+    companion object {
+        fun fromValue(value: Int): AppFontWeightPreset {
+            return entries.find { it.value == value } ?: FOLLOW_THEME
+        }
+    }
+}
+
 enum class AppUiScalePreset(
     val value: Int,
     val label: String,
@@ -183,6 +205,32 @@ fun Typography.withFontFamily(fontFamily: FontFamily?): Typography {
     )
 }
 
+private fun TextStyle.withFontWeight(fontWeight: FontWeight?): TextStyle {
+    return if (fontWeight == null) this else copy(fontWeight = fontWeight)
+}
+
+/** 统一覆盖全部字阶槽位的字重；[fontWeight] 为 null 时不覆盖。 */
+fun Typography.withFontWeight(fontWeight: FontWeight?): Typography {
+    if (fontWeight == null) return this
+    return copy(
+        displayLarge = displayLarge.withFontWeight(fontWeight),
+        displayMedium = displayMedium.withFontWeight(fontWeight),
+        displaySmall = displaySmall.withFontWeight(fontWeight),
+        headlineLarge = headlineLarge.withFontWeight(fontWeight),
+        headlineMedium = headlineMedium.withFontWeight(fontWeight),
+        headlineSmall = headlineSmall.withFontWeight(fontWeight),
+        titleLarge = titleLarge.withFontWeight(fontWeight),
+        titleMedium = titleMedium.withFontWeight(fontWeight),
+        titleSmall = titleSmall.withFontWeight(fontWeight),
+        bodyLarge = bodyLarge.withFontWeight(fontWeight),
+        bodyMedium = bodyMedium.withFontWeight(fontWeight),
+        bodySmall = bodySmall.withFontWeight(fontWeight),
+        labelLarge = labelLarge.withFontWeight(fontWeight),
+        labelMedium = labelMedium.withFontWeight(fontWeight),
+        labelSmall = labelSmall.withFontWeight(fontWeight)
+    )
+}
+
 /**
  * Maps Miuix-native component roles onto the app's Material typography contract.
  * This keeps native Miuix controls visually consistent with neighboring MD3-backed content.
@@ -241,5 +289,25 @@ fun TextStyles.withFontFamily(fontFamily: FontFamily?): TextStyles {
         title2 = title2.withFontFamily(fontFamily),
         title3 = title3.withFontFamily(fontFamily),
         title4 = title4.withFontFamily(fontFamily)
+    )
+}
+
+fun TextStyles.withFontWeight(fontWeight: FontWeight?): TextStyles {
+    if (fontWeight == null) return this
+    return copy(
+        main = main.withFontWeight(fontWeight),
+        paragraph = paragraph.withFontWeight(fontWeight),
+        body1 = body1.withFontWeight(fontWeight),
+        body2 = body2.withFontWeight(fontWeight),
+        button = button.withFontWeight(fontWeight),
+        footnote1 = footnote1.withFontWeight(fontWeight),
+        footnote2 = footnote2.withFontWeight(fontWeight),
+        headline1 = headline1.withFontWeight(fontWeight),
+        headline2 = headline2.withFontWeight(fontWeight),
+        subtitle = subtitle.withFontWeight(fontWeight),
+        title1 = title1.withFontWeight(fontWeight),
+        title2 = title2.withFontWeight(fontWeight),
+        title3 = title3.withFontWeight(fontWeight),
+        title4 = title4.withFontWeight(fontWeight)
     )
 }

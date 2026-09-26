@@ -31,6 +31,7 @@ import com.android.purebilibili.core.store.player.PlayerSettingsStore
 import com.android.purebilibili.core.store.player.defaultAudioQualityPreferenceKey
 import com.android.purebilibili.core.store.player.longPressSpeedPreferenceKey
 import com.android.purebilibili.core.store.player.playbackSpeedOptionsPreferenceKey
+import com.android.purebilibili.core.theme.AppFontWeightPreset
 import com.android.purebilibili.core.theme.AppFontSizePreset
 import com.android.purebilibili.core.ui.components.AppTagChipSize
 import com.android.purebilibili.core.theme.AppUiScalePreset
@@ -708,6 +709,7 @@ data class AppThemeSettings(
     val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val themeColorIndex: Int = 0,
     val appFontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
+    val appFontWeightPreset: AppFontWeightPreset = AppFontWeightPreset.FOLLOW_THEME,
     val appFontFileName: String = "",
     val appUiScalePreset: AppUiScalePreset = AppUiScalePreset.STANDARD,
     val appDpiOverridePercent: Int = 0,
@@ -1408,6 +1410,7 @@ object SettingsManager {
     private val KEY_LAST_PLAYBACK_SPEED = floatPreferencesKey("last_playback_speed")
     private val KEY_THEME_COLOR_INDEX = intPreferencesKey("theme_color_index")
     private val KEY_APP_FONT_SIZE_PRESET = intPreferencesKey("app_font_size_preset")
+private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     private val KEY_APP_FONT_FILE_NAME = stringPreferencesKey("app_font_file_name")
     private val KEY_APP_FONT_DISPLAY_NAME = stringPreferencesKey("app_font_display_name")
     private val KEY_APP_UI_SCALE_PRESET = intPreferencesKey("app_ui_scale_preset")
@@ -2221,6 +2224,9 @@ object SettingsManager {
             appFontSizePreset = AppFontSizePreset.fromValue(
                 preferences[KEY_APP_FONT_SIZE_PRESET] ?: AppFontSizePreset.DEFAULT.value
             ),
+            appFontWeightPreset = AppFontWeightPreset.fromValue(
+                preferences[KEY_APP_FONT_WEIGHT] ?: AppFontWeightPreset.FOLLOW_THEME.value
+            ),
             appFontFileName = preferences[KEY_APP_FONT_FILE_NAME].orEmpty(),
             appUiScalePreset = AppUiScalePreset.fromValue(
                 preferences[KEY_APP_UI_SCALE_PRESET] ?: AppUiScalePreset.STANDARD.value
@@ -2516,6 +2522,19 @@ object SettingsManager {
     suspend fun setAppFontSizePreset(context: Context, preset: AppFontSizePreset) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_APP_FONT_SIZE_PRESET] = preset.value
+        }
+    }
+
+    fun getAppFontWeightPreset(context: Context): Flow<AppFontWeightPreset> = context.settingsDataStore.data
+        .map { preferences ->
+            AppFontWeightPreset.fromValue(
+                preferences[KEY_APP_FONT_WEIGHT] ?: AppFontWeightPreset.FOLLOW_THEME.value
+            )
+        }
+
+    suspend fun setAppFontWeightPreset(context: Context, preset: AppFontWeightPreset) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_FONT_WEIGHT] = preset.value
         }
     }
 

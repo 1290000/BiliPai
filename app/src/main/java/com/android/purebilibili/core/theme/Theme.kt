@@ -795,6 +795,7 @@ fun PureBiliBiliTheme(
     colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
     colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     fontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
+    appFontWeightPreset: AppFontWeightPreset = AppFontWeightPreset.FOLLOW_THEME,
     appFontFileName: String = "",
     appIconStyle: AppIconStyle = AppIconStyle.AUTO,
     appListItemStyle: AppListItemStyle = AppListItemStyle.AUTO,
@@ -825,6 +826,7 @@ fun PureBiliBiliTheme(
     val materialTypography = resolveMaterialTypography(uiStyle, liquidGlassEnabled)
         .scaled(fontSizePreset.multiplier)
         .withFontFamily(appFontFamily)
+        .withFontWeight(appFontWeightPreset.fontWeight)
     val materialMotionScheme = remember(uiStyle) {
         resolveMaterialMotionScheme(uiStyle)
     }
