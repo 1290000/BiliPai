@@ -639,6 +639,7 @@ data class HomeSettings(
     val bottomBarLiquidGlassPreset: BottomBarLiquidGlassPreset =
         BottomBarLiquidGlassPreset.BILIPAI_TUNED,
     val isBottomBarSearchEnabled: Boolean = false,
+    val listScopedSearchEnabled: Boolean = false,
     val bottomBarSearchAutoExpandMode: BottomBarSearchAutoExpandMode =
         BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP,
     val bottomBarSearchLayoutMode: BottomBarSearchLayoutMode =
@@ -1508,6 +1509,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
         booleanPreferencesKey("home_search_liquid_glass_enabled")
     private val KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED = booleanPreferencesKey("bottom_bar_liquid_glass_enabled")
     private val KEY_BOTTOM_BAR_SEARCH_ENABLED = booleanPreferencesKey("bottom_bar_search_enabled")
+    private val KEY_LIST_SCOPED_SEARCH_ENABLED = booleanPreferencesKey("list_scoped_search_enabled")
     private val KEY_BOTTOM_BAR_SEARCH_AUTO_EXPAND_MODE =
         intPreferencesKey("bottom_bar_search_auto_expand_mode")
     private val KEY_BOTTOM_BAR_SEARCH_LAYOUT_MODE =
@@ -1726,6 +1728,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
                     ?: (preferences[KEY_TOP_BAR_LIQUID_GLASS_ENABLED] ?: false),
             isBottomBarLiquidGlassEnabled = preferences[KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED] ?: legacyLiquidGlassEnabled,
             isBottomBarSearchEnabled = preferences[KEY_BOTTOM_BAR_SEARCH_ENABLED] ?: false,
+            listScopedSearchEnabled = preferences[KEY_LIST_SCOPED_SEARCH_ENABLED] ?: false,
             bottomBarSearchAutoExpandMode = BottomBarSearchAutoExpandMode.fromValue(
                 preferences[KEY_BOTTOM_BAR_SEARCH_AUTO_EXPAND_MODE]
                     ?: BottomBarSearchAutoExpandMode.EXPAND_AT_HOME_TOP.value
@@ -4099,6 +4102,15 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     suspend fun setBottomBarSearchEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_BOTTOM_BAR_SEARCH_ENABLED] = value
+        }
+    }
+
+    fun getListScopedSearchEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_LIST_SCOPED_SEARCH_ENABLED] ?: false }
+
+    suspend fun setListScopedSearchEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIST_SCOPED_SEARCH_ENABLED] = value
         }
     }
 

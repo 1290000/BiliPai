@@ -112,6 +112,11 @@ internal fun LinkedBottomDock(
         }
     }
     var query by remember { mutableStateOf("") }
+    LaunchedEffect(phase) {
+        if (shouldResetLinkedDockSearchQuery(phase)) {
+            query = ""
+        }
+    }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scroll = LocalHomeScrollOffset.current
@@ -539,9 +544,9 @@ internal fun LinkedBottomDock(
                                 onQueryChange = { query = it },
                                 onSubmit = {
                                     focusManager.clearFocus()
-                                    if (query.isBlank()) onSearchClick() else {
-                                        onSearchKeywordSubmit(query.trim())
-                                    }
+                                    val keyword = query.trim()
+                                    query = ""
+                                    if (keyword.isBlank()) onSearchClick() else onSearchKeywordSubmit(keyword)
                                 },
                                 contentColor = contentColor,
                                 accentColor = accentColor,

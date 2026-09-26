@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.home.components
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class LinkedDockPolicyTest {
@@ -296,6 +297,10 @@ class LinkedDockPolicyTest {
     fun searchDismissRestoresPlaybackIfAudioActiveElseExpanded() {
         assertEquals(LinkedDockPhase.Playback, resolveLinkedDockPhaseOnSearchDismiss(hasAudio = true))
         assertEquals(LinkedDockPhase.Expanded, resolveLinkedDockPhaseOnSearchDismiss(hasAudio = false))
+        assertTrue(shouldResetLinkedDockSearchQuery(LinkedDockPhase.Expanded))
+        assertTrue(shouldResetLinkedDockSearchQuery(LinkedDockPhase.Compact))
+        assertTrue(shouldResetLinkedDockSearchQuery(LinkedDockPhase.Playback))
+        assertFalse(shouldResetLinkedDockSearchQuery(LinkedDockPhase.Search))
         assertEquals(
             LinkedDockPhase.Compact,
             resolveLinkedDockPhaseOnSearchDismiss(

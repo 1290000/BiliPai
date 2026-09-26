@@ -3660,6 +3660,11 @@ private fun BiliPaiFloatingBottomBarChrome(
         shouldAutoExpand = shouldAutoExpandSearch,
         expansionOverride = searchExpansionOverride
     )
+    LaunchedEffect(effectiveSearchExpanded) {
+        if (!effectiveSearchExpanded) {
+            searchQuery = ""
+        }
+    }
     LaunchedEffect(
         currentItem,
         searchEnabled,
@@ -4069,6 +4074,7 @@ private fun BiliPaiFloatingBottomBarChrome(
                     },
                     onSubmit = {
                         val keyword = searchQuery.trim()
+                        searchQuery = ""
                         if (keyword.isEmpty()) {
                             onSearchClick()
                         } else {
