@@ -286,17 +286,19 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun onQueryChange(newQuery: String) {
-        val trimmedQuery = newQuery.trim()
         val currentState = _uiState.value
-        val shouldReturnToLanding = currentState.showResults && trimmedQuery != currentState.query.trim()
+        val keepResults = shouldKeepResultsOnQueryChange(
+            showResults = currentState.showResults,
+            newQuery = newQuery
+        )
 
         _uiState.update {
             it.copy(
                 query = newQuery,
-                showResults = if (newQuery.isEmpty()) false else if (shouldReturnToLanding) false else it.showResults,
-                error = if (newQuery.isEmpty() || shouldReturnToLanding) null else it.error,
-                loadMoreError = if (newQuery.isEmpty() || shouldReturnToLanding) null else it.loadMoreError,
-                emptyStateReason = if (newQuery.isEmpty() || shouldReturnToLanding) {
+                showResults = keepResults,
+                error = if (newQuery.isEmpty()) null else it.error,
+                loadMoreError = if (newQuery.isEmpty()) null else it.loadMoreError,
+                emptyStateReason = if (newQuery.isEmpty()) {
                     SearchEmptyStateReason.NONE
                 } else {
                     it.emptyStateReason

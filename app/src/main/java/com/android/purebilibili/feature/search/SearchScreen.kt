@@ -1267,7 +1267,10 @@ fun SearchScreen(
                                                     viewModel.search(it)
                                                     dismissSearchKeyboardAndFocus()
                                                 },
-                                                onClearQuery = { viewModel.onQueryChange("") },
+                                                onClearQuery = {
+                                                    viewModel.onQueryChange("")
+                                                    viewModel.exitResultsToLanding()
+                                                },
                                                 onFocusChanged = { focused ->
                                                     searchFieldFocused = focused
                                                     if (focused) {
@@ -2373,7 +2376,10 @@ fun SearchScreen(
                     viewModel.search(it)
                     dismissSearchKeyboardAndFocus()
                 },
-                onClearQuery = { viewModel.onQueryChange("") },
+                onClearQuery = {
+                    viewModel.onQueryChange("")
+                    viewModel.exitResultsToLanding()
+                },
                 onFocusChanged = { focused ->
                     searchFieldFocused = focused
                     if (focused) {
