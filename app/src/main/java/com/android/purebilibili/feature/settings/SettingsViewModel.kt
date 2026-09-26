@@ -232,6 +232,7 @@ private data class BaseSettings(
     val colorStyle: PaletteStyle,
     val colorSpec: ColorSpec.SpecVersion,
     val appFontSizePreset: AppFontSizePreset,
+    val appFontWeightPreset: AppFontWeightPreset,
     val appFontFileName: String,
     val appFontDisplayName: String,
     val appUiScalePreset: AppUiScalePreset,
