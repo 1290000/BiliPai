@@ -102,6 +102,10 @@ private class AppSessionCookieJar : okhttp3.CookieJar {
             cookieStore[url.host]?.let { cookies.addAll(it) }
         }
 
+        // 会话备份改为异步恢复后，网络线程在此等到恢复完成（通常为 0 等待），
+        // 避免启动窗口内的请求被当成匿名请求发出。
+        TokenManager.awaitRestore()
+
         var buvid3 = TokenManager.buvid3Cache
         if (buvid3.isNullOrEmpty()) {
             buvid3 = UUID.randomUUID().toString() + "infoc"
