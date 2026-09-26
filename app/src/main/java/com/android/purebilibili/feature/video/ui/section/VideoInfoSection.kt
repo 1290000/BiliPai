@@ -544,7 +544,10 @@ fun VideoTitleWithDesc(
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = viewsModifier) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = viewsModifier.padding(end = 10.dp)
+                ) {
                     AppIcon(
                         imageVector = Icons.Outlined.PlayCircleOutline,
                         contentDescription = null,
@@ -581,7 +584,10 @@ fun VideoTitleWithDesc(
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = danmakuModifier) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = danmakuModifier.padding(end = 10.dp)
+                ) {
                     AppIcon(
                         imageVector = Icons.Outlined.Subtitles,
                         contentDescription = null,
