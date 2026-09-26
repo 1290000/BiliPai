@@ -112,7 +112,7 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         title = "隐私与权限",
         subtitle = "隐私无痕、权限管理与黑名单",
         section = "设置",
-        aliases = listOf("搜索框推荐词", "默认搜索词", "一小时前搜索", "搜索提示", "搜索推荐词", "搜索发现推荐", "推荐词", "搜索联想词", "搜索建议", "联想开关", "隐私", "无痕", "权限", "权限管理", "黑名单", "屏蔽", "拉黑")
+        aliases = listOf("搜索框默认词", "搜索框推荐词", "默认搜索词", "一小时前搜索", "搜索提示", "搜索推荐词", "搜索发现推荐", "推荐词", "搜索联想词", "搜索建议", "联想开关", "隐私", "无痕", "权限", "权限管理", "黑名单", "屏蔽", "拉黑")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.DIAGNOSTICS,
@@ -454,14 +454,14 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         target = SettingsSearchTarget.TIPS,
         title = settingsDestinationCopy(SettingsSearchTarget.TIPS).title,
         subtitle = settingsDestinationCopy(SettingsSearchTarget.TIPS).summary,
-        section = "帮助与系统",
+        section = "帮助与工具",
         aliases = listOf("贴士", "技巧", "帮助", "隐藏操作", "摸鱼模式", "空降助手", "自动连播", "自动横竖屏")
     ),
     SettingsSearchEntry(
         target = SettingsSearchTarget.OPEN_LINKS,
         title = settingsDestinationCopy(SettingsSearchTarget.OPEN_LINKS).title,
         subtitle = settingsDestinationCopy(SettingsSearchTarget.OPEN_LINKS).summary,
-        section = "帮助与系统",
+        section = "帮助与工具",
         aliases = listOf("链接", "默认打开", "deep link")
     ),
     SettingsSearchEntry(

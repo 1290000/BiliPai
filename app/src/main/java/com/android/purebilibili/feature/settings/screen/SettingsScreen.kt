@@ -408,7 +408,7 @@ fun SettingsScreen(
     ) {
         isCheckingUpdate = true
         if (!silent) {
-            updateStatusText = "检查中..."
+            updateStatusText = "检查中…"
         }
         val result = AppUpdateChecker.check(
             currentVersion = com.android.purebilibili.BuildConfig.VERSION_NAME,
@@ -572,8 +572,8 @@ fun SettingsScreen(
                         SettingsManager.setDownloadExportTreeUri(context, null)
                     }
                     showPathDialog = false
-                    Toast.makeText(context, "已恢复仅应用内存储", Toast.LENGTH_SHORT).show()
-                }) { AppText("仅使用默认") }
+                    Toast.makeText(context, "已恢复默认下载位置", Toast.LENGTH_SHORT).show()
+                }) { AppText("恢复默认") }
             }
         )
     }
@@ -625,7 +625,7 @@ fun SettingsScreen(
     if (showEasterEggDialog) {
         com.android.purebilibili.core.ui.AppAlertDialog(
             onDismissRequest = { showEasterEggDialog = false; versionClickCount = 0 },
-            title = { AppText(" 你发现了彩蛋！", fontWeight = FontWeight.Bold) },
+            title = { AppText("你发现了彩蛋！", fontWeight = FontWeight.Bold) },
             text = { AppText("感谢你使用 BiliPai！这是一个用爱发电的开源项目。") },
             confirmButton = { com.android.purebilibili.core.ui.AppDialogAction(onClick = { showEasterEggDialog = false; versionClickCount = 0 }) { AppText("我知道了！") } }
         )
@@ -819,7 +819,7 @@ fun SettingsScreen(
                             SettingsManager.setFeedApiType(context, type)
                             android.widget.Toast.makeText(
                                 context,
-                                "已切换为${type.label}，下拉刷新生效",
+                                "已切换为${type.label}，下拉刷新后生效",
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }

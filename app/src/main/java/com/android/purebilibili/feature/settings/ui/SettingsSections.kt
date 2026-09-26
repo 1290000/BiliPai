@@ -800,7 +800,7 @@ internal fun SettingsRootCategoryContent(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 SettingsRootCategoryEntranceSection {
-                    SettingsDetailGroup(title = "帮助与系统") {
+                    SettingsDetailGroup(title = "帮助与工具") {
                         SupportToolsSection(
                             onTipsClick = actions.onTipsClick,
                             onOpenLinksClick = actions.onOpenLinksClick,
@@ -809,7 +809,7 @@ internal fun SettingsRootCategoryContent(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 SettingsRootCategoryEntranceSection {
-                    SettingsDetailGroup(title = "关于与发布") {
+                    SettingsDetailGroup(title = "关于与更新") {
                         AboutSection(
                             versionName = state.versionName,
                             appIconKey = state.appIcon,
@@ -1228,8 +1228,8 @@ fun PrivacySection(
 
     SettingsCardGroup {
         SettingSwitchItem(
-            icon = visibilityOffIcon,
-            title = "搜索框推荐词",
+            icon = rememberSettingsSemanticIcon(SettingsIconRole.HOME_SEARCH_GLASS),
+            title = "搜索框默认词",
             subtitle = "显示应用提供的默认搜索词；关闭后显示固定搜索提示",
             checked = searchHintEnabled,
             onCheckedChange = { enabled ->
@@ -1874,7 +1874,7 @@ fun AboutSection(
             icon = checkUpdateVisual.icon,
             iconPainter = checkUpdateVisual.iconResId?.let { painterResource(id = it) },
             title = settingsDestinationCopy(SettingsSearchTarget.CHECK_UPDATE).title,
-            value = if (isCheckingUpdate) "检查中..." else updateStatusText,
+            value = if (isCheckingUpdate) "检查中…" else updateStatusText,
             onClick = onCheckUpdateClick,
             iconTint = updateSiblingTints[1]
         )

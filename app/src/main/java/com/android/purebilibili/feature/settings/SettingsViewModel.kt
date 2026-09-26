@@ -100,7 +100,7 @@ data class SettingsUiState(
     val videoSharedTransitionCustomDurationMillis: Int =
         VIDEO_SHARED_TRANSITION_CUSTOM_DEFAULT_MILLIS,
     val smartVisualGuardEnabled: Boolean = false, // [Retired] 智能流畅优先已下线
-    val cacheSize: String = "计算中...",
+    val cacheSize: String = "计算中…",
     val cacheBreakdown: CacheUtils.CacheBreakdown? = null,  //  详细缓存统计
     val installedApkSha256: String? = null,
     val currentReleaseEvidence: AppUpdateCheckResult? = null,
@@ -323,7 +323,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     )
 
     // 本地状态流：缓存大小
-    private val _cacheSize = MutableStateFlow("计算中...")
+    private val _cacheSize = MutableStateFlow("计算中…")
     private val _cacheBreakdown = MutableStateFlow<CacheUtils.CacheBreakdown?>(null)
     private val _diagnosticsState = MutableStateFlow(DiagnosticsState())
     private var diagnosticsLoadJob: Job? = null

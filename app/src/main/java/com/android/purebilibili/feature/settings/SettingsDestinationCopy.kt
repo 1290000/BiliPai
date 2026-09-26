@@ -133,7 +133,7 @@ internal fun settingsDestinationCopy(target: SettingsSearchTarget): SettingsDest
         summary = "开源约定与官方渠道",
     )
     SettingsSearchTarget.TIPS -> SettingsDestinationCopy(
-        title = "小贴士 & 隐藏操作",
+        title = "小贴士与隐藏操作",
         summary = "了解不容易发现的快捷操作和进阶功能",
     )
     SettingsSearchTarget.OPEN_LINKS -> SettingsDestinationCopy(
