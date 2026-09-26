@@ -74,11 +74,20 @@ class NowPlayingBarHandoffPolicyTest {
     }
 
     @Test
-    fun `shell reveal ramps over the first settle window and stays dominant`() {
+    fun `bar chrome follows the standard source chrome window`() {
         assertEquals(0f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 1f))
-        assertEquals(0.5f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0.91f), 0.001f)
-        assertEquals(1f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0.82f))
-        assertEquals(1f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0.3f))
+        // 壳仍接近详情页大小时不显现，避免文字被 inverse scale 放大成巨字。
+        assertEquals(0f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0.7f))
+        assertEquals(0.5f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0.1f), 0.001f)
+        assertEquals(1f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0.02f))
         assertEquals(1f, resolveNowPlayingBarSourceChromeReveal(morphDepthProgress = 0f))
+    }
+
+    @Test
+    fun `loading detail shell fill ramps over the early settle window`() {
+        assertEquals(0f, resolveSourceShellFillReveal(morphDepthProgress = 1f))
+        assertEquals(0.5f, resolveSourceShellFillReveal(morphDepthProgress = 0.91f), 0.001f)
+        assertEquals(1f, resolveSourceShellFillReveal(morphDepthProgress = 0.82f))
+        assertEquals(1f, resolveSourceShellFillReveal(morphDepthProgress = 0f))
     }
 }

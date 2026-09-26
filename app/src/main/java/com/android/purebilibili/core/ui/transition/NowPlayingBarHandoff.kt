@@ -46,20 +46,34 @@ internal fun resolveNowPlayingBarReturnVisibility(
 }
 
 /**
- * 小横条飞行壳填充窗口（settle 0→[NOW_PLAYING_BAR_SHELL_REVEAL_END]）。
+ * 加载中详情等无 live/封面内容的壳填充窗口（settle 0→[SOURCE_SHELL_FILL_REVEAL_END]）。
  *
- * 小横条源没有视频图层：若等 MEDIA_RETURN（0.82→0.98）窗口才交接，飞行壳会长时间是
- * 黑壳。因此冻结快照在返回 settle 的前段就接管壳内容，之后保持主导到落位。
- * 旧的 `/0.18f` 字面量收口于此；settle 语义与 [resolveVideoCardReturnSettleFromMorphDepth] 同源。
+ * 详情正文还在加载且无封面接管时，飞行壳会长时间是黑壳；冻结快照在返回 settle 的
+ * 前段就接管壳内容。旧的 `/0.18f` 字面量收口于此。
  */
-internal const val NOW_PLAYING_BAR_SHELL_REVEAL_START = 0f
-internal const val NOW_PLAYING_BAR_SHELL_REVEAL_END = 0.18f
+internal const val SOURCE_SHELL_FILL_REVEAL_START = 0f
+internal const val SOURCE_SHELL_FILL_REVEAL_END = 0.18f
 
-/** 飞行壳中小横条冻结快照的显现进度（0 刚开始缩回，1 已完成壳填充）。 */
+/** 壳填充显现进度（0 刚开始缩回，1 已完成壳填充）。仅用于黑壳兜底场景。 */
+internal fun resolveSourceShellFillReveal(
+    morphDepthProgress: Float,
+): Float = resolveVideoCardTimelineWindowProgress(
+    progress = resolveVideoCardReturnSettleFromMorphDepth(morphDepthProgress),
+    start = SOURCE_SHELL_FILL_REVEAL_START,
+    end = SOURCE_SHELL_FILL_REVEAL_END,
+)
+
+/**
+ * 小横条冻结 chrome 的显现进度：走标准 SOURCE_CHROME 窗口（settle 0.82→0.98）。
+ *
+ * 小横条的标题/UP 文字若在飞行壳还接近详情页大小时就显现，会被 inverse scale
+ * 放大十几倍绘制成巨字穿帮；壳内由 live surface 或常驻封面填充，chrome 等
+ * 壳接近小横条尺寸后再交接，与普通卡片同窗口。
+ */
 internal fun resolveNowPlayingBarSourceChromeReveal(
     morphDepthProgress: Float,
 ): Float = resolveVideoCardTimelineWindowProgress(
     progress = resolveVideoCardReturnSettleFromMorphDepth(morphDepthProgress),
-    start = NOW_PLAYING_BAR_SHELL_REVEAL_START,
-    end = NOW_PLAYING_BAR_SHELL_REVEAL_END,
+    start = VideoCardTransitionVisualTimeline.SOURCE_CHROME_RETURN_START,
+    end = VideoCardTransitionVisualTimeline.SOURCE_CHROME_RETURN_END,
 )

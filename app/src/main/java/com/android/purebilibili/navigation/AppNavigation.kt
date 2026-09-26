@@ -4419,6 +4419,9 @@ fun AppNavigation(
                                     linkedDockPhase = linkedDockPhase,
                                     onLinkedDockPhaseChange = { linkedDockPhase = it },
                                     isTopLevelDestination = currentNavigation3Key == BiliPaiNavKey.MainHost,
+                                    // 共享过渡驱动的开关（点条进详情/返回落位）瞬时切换小横条
+                                    // presence，morph 是唯一几何时间轴；仅会话起止播放动画。
+                                    animateNowPlayingPresence = !driveBottomBarByProgress,
                                     onToggleSidebar = if (tabletUseSidebar) {
                                         {
                                             coroutineScope.launch {
@@ -4471,6 +4474,7 @@ fun AppNavigation(
                                 linkedDockPhase = linkedDockPhase,
                                 onLinkedDockPhaseChange = { linkedDockPhase = it },
                                 isTopLevelDestination = currentNavigation3Key == BiliPaiNavKey.MainHost,
+                                animateNowPlayingPresence = !driveBottomBarByProgress,
                                 onToggleSidebar = if (tabletUseSidebar) {
                                     {
                                         coroutineScope.launch {

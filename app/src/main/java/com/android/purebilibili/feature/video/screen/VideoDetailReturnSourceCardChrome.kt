@@ -75,6 +75,7 @@ import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
 import com.android.purebilibili.core.ui.transition.VideoCardTransitionBackgroundPhase
 import com.android.purebilibili.core.ui.transition.isVideoCardReturnContentYieldActive
 import com.android.purebilibili.core.ui.transition.resolveNowPlayingBarSourceChromeReveal
+import com.android.purebilibili.core.ui.transition.resolveSourceShellFillReveal
 import com.android.purebilibili.core.ui.transition.resolveVideoCardDetailChromeAlpha
 import com.android.purebilibili.core.ui.transition.resolveVideoCardSourceChromeVisualFrame
 import com.android.purebilibili.navigation3.predictiveback.MiuixVideoCardInverseScale
@@ -192,10 +193,14 @@ internal fun resolveVideoDetailFlyingSourceChromeAlpha(
             morphDepthProgress = morphDepthProgress,
         )
     ) return regularAlpha
-    // A loading detail or compact playback bar otherwise leaves a black flying shell until
-    // the shell-fill window completes. Reveal its frozen source chrome during the return
-    // through the shared handoff timeline instead of a local hardcoded window.
-    val returnProgress = resolveNowPlayingBarSourceChromeReveal(morphDepthProgress)
+    // A loading detail leaves a black flying shell until the shell-fill window completes;
+    // the compact playback bar follows the standard source-chrome window so its text only
+    // appears once the shell is close to bar size (early reveal scaled it into giant glyphs).
+    val returnProgress = if (isNowPlayingBar) {
+        resolveNowPlayingBarSourceChromeReveal(morphDepthProgress)
+    } else {
+        resolveSourceShellFillReveal(morphDepthProgress)
+    }
     return maxOf(regularAlpha, returnProgress)
 }
 

@@ -79,6 +79,7 @@ internal fun LinkedBottomDock(
     dockPhase: LinkedDockPhase? = null,
     onDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
     isTopLevelDestination: Boolean = true,
+    animateNowPlayingPresence: Boolean = true,
     modifier: Modifier = Modifier,
     blurEnabled: Boolean = false,
     hazeState: HazeState? = null,
@@ -187,27 +188,38 @@ internal fun LinkedBottomDock(
 
     // Presence 出入场：会话起止时 audio 槽按右缘锚点收放宽度并同步 fade；
     // 消失动画期间保持组合，动画结束后才卸载小横条，消除旧的零宽硬切。
+    // 共享过渡驱动的路由切换（点条进详情/返回落位）不走动画：morph 是唯一几何
+    // 时间轴，presence 叠加播放会在交接收尾时闪帧，此时直接 snap 到目标值。
     val presence = remember { Animatable(if (hasAudio) 1f else 0f) }
     var keepSlotComposed by remember { mutableStateOf(hasAudio) }
-    LaunchedEffect(hasAudio, reduceMotion) {
-        if (hasAudio) {
-            keepSlotComposed = true
-            presence.animateTo(
-                targetValue = 1f,
-                animationSpec = resolveAudioNowPlayingPresenceAnimationSpec(
-                    active = true,
-                    reduceMotion = reduceMotion,
-                ),
-            )
-        } else {
-            presence.animateTo(
-                targetValue = 0f,
-                animationSpec = resolveAudioNowPlayingPresenceAnimationSpec(
-                    active = false,
-                    reduceMotion = reduceMotion,
-                ),
-            )
-            keepSlotComposed = false
+    LaunchedEffect(hasAudio, animateNowPlayingPresence, reduceMotion) {
+        val target = if (hasAudio) 1f else 0f
+        when {
+            presence.value == target -> keepSlotComposed = hasAudio
+            !animateNowPlayingPresence -> {
+                presence.snapTo(target)
+                keepSlotComposed = hasAudio
+            }
+            hasAudio -> {
+                keepSlotComposed = true
+                presence.animateTo(
+                    targetValue = 1f,
+                    animationSpec = resolveAudioNowPlayingPresenceAnimationSpec(
+                        active = true,
+                        reduceMotion = reduceMotion,
+                    ),
+                )
+            }
+            else -> {
+                presence.animateTo(
+                    targetValue = 0f,
+                    animationSpec = resolveAudioNowPlayingPresenceAnimationSpec(
+                        active = false,
+                        reduceMotion = reduceMotion,
+                    ),
+                )
+                keepSlotComposed = false
+            }
         }
     }
     val presenceProgressProvider = remember(presence) {
