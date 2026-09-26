@@ -317,7 +317,7 @@ fun VideoDetailSponsorLabelChip(
     label: String,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.layout.Surface(
+    androidx.compose.material3.Surface(
         modifier = modifier,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
