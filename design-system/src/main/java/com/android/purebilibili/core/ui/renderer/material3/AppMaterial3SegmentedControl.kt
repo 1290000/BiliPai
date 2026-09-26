@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.android.purebilibili.core.ui.components.AppTabRowIndicatorPresentation
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppSegmentedControlColors
 import com.android.purebilibili.core.ui.components.AppPrimaryScrollableTabRow
@@ -85,6 +86,7 @@ internal fun <T> AppMaterial3TabRow(
     minTabWidth: Dp,
     modifier: Modifier,
     allowLabelOverflow: Boolean = false,
+    indicatorPresentation: AppTabRowIndicatorPresentation = AppTabRowIndicatorPresentation.UNDERLINE,
     indicatorPositionProvider: (() -> Float)? = null,
     onSelectionChange: (T) -> Unit,
 ) {
@@ -94,6 +96,19 @@ internal fun <T> AppMaterial3TabRow(
     }
     val labelFontSize = remember(options.size, longestLabelLength) {
         resolveAppSegmentedLabelFontSizeSp(options.size, longestLabelLength).sp
+    }
+    if (indicatorPresentation == AppTabRowIndicatorPresentation.TONAL_PILL) {
+        AppTonalPillTabRow(
+            options = options,
+            selectedValue = selectedValue,
+            onSelectionChange = onSelectionChange,
+            modifier = modifier,
+            enabled = enabled,
+            scrollable = scrollable,
+            labelFontSize = labelFontSize,
+            indicatorPositionProvider = indicatorPositionProvider,
+        )
+        return
     }
     val tabs: @Composable () -> Unit = {
         options.forEach { option ->

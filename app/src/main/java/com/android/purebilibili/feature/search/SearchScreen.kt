@@ -122,6 +122,9 @@ import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.theme.LocalAppUiStyle
+import com.android.purebilibili.core.theme.AppUiStyle
+import com.android.purebilibili.core.ui.components.AppSegmentOption
+import com.android.purebilibili.core.ui.renderer.material3.AppTonalPillTabRow
 import com.android.purebilibili.core.theme.resolveAccessibleContainerColors
 import com.android.purebilibili.core.theme.resolveFilledSelectionAccentColors
 import com.android.purebilibili.core.ui.AppChromeSizeTokens
@@ -3149,6 +3152,25 @@ private fun SearchResultTypeTabRow(
         val itemWidthPx = with(density) { itemWidth.toPx() }
         val containerHorizontalPaddingPx = with(density) { AppSpacingTokens.ExtraSmall.toPx() }
         val dragFollowEdgePaddingPx = with(density) { 12.dp.toPx() }
+
+        if (LocalAppUiStyle.current == AppUiStyle.MATERIAL3) {
+            // MD3:PiliPlus 搜索页同款 tonal 胶囊分类行(标签自适应宽度 + Pager 跟随)。
+            AppTonalPillTabRow(
+                options = tabs.map { AppSegmentOption(value = it, label = it.displayName) },
+                selectedValue = tabs.getOrElse(selectedIndex) { tabs.first() },
+                onSelectionChange = { type ->
+                    tabs.indexOf(type).takeIf { it >= 0 }?.let { index ->
+                        onTabClick(index, type)
+                    }
+                },
+                scrollable = true,
+                labelFontSize = 13.5.sp,
+                indicatorPositionProvider = {
+                    pagerState.currentPage + pagerState.currentPageOffsetFraction
+                },
+            )
+            return@BoxWithConstraints
+        }
 
         KeepScrollableTabSelectionVisible(
             scrollState = scrollState,

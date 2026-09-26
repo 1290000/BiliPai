@@ -161,6 +161,7 @@ import com.android.purebilibili.core.ui.resolveOfficialVerifyBadge
 import com.android.purebilibili.core.ui.resolveUserAvatarCornerMark
 import com.android.purebilibili.core.ui.components.AppLiquidAwareSearchField
 import com.android.purebilibili.core.ui.components.AppNativeTabRow
+import com.android.purebilibili.core.ui.AppTabRowIndicatorPresentation
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.MiuixNonGlassTabItemWidthMode
 import com.android.purebilibili.core.ui.components.KeepScrollableTabSelectionVisible
@@ -3073,6 +3074,7 @@ private fun SpaceSecondarySwitchRow(
             modifier = Modifier.fillMaxWidth(),
             scrollable = shouldScrollSpaceSecondarySwitchForNonGlass(items.size),
             minTabWidth = resolveSpaceSecondarySwitchNonGlassMinTabWidthDp().dp,
+            indicatorPresentation = AppTabRowIndicatorPresentation.TONAL_PILL,
             compactMiuixWhenTwoOptions = false,
             // Let the shared renderer size each Miuix item from its own label;
             // long labels remain fully visible inside the horizontal rail.
