@@ -655,8 +655,9 @@ private fun ImagePreviewOverlayContent(
                         width = with(density) { dismissRectFrame.rect.width.toDp() },
                         height = with(density) { dismissRectFrame.rect.height.toDp() }
                     )
-                    .clip(RoundedCornerShape(presentedCornerRadiusDp.dp))
                     .graphicsLayer {
+                        shape = RoundedCornerShape(presentedCornerRadiusDp.dp)
+                        clip = true
                         alpha = visualFrame.contentAlpha
                         renderEffect = blurEffectCache.resolve(visualFrame.blurRadiusPx)
                     }
@@ -664,8 +665,9 @@ private fun ImagePreviewOverlayContent(
                 Modifier
                     .offset(x = currentLeft, y = currentTop)
                     .size(width = currentWidth, height = currentHeight)
-                    .clip(RoundedCornerShape(presentedCornerRadiusDp.dp))
                     .graphicsLayer {
+                        shape = RoundedCornerShape(presentedCornerRadiusDp.dp)
+                        clip = true
                         alpha = visualFrame.contentAlpha
                         renderEffect = blurEffectCache.resolve(visualFrame.blurRadiusPx)
                         if (!shouldUseRectAnim) {
