@@ -1382,6 +1382,11 @@ private fun CommentItem(
     }
 }
 
+// 评论时间组合期热路径：共享 formatter，避免每行新建 SimpleDateFormat。
+// 仅主线程（Compose 组合）调用，不涉及 SimpleDateFormat 的线程安全问题。
+private val commentDayFormatter =
+    java.text.SimpleDateFormat("MM-dd", java.util.Locale.CHINA)
+
 /**
  * 格式化时间戳
  */
@@ -1393,10 +1398,6 @@ private fun formatTime(timestamp: Long): String {
         diff < 3600 -> "${diff / 60}分钟前"
         diff < 86400 -> "${diff / 3600}小时前"
         diff < 604800 -> "${diff / 86400}天前"
-        else -> {
-            val date = java.text.SimpleDateFormat("MM-dd", java.util.Locale.CHINA)
-                .format(java.util.Date(timestamp * 1000))
-            date
-        }
+        else -> commentDayFormatter.format(java.util.Date(timestamp * 1000))
     }
 }

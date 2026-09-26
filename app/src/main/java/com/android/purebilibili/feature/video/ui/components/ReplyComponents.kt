@@ -2584,10 +2584,13 @@ private fun parseHexColorOrNull(hex: String?): Color? {
     return runCatching { Color(argb.toLong(16).toInt()) }.getOrNull()
 }
 
+// 评论行组合期热路径：共享 formatter，避免每条评论格式化时间都新建 SimpleDateFormat。
+// 仅主线程（Compose 组合）调用，不涉及 SimpleDateFormat 的线程安全问题。
+private val replyPublishDayFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
 fun formatTime(timestamp: Long): String {
     val date = Date(timestamp * 1000)
-    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    return sdf.format(date)
+    return replyPublishDayFormatter.format(date)
 }
 
 @Composable
