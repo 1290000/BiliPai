@@ -1019,7 +1019,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 searchResults = mergeSearchPageResults(it.searchResults, filteredVideos) { video -> video.bvid },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1047,7 +1047,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 upResults = mergeSearchPageResults(it.upResults, filteredUps) { up -> up.mid },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1068,7 +1068,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 bangumiResults = mergeSearchPageResults(it.bangumiResults, bangumis) { item -> item.seasonId },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1089,7 +1089,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 bangumiResults = mergeSearchPageResults(it.bangumiResults, items) { item -> item.seasonId },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1115,7 +1115,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 liveResults = mergeSearchPageResults(it.liveResults, filteredLive) { room -> room.roomid },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1140,7 +1140,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 liveUserResults = mergeSearchPageResults(it.liveUserResults, filteredLiveUsers) { user -> user.uid },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1166,7 +1166,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 articleResults = mergeSearchPageResults(it.articleResults, articles) { article -> article.id },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1190,7 +1190,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 topicResults = mergeSearchPageResults(it.topicResults, topics) { topic -> topic.topicId },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
@@ -1216,7 +1216,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                                 photoResults = mergeSearchPageResults(it.photoResults, photos) { photo -> photo.id },
                                 currentPage = pageInfo.currentPage,
                                 totalResults = pageInfo.totalResults,
-                                searchTypeCounts = it.searchTypeCounts + (searchType to pageInfo.totalResults),
+                                searchTypeCounts = it.searchTypeCounts + (state.searchType to pageInfo.totalResults),
                                 totalPages = pageInfo.totalPages,
                                 hasMoreResults = pageInfo.hasMore
                             )
