@@ -31,6 +31,7 @@ import com.android.purebilibili.core.store.player.PlayerSettingsStore
 import com.android.purebilibili.core.store.player.defaultAudioQualityPreferenceKey
 import com.android.purebilibili.core.store.player.longPressSpeedPreferenceKey
 import com.android.purebilibili.core.store.player.playbackSpeedOptionsPreferenceKey
+import com.android.purebilibili.core.theme.AppFontWeightPreset
 import com.android.purebilibili.core.theme.AppFontSizePreset
 import com.android.purebilibili.core.ui.components.AppTagChipSize
 import com.android.purebilibili.core.theme.AppUiScalePreset
@@ -706,9 +707,10 @@ data class AppThemeSettings(
     val md3CustomColorHex: String = "#007AFF",
     val themeRoleOverrides: ThemeRoleOverrides = ThemeRoleOverrides(),
     val colorStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2021,
+    val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val themeColorIndex: Int = 0,
     val appFontSizePreset: AppFontSizePreset = AppFontSizePreset.DEFAULT,
+    val appFontWeightPreset: AppFontWeightPreset = AppFontWeightPreset.FOLLOW_THEME,
     val appFontFileName: String = "",
     val appUiScalePreset: AppUiScalePreset = AppUiScalePreset.STANDARD,
     val appDpiOverridePercent: Int = 0,
@@ -1409,6 +1411,7 @@ object SettingsManager {
     private val KEY_LAST_PLAYBACK_SPEED = floatPreferencesKey("last_playback_speed")
     private val KEY_THEME_COLOR_INDEX = intPreferencesKey("theme_color_index")
     private val KEY_APP_FONT_SIZE_PRESET = intPreferencesKey("app_font_size_preset")
+private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     private val KEY_APP_FONT_FILE_NAME = stringPreferencesKey("app_font_file_name")
     private val KEY_APP_FONT_DISPLAY_NAME = stringPreferencesKey("app_font_display_name")
     private val KEY_APP_UI_SCALE_PRESET = intPreferencesKey("app_ui_scale_preset")
@@ -1441,6 +1444,8 @@ object SettingsManager {
         booleanPreferencesKey("dynamic_all_tab_horizontal_user_list_visible")
     private val KEY_DYNAMIC_TOP_BAR_COLLAPSE_ON_SCROLL =
         booleanPreferencesKey("dynamic_top_bar_collapse_on_scroll")
+    private val KEY_DYNAMIC_TOP_ACTIONS_COLLAPSED =
+        booleanPreferencesKey("dynamic_top_actions_collapsed")
     private val KEY_LIVE_FAVORITE_TAGS = stringPreferencesKey("live_favorite_tags")
     
     //  [新增] 开屏壁纸
@@ -2224,6 +2229,9 @@ object SettingsManager {
             appFontSizePreset = AppFontSizePreset.fromValue(
                 preferences[KEY_APP_FONT_SIZE_PRESET] ?: AppFontSizePreset.DEFAULT.value
             ),
+            appFontWeightPreset = AppFontWeightPreset.fromValue(
+                preferences[KEY_APP_FONT_WEIGHT] ?: AppFontWeightPreset.FOLLOW_THEME.value
+            ),
             appFontFileName = preferences[KEY_APP_FONT_FILE_NAME].orEmpty(),
             appUiScalePreset = AppUiScalePreset.fromValue(
                 preferences[KEY_APP_UI_SCALE_PRESET] ?: AppUiScalePreset.STANDARD.value
@@ -2231,7 +2239,7 @@ object SettingsManager {
             appDpiOverridePercent = if (rawDpiOverride == 0) {
                 0
             } else {
-                rawDpiOverride.coerceIn(85, 115)
+                rawDpiOverride.coerceIn(90, 115)
             },
             appGestureScreenshotEnabled = preferences[KEY_APP_GESTURE_SCREENSHOT_ENABLED] ?: false,
             appScreenshotGestureMode = AppScreenshotGestureMode.fromValue(
@@ -2522,6 +2530,19 @@ object SettingsManager {
         }
     }
 
+    fun getAppFontWeightPreset(context: Context): Flow<AppFontWeightPreset> = context.settingsDataStore.data
+        .map { preferences ->
+            AppFontWeightPreset.fromValue(
+                preferences[KEY_APP_FONT_WEIGHT] ?: AppFontWeightPreset.FOLLOW_THEME.value
+            )
+        }
+
+    suspend fun setAppFontWeightPreset(context: Context, preset: AppFontWeightPreset) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_APP_FONT_WEIGHT] = preset.value
+        }
+    }
+
     fun getAppFontFileName(context: Context): Flow<String> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_APP_FONT_FILE_NAME].orEmpty() }
 
@@ -2562,12 +2583,12 @@ object SettingsManager {
     fun getAppDpiOverridePercent(context: Context): Flow<Int> = context.settingsDataStore.data
         .map { preferences ->
             val rawValue = preferences[KEY_APP_DPI_OVERRIDE_PERCENT] ?: 0
-            if (rawValue == 0) 0 else rawValue.coerceIn(85, 115)
+            if (rawValue == 0) 0 else rawValue.coerceIn(90, 115)
         }
 
     suspend fun setAppDpiOverridePercent(context: Context, percent: Int) {
         context.settingsDataStore.edit { preferences ->
-            preferences[KEY_APP_DPI_OVERRIDE_PERCENT] = if (percent == 0) 0 else percent.coerceIn(85, 115)
+            preferences[KEY_APP_DPI_OVERRIDE_PERCENT] = if (percent == 0) 0 else percent.coerceIn(90, 115)
         }
     }
 
@@ -3750,12 +3771,46 @@ object SettingsManager {
         }
     }
 
+    private const val DYNAMIC_DETAIL_IMAGE_LAYOUT_PREFS = "dynamic_detail_image_layout_cache"
+    private const val CACHE_KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT = "layout"
+
+    @Volatile
+    private var dynamicDetailImageLayoutMemoryCache: DynamicDetailImageLayout? = null
+
+    private fun dynamicDetailImageLayoutPrefs(context: Context) =
+        context.getSharedPreferences(DYNAMIC_DETAIL_IMAGE_LAYOUT_PREFS, Context.MODE_PRIVATE)
+
+    private fun cacheDynamicDetailImageLayout(context: Context, layout: DynamicDetailImageLayout) {
+        if (dynamicDetailImageLayoutMemoryCache == layout) return
+        dynamicDetailImageLayoutMemoryCache = layout
+        dynamicDetailImageLayoutPrefs(context)
+            .edit()
+            .putInt(CACHE_KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT, layout.value)
+            .apply()
+    }
+
+    /**
+     * 同步读取当前图片布局，供详情页首帧使用，避免 DataStore 异步到达前闪一下默认展开布局。
+     */
+    fun peekDynamicDetailImageLayout(context: Context): DynamicDetailImageLayout {
+        dynamicDetailImageLayoutMemoryCache?.let { return it }
+        val layout = DynamicDetailImageLayout.fromValue(
+            dynamicDetailImageLayoutPrefs(context)
+                .getInt(CACHE_KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT, DynamicDetailImageLayout.EXPANDED.value)
+        )
+        dynamicDetailImageLayoutMemoryCache = layout
+        return layout
+    }
+
     fun getDynamicDetailImageLayout(context: Context): Flow<DynamicDetailImageLayout> =
         context.settingsDataStore.data.map { prefs ->
             DynamicDetailImageLayout.fromValue(prefs[KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT] ?: 0)
+        }.onEach { layout ->
+            cacheDynamicDetailImageLayout(context, layout)
         }
 
     suspend fun setDynamicDetailImageLayout(context: Context, layout: DynamicDetailImageLayout) {
+        cacheDynamicDetailImageLayout(context, layout)
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT] = layout.value
         }
@@ -3784,6 +3839,21 @@ object SettingsManager {
     suspend fun setDynamicTopBarCollapseOnScroll(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_TOP_BAR_COLLAPSE_ON_SCROLL] = enabled
+        }
+    }
+
+    /**
+     * 动态顶栏操作坞（布局切换/发布/折叠开关）是否处于折叠态。
+     * 默认展开；折叠后跨冷启动与版本更新保持。
+     */
+    fun getDynamicTopActionsCollapsed(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { prefs ->
+            prefs[KEY_DYNAMIC_TOP_ACTIONS_COLLAPSED] ?: false
+        }
+
+    suspend fun setDynamicTopActionsCollapsed(context: Context, collapsed: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_DYNAMIC_TOP_ACTIONS_COLLAPSED] = collapsed
         }
     }
 
