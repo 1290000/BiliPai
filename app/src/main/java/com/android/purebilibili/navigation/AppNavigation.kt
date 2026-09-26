@@ -1770,9 +1770,7 @@ fun AppNavigation(
         val homeFeedScrollInProgressState = remember { androidx.compose.runtime.mutableStateOf(false) }
         LaunchedEffect(currentRoute, currentBottomNavItem) {
             scrollOffsetState.floatValue = 0f
-            if (currentBottomNavItem != BottomNavItem.HOME) {
-                homeFeedScrollInProgressState.value = false
-            }
+            homeFeedScrollInProgressState.value = false
         }
 
         // [LayerBackdrop] Create backdrop for bottom bar refraction effect.
@@ -2404,6 +2402,7 @@ fun AppNavigation(
                                     onBack = { performSystemBackAction() },
                                     globalHazeState = mainHazeState,
                                     scrollToTopChannel = historyScrollChannel,
+                                    isCurrentPage = isBottomPagerPageActive,
                                     initialSearchQuery = historySearchKey?.query.orEmpty(),
                                     isSearchDestination = historySearchKey != null,
                                     onOpenSearchDestination = if (historySearchKey == null) {
@@ -3288,6 +3287,7 @@ fun AppNavigation(
                                     },
                                     viewModel = watchLaterViewModel,
                                     globalHazeState = mainHazeState,
+                                    isCurrentPage = isBottomPagerPageActive,
                                     scrollToTopChannel = watchLaterScrollChannel
                                 )
                             }
@@ -3457,6 +3457,7 @@ fun AppNavigation(
                                     onBack = { performSystemBackAction() },
                                     globalHazeState = mainHazeState,
                                     scrollToTopChannel = favoriteScrollChannel,
+                                    isCurrentPage = isBottomPagerPageActive,
                                     initialSearchQuery = favoriteSearchKey?.query.orEmpty(),
                                     initialFavoriteSearchScope = favoriteSearchKey?.scope
                                         ?: com.android.purebilibili.data.model.response.FavoriteSearchScope.CURRENT_FOLDER,
@@ -4404,8 +4405,7 @@ fun AppNavigation(
                                     // 底栏是独立的常驻材质层。栏目切换时保持液态玻璃渲染树，
                                     // 避免先卸载折射效果、页面落定后再等待 backdrop 重新捕获。
                                     forceLowBlurBudget = false,
-                                    isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
-                                        homeFeedScrollInProgressState.value,
+                                    isFeedScrollInProgress = homeFeedScrollInProgressState.value,
                                     collapseLinkedDock = collapseLinkedPlaybackDock,
                                     indicatorPositionProvider =
                                         mainBottomPagerState.indicatorPositionProvider,
@@ -4459,8 +4459,7 @@ fun AppNavigation(
                                 isTransitionRunning = bottomPagerRenderBudget.isTransitionRunning,
                                 // 固定底栏同样保持材质连续，切页预算只作用于页面内容。
                                 forceLowBlurBudget = false,
-                                isFeedScrollInProgress = currentBottomNavItem == BottomNavItem.HOME &&
-                                    homeFeedScrollInProgressState.value,
+                                isFeedScrollInProgress = homeFeedScrollInProgressState.value,
                                 collapseLinkedDock = collapseLinkedPlaybackDock,
                                 indicatorPositionProvider =
                                     mainBottomPagerState.indicatorPositionProvider,

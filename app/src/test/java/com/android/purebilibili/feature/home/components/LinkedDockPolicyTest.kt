@@ -70,9 +70,9 @@ class LinkedDockPolicyTest {
     }
 
     @Test
-    fun dockCompactsWithoutAudioWhenSearchIsPresent() {
+    fun collapsedWithoutAudioKeepsSearchShrunk() {
         assertEquals(
-            LinkedDockPhase.Compact,
+            LinkedDockPhase.Expanded,
             resolveLinkedDockRestingPhase(collapseRequested = true, hasAudio = false),
         )
         assertEquals(
@@ -149,6 +149,15 @@ class LinkedDockPolicyTest {
                 currentItem = BottomNavItem.DYNAMIC,
                 collapseRequested = true,
                 hasAudio = true,
+                savedPhase = null,
+            ),
+        )
+        assertEquals(
+            LinkedDockPhase.Expanded,
+            resolveLinkedDockInitialPhase(
+                currentItem = BottomNavItem.DYNAMIC,
+                collapseRequested = true,
+                hasAudio = false,
                 savedPhase = null,
             ),
         )

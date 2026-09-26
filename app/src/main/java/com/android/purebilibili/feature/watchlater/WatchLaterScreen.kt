@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.android.purebilibili.core.ui.animation.DissolveAnimationPreset
 import com.android.purebilibili.core.ui.animation.MaybeDissolvableVideoCard
 import com.android.purebilibili.core.ui.animation.jiggleOnDissolve
@@ -656,7 +657,8 @@ fun WatchLaterScreen(
     onOpenSearchDestination: ((String) -> Unit)? = null,
     viewModel: WatchLaterViewModel = viewModel(),
     globalHazeState: HazeState? = null, // [新增]
-    scrollToTopChannel: Channel<Unit>? = null
+    scrollToTopChannel: Channel<Unit>? = null,
+    isCurrentPage: Boolean = true
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val listLayout = rememberVideoListLayoutControl(
@@ -716,6 +718,35 @@ fun WatchLaterScreen(
         }
     }
 
+    // 与推荐页共用滚动偏移与「列表正在滑」信号，驱动底栏搜索胶囊展开/收起。
+    val bottomBarChromeScrollOffset = com.android.purebilibili.feature.home.LocalHomeScrollOffset.current
+    val globalFeedScrollInProgress = com.android.purebilibili.feature.home.LocalHomeFeedScrollInProgress.current
+    val continuousScrollOffsetConnection = remember(bottomBarChromeScrollOffset) {
+        com.android.purebilibili.feature.home.createContinuousScrollOffsetConnection(
+            offsetState = bottomBarChromeScrollOffset
+        )
+    }
+    val isListScrollInProgress by remember(gridState) {
+        derivedStateOf { gridState.isScrollInProgress }
+    }
+    if (isCurrentPage) {
+        SideEffect {
+            globalFeedScrollInProgress.value = isListScrollInProgress
+        }
+    }
+    DisposableEffect(isCurrentPage) {
+        if (!isCurrentPage) {
+            globalFeedScrollInProgress.value = false
+            bottomBarChromeScrollOffset.value = 0f
+        }
+        onDispose {
+            if (isCurrentPage) {
+                globalFeedScrollInProgress.value = false
+                bottomBarChromeScrollOffset.value = 0f
+            }
+        }
+    }
+
     LaunchedEffect(searchQuery) {
         kotlinx.coroutines.delay(350)
         viewModel.updateQuery(searchQuery)
@@ -733,7 +764,9 @@ fun WatchLaterScreen(
     }
 
     AppScaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier
+            .nestedScroll(continuousScrollOffsetConnection)
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             // 使用 Box 包裹实现毛玻璃背景
             BiliPaiImmersiveTopBar(

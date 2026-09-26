@@ -107,6 +107,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -127,7 +128,6 @@ import com.android.purebilibili.core.ui.AppScaffold
 import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.feature.home.LocalHomeScrollOffset
-import com.android.purebilibili.feature.home.policy.resolveBottomBarChromeScrollOffset
 import com.android.purebilibili.core.ui.rememberAppChevronDownIcon
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.resolveGlobalWallpaperChromeColor
@@ -234,7 +234,8 @@ fun CommonListScreen(
     onPlayAllAudioClick: ((String, Long) -> Unit)? = null,
     globalHazeState: HazeState? = null, // [新增] 接收全局 HazeState
     scrollToTopChannel: Channel<Unit>? = null,
-    favoriteCollectionSharedElementRoute: FavoriteCollectionRoute? = null
+    favoriteCollectionSharedElementRoute: FavoriteCollectionRoute? = null,
+    isCurrentPage: Boolean = true
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val listLayout = rememberVideoListLayoutControl(
@@ -373,6 +374,11 @@ fun CommonListScreen(
     // [Feature] BottomBar Scroll Hiding for CommonListScreen (History/Favorite)
     val setBottomBarVisible = com.android.purebilibili.core.ui.LocalSetBottomBarVisible.current
     val bottomBarChromeScrollOffset = LocalHomeScrollOffset.current
+    val continuousScrollOffsetConnection = remember(bottomBarChromeScrollOffset) {
+        com.android.purebilibili.feature.home.createContinuousScrollOffsetConnection(
+            offsetState = bottomBarChromeScrollOffset
+        )
+    }
 
     // 监听列表滚动实现底栏自动隐藏/显示
     var lastFirstVisibleItem by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -575,12 +581,9 @@ fun CommonListScreen(
                 }
                 lastFirstVisibleItem = firstVisibleItem
                 lastScrollOffset = scrollOffset
-                bottomBarChromeScrollOffset.value = resolveBottomBarChromeScrollOffset(
-                    firstVisibleItem = firstVisibleItem,
-                    scrollOffset = scrollOffset
-                )
             }
     }
+
     val shouldShowBackToTop by remember(activeCommonListScrollState) {
         derivedStateOf {
             when (val scrollState = activeCommonListScrollState()) {
@@ -723,6 +726,23 @@ fun CommonListScreen(
             when (val scrollState = activeCommonListScrollState()) {
                 is CommonListScrollState.Grid -> scrollState.state.isScrollInProgress
                 is CommonListScrollState.List -> scrollState.state.isScrollInProgress
+            }
+        }
+    }
+    // 与推荐页共用「列表正在滑」信号，驱动底栏搜索胶囊展开/收起。
+    val globalFeedScrollInProgress = com.android.purebilibili.feature.home.LocalHomeFeedScrollInProgress.current
+    if (isCurrentPage) {
+        SideEffect {
+            globalFeedScrollInProgress.value = isCommonListScrollInProgress
+        }
+    }
+    DisposableEffect(isCurrentPage) {
+        if (!isCurrentPage) {
+            globalFeedScrollInProgress.value = false
+        }
+        onDispose {
+            if (isCurrentPage) {
+                globalFeedScrollInProgress.value = false
             }
         }
     }
@@ -977,6 +997,7 @@ fun CommonListScreen(
 
     AppScaffold(
         modifier = Modifier
+            .nestedScroll(continuousScrollOffsetConnection)
             .nestedScroll(commonListHeaderScrollConnection)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = if (globalWallpaperVisible) {
