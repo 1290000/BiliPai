@@ -404,6 +404,9 @@ fun LivePlayerScreen(
     
     // 强制横屏切换
     fun toggleFullscreen() {
+        // 横屏聊天面板属于全屏互动层。退出全屏后清掉其展开状态，避免
+        // Activity 完成方向切换前仍按旧状态把聊天浮层带回普通直播页。
+        if (isFullscreen) isInteractionPanelVisible = false
         showPortraitMoreSheet = false
         showPortraitInteractionSheet = false
         showPortraitPlayerControls = true
