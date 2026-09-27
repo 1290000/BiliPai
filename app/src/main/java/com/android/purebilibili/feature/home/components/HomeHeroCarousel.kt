@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -467,7 +468,7 @@ private fun HomeHeroCarouselCard(
             .then(nativeCardSnapshot.modifier)
             .graphicsLayer {
                 transformOrigin = TransformOrigin(transform.pivotFractionX, 0.5f)
-                cameraDistance = transform.cameraDistanceMultiplier * density
+                cameraDistance = transform.cameraDistanceMultiplier * density.density
                 translationX = transform.translationXFraction * size.width
                 rotationY = transform.rotationY
                 val pressMultiplier = 1f - pressProgress * 0.02f
