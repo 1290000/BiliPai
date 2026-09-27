@@ -1264,7 +1264,10 @@ internal fun VideoDetailScreenStateHolder(
     // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
     // 使用 rememberSaveable 确保状态在横竖屏切换时保持
     // 分屏 / 系统小窗下打开视频即进入全屏（横屏形态），无需手动点全屏
-    var userRequestedFullscreen by rememberSaveable(isActivityInMultiWindowMode) {
+    // A landscape request can temporarily change freeform bounds enough that the OS
+    // stops reporting multi-window. Do not key this intent to that changing signal:
+    // resetting it lets the sensor immediately request portrait and starts an orientation loop.
+    var userRequestedFullscreen by rememberSaveable(currentBvid) {
         mutableStateOf(isActivityInMultiWindowMode)
     }
     var manualPortraitHoldActive by rememberSaveable { mutableStateOf(false) }
