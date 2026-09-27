@@ -1311,7 +1311,13 @@ internal fun VideoDetailScreenStateHolder(
     }
     val orientationPolicyDevice = playerPresentation.isOrientationDriven
     val isOrientationDrivenFullscreen = playerPresentation.isOrientationDriven
-    val isFullscreenMode = playerPresentation.isFullscreen
+    val isFullscreenMode = resolveVideoDetailFullscreenMode(
+        isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
+        isLandscape = isLandscape,
+        userRequestedFullscreen = userRequestedFullscreen,
+        isInMultiWindowMode = isActivityInMultiWindowMode,
+        manualPortraitHoldActive = manualPortraitHoldActive,
+    )
     var previousDisplayRole by remember {
         mutableStateOf(displayContext.foldableDisplayRole)
     }
@@ -1330,17 +1336,19 @@ internal fun VideoDetailScreenStateHolder(
         }
         previousDisplayRole = displayContext.foldableDisplayRole
     }
-    LaunchedEffect(appWindowAdaptiveInfo, playerPresentation) {
+    LaunchedEffect(appWindowAdaptiveInfo, playerPresentation, isFullscreenMode) {
         com.android.purebilibili.core.util.Logger.d(
             "VideoDetailScreen",
             com.android.purebilibili.core.util.formatAppAdaptiveStrategySnapshot(
                 appWindowAdaptiveInfo.toAdaptiveStrategySnapshot(
                     playerPresentation = if (playerPresentation.usesInWindowFullscreen) {
                         "in-window(user=${playerPresentation.userFullscreenIntent}," +
-                            "fullscreen=${playerPresentation.isFullscreen})"
-                    } else if (playerPresentation.orientationGeneratedFullscreen) {
+                            "fullscreen=$isFullscreenMode)"
+                    } else if (
+                        isFullscreenMode && playerPresentation.orientationGeneratedFullscreen
+                    ) {
                         "orientation-generated"
-                    } else if (playerPresentation.isFullscreen) {
+                    } else if (isFullscreenMode) {
                         "user-fullscreen"
                     } else {
                         "inline"

@@ -368,7 +368,7 @@ internal fun toggleVideoDetailFullscreen(
     )
     if (isOrientationDrivenFullscreen && isInMultiWindowMode && isFullscreenMode) {
         onUserRequestedFullscreenChange(false)
-        onManualPortraitHoldActiveChange(false)
+        onManualPortraitHoldActiveChange(isLandscape)
         activity.applyPlayerRequestedOrientation(
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
             displayContext = displayContext,
@@ -523,10 +523,14 @@ internal fun resolveVideoDetailFullscreenMode(
     isOrientationDrivenFullscreen: Boolean,
     isLandscape: Boolean,
     userRequestedFullscreen: Boolean,
-    isInMultiWindowMode: Boolean
+    isInMultiWindowMode: Boolean,
+    manualPortraitHoldActive: Boolean = false,
 ): Boolean {
     if (!isOrientationDrivenFullscreen) return userRequestedFullscreen
-    return isLandscape || (isInMultiWindowMode && userRequestedFullscreen)
+    // In freeform/split-screen the user toggle is authoritative while Android applies
+    // the requested orientation. Do not let stale landscape config re-enter fullscreen.
+    if (isInMultiWindowMode || manualPortraitHoldActive) return userRequestedFullscreen
+    return isLandscape
 }
 
 internal fun shouldApplyStartFullscreenOrientationRequest(

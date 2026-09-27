@@ -308,6 +308,23 @@ class VideoDetailLayoutModePolicyTest {
                 isInMultiWindowMode = false
             )
         )
+        assertFalse(
+            resolveVideoDetailFullscreenMode(
+                isOrientationDrivenFullscreen = true,
+                isLandscape = true,
+                userRequestedFullscreen = false,
+                isInMultiWindowMode = true
+            )
+        )
+        assertFalse(
+            resolveVideoDetailFullscreenMode(
+                isOrientationDrivenFullscreen = true,
+                isLandscape = true,
+                userRequestedFullscreen = false,
+                isInMultiWindowMode = false,
+                manualPortraitHoldActive = true,
+            )
+        )
     }
 
     @Test
