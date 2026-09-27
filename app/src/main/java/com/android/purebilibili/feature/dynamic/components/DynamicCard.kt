@@ -2050,7 +2050,7 @@ private fun DynamicAdditionalCard(
                     contentScale = ContentScale.Fit
                 )
             }
-            if (left.score.isNotBlank() && model.matchCenterLabel.isNotBlank()) {
+            if (model.matchTeams[0].score.isNotBlank() && model.matchCenterLabel.isNotBlank()) {
                 AppText(
                     text = model.matchCenterLabel,
                     fontSize = MaterialTheme.typography.labelSmall.fontSize,

@@ -40,7 +40,7 @@ internal fun resolveArticleNavigationTargetFromRedirect(
     buildArticleWebUrl(articleId) ?: return null
     // /cv/ 链接无论 302 到 /cv/ 还是 /opus/，都是专栏；
     // 统一走专栏渲染器，避免 opus 重定向被误当成图文动态打开。
-    ArticleNavigationTarget.NativeArticle(articleId = articleId)
+    return ArticleNavigationTarget.NativeArticle(articleId = articleId)
 }
 
 internal suspend fun resolveArticleWebUrl(articleId: Long): String? {
