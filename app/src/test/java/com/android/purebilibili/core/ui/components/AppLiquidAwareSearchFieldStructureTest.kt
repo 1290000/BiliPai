@@ -32,7 +32,7 @@ class AppLiquidAwareSearchFieldStructureTest {
 
         assertTrue(source.contains("AppSearchField("))
         assertTrue(source.contains("leadingIconHorizontalOffset = 8.dp"))
-        assertTrue(source.contains("liquidGlassEffectsEnabled = false"))
+        assertTrue(source.contains("AppModalBottomSheet("))
         assertTrue(source.contains("BottomBarLiquidSegmentedControl("))
         assertTrue(source.contains("items = listOf(\"全部评论\", \"只看UP主\")"))
         assertTrue(source.contains("items = CommentSearchSortMode.entries.map"))
@@ -43,7 +43,7 @@ class AppLiquidAwareSearchFieldStructureTest {
     }
 
     @Test
-    fun `popup renderer receives the page backdrop before dialog windows open`() {
+    fun `popup renderer uses standard surface for every popup type`() {
         val navigation = File(
             "app/src/main/java/com/android/purebilibili/navigation/AppNavigation.kt"
         ).readText()
@@ -55,8 +55,7 @@ class AppLiquidAwareSearchFieldStructureTest {
         assertTrue(navigation.contains("LocalAppPopupSurfaceRenderer provides"))
         assertTrue(navigation.contains("LocalFloatingChromeBackdrop provides"))
         assertTrue(navigation.contains("bottomBarBackdrop"))
-        assertTrue(renderer.contains("BottomBarMatchedReusableLiquidDock("))
-        assertTrue(renderer.contains("backdrop = LocalFloatingChromeBackdrop.current"))
-        assertTrue(renderer.contains("!isLowBlurBudgetForced()"))
+        assertTrue(renderer.contains("Surface("))
+        assertTrue(!renderer.contains("BottomBarMatchedReusableLiquidDock("))
     }
 }

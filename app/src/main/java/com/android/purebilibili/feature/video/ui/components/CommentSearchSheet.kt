@@ -149,7 +149,6 @@ fun CommentSearchSheet(
     CompositionLocalProvider(LocalFloatingChromeBackdrop provides sheetBackdrop) {
         AppModalBottomSheet(
             onDismissRequest = onDismiss,
-            liquidGlassEffectsEnabled = false,
             containerColor = MaterialTheme.colorScheme.surface,
             modifier = modifier,
         ) {

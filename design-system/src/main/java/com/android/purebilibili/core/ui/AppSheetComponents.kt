@@ -245,7 +245,6 @@ fun AppModalBottomSheet(
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
     presentationProgress: Float = 1f,
     dismissOnBackPress: Boolean = true,
-    liquidGlassEffectsEnabled: Boolean = true,
     // Reserve the former handle space without drawing a line; ModalBottomSheet owns swipe gestures.
     dragHandle: @Composable (() -> Unit)? = { Spacer(Modifier.height(24.dp)) },
     windowInsets: androidx.compose.foundation.layout.WindowInsets = androidx.compose.material3.BottomSheetDefaults.modalWindowInsets,
@@ -345,7 +344,7 @@ fun AppModalBottomSheet(
                 onDismissRequest = onDismissRequest,
             ) {
                 AppPopupSurface(
-                    type = if (liquidGlassEffectsEnabled) AppPopupSurfaceType.SHEET else AppPopupSurfaceType.DIALOG,
+                    type = AppPopupSurfaceType.SHEET,
                     modifier = Modifier.fillMaxWidth(),
                     shape = sheetShape,
                     containerColor = resolvedContainerColor,
