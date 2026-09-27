@@ -85,12 +85,10 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -5397,49 +5395,16 @@ internal fun VideoDetailScreenStateHolder(
         )
     }
 
-    //  分屏 / 系统小窗内横屏：窗口保持竖形而系统忽略转屏请求时，
-    //  把横屏全屏 UI 旋转 90° 直接画满窗口，视频以横屏形态呈现。
-    val rotatedInWindowLandscape = isFullscreenMode &&
-        isActivityInMultiWindowMode &&
-        configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
-    if (rotatedInWindowLandscape) {
-        Layout(
-            content = {
-                VideoDetailScreenContent(
-                    transitionState = transitionState,
-                    routeSheetMotion = routeSheetMotion,
-                    isFullscreenMode = isFullscreenMode,
-                    backgroundColor = AppSurfaceTokens.background(),
-                    modifier = Modifier.fillMaxSize(),
-                    mainContent = { VideoDetailRouteSheetMainContent() },
-                    overlayContent = { VideoDetailRouteSheetOverlayContent() }
-                )
-            },
-            modifier = Modifier.fillMaxSize(),
-        ) { measurables, constraints ->
-            val childWidth = constraints.maxHeight
-            val childHeight = constraints.maxWidth
-            val placeable = measurables.single().measure(
-                Constraints.fixed(width = childWidth, height = childHeight)
-            )
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                placeable.placeWithLayer(
-                    x = (constraints.maxWidth - placeable.width) / 2,
-                    y = (constraints.maxHeight - placeable.height) / 2,
-                ) {
-                    rotationZ = -90f
-                }
-            }
-        }
-    } else {
-        VideoDetailScreenContent(
-            transitionState = transitionState,
-            routeSheetMotion = routeSheetMotion,
-            isFullscreenMode = isFullscreenMode,
-            backgroundColor = AppSurfaceTokens.background(),
-            modifier = detailShellModifier,
-            mainContent = { VideoDetailRouteSheetMainContent() },
-            overlayContent = { VideoDetailRouteSheetOverlayContent() }
-        )
-    }
+    // 分屏 / 系统自由小窗的边界由 Android 窗口管理器控制。仅旋转 Compose
+    // 根图层不会把任务窗口变成横向矩形，并会让播放器 Surface 与 UI 变换不一致，
+    // 导致视频被拉伸；因此窗口内全屏仍使用正常布局，由播放器按视频比例适配窗口。
+    VideoDetailScreenContent(
+        transitionState = transitionState,
+        routeSheetMotion = routeSheetMotion,
+        isFullscreenMode = isFullscreenMode,
+        backgroundColor = AppSurfaceTokens.background(),
+        modifier = detailShellModifier,
+        mainContent = { VideoDetailRouteSheetMainContent() },
+        overlayContent = { VideoDetailRouteSheetOverlayContent() }
+    )
 }
