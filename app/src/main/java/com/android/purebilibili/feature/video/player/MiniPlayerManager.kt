@@ -1817,13 +1817,16 @@ class MiniPlayerManager private constructor(private val context: Context) :
             val stopPlaybackOnExit = SettingsManager.getStopPlaybackOnExitSync(context)
             val audioFocusEnabled = SettingsManager.getAudioFocusEnabledSync(context)
 
+            // 响度均衡开启时注入 AGC 音频处理器（需重建播放会话才生效）
+            val renderersFactory = if (SettingsManager.getLoudnessNormalizationEnabledSync(context)) {
+                com.android.purebilibili.core.player.LoudnessAwareRenderersFactory(context)
+            } else {
+                HiResCompatibleRenderersFactory(context)
+            }.setExtensionRendererMode(
+                androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+            )
             _player = ExoPlayer.Builder(context)
-                .setRenderersFactory(
-                    HiResCompatibleRenderersFactory(context)
-                        .setExtensionRendererMode(
-                            androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
-                        )
-                )
+                .setRenderersFactory(renderersFactory)
                 .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
                 .setAudioAttributes(
                     audioAttributes,

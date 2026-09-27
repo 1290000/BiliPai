@@ -364,6 +364,7 @@ internal fun MusicPlayerContent(
     onNext: (() -> Unit)? = null,
     onQueueItemSelected: (Int) -> Unit = {},
     onImportToQueue: ((List<com.android.purebilibili.feature.video.player.PlaylistItem>) -> Unit)? = null,
+    onPlayFromHistory: ((bvid: String, cid: Long) -> Unit)? = null,
     onPlayModeChange: (PlayMode) -> Unit = {},
     onShuffleEnabledChange: (Boolean) -> Unit = {},
     onLyricsOffsetChange: (Long) -> Unit = {},
@@ -414,6 +415,7 @@ internal fun MusicPlayerContent(
     var showAudioQuality by remember { mutableStateOf(false) }
     var showLyricsSearch by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
+    var showPlayHistory by remember { mutableStateOf(false) }
     var progressSeekRevision by remember { mutableIntStateOf(0) }
     var lyricsControlsVisible by remember(state.title) { mutableStateOf(false) }
     var lyricSearchText by remember(state.title) { mutableStateOf(state.title) }
@@ -1241,6 +1243,12 @@ internal fun MusicPlayerContent(
                                         action()
                                     }
                                 }
+                                if (onPlayFromHistory != null) {
+                                    MusicActionSheetItem("最近播放", contentColor = sheetContentColor) {
+                                        showActions = false
+                                        showPlayHistory = true
+                                    }
+                                }
                                 onSleepTimerClick?.let { action ->
                                     MusicActionSheetItem(sleepTimerLabel, contentColor = sheetContentColor) {
                                         showActions = false
@@ -1339,6 +1347,15 @@ internal fun MusicPlayerContent(
                     onImportToQueue(items)
                 }
             }
+        )
+    }
+    if (showPlayHistory) {
+        PlayHistorySheet(
+            onPlay = { entry ->
+                showPlayHistory = false
+                onPlayFromHistory?.invoke(entry.bvid, entry.cid)
+            },
+            onDismiss = { showPlayHistory = false }
         )
     }
     if (showLyricsSearch) {

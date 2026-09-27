@@ -1442,6 +1442,8 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     private val KEY_SEARCH_FILTER_TAB_ORDER = stringPreferencesKey("search_filter_tab_order")
     private val KEY_DYNAMIC_TAB_VISIBLE_TABS = stringPreferencesKey("dynamic_tab_visible_tabs")
     private val KEY_DYNAMIC_TAB_ORDER = stringPreferencesKey("dynamic_tab_order")
+    private val KEY_LOUDNESS_NORMALIZATION_ENABLED = booleanPreferencesKey("loudness_normalization_enabled")
+    private val KEY_STARTUP_AUTO_PLAY_ENABLED = booleanPreferencesKey("startup_auto_play_enabled")
     private val KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE =
         booleanPreferencesKey("dynamic_image_preview_text_visible")
     private val KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT = intPreferencesKey("dynamic_detail_image_layout")
@@ -6323,6 +6325,40 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     fun getAudioFocusEnabledSync(context: Context): Boolean {
         return context.getSharedPreferences("mini_player", Context.MODE_PRIVATE)
             .getBoolean("audio_focus_enabled", true)
+    }
+
+    /** 响度均衡（播放端 AGC 增益跟随），切换后需重建播放会话生效。 */
+    fun getLoudnessNormalizationEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_LOUDNESS_NORMALIZATION_ENABLED] ?: false
+        }
+
+    suspend fun setLoudnessNormalizationEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LOUDNESS_NORMALIZATION_ENABLED] = value
+        }
+    }
+
+    fun getLoudnessNormalizationEnabledSync(context: Context): Boolean {
+        return context.getSharedPreferences("mini_player", Context.MODE_PRIVATE)
+            .getBoolean("loudness_normalization_enabled", false)
+    }
+
+    /** 冷启动后进入播放场景时自动续播上一次会话。 */
+    fun getStartupAutoPlayEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_STARTUP_AUTO_PLAY_ENABLED] ?: false
+        }
+
+    suspend fun setStartupAutoPlayEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_STARTUP_AUTO_PLAY_ENABLED] = value
+        }
+    }
+
+    fun getStartupAutoPlayEnabledSync(context: Context): Boolean {
+        return context.getSharedPreferences("mini_player", Context.MODE_PRIVATE)
+            .getBoolean("startup_auto_play_enabled", false)
     }
 
     fun getAudioModeAutoPipEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data

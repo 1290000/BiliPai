@@ -30,11 +30,25 @@ internal object BiliSubtitleLyricsPolicy {
                     maxOf(cue.startMs, sec.startMs) < minOf(cue.endMs, sec.endMs)
             }?.content?.trim()
 
+            // AI 逐字字幕：把词级时间戳转成逐字 span，供逐字高亮渲染
+            val spans = cue.words
+                .filter { it.text.isNotBlank() && it.endMs > it.startMs }
+                .map { word ->
+                    LyricSpan(
+                        text = word.text,
+                        startTimeMs = word.startMs,
+                        endTimeMs = word.endMs
+                    )
+                }
+                .takeIf { it.isNotEmpty() }
+                ?: distributeTextEvenly(cue.content.trim(), cue.startMs, cue.endMs)
+
             LyricLine(
                 startTimeMs = cue.startMs,
                 endTimeMs = cue.endMs,
                 text = cue.content.trim(),
-                translations = listOfNotNull(translation?.takeIf { it.isNotEmpty() })
+                translations = listOfNotNull(translation?.takeIf { it.isNotEmpty() }),
+                spans = spans
             )
         }
 
@@ -87,7 +101,30 @@ internal object BiliSubtitleLyricsPolicy {
             reference = subtitle,
             candidate = music
         )
-        return if (alignment >= LYRIC_ALIGNMENT_MINIMUM_SCORE) music else subtitle
+        if (alignment < LYRIC_ALIGNMENT_MINIMUM_SCORE) return subtitle
+        // 对齐可信：把搜索歌词的行/词时间轴映射到字幕轴，消除整体漂移与伸缩
+        return LyricsWordAlignmentPolicy.align(music, subtitle)
+    }
+
+    /**
+     * 无词级时间戳的行（普通 CC 字幕）按字符数把行时长均匀切分成 span，
+     * 与逐字歌词共用同一套高亮渲染。
+     */
+    private fun distributeTextEvenly(text: String, startMs: Long, endMs: Long): List<LyricSpan> {
+        if (text.isBlank()) return emptyList()
+        val durationMs = (endMs - startMs).coerceAtLeast(0L)
+        if (durationMs <= 0L) return emptyList()
+        val stepMs = durationMs.toDouble() / text.length
+        var cursor = startMs.toDouble()
+        return text.map { character ->
+            val spanStart = cursor
+            cursor += stepMs
+            LyricSpan(
+                text = character.toString(),
+                startTimeMs = spanStart.toLong(),
+                endTimeMs = cursor.toLong()
+            )
+        }
     }
 
     /** 搜索歌词时间轴相对字幕时间轴的对齐分数，1 = 完全贴合，0 = 完全错位。 */

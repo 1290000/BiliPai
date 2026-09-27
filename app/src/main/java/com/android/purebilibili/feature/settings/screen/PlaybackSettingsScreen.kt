@@ -167,6 +167,10 @@ fun PlaybackSettingsContent(
     val musicLyricsUiStyle by SettingsManager
         .getMusicLyricsUiStyle(context)
         .collectAsStateWithLifecycle(initialValue = SettingsManager.MusicLyricsUiStyle.CLASSIC)
+    val loudnessNormalizationEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getLoudnessNormalizationEnabled(context).collectAsStateWithLifecycle(initialValue = false)
+    val startupAutoPlayEnabled by com.android.purebilibili.core.store.SettingsManager
+        .getStartupAutoPlayEnabled(context).collectAsStateWithLifecycle(initialValue = false)
     val playerDiagnosticLoggingEnabled by com.android.purebilibili.core.store.SettingsManager
         .getPlayerDiagnosticLoggingEnabled(context)
         .collectAsStateWithLifecycle(initialValue = DEFAULT_PLAYER_DIAGNOSTIC_LOGGING_ENABLED)
@@ -697,6 +701,42 @@ fun PlaybackSettingsContent(
                             onCheckedChange = {
                                 scope.launch {
                                     SettingsManager.setAudioNowPlayingBarOpensAudioMode(context, it)
+                                }
+                            },
+                            iconTint = iOSOrange
+                        )
+                        AppPreferenceDivider()
+                        AppSwitchPreference(
+                            icon = rememberSettingsSemanticIcon(SettingsIconRole.PLAYLIST_AUTO_CONTINUE),
+                            title = "响度均衡",
+                            subtitle = if (loudnessNormalizationEnabled) {
+                                "自动拉平不同曲目间的响度差异；切换后重新开始播放生效"
+                            } else {
+                                "关闭后保留各视频原始响度"
+                            },
+                            checked = loudnessNormalizationEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setLoudnessNormalizationEnabled(context, it)
+                                }
+                            },
+                            iconTint = iOSOrange
+                        )
+                        AppPreferenceDivider()
+                        AppSwitchPreference(
+                            icon = rememberSettingsSemanticIcon(SettingsIconRole.PLAYLIST_AUTO_CONTINUE),
+                            title = "启动自动续播",
+                            subtitle = if (startupAutoPlayEnabled) {
+                                "冷启动后进入播放场景时自动续播上一次的曲目"
+                            } else {
+                                "关闭后需要手动恢复播放"
+                            },
+                            checked = startupAutoPlayEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setStartupAutoPlayEnabled(context, it)
                                 }
                             },
                             iconTint = iOSOrange
