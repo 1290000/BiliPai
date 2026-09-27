@@ -53,6 +53,7 @@ import com.android.purebilibili.core.util.resolveAppDisplayContext
 import com.android.purebilibili.core.util.resolveSafeAndroidPipRational
 import com.android.purebilibili.core.util.LARGE_SCREEN_SMALLEST_WIDTH_DP
 import com.android.purebilibili.feature.video.player.MiniPlayerManager
+import com.android.purebilibili.feature.video.screen.isActivityInMultiWindowOrFloatingMode
 import androidx.window.layout.WindowMetricsCalculator
 // Imports for moved classes
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackViewModel
@@ -111,11 +112,15 @@ class VideoActivity : ComponentActivity() {
         enableEdgeToEdge()
         AppWindowSystemUiController.configureEdgeToEdgeHost(this)
         val entryDisplayContext = resolveAppDisplayContext()
+        val entryIsInMultiWindowOrFloatingMode = isActivityInMultiWindowOrFloatingMode(
+            activity = this,
+            displayContext = entryDisplayContext,
+        )
         // 分屏 / 系统小窗（freeform）下窗口可以跟随横竖屏，不再强制竖屏，
         // 让视频以横屏打开；普通手机窗口维持既有竖屏策略。
         if (
             savedInstanceState == null &&
-            !entryDisplayContext.isInMultiWindowMode &&
+            !entryIsInMultiWindowOrFloatingMode &&
             (entryDisplayContext.isFoldableCoverWindow ||
                 minOf(
                     entryDisplayContext.currentWindowWidthDp,

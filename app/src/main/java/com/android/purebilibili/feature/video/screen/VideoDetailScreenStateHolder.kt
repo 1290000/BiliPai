@@ -85,10 +85,12 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -1253,27 +1255,27 @@ internal fun VideoDetailScreenStateHolder(
             )
         )
 
-    // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
-    // 使用 rememberSaveable 确保状态在横竖屏切换时保持
-    // 分屏 / 系统小窗下打开视频即进入全屏（横屏形态），无需手动点全屏
-    var userRequestedFullscreen by rememberSaveable {
-        // displayContext 此时已可用；isActivityInMultiWindowMode 在下方才声明
-        mutableStateOf(displayContext.isInMultiWindowMode)
-    }
-    var manualPortraitHoldActive by rememberSaveable { mutableStateOf(false) }
-    var preserveCurrentFrameOnFullscreenChange by remember { mutableStateOf(false) }
-    var pendingFullscreenPositionRestoreMs by remember { mutableLongStateOf(-1L) }
     val activity = remember { context.findActivity() }
-    val playerWindowOrientationPolicy = remember(displayContext) {
-        com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy(displayContext)
-    }
-    val usesInWindowFullscreen = playerWindowOrientationPolicy.usesInWindowFullscreen
     val isActivityInMultiWindowMode = activity?.let {
-        displayContext.isInMultiWindowMode || isActivityInMultiWindowOrFloatingMode(
+        isActivityInMultiWindowOrFloatingMode(
             activity = it,
             displayContext = displayContext,
         )
     } ?: displayContext.isInMultiWindowMode
+
+    // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
+    // 使用 rememberSaveable 确保状态在横竖屏切换时保持
+    // 分屏 / 系统小窗下打开视频即进入全屏（横屏形态），无需手动点全屏
+    var userRequestedFullscreen by rememberSaveable(isActivityInMultiWindowMode) {
+        mutableStateOf(isActivityInMultiWindowMode)
+    }
+    var manualPortraitHoldActive by rememberSaveable { mutableStateOf(false) }
+    var preserveCurrentFrameOnFullscreenChange by remember { mutableStateOf(false) }
+    var pendingFullscreenPositionRestoreMs by remember { mutableLongStateOf(-1L) }
+    val playerWindowOrientationPolicy = remember(displayContext) {
+        com.android.purebilibili.core.util.resolvePlayerWindowOrientationPolicy(displayContext)
+    }
+    val usesInWindowFullscreen = playerWindowOrientationPolicy.usesInWindowFullscreen
 
     // 📐 全屏模式逻辑：
     // - 紧凑窗口：横放时自动进入全屏
@@ -5401,13 +5403,8 @@ internal fun VideoDetailScreenStateHolder(
         isActivityInMultiWindowMode &&
         configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
     if (rotatedInWindowLandscape) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .size(width = maxHeight, height = maxWidth)
-                    .align(Alignment.Center)
-                    .graphicsLayer { rotationZ = -90f }
-            ) {
+        Layout(
+            content = {
                 VideoDetailScreenContent(
                     transitionState = transitionState,
                     routeSheetMotion = routeSheetMotion,
@@ -5417,6 +5414,21 @@ internal fun VideoDetailScreenStateHolder(
                     mainContent = { VideoDetailRouteSheetMainContent() },
                     overlayContent = { VideoDetailRouteSheetOverlayContent() }
                 )
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) { measurables, constraints ->
+            val childWidth = constraints.maxHeight
+            val childHeight = constraints.maxWidth
+            val placeable = measurables.single().measure(
+                Constraints.fixed(width = childWidth, height = childHeight)
+            )
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                placeable.placeWithLayer(
+                    x = (constraints.maxWidth - placeable.width) / 2,
+                    y = (constraints.maxHeight - placeable.height) / 2,
+                ) {
+                    rotationZ = -90f
+                }
             }
         }
     } else {
