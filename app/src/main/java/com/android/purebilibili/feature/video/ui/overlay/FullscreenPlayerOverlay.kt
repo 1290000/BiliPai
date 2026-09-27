@@ -1296,11 +1296,14 @@ fun FullscreenPlayerOverlay(
                                     currentProgress = newProgress
                                 },
                                 onSeekStart = {
-                                    danmakuManager.clear()
+                                    danmakuManager.prepareForSeekScrub()
                                     isDragging = true
                                     lastInteractionTime = System.currentTimeMillis()
                                 },
-                                onSeekDragCancel = { isDragging = false },
+                                onSeekDragCancel = {
+                                    isDragging = false
+                                    danmakuManager.cancelSeekScrub()
+                                },
                                 duration = duration,
                                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                             )
