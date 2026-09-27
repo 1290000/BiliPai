@@ -111,8 +111,11 @@ class VideoActivity : ComponentActivity() {
         enableEdgeToEdge()
         AppWindowSystemUiController.configureEdgeToEdgeHost(this)
         val entryDisplayContext = resolveAppDisplayContext()
+        // 分屏 / 系统小窗（freeform）下窗口可以跟随横竖屏，不再强制竖屏，
+        // 让视频以横屏打开；普通手机窗口维持既有竖屏策略。
         if (
             savedInstanceState == null &&
+            !entryDisplayContext.isInMultiWindowMode &&
             (entryDisplayContext.isFoldableCoverWindow ||
                 minOf(
                     entryDisplayContext.currentWindowWidthDp,

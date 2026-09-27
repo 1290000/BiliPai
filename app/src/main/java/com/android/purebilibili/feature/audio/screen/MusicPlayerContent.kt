@@ -138,6 +138,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.palette.graphics.Palette
@@ -178,8 +179,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.feature.video.playback.audio.AudioQualityOption
 import com.android.purebilibili.feature.video.player.PlayMode
 import com.android.purebilibili.feature.video.ui.components.AudioQualitySelectionMenu
-import com.android.purebilibili.feature.video.ui.components.DolbyBadge
-import com.android.purebilibili.feature.video.ui.components.HiResBadge
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.Favorite
@@ -418,6 +417,24 @@ internal fun MusicPlayerContent(
     var showImportDialog by remember { mutableStateOf(false) }
     var showPlayHistory by remember { mutableStateOf(false) }
     var progressSeekRevision by remember { mutableIntStateOf(0) }
+    // 沉浸模式：播放中静置数秒后控制元素自动减淡，任意点击恢复。
+    var musicChromeVisible by remember(state.title) { mutableStateOf(true) }
+    var chromeInteractionTick by remember { mutableIntStateOf(0) }
+    val showMusicChrome = {
+        musicChromeVisible = true
+        chromeInteractionTick += 1
+    }
+    LaunchedEffect(state.isPlaying, chromeInteractionTick, musicChromeVisible) {
+        if (state.isPlaying && musicChromeVisible) {
+            kotlinx.coroutines.delay(4000)
+            musicChromeVisible = false
+        }
+    }
+    val musicChromeAlpha by animateFloatAsState(
+        targetValue = if (musicChromeVisible) 1f else 0.28f,
+        animationSpec = if (effectiveReduceMotion) snap() else tween(400),
+        label = "music_chrome_alpha"
+    )
     var lyricsControlsVisible by remember(state.title) { mutableStateOf(false) }
     var lyricSearchText by remember(state.title) { mutableStateOf(state.title) }
     val currentItem = remember(state.title, state.artist, state.coverUrl) {
@@ -723,12 +740,6 @@ internal fun MusicPlayerContent(
                                 onQueueClick = { showQueue = !showQueue },
                                 isQueueActive = showQueue,
                                 miuixBackdrop = musicBackdrop,
-                                audioQualityLabel = audioQualityLabel,
-                                isHiResAudioSelected = isHiResAudioSelected,
-                                isDolbyAudioSelected = isDolbyAudioSelected,
-                                onAudioQualityClick = onAudioQualitySelected?.let {
-                                    { showAudioQuality = true }
-                                },
                                 glassTintColor = backgroundColor,
                                 isDarkEnvironment = isDarkEnvironment,
                                 coverStyle = coverStyle,
@@ -801,25 +812,20 @@ internal fun MusicPlayerContent(
                                 onQueueClick = { showQueue = !showQueue },
                                 isQueueActive = showQueue,
                                 miuixBackdrop = musicBackdrop,
-                                audioQualityLabel = audioQualityLabel,
-                                isHiResAudioSelected = isHiResAudioSelected,
-                                isDolbyAudioSelected = isDolbyAudioSelected,
-                                onAudioQualityClick = onAudioQualitySelected?.let {
-                                    { showAudioQuality = true }
-                                },
                                 glassTintColor = backgroundColor,
                                 isDarkEnvironment = isDarkEnvironment,
                                 coverStyle = coverStyle,
                                 onToggleCoverStyle = {
                                     coverStyle = resolveNextCoverStyle(coverStyle)
                                 },
-                                showQuickFormatControls = true,
                                 showLyricsPreview = true,
                                 onOpenLyrics = {
                                     pagerScope.launch {
                                         pagerState.animateScrollToPage(1)
                                     }
                                 },
+                                chromeVisible = musicChromeVisible,
+                                onChromeTap = { showMusicChrome() },
                                 modifier = Modifier.padding(bottom = MUSIC_PLAYER_COMPACT_DOCK_BOTTOM_PADDING_DP.dp)
                             )
                         } else {
@@ -1008,12 +1014,6 @@ internal fun MusicPlayerContent(
                                     }
                                 },
                                 miuixBackdrop = musicBackdrop,
-                                audioQualityLabel = audioQualityLabel,
-                                isHiResAudioSelected = isHiResAudioSelected,
-                                isDolbyAudioSelected = isDolbyAudioSelected,
-                                onAudioQualityClick = onAudioQualitySelected?.let {
-                                    { showAudioQuality = true }
-                                },
                                 glassTintColor = backgroundColor,
                                 isDarkEnvironment = isDarkEnvironment,
                                 coverStyle = coverStyle,
@@ -1309,6 +1309,41 @@ internal fun MusicPlayerContent(
                 layoutActionLabel = resolveMusicPlayerLayoutPreferenceLabel(
                     nextMusicPlayerLayoutPreference(layoutPreference)
                 ),
+                leadingActions = if (layout == MusicPlayerLayout.COMPACT_PAGER) {
+                    {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.graphicsLayer { alpha = musicChromeAlpha }
+                        ) {
+                            if (onAudioQualitySelected != null) {
+                                GlassTextButton(
+                                    label = audioQualityLabel.ifBlank { "音质" },
+                                    glassEnabled = glassEnabled,
+                                    miuixBackdrop = musicBackdrop,
+                                    onClick = {
+                                        showMusicChrome()
+                                        showAudioQuality = true
+                                    },
+                                    glassTintColor = backgroundColor,
+                                    isDarkEnvironment = isDarkEnvironment,
+                                    liquidGlassTuning = liquidGlassTuning,
+                                )
+                            }
+                            GlassTextButton(
+                                label = resolveCoverStyleShortLabel(coverStyle),
+                                glassEnabled = glassEnabled,
+                                miuixBackdrop = musicBackdrop,
+                                onClick = {
+                                    showMusicChrome()
+                                    coverStyle = resolveNextCoverStyle(coverStyle)
+                                },
+                                glassTintColor = backgroundColor,
+                                isDarkEnvironment = isDarkEnvironment,
+                                liquidGlassTuning = liquidGlassTuning,
+                            )
+                        }
+                    }
+                } else null,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
@@ -1473,6 +1508,10 @@ private fun ImmersiveBottomQueueShelf(
         backgroundColor = glassTintColor,
         surfaceColor = MaterialTheme.colorScheme.surface,
     ).copy(alpha = 0.92f)
+    // 跟手拖拽：下拉随手偏移，松手按阈值决定关闭或回弹，可中途打断反向。
+    val dragScope = rememberCoroutineScope()
+    val dragOffsetY = remember { Animatable(0f) }
+    val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
 
     AppSurface(
         shape = panelShape,
@@ -1481,6 +1520,17 @@ private fun ImmersiveBottomQueueShelf(
         border = BorderStroke(1.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
         shadowElevation = 16.dp,
         modifier = modifier
+            .offset { IntOffset(0, dragOffsetY.value.roundToInt()) }
+            .graphicsLayer {
+                alpha = 1f - (dragOffsetY.value / (dismissThresholdPx * 2.5f)).coerceIn(0f, 0.4f)
+            }
+            .shadow(
+                elevation = 28.dp,
+                shape = panelShape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black.copy(alpha = 0.55f),
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -1498,20 +1548,40 @@ private fun ImmersiveBottomQueueShelf(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .pointerInput(dismissThresholdPx) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            val settled = dragOffsetY.value
+                            if (settled > dismissThresholdPx) {
+                                dragScope.launch {
+                                    dragOffsetY.animateTo(settled + 1200f, tween(160))
+                                    onClose()
+                                    dragOffsetY.snapTo(0f)
+                                }
+                            } else {
+                                dragScope.launch {
+                                    dragOffsetY.animateTo(0f, spring(dampingRatio = 0.8f))
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            dragScope.launch {
+                                dragOffsetY.animateTo(0f, spring(dampingRatio = 0.8f))
+                            }
+                        },
+                    ) { _, dragAmount ->
+                        dragScope.launch {
+                            dragOffsetY.snapTo((dragOffsetY.value + dragAmount.y).coerceAtLeast(0f))
+                        }
+                    }
+                }
                 .navigationBarsPadding()
                 .padding(bottom = 12.dp)
         ) {
-            // 顶栏：待播清单 (数量) + 模式切换 + 收起按钮（支持下拉手势快速收起）
+            // 顶栏：待播清单 (数量) + 模式切换 + 收起按钮
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dragAmount ->
-                            if (dragAmount > 12f) {
-                                onClose()
-                            }
-                        }
-                    }
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -1558,7 +1628,7 @@ private fun ImmersiveBottomQueueShelf(
                             modifier = Modifier.size(48.dp)
                         ) {
                             AppIcon(
-                                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                imageVector = androidx.compose.material.icons.Icons.Outlined.QueueMusic,
                                 contentDescription = "导入外部歌单",
                                 tint = MusicContentColor.copy(alpha = 0.72f),
                                 modifier = Modifier.size(22.dp)
@@ -1732,23 +1802,20 @@ private fun PlayerPage(
     onCommentsClick: (() -> Unit)?,
     onQueueClick: () -> Unit,
     miuixBackdrop: MiuixBackdrop?,
-    audioQualityLabel: String,
-    isHiResAudioSelected: Boolean,
-    isDolbyAudioSelected: Boolean,
-    onAudioQualityClick: (() -> Unit)?,
     glassTintColor: Color,
     isDarkEnvironment: Boolean = true,
     coverStyle: MusicCoverStyle = MusicCoverStyle.APPLE_MUSIC_CARD,
     onToggleCoverStyle: () -> Unit = {},
     showLyricsPreview: Boolean = true,
-    showQuickFormatControls: Boolean = false,
     onOpenLyrics: (() -> Unit)? = null,
     isExpandedLayout: Boolean = false,
     compactLandscape: Boolean = false,
     isQueueActive: Boolean = false,
+    chromeVisible: Boolean = true,
+    onChromeTap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val topPadding = if (compactLandscape) 0.dp else if (isExpandedLayout) 12.dp else 64.dp
+    val topPadding = if (compactLandscape) 0.dp else if (isExpandedLayout) 12.dp else 56.dp
     val bottomPadding = if (isExpandedLayout) 12.dp else 12.dp
     val horizontalPadding = if (isExpandedLayout) 16.dp else chromeSpec.horizontalPaddingDp.dp
     val portraitArtworkSizeDp = if (!isExpandedLayout && !compactLandscape) {
@@ -1760,6 +1827,7 @@ private fun PlayerPage(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .then(if (!isExpandedLayout && !compactLandscape) Modifier.statusBarsPadding() else Modifier)
             .then(if (compactLandscape) Modifier.verticalScroll(rememberScrollState()) else Modifier)
             .then(if (isExpandedLayout) Modifier else Modifier.navigationBarsPadding())
             .padding(
@@ -1921,46 +1989,6 @@ private fun PlayerPage(
                     isDarkEnvironment = isDarkEnvironment
                 )
             }
-            if (showQuickFormatControls) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (onAudioQualityClick != null) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            MusicAudioQualityControl(
-                                label = audioQualityLabel,
-                                isHiResSelected = isHiResAudioSelected,
-                                isDolbySelected = isDolbyAudioSelected,
-                                onClick = onAudioQualityClick,
-                                glassTintColor = glassTintColor,
-                                isDarkEnvironment = isDarkEnvironment
-                            )
-                        }
-                    }
-                    AppSurface(
-                        onClick = onToggleCoverStyle,
-                        shape = AppShapes.container(ContainerLevel.Dialog),
-                        color = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
-                        border = BorderStroke(0.8.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AppText(
-                                text = resolveCoverStyleShortLabel(resolveNextCoverStyle(coverStyle)),
-                                color = MusicAccentColor,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
             Spacer(Modifier.height(10.dp))
             MusicSecondaryControls(
                 mode = state.playMode,
@@ -1972,52 +2000,6 @@ private fun PlayerPage(
                 onQueueClick = onQueueClick,
                 isQueueActive = isQueueActive
             )
-        }
-    }
-}
-
-@Composable
-private fun MusicAudioQualityControl(
-    label: String,
-    isHiResSelected: Boolean,
-    isDolbySelected: Boolean,
-    onClick: () -> Unit,
-    glassTintColor: Color = Color.Unspecified,
-    isDarkEnvironment: Boolean = true
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .clip(AppShapes.container(ContainerLevel.Dialog))
-            .background(resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment))
-            .border(
-                0.8.dp,
-                resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment),
-                AppShapes.container(ContainerLevel.Dialog)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        AppText(
-            text = "音质",
-            color = MusicContentColor.copy(alpha = 0.82f),
-            style = MaterialTheme.typography.labelLarge
-        )
-        Spacer(Modifier.weight(1f))
-        AppText(
-            text = label.ifBlank { "音质" },
-            color = MusicAccentColor,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        if (isHiResSelected) {
-            HiResBadge()
-        }
-        if (isDolbySelected) {
-            DolbyBadge()
         }
     }
 }
@@ -3122,15 +3104,19 @@ private fun MusicPlayPauseButton(
     glassTintColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    // Keep the standalone landscape button visually identical to the main player control.
-    val playButtonBg = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
-        .copy(alpha = if (isDarkEnvironment) 0.42f else 0.36f)
-    val playButtonFg = MusicContentColor.copy(alpha = 0.92f)
-    val playButtonBorder = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
-        .copy(alpha = 0.45f)
+    // 实心亮面主按钮：白底深色图标，与动态封面背景解耦，任何色板下都干净醒目。
+    val playButtonBg = Color.White.copy(alpha = 0.94f)
+    val playButtonFg = Color(0xFF1C1B1F)
+    val playButtonBorder = Color.Black.copy(alpha = 0.10f)
     Box(
         modifier = modifier
             .size(sizeDp.dp)
+            .shadow(
+                elevation = 10.dp,
+                shape = CircleShape,
+                ambientColor = Color.Black.copy(alpha = 0.35f),
+                spotColor = Color.Black.copy(alpha = 0.35f),
+            )
             .drawBehind {
                 val radius = size.minDimension / 2f
                 drawCircle(color = playButtonBg, radius = radius)
@@ -3157,7 +3143,9 @@ private fun MusicPlayPauseButton(
                 imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (state.isPlaying) "暂停" else "播放",
                 tint = playButtonFg,
-                modifier = Modifier.size((sizeDp * 0.40f).dp)
+                modifier = Modifier
+                    .size((sizeDp * 0.44f).dp)
+                    .then(if (state.isPlaying) Modifier else Modifier.offset(x = 2.dp))
             )
         }
     }
@@ -3350,6 +3338,7 @@ private fun MusicTopBar(
     modifier: Modifier = Modifier,
     onToggleLayout: (() -> Unit)? = null,
     layoutActionLabel: String = "切换布局",
+    leadingActions: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -3367,6 +3356,9 @@ private fun MusicTopBar(
             onClick = onBack
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (leadingActions != null) {
+                leadingActions()
+            }
             if (onToggleLayout != null) {
                 GlassIconButton(
                     icon = Icons.Outlined.QueueMusic,
