@@ -148,7 +148,10 @@ data class SearchVideoItem(
     val pubdate: Long = 0,
     //  [修复] 添加 mid 字段，用于屏蔽过滤
     @Serializable(with = FlexibleLongSerializer::class)
-    val mid: Long = 0
+    val mid: Long = 0,
+    // 视频分区 id，外部歌单匹配时用于过滤不相关分区
+    @SerialName("typeid")
+    val typeId: Int = 0
 ) {
     fun toVideoItem(): VideoItem {
         return VideoItem(
@@ -169,7 +172,8 @@ data class SearchVideoItem(
             //  传递发布时间
             pubdate = pubdate,
             contentType = type,
-            navigationUrl = arcurl
+            navigationUrl = arcurl,
+            tid = typeId
         )
     }
 

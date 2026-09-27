@@ -316,6 +316,16 @@ internal fun AudioModeMusicPlayer(
         },
         onPrevious = { viewModel.playPreviousAudioModeTrack() },
         onNext = { viewModel.playNextAudioModeTrack() },
+        onImportToQueue = { importedItems ->
+            PlaylistManager.setPlaylist(importedItems)
+            importedItems.firstOrNull()?.let { first ->
+                viewModel.loadVideo(
+                    bvid = first.bvid,
+                    cid = first.cid,
+                    autoPlay = resolveAudioModePageSwitchAutoPlay()
+                )
+            }
+        },
         onQueueItemSelected = { index ->
             if (playlist.isNotEmpty()) {
                 PlaylistManager.playAt(index)?.let {

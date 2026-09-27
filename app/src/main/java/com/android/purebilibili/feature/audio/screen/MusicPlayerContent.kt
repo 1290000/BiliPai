@@ -97,6 +97,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -178,6 +179,8 @@ import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.RepeatOne
 import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.VolumeDown
+import androidx.compose.material.icons.outlined.VolumeUp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -345,6 +348,7 @@ internal fun MusicPlayerContent(
     onPrevious: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     onQueueItemSelected: (Int) -> Unit = {},
+    onImportToQueue: ((List<com.android.purebilibili.feature.video.player.PlaylistItem>) -> Unit)? = null,
     onPlayModeChange: (PlayMode) -> Unit = {},
     onShuffleEnabledChange: (Boolean) -> Unit = {},
     onLyricsOffsetChange: (Long) -> Unit = {},
@@ -394,6 +398,7 @@ internal fun MusicPlayerContent(
     }
     var showAudioQuality by remember { mutableStateOf(false) }
     var showLyricsSearch by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
     var progressSeekRevision by remember { mutableIntStateOf(0) }
     var lyricsControlsVisible by remember(state.title) { mutableStateOf(false) }
     var lyricSearchText by remember(state.title) { mutableStateOf(state.title) }
@@ -1069,6 +1074,7 @@ internal fun MusicPlayerContent(
                     onNext = onNext,
                     onLikeClick = onLikeClick,
                     onQueueItemSelected = onQueueItemSelected,
+                    onImportClick = { showImportDialog = true },
                     onClose = { showQueue = false },
                     isQueueCoverFlow = isQueueCoverFlow,
                     onToggleQueueCoverFlow = { isQueueCoverFlow = !isQueueCoverFlow },
@@ -1251,6 +1257,26 @@ internal fun MusicPlayerContent(
         )
     }
 
+    if (showImportDialog) {
+        ExternalPlaylistImportDialog(
+            onDismiss = { showImportDialog = false },
+            onSaved = { local ->
+                // 导入成功后立即作为播放队列加载，第一首进入待播起点
+                val items = local.items.map {
+                    com.android.purebilibili.feature.video.player.PlaylistItem(
+                        bvid = it.bvid,
+                        title = it.title,
+                        cover = it.cover,
+                        owner = it.owner,
+                        duration = it.durationSec
+                    )
+                }
+                if (items.isNotEmpty() && onImportToQueue != null) {
+                    onImportToQueue(items)
+                }
+            }
+        )
+    }
     if (showLyricsSearch) {
         AppModalBottomSheet(
             onDismissRequest = { showLyricsSearch = false },
@@ -1348,6 +1374,7 @@ private fun ImmersiveBottomQueueShelf(
     onNext: (() -> Unit)?,
     onLikeClick: (() -> Unit)?,
     onQueueItemSelected: (Int) -> Unit,
+    onImportClick: (() -> Unit)? = null,
     onClose: () -> Unit,
     isQueueCoverFlow: Boolean,
     onToggleQueueCoverFlow: () -> Unit,
@@ -1441,6 +1468,19 @@ private fun ImmersiveBottomQueueShelf(
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
+                        }
+                    }
+                    if (onImportClick != null) {
+                        AppIconButton(
+                            onClick = onImportClick,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            AppIcon(
+                                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Outlined.PlaylistAdd,
+                                contentDescription = "导入外部歌单",
+                                tint = MusicContentColor.copy(alpha = 0.72f),
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     }
                     AppIconButton(
@@ -1802,6 +1842,13 @@ private fun PlayerPage(
                 isDarkEnvironment = isDarkEnvironment,
                 glassTintColor = glassTintColor
             )
+            if (!compactLandscape) {
+                Spacer(Modifier.height(10.dp))
+                MusicVolumeSlider(
+                    glassTintColor = glassTintColor,
+                    isDarkEnvironment = isDarkEnvironment
+                )
+            }
             Spacer(Modifier.height(10.dp))
             MusicSecondaryControls(
                 mode = state.playMode,
@@ -2171,6 +2218,96 @@ private fun MusicProgress(
                 style = MaterialTheme.typography.labelSmall
             )
         }
+    }
+}
+
+/**
+ * 音量滑条：沿用进度条同款波形组件，直接调节媒体音量；
+ * 注册 ContentObserver 以跟随物理音量键同步。
+ */
+@Composable
+private fun MusicVolumeSlider(
+    glassTintColor: Color,
+    isDarkEnvironment: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val audioManager = remember {
+        context.getSystemService(android.content.Context.AUDIO_SERVICE)
+            as? android.media.AudioManager
+    }
+    val maxVolume = remember(audioManager) {
+        audioManager?.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)?.coerceAtLeast(1) ?: 15
+    }
+    fun readVolume(): Float = audioManager
+        ?.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+        ?.toFloat()?.div(maxVolume) ?: 0f
+
+    var volume by remember(audioManager) { mutableFloatStateOf(readVolume()) }
+
+    DisposableEffect(audioManager) {
+        val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                volume = readVolume()
+            }
+        }
+        context.contentResolver.registerContentObserver(
+            android.provider.Settings.System.CONTENT_URI,
+            true,
+            observer
+        )
+        onDispose { context.contentResolver.unregisterContentObserver(observer) }
+    }
+
+    val inactiveTrackColor = lerp(
+        glassTintColor.takeOrElse { MaterialTheme.colorScheme.surface },
+        MaterialTheme.colorScheme.onSurface,
+        if (isDarkEnvironment) 0.34f else 0.22f,
+    ).copy(alpha = if (isDarkEnvironment) 0.36f else 0.24f)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AppIcon(
+            imageVector = Icons.Outlined.VolumeDown,
+            contentDescription = "静音",
+            tint = MusicContentColor.copy(alpha = 0.6f),
+            modifier = Modifier.size(18.dp)
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(40.dp)
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            MusicWavySlider(
+                value = volume,
+                onValueChange = { volume = it },
+                onValueChangeFinished = {
+                    audioManager?.setStreamVolume(
+                        android.media.AudioManager.STREAM_MUSIC,
+                        (volume * maxVolume).roundToInt(),
+                        0
+                    )
+                },
+                valueRange = 0f..1f,
+                wavy = false,
+                activeColor = MusicAccentColor,
+                inactiveColor = inactiveTrackColor,
+                thumbColor = MusicAccentColor,
+                modifier = Modifier.height(40.dp)
+            )
+        }
+        AppIcon(
+            imageVector = Icons.Outlined.VolumeUp,
+            contentDescription = "最大音量",
+            tint = MusicContentColor.copy(alpha = 0.6f),
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
