@@ -168,6 +168,7 @@ fun CollectionSheet(
 
     AppModalBottomSheet(
         onDismissRequest = onDismiss,
+        liquidGlassEffectsEnabled = false,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         windowInsets = WindowInsets(0.dp)  //  沉浸式
     ) {

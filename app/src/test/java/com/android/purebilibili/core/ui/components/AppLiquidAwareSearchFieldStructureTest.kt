@@ -30,9 +30,9 @@ class AppLiquidAwareSearchFieldStructureTest {
             "app/src/main/java/com/android/purebilibili/feature/video/ui/components/CommentSearchSheet.kt"
         ).readText()
 
-        assertTrue(source.contains("AppLiquidAwareSearchField("))
+        assertTrue(source.contains("AppSearchField("))
         assertTrue(source.contains("leadingIconHorizontalOffset = 8.dp"))
-        assertTrue(source.contains("liquidContentContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)"))
+        assertTrue(source.contains("liquidGlassEffectsEnabled = false"))
         assertTrue(source.contains("BottomBarLiquidSegmentedControl("))
         assertTrue(source.contains("items = listOf(\"全部评论\", \"只看UP主\")"))
         assertTrue(source.contains("items = CommentSearchSortMode.entries.map"))
