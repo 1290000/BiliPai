@@ -8,12 +8,12 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
+import android.widget.BaseAdapter
 import android.widget.EditText
+import android.widget.ListView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -81,11 +81,7 @@ internal fun ExternalPlaylistNativeDialogContent(
     )
 }
 
-private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(context) {
-    private val root = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(20), dp(14), dp(20), dp(20))
-    }
+private class ExternalPlaylistNativeDialogView(context: Context) : LinearLayout(context) {
     private val header = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
@@ -96,7 +92,7 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
     private val matchingSection = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val description = textView(14f)
     private val input = EditText(context).apply {
-        singleLine = true
+        setSingleLine(true)
         hint = "粘贴歌单链接或歌单 id"
         textSize = 16f
         setPadding(dp(14), dp(12), dp(14), dp(12))
@@ -109,7 +105,8 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
     private val saveButton = Button(context).apply { text = "保存歌单" }
     private val progress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal)
     private val matchStatus = textView(13f)
-    private val rows = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    private val rows = ListView(context)
+    private val rowsAdapter = MatchRowsAdapter(context)
     private val manualSection = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         visibility = View.GONE
@@ -119,7 +116,7 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
         gravity = Gravity.CENTER_VERTICAL
     }
     private val manualInput = EditText(context).apply {
-        singleLine = true
+        setSingleLine(true)
         hint = "搜索 B 站视频"
         textSize = 14f
         setPadding(dp(10), dp(8), dp(10), dp(8))
@@ -132,27 +129,33 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
     private var updatingText = false
 
     init {
-        isFillViewport = true
-        clipToPadding = false
-        addView(root, android.widget.FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-        ))
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(20), dp(14), dp(20), dp(20))
         setBackground(rounded(0xFF171114.toInt(), dp(24)))
-        root.addView(header, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
+        addView(header, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
         header.addView(title, LinearLayout.LayoutParams(0, dp(52), 1f))
         header.addView(closeButton, linearParams(dp(48), dp(48)))
-        root.addView(inputSection, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-        root.addView(matchingSection, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
+        addView(inputSection, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+        addView(matchingSection, LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            0,
+            1f,
+        ))
 
-        inputSection.addView(description, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT).apply {
+        rows.adapter = rowsAdapter
+        rows.isNestedScrollingEnabled = false
+        rows.divider = null
+        rows.cacheColorHint = android.graphics.Color.TRANSPARENT
+        rows.overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+
+        inputSection.addView(description, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT).apply {
             bottomMargin = dp(12)
         })
-        inputSection.addView(input, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT, height = dp(56)).apply {
+        inputSection.addView(input, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT, height = dp(56)).apply {
             bottomMargin = dp(8)
         })
-        inputSection.addView(fetchError, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-        inputSection.addView(fetchButton, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT, height = dp(48)).apply {
+        inputSection.addView(fetchError, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+        inputSection.addView(fetchButton, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT, height = dp(48)).apply {
             topMargin = dp(12)
         })
 
@@ -160,27 +163,27 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        matchingSection.addView(metaRow, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
+        matchingSection.addView(metaRow, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
         val metaLabels = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        metaRow.addView(metaLabels, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        metaLabels.addView(playlistName, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-        metaLabels.addView(playlistSummary, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
+        metaRow.addView(metaLabels, LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metaLabels.addView(playlistName, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+        metaLabels.addView(playlistSummary, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
         metaRow.addView(matchButton, linearParams(height = dp(48)))
         metaRow.addView(saveButton, linearParams(height = dp(48)))
-        matchingSection.addView(progress, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT, height = dp(4)).apply {
+        matchingSection.addView(progress, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT, height = dp(4)).apply {
             topMargin = dp(10)
         })
-        matchingSection.addView(matchStatus, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT).apply {
+        matchingSection.addView(matchStatus, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT).apply {
             topMargin = dp(4)
             bottomMargin = dp(8)
         })
-        matchingSection.addView(rows, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-        matchingSection.addView(manualSection, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
+        matchingSection.addView(rows, LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        matchingSection.addView(manualSection, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
         manualRow.addView(manualInput, LinearLayout.LayoutParams(0, dp(48), 1f))
         manualRow.addView(manualSearchButton, linearParams(height = dp(48)))
-        manualSection.addView(manualRow, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-        manualSection.addView(manualResults, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-        matchingSection.addView(footerNote, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT).apply {
+        manualSection.addView(manualRow, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+        manualSection.addView(manualResults, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT))
+        matchingSection.addView(footerNote, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT).apply {
             topMargin = dp(10)
         })
 
@@ -272,7 +275,7 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
                 meta.tracks.map { ExternalPlaylistRepository.MatchOutcome(it, null) }
             }
             val rowsKey = Triple(
-                outcomes.map { it.track.title to it.video?.bvid },
+                outcomes.toList(),
                 state.editingIndex,
                 state.matchResults.isNotEmpty(),
             )
@@ -311,40 +314,15 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
         secondaryColor: Int,
         errorColor: Int,
     ) {
-        rows.removeAllViews()
-        outcomes.forEachIndexed { index, outcome ->
-            val row = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                background = rounded(0x33222222, dp(12))
-                setPadding(dp(10), dp(8), dp(8), dp(8))
-            }
-            val labels = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-            val titleView = textView(14f, Typeface.BOLD).apply {
-                text = "${index + 1}. ${outcome.track.title}"
-                setTextColor(textColor)
-                maxLines = 1
-            }
-            val subtitleView = textView(12f).apply {
-                text = outcome.video?.let { "${it.author} · ${it.title}" }
-                    ?: outcome.track.artists.joinToString("/").ifBlank { "未匹配" }
-                setTextColor(if (outcome.video != null) secondaryColor else errorColor)
-                maxLines = 1
-            }
-            labels.addView(titleView, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-            labels.addView(subtitleView, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT))
-            row.addView(labels, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            val edit = Button(context).apply {
-                text = if (editingIndex == index) "收起" else "修正"
-                visibility = if (canEdit) View.VISIBLE else View.GONE
-                setOnClickListener { actions.onToggleEdit(index) }
-            }
-            row.addView(edit, linearParams(height = dp(44)))
-            rows.addView(row, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT).apply {
-                topMargin = dp(4)
-                bottomMargin = dp(4)
-            })
-        }
+        rowsAdapter.update(
+            outcomes = outcomes,
+            editingIndex = editingIndex,
+            canEdit = canEdit,
+            actions = actions,
+            textColor = textColor,
+            secondaryColor = secondaryColor,
+            errorColor = errorColor,
+        )
     }
 
     private fun renderManualResults(
@@ -373,7 +351,7 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
                 setTextColor(secondaryColor)
                 maxLines = 1
             })
-            manualResults.addView(row, linearParams(width = ViewGroup.LayoutParams.MATCH_PARENT).apply {
+            manualResults.addView(row, linearParams(width = android.view.ViewGroup.LayoutParams.MATCH_PARENT).apply {
                 topMargin = dp(3)
             })
         }
@@ -404,10 +382,110 @@ private class ExternalPlaylistNativeDialogView(context: Context) : ScrollView(co
     }
 
     private fun linearParams(
-        width: Int = ViewGroup.LayoutParams.WRAP_CONTENT,
-        height: Int = ViewGroup.LayoutParams.WRAP_CONTENT,
+        width: Int = android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        height: Int = android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
     ) =
         LinearLayout.LayoutParams(width, height)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+}
+
+private class MatchRowsAdapter(
+    private val context: Context,
+) : BaseAdapter() {
+    private var outcomes: List<ExternalPlaylistRepository.MatchOutcome> = emptyList()
+    private var editingIndex: Int? = null
+    private var canEdit: Boolean = false
+    private var actions: ExternalPlaylistNativeDialogActions? = null
+    private var textColor: Int = android.graphics.Color.WHITE
+    private var secondaryColor: Int = android.graphics.Color.LTGRAY
+    private var errorColor: Int = android.graphics.Color.RED
+
+    fun update(
+        outcomes: List<ExternalPlaylistRepository.MatchOutcome>,
+        editingIndex: Int?,
+        canEdit: Boolean,
+        actions: ExternalPlaylistNativeDialogActions,
+        textColor: Int,
+        secondaryColor: Int,
+        errorColor: Int,
+    ) {
+        this.outcomes = outcomes
+        this.editingIndex = editingIndex
+        this.canEdit = canEdit
+        this.actions = actions
+        this.textColor = textColor
+        this.secondaryColor = secondaryColor
+        this.errorColor = errorColor
+        notifyDataSetChanged()
+    }
+
+    override fun getCount(): Int = outcomes.size
+
+    override fun getItem(position: Int): ExternalPlaylistRepository.MatchOutcome = outcomes[position]
+
+    override fun getItemId(position: Int): Long = position.toLong()
+
+    override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+        val holder = (convertView?.tag as? RowHolder) ?: createRow().also { it.row.tag = it }
+        val outcome = outcomes[position]
+        holder.title.text = "${position + 1}. ${outcome.track.title}"
+        holder.title.setTextColor(textColor)
+        holder.subtitle.text = outcome.video?.let { "${it.author} · ${it.title}" }
+            ?: outcome.track.artists.joinToString("/").ifBlank { "未匹配" }
+        holder.subtitle.setTextColor(if (outcome.video != null) secondaryColor else errorColor)
+        holder.edit.visibility = if (canEdit) View.VISIBLE else View.GONE
+        holder.edit.text = if (editingIndex == position) "收起" else "修正"
+        holder.edit.setOnClickListener { actions?.onToggleEdit(position) }
+        return holder.row
+    }
+
+    private fun createRow(): RowHolder {
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0x33222222)
+                cornerRadius = dp(12).toFloat()
+            }
+            setPadding(dp(10), dp(8), dp(8), dp(8))
+        }
+        val labels = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        val title = TextView(context).apply {
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
+        }
+        val subtitle = TextView(context).apply {
+            textSize = 12f
+            maxLines = 1
+        }
+        labels.addView(title, LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        ))
+        labels.addView(subtitle, LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        ))
+        row.addView(labels, LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val edit = Button(context).apply {
+            isAllCaps = false
+            minHeight = dp(44)
+        }
+        row.addView(edit, LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            dp(44),
+        ))
+        return RowHolder(row, title, subtitle, edit)
+    }
+
+    class RowHolder(
+        val row: View,
+        val title: TextView,
+        val subtitle: TextView,
+        val edit: Button,
+    )
+
+    private fun dp(value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
 }
