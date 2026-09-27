@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -1713,6 +1716,7 @@ fun PluginsContent(
     uiSkinPreview?.let { preview ->
         val previewModel = buildUiSkinPackagePreview(preview)
         val imagePreviewItems = buildUiSkinImagePreviewItems(uiSkinPreviewAssetFiles)
+        val previewContentMaxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.56f
         AppAlertDialog(
             onDismissRequest = {
                 if (!isImporting) {
@@ -1724,7 +1728,13 @@ fun PluginsContent(
             icon = { AppIcon(com.android.purebilibili.feature.settings.rememberMaterialSymbol(com.android.purebilibili.R.drawable.ms_brush_fill_24), contentDescription = null) },
             title = { AppText("界面皮肤包预览") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = previewContentMaxHeight)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     AppText(
                         text = previewModel.title,
                         style = MaterialTheme.typography.titleMedium,
