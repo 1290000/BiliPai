@@ -288,6 +288,7 @@ fun LivePlayerScreen(
         clearScreen = isPortraitClearScreen,
         chatVisible = isPortraitChatVisible,
         controlsVisible = showPortraitPlayerControls,
+        isFullscreen = isFullscreen,
     )
     val playerGesturePolicy = resolveLivePlayerGesturePolicy(liveLayoutMode)
     LaunchedEffect(liveLayoutMode) {

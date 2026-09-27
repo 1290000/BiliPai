@@ -40,6 +40,20 @@ class LivePortraitPresentationPolicyTest {
     }
 
     @Test
+    fun `fullscreen portrait hides chat preview while retaining player chrome`() {
+        val presentation = resolveLivePortraitPresentation(
+            LiveRoomLayoutMode.PortraitVerticalOverlay,
+            clearScreen = false,
+            chatVisible = true,
+            isFullscreen = true,
+        )
+
+        assertTrue(presentation.showChrome)
+        assertFalse(presentation.showChatPreview)
+        assertTrue(presentation.showMediaOverlays)
+    }
+
+    @Test
     fun `portrait settings never hide landscape or horizontal stream controls`() {
         listOf(
             LiveRoomLayoutMode.PortraitPanel,

@@ -13,6 +13,7 @@ internal fun resolveLivePortraitPresentation(
     clearScreen: Boolean,
     chatVisible: Boolean,
     controlsVisible: Boolean = true,
+    isFullscreen: Boolean = false,
 ): LivePortraitPresentation {
     val portrait = layoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay
     val cleared = portrait && clearScreen
@@ -20,7 +21,9 @@ internal fun resolveLivePortraitPresentation(
         usePortraitControls = portrait,
         clearScreen = cleared,
         showChrome = portrait && !cleared && controlsVisible,
-        showChatPreview = portrait && !cleared && chatVisible,
+        // The full-screen player owns the media overlay area. Keep the chat preview
+        // out of it so chat bubbles cannot stack on top of scrolling danmaku.
+        showChatPreview = portrait && !cleared && !isFullscreen && chatVisible,
         showMediaOverlays = !cleared,
     )
 }
