@@ -574,14 +574,12 @@ fun CommonListScreen(
         favoriteSection,
         isSubscribedBrowse,
         isSearchDestination,
-        favoriteContentMode,
         historyViewModel,
         historyPagerState.currentPage,
         primaryGridState,
         subscribedFolderListState,
         favoriteFolderListState,
         favoriteCategoryGridState,
-        favoritePagerGridStates.size,
         historyPagerGridStates.size
     ) {
         {
@@ -591,10 +589,7 @@ fun CommonListScreen(
                 favoriteViewModel != null && favoriteSection != FavoriteSection.VIDEO ->
                     CommonListScrollState.Grid(favoriteCategoryGridState)
                 isSubscribedBrowse -> CommonListScrollState.List(subscribedFolderListState)
-                favoriteViewModel != null && favoriteContentMode == FavoriteContentMode.PAGER -> {
-                    favoritePagerGridStates[pagerState.currentPage]?.let(CommonListScrollState::Grid)
-                        ?: CommonListScrollState.Grid(primaryGridState)
-                }
+                // 视频 Tab 是收藏夹卡片列表；不要再跟已废弃的 HorizontalPager 网格状态。
                 favoriteViewModel != null -> CommonListScrollState.List(favoriteFolderListState)
                 historyViewModel != null -> {
                     historyPagerGridStates[historyPagerState.currentPage]?.let(CommonListScrollState::Grid)

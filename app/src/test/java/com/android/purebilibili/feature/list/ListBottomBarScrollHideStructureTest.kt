@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.list
 
 import java.io.File
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ListBottomBarScrollHideStructureTest {
@@ -31,6 +32,13 @@ class ListBottomBarScrollHideStructureTest {
         assertTrue(commonListSource.contains("gridState = favoriteCategoryGridState"))
         assertTrue(commonListSource.contains("listState = favoriteFolderListState"))
         assertTrue(favoriteCategorySource.contains("state = gridState"))
+
+        // 视频 Tab 卡片列表不得再被 FavoriteContentMode.PAGER 误路由到废弃网格状态。
+        val activeScrollStateSource = commonListSource
+            .substringAfter("val activeCommonListScrollState = remember(")
+            .substringBefore("LaunchedEffect(activeCommonListScrollState)")
+        assertTrue(activeScrollStateSource.contains("CommonListScrollState.List(favoriteFolderListState)"))
+        assertFalse(activeScrollStateSource.contains("FavoriteContentMode.PAGER"))
     }
 
     private fun loadSource(relativePath: String): String {
