@@ -852,8 +852,8 @@ fun SpaceScreen(
     repostDynamicId?.let { dynamicId ->
         RepostDialog(
             onDismiss = { repostDynamicId = null },
-            onRepost = { content: String, onComplete: (Boolean) -> Unit ->
-                dynamicInteractionViewModel.repostDynamic(dynamicId, content) { success, message ->
+            onRepost = { content: String, alsoComment: Boolean, onComplete: (Boolean) -> Unit ->
+                dynamicInteractionViewModel.repostDynamic(dynamicId, content, alsoComment) { success, message ->
                     android.widget.Toast.makeText(
                         context,
                         message,
