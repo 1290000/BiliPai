@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -57,6 +58,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -109,12 +111,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
@@ -146,8 +150,19 @@ import com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo
 import com.android.purebilibili.feature.audio.lyrics.BiliSubtitleLyricsPolicy
 import com.android.purebilibili.feature.audio.lyrics.LyricDocument
 import com.android.purebilibili.feature.audio.lyrics.LyricLine
+import com.android.purebilibili.feature.audio.lyrics.halcyon.HALCYON_DEFAULT_PERSPECTIVE_ANGLE
+import com.android.purebilibili.feature.audio.lyrics.halcyon.AppleMusicLyricsView
+import com.android.purebilibili.feature.audio.lyrics.halcyon.mapToHalcyonLyrics
+import com.android.purebilibili.feature.audio.lyrics.halcyon.currentLyricIndexAt
+import com.android.purebilibili.feature.audio.lyrics.halcyon.playerLyricPerspective
 import com.android.purebilibili.feature.audio.lyrics.resolveActiveLyricIndex
+import com.android.purebilibili.feature.audio.lyrics.resolveDisplaySecondaryRows
+import com.android.purebilibili.feature.audio.lyrics.resolveLastStartedLyricIndex
+import com.android.purebilibili.feature.audio.lyrics.resolveStableLyricIndex
+import com.android.purebilibili.feature.audio.lyrics.resolveCharHighlightAlpha
+import com.android.purebilibili.feature.audio.lyrics.resolveLineSweepProgress
 import com.android.purebilibili.feature.audio.lyrics.resolveLyricFocusScrollOffsetPx
+import com.android.purebilibili.feature.audio.lyrics.resolveSpanHighlightProgress
 import com.android.purebilibili.feature.audio.player.MusicPlayerUiState
 import com.android.purebilibili.feature.audio.player.MusicQueueItemUi
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
@@ -327,12 +342,12 @@ internal fun resolveMusicPlayerAccentColor(primary: Color, inversePrimary: Color
         ?: Color.White
 }
 
-// The blurred artwork can contain bright patches anywhere, regardless of its dominant swatch.
-// Keep the entire reading surface dark enough for white controls and secondary text.
+// Halcyon-style palette backdrop: keep the cover color readable under lyrics without
+// washing the page into flat grey. Lighter scrim than the old heavy black stack.
 internal val MusicArtworkScrimColors = listOf(
-    Color.Black.copy(alpha = 0.58f),
-    Color.Black.copy(alpha = 0.72f),
-    Color.Black.copy(alpha = 0.82f),
+    Color.Black.copy(alpha = 0.18f),
+    Color.Black.copy(alpha = 0.34f),
+    Color.Black.copy(alpha = 0.50f),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -428,6 +443,10 @@ internal fun MusicPlayerContent(
     val homeSettings by SettingsManager
         .getHomeSettings(context)
         .collectAsStateWithLifecycle(initialValue = HomeSettings())
+    val settingsScope = rememberCoroutineScope()
+    val lyricsUiStyle by SettingsManager
+        .getMusicLyricsUiStyle(context)
+        .collectAsStateWithLifecycle(initialValue = SettingsManager.MusicLyricsUiStyle.CLASSIC)
     val liquidGlassTuning = remember(
         homeSettings.liquidGlassProgress,
         homeSettings.liquidGlassAdvancedSettings,
@@ -440,10 +459,17 @@ internal fun MusicPlayerContent(
         )
     }
 
+    var paletteAccent by remember(themeSurfaceColor) { mutableStateOf(themeSurfaceColor) }
+    var playerPalette by remember(themeSurfaceColor) {
+        mutableStateOf(com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerPalette.Default)
+    }
     LaunchedEffect(state.coverUrl, themeSurfaceColor) {
         val result = loadMusicArtwork(context.imageLoader, state.coverUrl, context)
-        artworkBitmap = result?.first
-        paletteColor = result?.second ?: themeSurfaceColor
+        artworkBitmap = result?.bitmap
+        paletteColor = result?.baseColor ?: themeSurfaceColor
+        paletteAccent = result?.accentColor ?: (result?.baseColor ?: themeSurfaceColor)
+        playerPalette = result?.palette
+            ?: com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerPalette.Default
     }
 
     val backgroundColor by animateColorAsState(
@@ -541,6 +567,9 @@ internal fun MusicPlayerContent(
                 MusicArtworkBackground(
                     coverUrl = state.coverUrl,
                     bitmap = artworkBitmap,
+                    palette = playerPalette,
+                    isPlaying = state.isPlaying,
+                    positionMs = state.positionMs,
                 )
             }
         }
@@ -656,6 +685,7 @@ internal fun MusicPlayerContent(
                                 controlsVisible = lyricsControlsVisible,
                                 onControlsVisibleChange = { lyricsControlsVisible = it },
                                 showBottomControls = false,
+                                lyricsUiStyle = lyricsUiStyle,
                                 modifier = Modifier.fillMaxSize()
                             )
                             } else {
@@ -788,6 +818,7 @@ internal fun MusicPlayerContent(
                                 controlsVisible = lyricsControlsVisible,
                                 onControlsVisibleChange = { lyricsControlsVisible = it },
                                 showBottomControls = true,
+                                lyricsUiStyle = lyricsUiStyle,
                                 modifier = Modifier.padding(bottom = MUSIC_PLAYER_COMPACT_DOCK_BOTTOM_PADDING_DP.dp)
                             )
                         }
@@ -856,6 +887,7 @@ internal fun MusicPlayerContent(
                 onLyricsOffsetChange = onLyricsOffsetChange,
                 onLyricsRetry = onLyricsRetry,
                 onOpenLyricsSearch = { showLyricsSearch = true },
+                lyricsUiStyle = lyricsUiStyle,
                 availableWidthDp = availableWidthDp,
                 hingeStartDp = if (adaptiveInfo.foldingFeature.hingeOrientation == AppHingeOrientation.Horizontal) {
                     hingeStartDp
@@ -992,6 +1024,7 @@ internal fun MusicPlayerContent(
                                                 controlsVisible = lyricsControlsVisible,
                                                 onControlsVisibleChange = { lyricsControlsVisible = it },
                                                 showBottomControls = false,
+                                                lyricsUiStyle = lyricsUiStyle,
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         }
@@ -1124,6 +1157,16 @@ internal fun MusicPlayerContent(
                                 ) {
                                     showActions = false
                                     coverStyle = resolveNextCoverStyle(coverStyle)
+                                }
+                                MusicActionSheetItem(
+                                    "歌词界面：${lyricsUiStyle.next().label}",
+                                    contentColor = sheetContentColor
+                                ) {
+                                    showActions = false
+                                    val nextStyle = lyricsUiStyle.next()
+                                    settingsScope.launch {
+                                        SettingsManager.setMusicLyricsUiStyle(context, nextStyle)
+                                    }
                                 }
                                 if (
                                     !adaptiveInfo.foldingFeature.hasObstructingHinge &&
@@ -1556,37 +1599,38 @@ private fun ImmersiveBottomQueueShelf(
 private fun MusicArtworkBackground(
     coverUrl: String,
     bitmap: ImageBitmap? = null,
+    palette: com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerPalette =
+        com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerPalette.Default,
+    isPlaying: Boolean = false,
+    positionMs: Long = 0L,
 ) {
-    Box(Modifier.fillMaxSize()) {
-        if (bitmap != null || coverUrl.isNotBlank()) {
-            val imageModifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = 1.55f
-                    scaleY = 1.55f
-                }
-                .blur(80.dp)
-            if (bitmap != null) {
-                androidx.compose.foundation.Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    modifier = imageModifier,
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = null,
-                    modifier = imageModifier,
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(MusicArtworkScrimColors))
+    val coverBitmap = remember(bitmap) { bitmap?.toAndroidBitmapOrNull() }
+    if (coverBitmap != null) {
+        // Halcyon default lyric/player backdrop: AppleCoverFlowBackground (three-layer
+        // oversaturated cover aurora). BeautifulLyrics is opt-in in Halcyon, not the default.
+        com.android.purebilibili.feature.audio.lyrics.halcyon.AppleCoverFlowBackground(
+            coverBitmap = coverBitmap,
+            backgroundColor = palette.middle,
+            isDark = !palette.isLight,
+            isPlaying = isPlaying,
+            animate = isPlaying,
+            modifier = Modifier.fillMaxSize(),
         )
+    } else {
+        com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerBlurBackground(
+            palette = palette,
+            coverBitmap = null,
+            animate = false,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+private fun ImageBitmap.toAndroidBitmapOrNull(): android.graphics.Bitmap? {
+    return try {
+        this.asAndroidBitmap()
+    } catch (_: Throwable) {
+        null
     }
 }
 
@@ -1686,11 +1730,40 @@ private fun PlayerPage(
                 }
                 if (showLyricsPreview) {
                     Spacer(Modifier.height(14.dp))
-                    PlayerLyricsPreview(
-                        lyrics = state.lyrics,
-                        positionMs = state.positionMs,
-                        onOpenLyrics = onOpenLyrics
-                    )
+                    val lyricsUiStyle by SettingsManager
+                        .getMusicLyricsUiStyle(LocalContext.current)
+                        .collectAsStateWithLifecycle(
+                            initialValue = SettingsManager.MusicLyricsUiStyle.CLASSIC
+                        )
+                    if (lyricsUiStyle == SettingsManager.MusicLyricsUiStyle.IMMERSIVE &&
+                        state.lyrics != null
+                    ) {
+                        // Immersive cover pane uses Halcyon PlayerMiniLyrics.
+                        val halcyonLines = remember(state.lyrics) {
+                            mapToHalcyonLyrics(state.lyrics!!.lines)
+                        }
+                        val miniIndex = remember(halcyonLines, state.positionMs) {
+                            currentLyricIndexAt(
+                                positionMs = state.positionMs - (state.lyrics?.offsetMs ?: 0L),
+                                lyrics = halcyonLines,
+                                suppressLeadingZero = true,
+                            ).index.coerceIn(0, (halcyonLines.size - 1).coerceAtLeast(0))
+                        }
+                        com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerMiniLyrics(
+                            lines = halcyonLines,
+                            activeIndex = miniIndex,
+                            positionMs = state.positionMs - (state.lyrics?.offsetMs ?: 0L),
+                            contentColor = MusicContentColor,
+                            showTranslation = true,
+                            onOpenLyrics = onOpenLyrics,
+                        )
+                    } else {
+                        PlayerLyricsPreview(
+                            lyrics = state.lyrics,
+                            positionMs = state.positionMs,
+                            onOpenLyrics = onOpenLyrics
+                        )
+                    }
                 }
             }
 
@@ -2269,10 +2342,15 @@ private fun PlayerLyricsPreview(
                 )
 
                 // 翻译（若有）
-                val translation = activeLine.translations.firstOrNull()
-                if (!translation.isNullOrBlank()) {
+                val (previewTranslation, _) = resolveDisplaySecondaryRows(
+                    primaryText = activeLine.text,
+                    translation = activeLine.translations.firstOrNull(),
+                    romanization = activeLine.romanization,
+                    showTranslation = true,
+                )
+                if (!previewTranslation.isNullOrBlank()) {
                     AppText(
-                        text = translation,
+                        text = previewTranslation,
                         color = MusicAccentColor.copy(alpha = 0.72f),
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
@@ -2294,7 +2372,7 @@ private fun PlayerLyricsPreview(
                 }
 
                 // 再下一行（若无翻译且存在下下句，展示保持 3~4 行层次感）
-                if (translation.isNullOrBlank() && nextLine2 != null) {
+                if (previewTranslation.isNullOrBlank() && nextLine2 != null) {
                     AppText(
                         text = nextLine2.text,
                         color = MusicContentColor.copy(alpha = 0.32f),
@@ -2398,10 +2476,27 @@ private fun LyricsPage(
     onControlsVisibleChange: (Boolean) -> Unit,
     showBottomControls: Boolean = true,
     isDarkEnvironment: Boolean = true,
+    lyricsUiStyle: SettingsManager.MusicLyricsUiStyle = SettingsManager.MusicLyricsUiStyle.CLASSIC,
     modifier: Modifier = Modifier
 ) {
     val document = state.lyrics
-    val currentIndex = document?.let { resolveActiveLyricIndex(it, state.positionMs) } ?: -1
+    val immersiveLyrics = lyricsUiStyle == SettingsManager.MusicLyricsUiStyle.IMMERSIVE
+    var stableCurrentIndex by remember(document) {
+        mutableIntStateOf(
+            document?.let {
+                resolveLastStartedLyricIndex(it.lines, state.positionMs - it.offsetMs)
+            } ?: -1
+        )
+    }
+    LaunchedEffect(state.positionMs, document) {
+        if (document == null) return@LaunchedEffect
+        stableCurrentIndex = resolveStableLyricIndex(
+            lines = document.lines,
+            positionMs = state.positionMs - document.offsetMs,
+            previousIndex = stableCurrentIndex,
+        )
+    }
+    val currentIndex = stableCurrentIndex
     val blurEnabled = resolveMusicLyricsBlurEnabled(
         sdkInt = Build.VERSION.SDK_INT,
         effectsEnabled = blurEffectsEnabled,
@@ -2422,8 +2517,9 @@ private fun LyricsPage(
             isAutoFollowPaused = true
         }
     }
-    LaunchedEffect(currentIndex, isAutoFollowPaused, reduceMotion) {
-        if (currentIndex >= 0 && !isAutoFollowPaused) {
+    LaunchedEffect(currentIndex, isAutoFollowPaused, reduceMotion, immersiveLyrics) {
+        // Immersive list owns its spring auto-follow; classic list uses this effect.
+        if (!immersiveLyrics && currentIndex >= 0 && !isAutoFollowPaused) {
             val focusOffset = resolveLyricFocusScrollOffsetPx(
                 listState.layoutInfo.viewportSize.height
             )
@@ -2434,11 +2530,20 @@ private fun LyricsPage(
             }
         }
     }
+    // Immersive lyrics follow Halcyon PlayerLyricsPage: one horizontal 28.dp inset and a
+    // single 72/72 content pad inside AppleMusicLyricsView. Do not stack the classic
+    // top/bottom chrome padding on top of that.
+    val chromeTopPadding = when {
+        immersiveLyrics -> 0.dp
+        showBottomControls -> 72.dp
+        else -> 16.dp
+    }
+    val chromeBottomPadding = if (immersiveLyrics) 0.dp else 16.dp
     Box(
         modifier = modifier
             .fillMaxSize()
             .clickable { onControlsVisibleChange(!controlsVisible) }
-            .padding(top = if (showBottomControls) 72.dp else 16.dp, bottom = 16.dp)
+            .padding(top = chromeTopPadding, bottom = chromeBottomPadding)
     ) {
         if (document == null || document.lines.isEmpty()) {
             Column(
@@ -2474,6 +2579,73 @@ private fun LyricsPage(
                     )
                 }
             }
+        } else if (immersiveLyrics) {
+            val halcyonLines = remember(document) {
+                mapToHalcyonLyrics(document.lines)
+            }
+            val lyricMs = state.positionMs - document.offsetMs
+            val halcyonIndex = remember(halcyonLines, lyricMs) {
+                currentLyricIndexAt(
+                    positionMs = lyricMs,
+                    lyrics = halcyonLines,
+                    suppressLeadingZero = true,
+                ).index.coerceIn(-1, (halcyonLines.size - 1).coerceAtLeast(0))
+            }
+            // Wholesale Halcyon `LyricsPlayerPage` layout (header/footer chrome stay BiliPai's).
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 28.dp)
+            ) {
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clipToBounds()
+                        .playerLyricPerspective(
+                            // Halcyon `lyricPerspectiveEffect` defaults to false.
+                            enabled = false,
+                            angle = HALCYON_DEFAULT_PERSPECTIVE_ANGLE,
+                            lyricTextAlign = com.android.purebilibili.feature.audio.lyrics.halcyon.PLAYER_LYRIC_ALIGN_LEFT,
+                        )
+                ) {
+                    AppleMusicLyricsView(
+                        lyrics = halcyonLines,
+                        currentIndex = halcyonIndex,
+                        currentPositionMs = lyricMs,
+                        isPlaying = state.isPlaying,
+                        isPaused = !state.isPlaying,
+                        pageVisible = true,
+                        showTranslation = showTranslations,
+                        showPronunciation = false,
+                        fontFamily = null,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight(
+                            com.android.purebilibili.feature.audio.lyrics.halcyon.HalcyonLyricSettings.lyricFontWeight,
+                        ),
+                        fontScale = 1f,
+                        secondaryFontScale = 1f,
+                        primaryTextSizeSp = com.android.purebilibili.feature.audio.lyrics.halcyon.HalcyonLyricSettings.primaryTextSizeSp,
+                        secondaryTextSizeSp = com.android.purebilibili.feature.audio.lyrics.halcyon.HalcyonLyricSettings.secondaryTextSizeSp,
+                        lyricTextAlign = com.android.purebilibili.feature.audio.lyrics.halcyon.PLAYER_LYRIC_ALIGN_LEFT,
+                        contentColor = MusicContentColor,
+                        wordLiftEnabled = true,
+                        onLineClick = { line ->
+                            isAutoFollowPaused = false
+                            val seekMs = line.words.firstOrNull()?.startMs ?: line.timeMs
+                            onSeek(seekMs + document.offsetMs)
+                        },
+                        onLineLongClick = {},
+                        topContentPadding = 72.dp,
+                        bottomContentPadding = 72.dp,
+                        nonCurrentLineBlurEnabled = blurEnabled,
+                        focusOffsetRatio = 0.24f,
+                        useFocusLeadingPadding = false,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         } else {
             LazyColumn(
                 state = listState,
@@ -2496,7 +2668,8 @@ private fun LyricsPage(
                         reduceMotion = reduceMotion,
                         onClick = {
                             isAutoFollowPaused = false
-                            onSeek(line.startTimeMs + document.offsetMs)
+                            val seekMs = line.spans.firstOrNull()?.startTimeMs ?: line.startTimeMs
+                            onSeek(seekMs + document.offsetMs)
                         }
                     )
                 }
@@ -2525,10 +2698,12 @@ private fun LyricsPage(
                     onPrevious = onPrevious,
                     onNext = onNext,
                     onOpenSettings = { showLyricsSettings = true },
-                    onHideControls = { onControlsVisibleChange(false) }
+                    onHideControls = { onControlsVisibleChange(false) },
+                    showProgress = !immersiveLyrics,
                 )
             }
-            if (!controlsVisible) {
+            // Halcyon immersive lyrics page has no progress bar.
+            if (!controlsVisible && !immersiveLyrics) {
                 LyricsImmersiveProgress(
                     state = state,
                     modifier = Modifier
@@ -2650,7 +2825,8 @@ private fun LyricsPrimaryControls(
     onPrevious: (() -> Unit)?,
     onNext: (() -> Unit)?,
     onOpenSettings: () -> Unit,
-    onHideControls: () -> Unit
+    onHideControls: () -> Unit,
+    showProgress: Boolean = true,
 ) {
     val chromeSpec = resolveMusicPlayerChromeSpec(
         uiStyle = LocalAppUiStyle.current,
@@ -2701,15 +2877,17 @@ private fun LyricsPrimaryControls(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                MusicProgress(
-                    state = state,
-                    onSeek = onSeek,
-                    glassEnabled = glassEnabled,
-                    glassTintColor = glassTintColor,
-                    isDarkEnvironment = isDarkEnvironment,
-                    miuixBackdrop = miuixBackdrop,
-                    liquidGlassTuning = liquidGlassTuning,
-                )
+                if (showProgress) {
+                    MusicProgress(
+                        state = state,
+                        onSeek = onSeek,
+                        glassEnabled = glassEnabled,
+                        glassTintColor = glassTintColor,
+                        isDarkEnvironment = isDarkEnvironment,
+                        miuixBackdrop = miuixBackdrop,
+                        liquidGlassTuning = liquidGlassTuning,
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PlaybackControls(
                         state = state,
@@ -2874,6 +3052,7 @@ private fun LyricLineContent(
     showTranslations: Boolean,
     focusStyle: MusicLyricFocusStyle,
     reduceMotion: Boolean,
+    immersive: Boolean = false,
     onClick: () -> Unit
 ) {
     val transition = updateTransition(targetState = focusStyle, label = "lyric_focus")
@@ -2890,6 +3069,21 @@ private fun LyricLineContent(
     } else {
         Modifier
     }
+    val textStyle = when {
+        immersive && isCurrent -> MaterialTheme.typography.headlineLarge
+        immersive -> MaterialTheme.typography.titleMedium
+        else -> MaterialTheme.typography.headlineSmall
+    }
+    val lineHeight = when {
+        immersive && isCurrent -> 42.sp
+        immersive -> 26.sp
+        else -> 34.sp
+    }
+    val fontWeight = when {
+        immersive && isCurrent -> FontWeight.Bold
+        immersive -> FontWeight.Medium
+        else -> FontWeight.Bold
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2900,22 +3094,28 @@ private fun LyricLineContent(
         AppText(
             text = buildLyricText(line, isCurrent, positionMs, MusicContentColor),
             color = MusicContentColor,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 34.sp
+            style = textStyle,
+            fontWeight = fontWeight,
+            lineHeight = lineHeight
         )
-        line.translations.firstOrNull()?.takeIf { showTranslations && it.isNotBlank() }?.let {
+        val (displayTranslation, displayRomanization) = resolveDisplaySecondaryRows(
+            primaryText = line.text,
+            translation = line.translations.firstOrNull(),
+            romanization = line.romanization,
+            showTranslation = showTranslations,
+        )
+        displayTranslation?.let {
             AppText(
                 text = it,
-                color = MusicContentColor.copy(alpha = 0.72f),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 5.dp)
+                color = MusicContentColor.copy(alpha = if (immersive) 0.64f else 0.72f),
+                style = if (immersive) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = if (immersive) 4.dp else 5.dp)
             )
         }
-        line.romanization?.takeIf { showTranslations && it.isNotBlank() }?.let {
+        displayRomanization?.let {
             AppText(
                 text = it,
-                color = MusicContentColor.copy(alpha = 0.58f),
+                color = MusicContentColor.copy(alpha = if (immersive) 0.48f else 0.58f),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 3.dp)
             )
@@ -2929,14 +3129,35 @@ private fun buildLyricText(
     positionMs: Long,
     contentColor: Color,
 ): AnnotatedString {
-    if (!isCurrent || line.spans.isEmpty()) return AnnotatedString(line.text)
+    if (!isCurrent) return AnnotatedString(line.text)
     return buildAnnotatedString {
-        line.spans.forEach { span ->
-            val active = positionMs >= span.startTimeMs
-            pushStyle(SpanStyle(color = contentColor.copy(alpha = if (active) 1f else 0.38f)))
-            append(span.text)
-            pop()
+        if (line.spans.isEmpty()) {
+            val progress = resolveLineSweepProgress(line, positionMs)
+            appendKaraokeFill(line.text, progress, contentColor)
+        } else {
+            line.spans.forEach { span ->
+                val progress = resolveSpanHighlightProgress(span, positionMs)
+                appendKaraokeFill(span.text, progress, contentColor)
+            }
         }
+    }
+}
+
+private fun AnnotatedString.Builder.appendKaraokeFill(
+    text: String,
+    progress: Float,
+    contentColor: Color,
+) {
+    if (text.isEmpty()) return
+    text.forEachIndexed { index, char ->
+        val alpha = resolveCharHighlightAlpha(
+            charIndex = index,
+            charCount = text.length,
+            progress = progress,
+        )
+        pushStyle(SpanStyle(color = contentColor.copy(alpha = alpha)))
+        append(char)
+        pop()
     }
 }
 
@@ -3167,6 +3388,7 @@ private fun TabletopPlayerLayout(
     hingeStartDp: Int? = null,
     hingeEndDp: Int? = null,
     isDarkEnvironment: Boolean = true,
+    lyricsUiStyle: SettingsManager.MusicLyricsUiStyle = SettingsManager.MusicLyricsUiStyle.CLASSIC,
     modifier: Modifier = Modifier
 ) {
     val tabletopDensity = LocalDensity.current
@@ -3250,6 +3472,7 @@ private fun TabletopPlayerLayout(
                     controlsVisible = false,
                     onControlsVisibleChange = {},
                     showBottomControls = false,
+                    lyricsUiStyle = lyricsUiStyle,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -3525,11 +3748,18 @@ private fun MusicActionSheetItem(
     }
 }
 
+private data class MusicArtworkPalette(
+    val bitmap: ImageBitmap,
+    val baseColor: Color,
+    val accentColor: Color,
+    val palette: com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerPalette,
+)
+
 private suspend fun loadMusicArtwork(
     imageLoader: ImageLoader,
     coverUrl: String,
     context: android.content.Context
-): Pair<ImageBitmap, Color>? = withContext(Dispatchers.IO) {
+): MusicArtworkPalette? = withContext(Dispatchers.IO) {
     if (coverUrl.isBlank()) return@withContext null
     runCatching {
         val request = ImageRequest.Builder(context)
@@ -3539,13 +3769,17 @@ private suspend fun loadMusicArtwork(
             .build()
         val result = imageLoader.execute(request) as SuccessResult
         val bitmap = (result.image as coil3.BitmapImage).bitmap
-        val palette = Palette.from(bitmap).clearFilters().generate()
-        val colorInt = palette.dominantSwatch?.rgb
-            ?: palette.vibrantSwatch?.rgb
-            ?: palette.lightVibrantSwatch?.rgb
-            ?: palette.mutedSwatch?.rgb
-            ?: bitmap.getPixel(bitmap.width / 2, bitmap.height / 2)
-        bitmap.asImageBitmap() to Color(colorInt)
+        val playerPalette =
+            com.android.purebilibili.feature.audio.lyrics.halcyon.PlayerPalette.fromCoverBackground(
+                bitmap = bitmap,
+                light = false,
+            )
+        MusicArtworkPalette(
+            bitmap = bitmap.asImageBitmap(),
+            baseColor = playerPalette.middle,
+            accentColor = playerPalette.accent,
+            palette = playerPalette,
+        )
     }.getOrNull()
 }
 
