@@ -454,7 +454,7 @@ See full changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ### Current source build (v0.2.3-alpha.7 · 2026-09-28)
 
-- Current source build: `0.2.3-alpha.7` / `versionCode 399`.
+- Current source build: `0.2.3-alpha.7` / `versionCode 400`.
 - Immersive lyrics, lyric language switching, play history, startup resume, and resumable external playlist import are available in the audio player.
 - Live interactions and video playback in split-screen/freeform windows have been improved, alongside feed, article, and collection flows.
 - Fixed bottom-bar scroll behavior, collection cover loading, and added haptic feedback for player controls.

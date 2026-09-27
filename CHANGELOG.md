@@ -2,7 +2,7 @@
 
 更新日志(ChangeLog)
 
-[更改] 版本号 0.2.3-alpha.7，versionCode 399
+[更改] 版本号 0.2.3-alpha.7，versionCode 400
 
 [添加] 听视频新增沉浸歌词、逐词高亮与封面流光背景（PR #847）@1290000
 
