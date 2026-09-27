@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -67,9 +68,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.android.purebilibili.feature.home.components.LiquidGlassTuning
 import com.android.purebilibili.feature.home.components.LocalLiquidGlassRenderConfig
-import com.android.purebilibili.feature.home.components.biliPaiFloatingDockShell
-import com.android.purebilibili.feature.home.components.resolveBiliPaiBottomBarShellColor
-import com.android.purebilibili.feature.home.components.resolveBottomBarDarkTheme
 import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
@@ -179,12 +177,7 @@ internal fun AudioNowPlayingBar(
     )
     val shape = resolveSharedBottomBarCapsuleShape()
     val glassActive = glassEnabled && miuixBackdrop != null
-    val containerColor = resolveBiliPaiBottomBarShellColor(
-        containerColor = AppSurfaceTokens.surfaceContainer(),
-        liquidGlassEnabled = glassEnabled,
-        darkTheme = resolveBottomBarDarkTheme(AppSurfaceTokens.background()),
-        liquidGlassTuning = liquidGlassTuning,
-    )
+    val containerColor = AppSurfaceTokens.surfaceContainer()
     val coverRotationDegrees = rememberMusicArtworkRotationDegrees(
         active = shouldRotateMusicArtwork(
             isPlaying = state.isPlaying,
@@ -239,16 +232,7 @@ internal fun AudioNowPlayingBar(
         Box(
             Modifier.matchParentSize()
                 .graphicsLayer { alpha = 1f - surfaceMergeProgress().coerceIn(0f, 1f) }
-                .biliPaiFloatingDockShell(
-                    backdrop = miuixBackdrop,
-                    containerColor = containerColor,
-                    pressProgress = 0f,
-                    shape = shape,
-                    enabled = glassActive,
-                    blurEnabled = blurEnabled,
-                    hazeState = hazeState,
-                    liquidGlassTuning = liquidGlassTuning,
-                )
+                .background(containerColor, shape)
         )
         AudioNowPlayingBarContentRow(
             mergeProgress = dockMergeProgress,
