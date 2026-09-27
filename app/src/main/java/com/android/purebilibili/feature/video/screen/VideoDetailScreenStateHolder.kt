@@ -1270,6 +1270,9 @@ internal fun VideoDetailScreenStateHolder(
     var userRequestedFullscreen by rememberSaveable(currentBvid) {
         mutableStateOf(isActivityInMultiWindowMode)
     }
+    var hasHandledStartFullscreenRequest by rememberSaveable(currentBvid, startInFullscreen) {
+        mutableStateOf(false)
+    }
     var manualPortraitHoldActive by rememberSaveable { mutableStateOf(false) }
     var preserveCurrentFrameOnFullscreenChange by remember { mutableStateOf(false) }
     var pendingFullscreenPositionRestoreMs by remember { mutableLongStateOf(-1L) }
@@ -1459,38 +1462,39 @@ internal fun VideoDetailScreenStateHolder(
         }
     }
 
-    //  从小窗展开时自动进入全屏
+    //  路由请求只负责本次视频入口的初始方向。横屏切回竖屏后不能再次把它当成
+    //  新请求，否则 startInFullscreen 会和用户的退出操作互相触发方向切换。
     LaunchedEffect(
         startInFullscreen,
-        isOrientationDrivenFullscreen,
-        isLandscape,
-        displayContext,
+        currentBvid,
     ) {
-        if (startInFullscreen) {
-            if (!isOrientationDrivenFullscreen) {
-                userRequestedFullscreen = true
-            } else {
-                context.findActivity()?.let { activity ->
-                    val isInMultiWindowMode = isActivityInMultiWindowOrFloatingMode(
-                        activity = activity,
-                        displayContext = displayContext,
+        if (!startInFullscreen || hasHandledStartFullscreenRequest) return@LaunchedEffect
+        if (!isOrientationDrivenFullscreen) {
+            userRequestedFullscreen = true
+            hasHandledStartFullscreenRequest = true
+        } else {
+            context.findActivity()?.let { activity ->
+                val isInMultiWindowMode = isActivityInMultiWindowOrFloatingMode(
+                    activity = activity,
+                    displayContext = displayContext,
+                )
+                if (!shouldApplyStartFullscreenOrientationRequest(
+                        startInFullscreen = startInFullscreen,
+                        isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
+                        isLandscape = isLandscape
                     )
-                    if (!shouldApplyStartFullscreenOrientationRequest(
-                            startInFullscreen = startInFullscreen,
-                            isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
-                            isLandscape = isLandscape
-                        )
-                    ) {
-                        if (isInMultiWindowMode) {
-                            userRequestedFullscreen = true
-                        }
-                        return@let
+                ) {
+                    if (isInMultiWindowMode) {
+                        userRequestedFullscreen = true
                     }
-                    activity.applyPlayerRequestedOrientation(
-                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-                        displayContext = displayContext,
-                    )
+                    hasHandledStartFullscreenRequest = true
+                    return@let
                 }
+                activity.applyPlayerRequestedOrientation(
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+                    displayContext = displayContext,
+                )
+                hasHandledStartFullscreenRequest = true
             }
         }
     }
