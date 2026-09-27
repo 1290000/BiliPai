@@ -743,7 +743,15 @@ internal fun createBiliPaiStyleColorScheme(
 ): ColorScheme {
     // AndroidX already returns the user's final wallpaper-derived light/dark scheme.
     // Re-generating it from resolved roles changes the palette selected in system settings.
-    if (dynamicBaseScheme != null) return dynamicBaseScheme
+    if (dynamicBaseScheme != null) {
+        // Wallpaper dynamic colors supply accents, but their surface roles must not
+        // replace the globally selected AMOLED black surfaces.
+        return if (darkTheme && amoledDarkTheme) {
+            applyAmoledSurfaceOverrides(dynamicBaseScheme)
+        } else {
+            dynamicBaseScheme
+        }
+    }
 
     if (uiStyle == AppUiStyle.MIUIX) {
         return createMiuixAlignedColorScheme(

@@ -3202,7 +3202,7 @@ private fun MusicPlayPauseButton(
                 imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (state.isPlaying) "暂停" else "播放",
                 tint = playButtonFg,
-                modifier = Modifier.size((sizeDp * 0.44f).dp)
+                modifier = Modifier.size((sizeDp * 0.50f).dp)
             )
         }
     }
