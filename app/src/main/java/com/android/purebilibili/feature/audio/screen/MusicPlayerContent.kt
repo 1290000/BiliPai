@@ -1546,6 +1546,7 @@ private fun ImmersiveBottomQueueShelf(
         backgroundColor = glassTintColor,
         surfaceColor = MaterialTheme.colorScheme.surface,
     ).copy(alpha = 0.92f)
+    val coverFlowMode = isQueueCoverFlow && queue.isNotEmpty()
     // 跟手拖拽：下拉随手偏移，松手按阈值决定关闭或回弹，可中途打断反向。
     val dragScope = rememberCoroutineScope()
     val dragOffsetY = remember { Animatable(0f) }
@@ -1553,7 +1554,7 @@ private fun ImmersiveBottomQueueShelf(
 
     AppSurface(
         shape = panelShape,
-        color = if (miuixBackdrop != null) Color.Transparent else panelColor,
+        color = if (coverFlowMode) panelColor else if (miuixBackdrop != null) Color.Transparent else panelColor,
         contentColor = MusicContentColor,
         border = BorderStroke(1.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
         shadowElevation = 16.dp,
@@ -1573,14 +1574,20 @@ private fun ImmersiveBottomQueueShelf(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {}
-            .biliPaiFloatingDockShell(
-                backdrop = miuixBackdrop,
-                containerColor = panelColor,
-                pressProgress = 0f,
-                shape = panelShape,
-                enabled = glassEnabled,
-                blurEnabled = !glassEnabled,
-                liquidGlassTuning = liquidGlassTuning
+            .then(
+                if (coverFlowMode) {
+                    Modifier
+                } else {
+                    Modifier.biliPaiFloatingDockShell(
+                        backdrop = miuixBackdrop,
+                        containerColor = panelColor,
+                        pressProgress = 0f,
+                        shape = panelShape,
+                        enabled = glassEnabled,
+                        blurEnabled = !glassEnabled,
+                        liquidGlassTuning = liquidGlassTuning
+                    )
+                }
             )
     ) {
         Column(
