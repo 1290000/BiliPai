@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 import com.android.purebilibili.data.model.response.CodecInfo
 import com.android.purebilibili.data.model.response.LivePlayUrlData
 import com.android.purebilibili.data.model.response.LiveQuality
+import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 
 internal data class LivePlaybackCandidate(
     val protocolName: String,
@@ -82,6 +83,16 @@ internal fun resolveLiveDefaultQualityQn(videoQualityId: Int): Int = when {
     videoQualityId >= 64 -> 250
     videoQualityId >= 32 -> 150
     else -> 80
+}
+
+internal fun resolveLiveViewportAspectRatio(
+    selected: VideoAspectRatio,
+    usePortraitControls: Boolean,
+    portraitExpandEnabled: Boolean,
+): VideoAspectRatio = if (usePortraitControls && portraitExpandEnabled) {
+    VideoAspectRatio.FILL
+} else {
+    selected
 }
 
 internal fun resolveLivePlayback(

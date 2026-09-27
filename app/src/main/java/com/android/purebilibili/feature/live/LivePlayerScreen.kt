@@ -22,6 +22,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -47,6 +49,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
@@ -57,6 +61,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -118,6 +123,8 @@ import com.android.purebilibili.feature.video.ui.section.shouldKickPlaybackAfter
 import com.android.purebilibili.feature.video.ui.overlay.LiveDanmakuOverlay
 import com.android.purebilibili.feature.video.ui.components.VideoAspectRatio
 import com.android.purebilibili.feature.video.ui.components.resolveVideoViewportLayout
+import com.android.purebilibili.feature.video.player.PlayerKeyAction
+import com.android.purebilibili.feature.video.player.resolvePlayerKeyAction
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.materials.HazeMaterials
 import com.android.purebilibili.core.ui.blur.hazeSourceCompat
@@ -175,6 +182,7 @@ fun LivePlayerScreen(
     val displayContext = LocalAppWindowAdaptiveInfo.current.displayContext
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
+    val liveKeyboardFocusRequester = remember { FocusRequester() }
     
     // Shared Element Transition Scopes
     val sharedTransitionScope = LocalSharedTransitionScope.current
@@ -307,6 +315,21 @@ fun LivePlayerScreen(
     val liveSuperChatFlashEnabled by SettingsManager
         .getLiveSuperChatFlashEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
+    val liveSuperChatPersistent by SettingsManager
+        .getLiveSuperChatPersistent(context)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val liveSuperChatMaxWidthDp by SettingsManager
+        .getLiveSuperChatMaxWidthDp(context)
+        .collectAsStateWithLifecycle(initialValue = 360)
+    val livePortraitExpandEnabled by SettingsManager
+        .getLivePortraitExpandEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val liveKeyboardControlsEnabled by SettingsManager
+        .getLiveKeyboardControlsEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = true)
+    LaunchedEffect(liveKeyboardControlsEnabled, liveLayoutMode) {
+        if (liveKeyboardControlsEnabled) liveKeyboardFocusRequester.requestFocus()
+    }
     val liveDanmakuEnabledPreference by SettingsManager
         .getLiveDanmakuEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
@@ -921,7 +944,11 @@ fun LivePlayerScreen(
                 contentAlignment = Alignment.Center
             ) {
                 val density = LocalDensity.current
-                val viewportAspectRatio = videoAspectRatio
+                val viewportAspectRatio = resolveLiveViewportAspectRatio(
+                    selected = videoAspectRatio,
+                    usePortraitControls = portraitPresentation.usePortraitControls,
+                    portraitExpandEnabled = livePortraitExpandEnabled,
+                )
                 val viewportLayout = remember(maxWidth, maxHeight, viewportAspectRatio) {
                     with(density) {
                         resolveVideoViewportLayout(
@@ -1165,8 +1192,65 @@ fun LivePlayerScreen(
         )
     }
 
+    val keyboardModifier = if (liveKeyboardControlsEnabled) {
+        Modifier
+            .focusRequester(liveKeyboardFocusRequester)
+            .focusGroup()
+            .onKeyEvent { event ->
+                val action = resolvePlayerKeyAction(
+                    event = event,
+                    isInPipMode = isPipRequested || activity?.isInPictureInPictureMode == true,
+                    isTextInputActive = showSendDanmakuSheet || showShareMessageSheet,
+                ) ?: return@onKeyEvent false
+                when (action) {
+                    PlayerKeyAction.PlayPause -> {
+                        if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
+                        true
+                    }
+                    PlayerKeyAction.VolumeUp, PlayerKeyAction.VolumeDown -> {
+                        val direction = if (action == PlayerKeyAction.VolumeUp) {
+                            android.media.AudioManager.ADJUST_RAISE
+                        } else {
+                            android.media.AudioManager.ADJUST_LOWER
+                        }
+                        (context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager)
+                            ?.adjustStreamVolume(
+                                android.media.AudioManager.STREAM_MUSIC,
+                                direction,
+                                android.media.AudioManager.FLAG_SHOW_UI,
+                            )
+                        true
+                    }
+                    PlayerKeyAction.ToggleMute -> {
+                        exoPlayer.volume = if (exoPlayer.volume > 0f) 0f else 1f
+                        true
+                    }
+                    PlayerKeyAction.ToggleFullscreen -> {
+                        toggleFullscreen()
+                        true
+                    }
+                    PlayerKeyAction.ToggleDanmaku -> {
+                        toggleLiveDanmaku()
+                        true
+                    }
+                    PlayerKeyAction.ToggleLike -> {
+                        viewModel.clickLike()
+                        true
+                    }
+                    PlayerKeyAction.TakeScreenshot -> {
+                        captureLiveScreenshot()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .focusable()
+    } else {
+        Modifier
+    }
+
     // 统一容器：SC 全屏浮层需要盖住四种布局的播放器/弹幕层
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().then(keyboardModifier)) {
     when (liveLayoutMode) {
         LiveRoomLayoutMode.LandscapeSplit -> {
             Box(
@@ -1493,6 +1577,8 @@ fun LivePlayerScreen(
         LiveSuperChatFlashOverlay(
             flashFlow = viewModel.superChatFlashFlow,
             onUserClick = onUserClick,
+            persistUntilDismiss = liveSuperChatPersistent,
+            maxWidthDp = liveSuperChatMaxWidthDp,
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -1599,6 +1685,10 @@ fun LivePlayerScreen(
             allowBottom = liveDanmakuSettings.allowBottom,
             allowColorful = liveDanmakuSettings.allowColorful,
             superChatFlashEnabled = liveSuperChatFlashEnabled,
+            superChatPersistent = liveSuperChatPersistent,
+            superChatMaxWidthDp = liveSuperChatMaxWidthDp,
+            portraitExpandEnabled = livePortraitExpandEnabled,
+            keyboardControlsEnabled = liveKeyboardControlsEnabled,
             onToggleDanmaku = { toggleLiveDanmaku() },
             onToggleChat = {
                 if (portraitPresentation.usePortraitControls) isPortraitChatVisible = !isPortraitChatVisible
@@ -1666,6 +1756,26 @@ fun LivePlayerScreen(
                         context,
                         !liveSuperChatFlashEnabled
                     )
+                }
+            },
+            onToggleSuperChatPersistent = {
+                coroutineScope.launch {
+                    SettingsManager.setLiveSuperChatPersistent(context, !liveSuperChatPersistent)
+                }
+            },
+            onSuperChatMaxWidthChanged = { widthDp ->
+                coroutineScope.launch {
+                    SettingsManager.setLiveSuperChatMaxWidthDp(context, widthDp)
+                }
+            },
+            onTogglePortraitExpand = {
+                coroutineScope.launch {
+                    SettingsManager.setLivePortraitExpandEnabled(context, !livePortraitExpandEnabled)
+                }
+            },
+            onToggleKeyboardControls = {
+                coroutineScope.launch {
+                    SettingsManager.setLiveKeyboardControlsEnabled(context, !liveKeyboardControlsEnabled)
                 }
             },
             onOpenBlock = {
@@ -2349,6 +2459,10 @@ private fun LiveDanmakuSettingsDialog(
     allowBottom: Boolean,
     allowColorful: Boolean,
     superChatFlashEnabled: Boolean,
+    superChatPersistent: Boolean,
+    superChatMaxWidthDp: Int,
+    portraitExpandEnabled: Boolean,
+    keyboardControlsEnabled: Boolean,
     onToggleDanmaku: () -> Unit,
     onToggleChat: () -> Unit,
     onDisplayAreaSelected: (Float) -> Unit,
@@ -2360,6 +2474,10 @@ private fun LiveDanmakuSettingsDialog(
     onToggleAllowBottom: () -> Unit,
     onToggleAllowColorful: () -> Unit,
     onToggleSuperChatFlash: () -> Unit,
+    onToggleSuperChatPersistent: () -> Unit,
+    onSuperChatMaxWidthChanged: (Int) -> Unit,
+    onTogglePortraitExpand: () -> Unit,
+    onToggleKeyboardControls: () -> Unit,
     onOpenBlock: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -2434,6 +2552,41 @@ private fun LiveDanmakuSettingsDialog(
                     checked = superChatFlashEnabled,
                     onCheckedChange = { onToggleSuperChatFlash() }
                 )
+                LiveSettingSwitchRow(
+                    title = "SC 卡片常驻显示",
+                    checked = superChatPersistent,
+                    onCheckedChange = { onToggleSuperChatPersistent() }
+                )
+                LiveDanmakuStyleSliderRow(
+                    label = "全屏 SC 宽度",
+                    valueText = "${superChatMaxWidthDp} dp",
+                    value = superChatMaxWidthDp.toFloat(),
+                    valueRange = 260f..640f,
+                    steps = 18,
+                    onValueChangeFinished = { onSuperChatMaxWidthChanged(it.roundToInt()) }
+                )
+                LiveSettingSwitchRow(
+                    title = "竖屏扩大展示",
+                    checked = portraitExpandEnabled,
+                    onCheckedChange = { onTogglePortraitExpand() }
+                )
+                AppText(
+                    "仅对真竖屏直播生效；放大画面填满视窗时会裁去部分边缘。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                LiveSettingSwitchRow(
+                    title = "键盘控制",
+                    checked = keyboardControlsEnabled,
+                    onCheckedChange = { onToggleKeyboardControls() }
+                )
+                if (keyboardControlsEnabled) {
+                    AppText(
+                        "Space/K 播放暂停 · F 全屏 · D 弹幕 · M 静音 · 方向键音量 · Q 点赞 · S 截图",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 AppSurface(
                     onClick = onOpenBlock,
                     shape = AppShapes.container(ContainerLevel.Card),

@@ -1563,6 +1563,14 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     private val KEY_LIVE_SUPER_CHAT_FLASH_ENABLED =
         booleanPreferencesKey("live_super_chat_flash_enabled")
     private val KEY_LIVE_DANMAKU_ENABLED = booleanPreferencesKey("live_danmaku_enabled")
+    private val KEY_LIVE_SUPER_CHAT_PERSISTENT =
+        booleanPreferencesKey("live_super_chat_persistent")
+    private val KEY_LIVE_SUPER_CHAT_MAX_WIDTH_DP =
+        intPreferencesKey("live_super_chat_max_width_dp")
+    private val KEY_LIVE_PORTRAIT_EXPAND_ENABLED =
+        booleanPreferencesKey("live_portrait_expand_enabled")
+    private val KEY_LIVE_KEYBOARD_CONTROLS_ENABLED =
+        booleanPreferencesKey("live_keyboard_controls_enabled")
     private val KEY_VIDEO_TRANSITION_REALTIME_BLUR_ENABLED =
         booleanPreferencesKey("video_transition_realtime_blur_enabled")
     private val KEY_VIDEO_SHARED_TRANSITION_SPEED =
@@ -3183,6 +3191,50 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     suspend fun setLiveSuperChatFlashEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[KEY_LIVE_SUPER_CHAT_FLASH_ENABLED] = value
+        }
+    }
+
+    fun getLiveSuperChatPersistent(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_LIVE_SUPER_CHAT_PERSISTENT] ?: false
+        }
+
+    suspend fun setLiveSuperChatPersistent(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIVE_SUPER_CHAT_PERSISTENT] = value
+        }
+    }
+
+    fun getLiveSuperChatMaxWidthDp(context: Context): Flow<Int> =
+        context.settingsDataStore.data.map { preferences ->
+            (preferences[KEY_LIVE_SUPER_CHAT_MAX_WIDTH_DP] ?: 360).coerceIn(260, 640)
+        }
+
+    suspend fun setLiveSuperChatMaxWidthDp(context: Context, value: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIVE_SUPER_CHAT_MAX_WIDTH_DP] = value.coerceIn(260, 640)
+        }
+    }
+
+    fun getLivePortraitExpandEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_LIVE_PORTRAIT_EXPAND_ENABLED] ?: false
+        }
+
+    suspend fun setLivePortraitExpandEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIVE_PORTRAIT_EXPAND_ENABLED] = value
+        }
+    }
+
+    fun getLiveKeyboardControlsEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[KEY_LIVE_KEYBOARD_CONTROLS_ENABLED] ?: true
+        }
+
+    suspend fun setLiveKeyboardControlsEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIVE_KEYBOARD_CONTROLS_ENABLED] = value
         }
     }
 
