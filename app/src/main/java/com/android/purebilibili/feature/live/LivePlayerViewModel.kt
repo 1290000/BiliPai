@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.android.purebilibili.core.network.socket.DanmakuProtocol
 import com.android.purebilibili.data.repository.DanmakuRepository
@@ -151,7 +152,7 @@ class LivePlayerViewModel : ViewModel() {
     
     // 直播弹幕流 (UI 观察此流进行渲染)
     private val _danmakuFlow = MutableSharedFlow<LiveDanmakuItem>(
-        replay = 48,
+        replay = 0,
         extraBufferCapacity = 120
     )
     val danmakuFlow = _danmakuFlow.asSharedFlow()
@@ -159,6 +160,7 @@ class LivePlayerViewModel : ViewModel() {
     private val _chatHistory = MutableStateFlow<List<LiveChatMessage>>(emptyList())
     val chatHistory = _chatHistory.asStateFlow()
     private var nextChatSequence = 0L
+    private val chatHistoryLock = Any()
 
     private val _superChatItems = MutableStateFlow<List<LiveDanmakuItem>>(emptyList())
     val superChatItems = _superChatItems.asStateFlow()
@@ -183,6 +185,7 @@ class LivePlayerViewModel : ViewModel() {
     val voteSnapshot = _voteSnapshot.asStateFlow()
     
     private var danmakuClient: com.android.purebilibili.core.network.socket.LiveDanmakuClient? = null
+    private var livePlaybackRequested = true
     private var liveStreamLoadJob: Job? = null
     private var danmakuConnectJob: Job? = null
     private var danmakuCollectJob: Job? = null
@@ -224,8 +227,7 @@ class LivePlayerViewModel : ViewModel() {
         pauseLiveHeartbeat()
         if (currentRoomId != roomId) {
             _voteSnapshot.value = LiveVoteSnapshot()
-            _chatHistory.value = emptyList()
-            nextChatSequence = 0L
+            clearChatHistory()
         }
         currentRoomId = roomId
         currentRequestedQuality = qn
@@ -577,9 +579,14 @@ class LivePlayerViewModel : ViewModel() {
      */
     fun toggleDanmaku() {
         val currentState = _uiState.value as? LivePlayerState.Success ?: return
-        _uiState.value = currentState.copy(
-            isDanmakuEnabled = !currentState.isDanmakuEnabled
-        )
+        setDanmakuEnabled(!currentState.isDanmakuEnabled)
+    }
+
+    fun setDanmakuEnabled(enabled: Boolean) {
+        val currentState = _uiState.value as? LivePlayerState.Success ?: return
+        if (currentState.isDanmakuEnabled != enabled) {
+            _uiState.value = currentState.copy(isDanmakuEnabled = enabled)
+        }
     }
 
     /**
@@ -833,6 +840,7 @@ class LivePlayerViewModel : ViewModel() {
      * 启动直播弹幕
      */
     private fun startLiveDanmaku(roomId: Long) {
+        if (!livePlaybackRequested) return
         // 先断开旧连接
         danmakuConnectJob?.cancel()
         danmakuCollectJob?.cancel()
@@ -869,8 +877,7 @@ class LivePlayerViewModel : ViewModel() {
     }
 
     private suspend fun preloadLiveRoomMessages(roomId: Long) {
-        _chatHistory.value = emptyList()
-        nextChatSequence = 0L
+        clearChatHistory()
         val prefetchedSuperChats = mutableListOf<LiveDanmakuItem>()
         LiveRepository.getLiveDanmakuHistory(roomId).onSuccess { items ->
             items.filter { shouldRenderLiveDanmaku(it.text, it.emoticonUrl) }.forEach { seed ->
@@ -983,7 +990,7 @@ class LivePlayerViewModel : ViewModel() {
         }
     }
 
-    fun sendEmoticon(item: LiveEmoticonItem) {
+    fun sendEmoticon(item: LiveEmoticonItem, preserveReplyTarget: Boolean = false) {
         if (currentRoomId == 0L || item.emoji.isBlank()) return
         viewModelScope.launch {
             val reply = _replyTarget.value
@@ -1000,7 +1007,7 @@ class LivePlayerViewModel : ViewModel() {
             LiveRepository.sendDanmaku(request).onSuccess {
                 recentSentDanmaku = item.emoji
                 recentSentTime = System.currentTimeMillis()
-                _replyTarget.value = null
+                if (!preserveReplyTarget) _replyTarget.value = null
                 _events.tryEmit(LivePlayerEvent.EmoticonSent)
                 val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
                 emitOwnLiveChatItem(
@@ -1309,7 +1316,17 @@ class LivePlayerViewModel : ViewModel() {
     }
 
     private fun appendChatHistory(item: LiveDanmakuItem) {
-        _chatHistory.value = (_chatHistory.value + LiveChatMessage(++nextChatSequence, item)).takeLast(200)
+        synchronized(chatHistoryLock) {
+            val entry = LiveChatMessage(++nextChatSequence, item)
+            _chatHistory.update { current -> (current + entry).takeLast(200) }
+        }
+    }
+
+    private fun clearChatHistory() {
+        synchronized(chatHistoryLock) {
+            _chatHistory.value = emptyList()
+            nextChatSequence = 0L
+        }
     }
 
     private fun emitOwnLiveChatItem(item: LiveDanmakuItem) {
@@ -1363,6 +1380,7 @@ class LivePlayerViewModel : ViewModel() {
     }
 
     fun resumeLiveHeartbeatIfNeeded() {
+        if (!livePlaybackRequested) return
         val state = _uiState.value as? LivePlayerState.Success ?: return
         if (currentRoomId <= 0L || state.roomInfo.liveStatus != 1) return
         if (liveHeartbeatJob?.isActive == true) return
@@ -1377,6 +1395,25 @@ class LivePlayerViewModel : ViewModel() {
                 }
                 delay(intervalSec.coerceAtLeast(1) * 1000L)
             }
+        }
+    }
+
+    fun setLivePlaybackRequested(playWhenReady: Boolean) {
+        if (livePlaybackRequested == playWhenReady) return
+        livePlaybackRequested = playWhenReady
+        if (playWhenReady) {
+            resumeLiveHeartbeatIfNeeded()
+            if (currentRoomId > 0L && danmakuClient == null && danmakuConnectJob?.isActive != true) {
+                startLiveDanmaku(currentRoomId)
+            }
+        } else {
+            pauseLiveHeartbeat()
+            danmakuConnectJob?.cancel()
+            danmakuConnectJob = null
+            danmakuCollectJob?.cancel()
+            danmakuCollectJob = null
+            danmakuClient?.disconnect()
+            danmakuClient = null
         }
     }
 

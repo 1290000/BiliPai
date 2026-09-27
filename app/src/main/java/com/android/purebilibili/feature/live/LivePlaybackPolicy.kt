@@ -76,6 +76,14 @@ internal fun shouldRecoverUnexpectedLiveEnd(
         !isMiniLiveMode
 }
 
+/** Maps the app's Wi-Fi/mobile video-quality preference to a live-room quality tier. */
+internal fun resolveLiveDefaultQualityQn(videoQualityId: Int): Int = when {
+    videoQualityId >= 80 -> 400
+    videoQualityId >= 64 -> 250
+    videoQualityId >= 32 -> 150
+    else -> 80
+}
+
 internal fun resolveLivePlayback(
     data: LivePlayUrlData,
     requestedQn: Int

@@ -21,6 +21,15 @@ import kotlin.test.assertTrue
 class LivePlaybackPolicyTest {
 
     @Test
+    fun `default video quality preference maps to a live quality tier`() {
+        assertEquals(400, resolveLiveDefaultQualityQn(116))
+        assertEquals(400, resolveLiveDefaultQualityQn(80))
+        assertEquals(250, resolveLiveDefaultQualityQn(64))
+        assertEquals(150, resolveLiveDefaultQualityQn(32))
+        assertEquals(80, resolveLiveDefaultQualityQn(16))
+    }
+
+    @Test
     fun `behind live window should seek to current live edge`() {
         assertEquals(
             LivePlaybackErrorRecovery.SEEK_TO_LIVE_EDGE,

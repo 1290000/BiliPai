@@ -61,12 +61,12 @@ class LivePortraitPresentationPolicyTest {
     }
 
     @Test
-    fun `only vertical portrait playback disables accidental playback gestures`() {
+    fun `vertical portrait keeps like double tap and enables fullscreen center drag`() {
         LiveRoomLayoutMode.entries.forEach { mode ->
             val policy = resolveLivePlayerGesturePolicy(mode)
             val portrait = mode == LiveRoomLayoutMode.PortraitVerticalOverlay
             assertEquals(!portrait, policy.doubleTapPlayback)
-            assertEquals(!portrait, policy.centerDragFullscreen)
+            assertTrue(policy.centerDragFullscreen)
         }
     }
 }

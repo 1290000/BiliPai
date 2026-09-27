@@ -104,6 +104,7 @@ import com.android.purebilibili.feature.live.components.LiveStreamSourceSheet
 import com.android.purebilibili.feature.live.components.LiveSuperChatSection
 import com.android.purebilibili.feature.live.components.LiveVotePanel
 import com.android.purebilibili.feature.live.components.LiveSuperChatFlashOverlay
+import com.android.purebilibili.feature.live.components.LiveShareToMessageSheet
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -193,6 +194,7 @@ fun LivePlayerScreen(
     var showContributionRankSheet by remember { mutableStateOf(false) }
     var showSendDanmakuSheet by remember { mutableStateOf(false) }
     var showEmoticonSheet by remember { mutableStateOf(false) }
+    var showShareMessageSheet by remember { mutableStateOf(false) }
     var showStreamSourceSheet by remember { mutableStateOf(false) }
     var showPortraitMoreSheet by remember(roomId, siteId) { mutableStateOf(false) }
     var showPortraitInteractionSheet by remember(roomId, siteId) { mutableStateOf(false) }
@@ -214,6 +216,11 @@ fun LivePlayerScreen(
     var backgroundPlaybackEnabled by remember {
         mutableStateOf(SettingsManager.getBackgroundPlaybackEnabledSync(context))
     }
+    val autoEnterFullscreenEnabled by SettingsManager.getAutoEnterFullscreen(context)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val autoExitFullscreenEnabled by SettingsManager.getAutoExitFullscreen(context)
+        .collectAsStateWithLifecycle(initialValue = true)
+    var didAutoEnterFullscreen by rememberSaveable(roomId, siteId) { mutableStateOf(false) }
     var shutdownAtMillis by remember { mutableStateOf<Long?>(null) }
     val showLivePipButton = remember { shouldShowLivePipButton(android.os.Build.VERSION.SDK_INT) }
     val successState = uiState as? LivePlayerState.Success
@@ -227,6 +234,8 @@ fun LivePlayerScreen(
     val roomInfo = successState?.roomInfo ?: RoomInfo()
     val anchorInfo = successState?.anchorInfo ?: AnchorInfo()
     val currentIsRoomLive by rememberUpdatedState(roomInfo.liveStatus == 1)
+    val currentAutoEnterFullscreen by rememberUpdatedState(autoEnterFullscreenEnabled)
+    val currentAutoExitFullscreen by rememberUpdatedState(autoExitFullscreenEnabled)
     val isPortraitLive = roomInfo.isPortrait
     val liveRoomTitle = roomInfo.title.ifBlank { title }
     val liveCoverForUi = roomInfo.background.ifBlank { roomInfo.cover }
@@ -297,6 +306,9 @@ fun LivePlayerScreen(
     val liveDanmakuDisplayArea = liveDanmakuSettings.displayArea
     val liveSuperChatFlashEnabled by SettingsManager
         .getLiveSuperChatFlashEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = true)
+    val liveDanmakuEnabledPreference by SettingsManager
+        .getLiveDanmakuEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
     val pipNoDanmaku by SettingsManager
         .getPipNoDanmakuEnabled(context)
@@ -374,6 +386,17 @@ fun LivePlayerScreen(
         isFullscreen = !isFullscreen
     }
 
+    fun toggleLiveDanmaku() {
+        val current = successState?.isDanmakuEnabled ?: liveDanmakuEnabledPreference
+        val next = !current
+        viewModel.setDanmakuEnabled(next)
+        coroutineScope.launch { SettingsManager.setLiveDanmakuEnabled(context, next) }
+    }
+
+    LaunchedEffect(roomId, liveDanmakuEnabledPreference, successState?.playUrl) {
+        if (successState != null) viewModel.setDanmakuEnabled(liveDanmakuEnabledPreference)
+    }
+
     fun exitLiveRoom() {
         // The visible back affordance means leave the room. Toggling fullscreen here first
         // briefly selects LandscapeSplit on tablets/foldables and exposes its chat column.
@@ -435,8 +458,7 @@ fun LivePlayerScreen(
     }
 
     fun shareLiveToMessage() {
-        Toast.makeText(context, "请选择联系人后发送直播间链接", Toast.LENGTH_SHORT).show()
-        shareLiveUrl()
+        showShareMessageSheet = true
     }
 
     fun toggleBackgroundPlayback() {
@@ -499,7 +521,6 @@ fun LivePlayerScreen(
                 }
                 LivePlayerEvent.EmoticonSent -> {
                     showEmoticonSheet = false
-                    if (showSendDanmakuSheet) showSendDanmakuSheet = false
                 }
             }
         }
@@ -632,8 +653,15 @@ fun LivePlayerScreen(
                 isPlaying = playing
                 if (playing) {
                     viewModel.onPlaybackStarted()
+                    if (currentAutoEnterFullscreen && !didAutoEnterFullscreen) {
+                        didAutoEnterFullscreen = true
+                        if (!isFullscreen) toggleFullscreen()
+                    }
                 }
                 CrashReporter.markLivePlaybackStage(if (playing) "playing" else "not_playing")
+            }
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                viewModel.setLivePlaybackRequested(playWhenReady)
             }
             // 📺 [新增] 直播流结束时自动关闭小窗
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -650,6 +678,13 @@ fun LivePlayerScreen(
                 ) {
                     Logger.w(TAG, "直播流意外结束，尝试切换播放源")
                     viewModel.tryNextUrl()
+                } else if (
+                    playbackState == Player.STATE_ENDED &&
+                    currentAutoExitFullscreen &&
+                    !currentIsRoomLive &&
+                    isFullscreen
+                ) {
+                    toggleFullscreen()
                 }
             }
         }
@@ -658,7 +693,17 @@ fun LivePlayerScreen(
     }
     
     // 播放 URL 管理
-    LaunchedEffect(siteId, roomId) { viewModel.loadLiveStream(bilibiliRoomId) }
+    LaunchedEffect(siteId, roomId) {
+        val savedQuality = if (com.android.purebilibili.core.util.NetworkUtils.isWifi(context)) {
+            SettingsManager.getWifiQualitySync(context)
+        } else {
+            SettingsManager.getMobileQualitySync(context)
+        }
+        viewModel.loadLiveStream(
+            bilibiliRoomId,
+            qn = resolveLiveDefaultQualityQn(savedQuality),
+        )
+    }
     // 播放 URL 管理 - 只在 playUrl 变化时重新加载
     val playUrl = (uiState as? LivePlayerState.Success)?.playUrl
     LaunchedEffect(playUrl) {
@@ -730,7 +775,7 @@ fun LivePlayerScreen(
                     )
                     if (shouldPausePlayback) {
                         exoPlayer.pause()
-                        viewModel.pauseLiveHeartbeat()
+                        viewModel.setLivePlaybackRequested(false)
                         CrashReporter.markLivePlaybackStage("lifecycle_pause")
                     } else {
                         CrashReporter.markLivePlaybackStage("lifecycle_pause_keep_playing")
@@ -768,7 +813,7 @@ fun LivePlayerScreen(
                         exoPlayer.play()
                         Logger.d(TAG, "▶️ ON_RESUME live playback kicked after surface recovery")
                     }
-                    viewModel.resumeLiveHeartbeatIfNeeded()
+                    viewModel.setLivePlaybackRequested(exoPlayer.playWhenReady)
                     CrashReporter.markLivePlaybackStage("lifecycle_resume")
                 }
                 else -> {}
@@ -945,7 +990,7 @@ fun LivePlayerScreen(
             
             // Custom Controls
             LivePlayerControls(
-                isPlaying = isPlaying,
+                isPlaying = exoPlayer.playWhenReady,
                 isFullscreen = isFullscreen,
                 gesturePolicy = playerGesturePolicy,
                 usePortraitControls = portraitPresentation.usePortraitControls,
@@ -962,7 +1007,7 @@ fun LivePlayerScreen(
                 title = liveRoomTitle,
                 subtitle = liveSubtitle,
                 onPlayPause = {
-                    if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                    if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
                 },
                 onToggleFullscreen = { toggleFullscreen() },
                 onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
@@ -972,7 +1017,7 @@ fun LivePlayerScreen(
                 showChatToggle = showChatToggle,
                 // 弹幕开关
                 isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
-                onToggleDanmaku = { viewModel.toggleDanmaku() },
+                onToggleDanmaku = { toggleLiveDanmaku() },
                 onOpenDanmakuSettings = { showDanmakuSettingsDialog = true },
                 onOpenBlockSettings = { showBlockDialog = true },
                 // [新增] 刷新
@@ -1058,7 +1103,7 @@ fun LivePlayerScreen(
             isOverlay = isOverlay,
             showHeader = showHeader,
             isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
-            onToggleDanmaku = { viewModel.toggleDanmaku() },
+            onToggleDanmaku = { toggleLiveDanmaku() },
             onLike = { count -> viewModel.clickLike(count) },
             onOpenEmote = {
                 showEmoticonSheet = true
@@ -1088,7 +1133,7 @@ fun LivePlayerScreen(
         LiveChatInputBar(
             isOverlay = false,
             isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
-            onToggleDanmaku = { viewModel.toggleDanmaku() },
+            onToggleDanmaku = { toggleLiveDanmaku() },
             onLike = { count -> viewModel.clickLike(count) },
             onOpenEmote = { showEmoticonSheet = true },
             onSend = { text -> viewModel.sendDanmaku(text) },
@@ -1352,7 +1397,7 @@ fun LivePlayerScreen(
                             LivePortraitBottomBar(
                                 isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
                                 chatVisible = isPortraitChatVisible,
-                                onToggleDanmaku = { viewModel.toggleDanmaku() },
+                                onToggleDanmaku = { toggleLiveDanmaku() },
                                 onOpenSend = { showSendDanmakuSheet = true },
                                 onOpenEmote = { showEmoticonSheet = true },
                                 onToggleChat = { isPortraitChatVisible = !isPortraitChatVisible },
@@ -1469,10 +1514,13 @@ fun LivePlayerScreen(
                 add(AppWindowAction("画面比例：${videoAspectRatio.displayName}", onClick = {
                     showVideoFitMenu = true
                 }))
-                add(AppWindowAction(if (isPlaying) "暂停播放" else "继续播放", onClick = {
-                    if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                add(AppWindowAction(if (exoPlayer.playWhenReady) "暂停播放" else "继续播放", onClick = {
+                    if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
                 }))
-                add(AppWindowAction("横屏观看", onClick = { toggleFullscreen() }))
+                add(AppWindowAction(
+                    if (isFullscreen) "退出竖屏全屏" else "竖屏全屏观看",
+                    onClick = { toggleFullscreen() },
+                ))
                 if (showLivePipButton) {
                     add(AppWindowAction("画中画", onClick = { enterLivePip() }))
                 }
@@ -1487,7 +1535,7 @@ fun LivePlayerScreen(
                 add(AppWindowAction("定时关闭", onClick = { showShutdownTimerDialog = true }))
                 add(AppWindowAction(
                     if (successState?.isDanmakuEnabled == true) "关闭滚动弹幕" else "开启滚动弹幕",
-                    onClick = { viewModel.toggleDanmaku() },
+                    onClick = { toggleLiveDanmaku() },
                 ))
                 add(AppWindowAction("弹幕设置", onClick = { showDanmakuSettingsDialog = true }))
                 add(AppWindowAction("屏蔽设置", onClick = { showBlockDialog = true }))
@@ -1551,7 +1599,7 @@ fun LivePlayerScreen(
             allowBottom = liveDanmakuSettings.allowBottom,
             allowColorful = liveDanmakuSettings.allowColorful,
             superChatFlashEnabled = liveSuperChatFlashEnabled,
-            onToggleDanmaku = { viewModel.toggleDanmaku() },
+            onToggleDanmaku = { toggleLiveDanmaku() },
             onToggleChat = {
                 if (portraitPresentation.usePortraitControls) isPortraitChatVisible = !isPortraitChatVisible
                 else isInteractionPanelVisible = !isInteractionPanelVisible
@@ -1655,7 +1703,7 @@ fun LivePlayerScreen(
         LiveEmoticonSheet(
             packages = emoticonPackages,
             onSelected = { item ->
-                viewModel.sendEmoticon(item)
+                viewModel.sendEmoticon(item, preserveReplyTarget = showSendDanmakuSheet)
             },
             onDismiss = { showEmoticonSheet = false }
         )
@@ -1697,6 +1745,17 @@ fun LivePlayerScreen(
             anchorInfo = anchorInfo,
             roomInfo = roomInfo,
             onDismiss = { showContributionRankSheet = false }
+        )
+    }
+
+    if (showShareMessageSheet) {
+        LiveShareToMessageSheet(
+            roomId = bilibiliRoomId,
+            roomTitle = liveRoomTitle,
+            onDismiss = { showShareMessageSheet = false },
+            onResult = { success, message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            },
         )
     }
 
