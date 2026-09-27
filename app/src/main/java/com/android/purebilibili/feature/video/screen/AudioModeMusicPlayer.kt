@@ -29,6 +29,7 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.data.model.response.Page
 import com.android.purebilibili.feature.audio.lyrics.BiliSubtitleLyricsPolicy
+import com.android.purebilibili.feature.audio.lyrics.LyricSource
 import com.android.purebilibili.feature.audio.player.AudioNowPlayingSession
 import com.android.purebilibili.feature.audio.player.MusicPlayerUiState
 import com.android.purebilibili.feature.audio.player.MusicLyricCandidateUi
@@ -41,6 +42,7 @@ import com.android.purebilibili.core.store.PlayHistoryStore
 import com.android.purebilibili.core.store.PlayLastSession
 import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager
+import com.android.purebilibili.feature.video.subtitle.buildSubtitleTrackOptions
 import com.android.purebilibili.feature.video.playback.audio.resolveAudioQualityControlPresentation
 import com.android.purebilibili.feature.video.share.VideoShareSheet
 import com.android.purebilibili.feature.video.share.buildVideoSharePayload
@@ -330,22 +332,49 @@ internal fun AudioModeMusicPlayer(
         successState.subtitlePrimaryCues,
         successState.subtitleSecondaryCues,
         successState.subtitlePrimaryLikelyAi,
-        successState.subtitlePrimaryLanguage
+        successState.subtitlePrimaryLanguage,
+        successState.subtitleTracks,
+        successState.subtitlePrimaryTrackKey
     ) {
+        val selectedTrack = successState.subtitleTracks.firstOrNull {
+            it.trackKey == successState.subtitlePrimaryTrackKey
+        }
         BiliSubtitleLyricsPolicy.convertSubtitlesToLyricDocument(
             primaryCues = successState.subtitlePrimaryCues,
             secondaryCues = successState.subtitleSecondaryCues,
             isAiGenerated = successState.subtitlePrimaryLikelyAi,
-            languageLabel = successState.subtitlePrimaryLanguage
+            languageLabel = selectedTrack?.lanDoc ?: successState.subtitlePrimaryLanguage
         )
     }
+    val subtitleLanguageOptions = remember(successState.subtitleTracks) {
+        buildSubtitleTrackOptions(
+            tracks = successState.subtitleTracks,
+            selectedTrackKey = successState.subtitlePrimaryTrackKey
+        ).map { it.trackKey to it.label }
+    }
+    var subtitleLanguageManuallySelected by remember(info.bvid, info.cid) { mutableStateOf(false) }
+    var subtitleOffsetMs by remember(info.bvid, info.cid) { mutableStateOf(0L) }
+    val adjustedSubtitleLyrics = remember(subtitleLyrics, subtitleOffsetMs) {
+        subtitleLyrics?.withOffset(subtitleOffsetMs)
+    }
 
-    val effectiveLyrics = remember(lyricsState.lyricsDocument, subtitleLyrics) {
+    val effectiveLyrics = remember(
+        lyricsState.lyricsDocument,
+        adjustedSubtitleLyrics,
+        subtitleLanguageManuallySelected
+    ) {
         // 视频字幕与搜索歌词都存在时，按时间轴对齐度取舍，避免错位的搜索歌词盖过本地字幕
-        BiliSubtitleLyricsPolicy.resolveEffectiveLyricsWithAlignment(
-            musicLyrics = lyricsState.lyricsDocument,
-            subtitleLyrics = subtitleLyrics
-        )
+        if (subtitleLanguageManuallySelected) {
+            BiliSubtitleLyricsPolicy.resolveEffectiveLyrics(
+                musicLyrics = null,
+                subtitleLyrics = adjustedSubtitleLyrics
+            )
+        } else {
+            BiliSubtitleLyricsPolicy.resolveEffectiveLyricsWithAlignment(
+                musicLyrics = lyricsState.lyricsDocument,
+                subtitleLyrics = adjustedSubtitleLyrics
+            )
+        }
     }
 
     MusicPlayerContent(
@@ -420,7 +449,19 @@ internal fun AudioModeMusicPlayer(
         },
         onPlayModeChange = PlaylistManager::setPlayMode,
         onShuffleEnabledChange = PlaylistManager::setShuffleEnabled,
-        onLyricsOffsetChange = lyricsViewModel::adjustLyricsOffset,
+        onLyricsOffsetChange = { deltaMs ->
+            if (effectiveLyrics?.source == LyricSource.BILIBILI) {
+                subtitleOffsetMs = (subtitleOffsetMs + deltaMs).coerceIn(-10_000L, 10_000L)
+            } else {
+                lyricsViewModel.adjustLyricsOffset(deltaMs)
+            }
+        },
+        subtitleLanguageOptions = subtitleLanguageOptions,
+        selectedSubtitleTrackKey = successState.subtitlePrimaryTrackKey,
+        onSubtitleTrackSelected = { trackKey ->
+            subtitleLanguageManuallySelected = true
+            viewModel.selectSubtitleTrack(trackKey)
+        },
         onLyricsRetry = lyricsViewModel::retryLyrics,
         onLyricsSearch = lyricsViewModel::searchLyrics,
         onLyricsCandidateSelected = lyricsViewModel::selectLyricsCandidate,

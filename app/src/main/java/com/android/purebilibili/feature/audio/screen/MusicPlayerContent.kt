@@ -369,6 +369,9 @@ internal fun MusicPlayerContent(
     onPlayModeChange: (PlayMode) -> Unit = {},
     onShuffleEnabledChange: (Boolean) -> Unit = {},
     onLyricsOffsetChange: (Long) -> Unit = {},
+    subtitleLanguageOptions: List<Pair<String, String>> = emptyList(),
+    selectedSubtitleTrackKey: String? = null,
+    onSubtitleTrackSelected: (String) -> Unit = {},
     onLyricsRetry: () -> Unit = {},
     onLyricsSearch: (String) -> Unit = {},
     onLyricsCandidateSelected: (Int) -> Unit = {},
@@ -410,6 +413,7 @@ internal fun MusicPlayerContent(
     var isQueueCoverFlow by remember { mutableStateOf(true) }
     var musicTitleCollapsed by rememberSaveable { mutableStateOf(false) }
     var showActions by remember { mutableStateOf(false) }
+    var showLyricsOffsetSettings by remember { mutableStateOf(false) }
     var expandedRightPaneTab by remember { mutableStateOf(ExpandedRightPaneTab.LYRICS) }
     var layoutPreferenceName by rememberSaveable {
         mutableStateOf(MusicPlayerLayoutPreference.AUTO.name)
@@ -1304,6 +1308,12 @@ internal fun MusicPlayerContent(
                                     showActions = false
                                     showLyricsSearch = true
                                 }
+                                if (state.lyrics != null || subtitleLanguageOptions.isNotEmpty()) {
+                                    MusicActionSheetItem("字幕 / 歌词设置", contentColor = sheetContentColor) {
+                                        showActions = false
+                                        showLyricsOffsetSettings = true
+                                    }
+                                }
                             }
                         }
                     }
@@ -1477,6 +1487,23 @@ internal fun MusicPlayerContent(
                     }
                 }
             }
+        }
+    }
+
+    if (showLyricsOffsetSettings) {
+        AppModalBottomSheet(
+            onDismissRequest = { showLyricsOffsetSettings = false },
+            containerColor = AppSurfaceTokens.surface(),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ) {
+            LyricsOffsetSettingsContent(
+                offsetMs = state.lyrics?.offsetMs ?: 0L,
+                sourceLabel = state.lyrics?.let(BiliSubtitleLyricsPolicy::resolveSourceLabel).orEmpty(),
+                onOffsetChange = onLyricsOffsetChange,
+                subtitleLanguageOptions = subtitleLanguageOptions,
+                selectedSubtitleTrackKey = selectedSubtitleTrackKey,
+                onSubtitleTrackSelected = onSubtitleTrackSelected,
+            )
         }
     }
     }
@@ -3136,6 +3163,86 @@ private fun formatLyricsOffset(offsetMs: Long): String {
     val hundredths = (absoluteMs % 1_000L) / 10L
     val sign = if (offsetMs > 0L) "+" else "-"
     return "校正 $sign$seconds.${hundredths.toString().padStart(2, '0')}s"
+}
+
+@Composable
+private fun LyricsOffsetSettingsContent(
+    offsetMs: Long,
+    sourceLabel: String,
+    onOffsetChange: (Long) -> Unit,
+    subtitleLanguageOptions: List<Pair<String, String>> = emptyList(),
+    selectedSubtitleTrackKey: String? = null,
+    onSubtitleTrackSelected: (String) -> Unit = {},
+) {
+    val contentColor = MaterialTheme.colorScheme.onSurface
+    val secondaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 620.dp)
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AppText(
+            text = "字幕 / 歌词设置",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
+        )
+        AppText("字幕语言", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = contentColor)
+        if (subtitleLanguageOptions.isEmpty()) {
+            AppText("当前视频没有可切换的字幕语言", color = secondaryColor)
+        } else {
+            subtitleLanguageOptions.forEach { (trackKey, label) ->
+                AppTextButton(
+                    onClick = { onSubtitleTrackSelected(trackKey) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) {
+                    AppText(
+                        text = if (trackKey == selectedSubtitleTrackKey) "✓  $label" else label,
+                        color = if (trackKey == selectedSubtitleTrackKey) MaterialTheme.colorScheme.primary else contentColor,
+                    )
+                }
+            }
+        }
+        if (sourceLabel.isNotBlank()) {
+            AppText(
+                text = "当前来源 · $sourceLabel",
+                style = MaterialTheme.typography.bodyMedium,
+                color = secondaryColor,
+            )
+        }
+        AppText(
+            text = formatLyricsOffset(offsetMs),
+            style = MaterialTheme.typography.bodyMedium,
+            color = secondaryColor,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AppTextButton(
+                onClick = { onOffsetChange(-250L) },
+                modifier = Modifier.weight(1f).height(48.dp),
+            ) {
+                AppText("提前 0.25 秒", color = contentColor)
+            }
+            AppTextButton(
+                onClick = { onOffsetChange(250L) },
+                modifier = Modifier.weight(1f).height(48.dp),
+            ) {
+                AppText("延后 0.25 秒", color = contentColor)
+            }
+        }
+        AppTextButton(
+            onClick = { onOffsetChange(-offsetMs) },
+            modifier = Modifier.height(48.dp),
+        ) {
+            AppText("重置时间校正", color = contentColor)
+        }
+    }
 }
 
 @Composable
