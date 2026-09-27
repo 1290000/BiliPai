@@ -68,6 +68,8 @@ import coil3.compose.AsyncImage
 import com.android.purebilibili.feature.home.components.LiquidGlassTuning
 import com.android.purebilibili.feature.home.components.LocalLiquidGlassRenderConfig
 import com.android.purebilibili.feature.home.components.biliPaiFloatingDockShell
+import com.android.purebilibili.feature.home.components.resolveBiliPaiBottomBarShellColor
+import com.android.purebilibili.feature.home.components.resolveBottomBarDarkTheme
 import com.android.purebilibili.feature.home.components.resolveSharedBottomBarCapsuleShape
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
@@ -176,8 +178,13 @@ internal fun AudioNowPlayingBar(
         glassEnabled = glassEnabled
     )
     val shape = resolveSharedBottomBarCapsuleShape()
-    val containerColor = AppSurfaceTokens.surfaceContainer()
     val glassActive = glassEnabled && miuixBackdrop != null
+    val containerColor = resolveBiliPaiBottomBarShellColor(
+        containerColor = AppSurfaceTokens.surfaceContainer(),
+        liquidGlassEnabled = glassEnabled,
+        darkTheme = resolveBottomBarDarkTheme(AppSurfaceTokens.background()),
+        liquidGlassTuning = liquidGlassTuning,
+    )
     val coverRotationDegrees = rememberMusicArtworkRotationDegrees(
         active = shouldRotateMusicArtwork(
             isPlaying = state.isPlaying,
