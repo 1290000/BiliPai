@@ -205,15 +205,20 @@ internal fun LivePortraitChatStream(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(start = AppSpacingTokens.ExtraSmall, top = AppSpacingTokens.ExtraSmall)
-                    .heightIn(min = 32.dp)
                     .semantics { contentDescription = "查看完整聊天记录" },
             ) {
-                AppText(
-                    text = "完整聊天",
-                    color = LiveStatusPalette.MediaContent,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = AppSpacingTokens.Small, vertical = 2.dp),
-                )
+                Box(
+                    modifier = Modifier
+                        .heightIn(min = 32.dp)
+                        .padding(horizontal = AppSpacingTokens.Small),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppText(
+                        text = "完整聊天",
+                        color = LiveStatusPalette.MediaContent,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
             }
         }
 

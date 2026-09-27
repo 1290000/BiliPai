@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -53,6 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -130,6 +132,11 @@ import dev.chrisbanes.haze.blur.materials.HazeMaterials
 import com.android.purebilibili.core.ui.blur.hazeSourceCompat
 import com.android.purebilibili.core.ui.blur.hazeEffectCompat
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.AppAlertDialog
@@ -142,6 +149,8 @@ import com.android.purebilibili.core.ui.rememberAppAnalyticsIcon
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppSurfaceTokens
+import com.android.purebilibili.core.ui.motion.AppMotionTokens
+import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppIconButton
@@ -301,6 +310,12 @@ fun LivePlayerScreen(
         configuration.screenHeightDp,
         configuration.fontScale,
     )
+    val reduceMotion = rememberSystemReduceMotion()
+    val latestTogglePortraitClearScreen by rememberUpdatedState(newValue = {
+        val nextClearScreen = !isPortraitClearScreen
+        isPortraitClearScreen = nextClearScreen
+        if (!nextClearScreen) showPortraitPlayerControls = true
+    })
     val visibleInteractionOverlay = if (portraitPresentation.usePortraitControls) {
         portraitPresentation.showChatPreview
     } else {
@@ -997,7 +1012,7 @@ fun LivePlayerScreen(
             
             // Danmaku Overlay (Only render if enabled)
             val successState = uiState as? LivePlayerState.Success
-            if (
+            val showLiveDanmakuOverlay =
                 portraitPresentation.showMediaOverlays &&
                 (liveLayoutMode != LiveRoomLayoutMode.PortraitVerticalOverlay || isFullscreen) &&
                 !(isPipRequested && pipNoDanmaku) &&
@@ -1005,6 +1020,11 @@ fun LivePlayerScreen(
                     isDanmakuEnabled = successState?.isDanmakuEnabled == true,
                     isAudioOnly = isLiveAudioOnly
                 )
+            AnimatedVisibility(
+                visible = showLiveDanmakuOverlay,
+                enter = fadeIn(animationSpec = AppMotionTokens.standardSpec()),
+                exit = fadeOut(animationSpec = AppMotionTokens.standardSpec()),
+                modifier = Modifier.fillMaxSize(),
             ) {
                 LiveDanmakuOverlay(
                     danmakuFlow = viewModel.danmakuFlow,
@@ -1027,10 +1047,6 @@ fun LivePlayerScreen(
                 usePortraitControls = portraitPresentation.usePortraitControls,
                 isClearScreen = portraitPresentation.clearScreen,
                 onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
-                onTogglePortraitClearScreen = {
-                    isPortraitClearScreen = !isPortraitClearScreen
-                    if (!isPortraitClearScreen) showPortraitPlayerControls = true
-                },
                 onOpenPortraitMore = {
                     showPortraitPlayerControls = true
                     showPortraitMoreSheet = true
@@ -1258,7 +1274,42 @@ fun LivePlayerScreen(
     }
 
     // 统一容器：SC 全屏浮层需要盖住四种布局的播放器/弹幕层
-    Box(modifier = Modifier.fillMaxSize().then(keyboardModifier)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(keyboardModifier)
+            .pointerInput(portraitPresentation.usePortraitControls) {
+                if (portraitPresentation.usePortraitControls) {
+                    var horizontalDrag = 0f
+                    var lastTriggeredDirection = 0
+                    var startedInCenter = false
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            horizontalDrag = 0f
+                            lastTriggeredDirection = 0
+                            startedInCenter = offset.x in (size.width / 3f)..(size.width * 2f / 3f) &&
+                                offset.y in (size.height * 0.2f)..(size.height * 0.8f)
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            horizontalDrag += dragAmount
+                            val threshold = size.width * 0.16f
+                            val direction = when {
+                                horizontalDrag <= -threshold -> -1
+                                horizontalDrag >= threshold -> 1
+                                else -> 0
+                            }
+                            if (startedInCenter && direction != 0 && direction != lastTriggeredDirection) {
+                                latestTogglePortraitClearScreen()
+                                lastTriggeredDirection = direction
+                                change.consume()
+                            }
+                        },
+                        onDragEnd = { startedInCenter = false },
+                        onDragCancel = { startedInCenter = false },
+                    )
+                }
+            }
+    ) {
     when (liveLayoutMode) {
         LiveRoomLayoutMode.LandscapeSplit -> {
             Box(
@@ -1438,21 +1489,34 @@ fun LivePlayerScreen(
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
                 }
-                if (portraitPresentation.showChatPreview || portraitPresentation.showChrome) {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .widthIn(max = 520.dp)
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(
-                                horizontal = AppSpacingTokens.Medium,
-                                vertical = AppSpacingTokens.Small,
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(
+                            horizontal = AppSpacingTokens.Medium,
+                            vertical = AppSpacingTokens.Small,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
+                ) {
+                    AnimatedVisibility(
+                        visible = portraitPresentation.showChatPreview,
+                        enter = if (reduceMotion) {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideInVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                        exit = if (reduceMotion) {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideOutVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
                     ) {
-                        if (portraitPresentation.showChatPreview) {
-                            LivePortraitChatStream(
+                        LivePortraitChatStream(
                                 messages = chatHistory.takeLast(portraitChatPreviewCount),
                                 superChatCount = superChatItems.size,
                                 onUserClick = onUserClick,
@@ -1483,22 +1547,35 @@ fun LivePlayerScreen(
                                 modifier = Modifier
                                     .fillMaxWidth(0.88f)
                                     .heightIn(max = portraitOverlayPanelHeightDp.dp),
-                            )
-                        }
-                        if (portraitPresentation.showChrome) {
-                            LivePortraitBottomBar(
-                                isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
-                                chatVisible = isPortraitChatVisible,
-                                onToggleDanmaku = { toggleLiveDanmaku() },
-                                onOpenSend = { showSendDanmakuSheet = true },
-                                onOpenEmote = { showEmoticonSheet = true },
-                                onToggleChat = { isPortraitChatVisible = !isPortraitChatVisible },
-                                onOpenMore = { showPortraitMoreSheet = true },
-                                onLike = { count -> viewModel.clickLike(count) },
-                                hazeState = hazeState,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
+                        )
+                    }
+                    AnimatedVisibility(
+                        visible = portraitPresentation.showChrome,
+                        enter = if (reduceMotion) {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideInVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                        exit = if (reduceMotion) {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideOutVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                    ) {
+                        LivePortraitBottomBar(
+                            isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
+                            chatVisible = isPortraitChatVisible,
+                            onToggleDanmaku = { toggleLiveDanmaku() },
+                            onOpenSend = { showSendDanmakuSheet = true },
+                            onOpenEmote = { showEmoticonSheet = true },
+                            onToggleChat = { isPortraitChatVisible = !isPortraitChatVisible },
+                            onOpenMore = { showPortraitMoreSheet = true },
+                            onLike = { count -> viewModel.clickLike(count) },
+                            hazeState = hazeState,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
                 if (portraitPresentation.clearScreen) {
