@@ -839,7 +839,7 @@ class LivePlayerViewModel : ViewModel() {
     /**
      * 启动直播弹幕
      */
-    private fun startLiveDanmaku(roomId: Long) {
+    private fun startLiveDanmaku(roomId: Long, preloadHistory: Boolean = true) {
         if (!livePlaybackRequested) return
         // 先断开旧连接
         danmakuConnectJob?.cancel()
@@ -848,7 +848,7 @@ class LivePlayerViewModel : ViewModel() {
         danmakuClient = null
         
         danmakuConnectJob = viewModelScope.launch {
-            preloadLiveRoomMessages(roomId)
+            if (preloadHistory) preloadLiveRoomMessages(roomId)
             val result = DanmakuRepository.startLiveDanmaku(viewModelScope, roomId)
             result.onSuccess { client ->
                 if (!isActive) {
@@ -1404,7 +1404,7 @@ class LivePlayerViewModel : ViewModel() {
         if (playWhenReady) {
             resumeLiveHeartbeatIfNeeded()
             if (currentRoomId > 0L && danmakuClient == null && danmakuConnectJob?.isActive != true) {
-                startLiveDanmaku(currentRoomId)
+                startLiveDanmaku(currentRoomId, preloadHistory = false)
             }
         } else {
             pauseLiveHeartbeat()
