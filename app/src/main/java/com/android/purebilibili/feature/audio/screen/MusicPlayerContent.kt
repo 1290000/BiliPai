@@ -752,6 +752,25 @@ internal fun MusicPlayerContent(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
+                        // 翻页过渡：随偏移淡出 + 轻微缩放，减少硬切感
+                        val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                        val pageAlpha = if (effectiveReduceMotion) {
+                            1f
+                        } else {
+                            1f - (kotlin.math.abs(pageOffset) * 0.45f).coerceIn(0f, 0.55f)
+                        }
+                        val pageScale = if (effectiveReduceMotion) {
+                            1f
+                        } else {
+                            1f - (kotlin.math.abs(pageOffset) * 0.06f).coerceIn(0f, 0.12f)
+                        }
+                        Box(
+                            modifier = Modifier.graphicsLayer {
+                                alpha = pageAlpha
+                                scaleX = pageScale
+                                scaleY = pageScale
+                            }
+                        ) {
                         if (page == 0) {
                             PlayerPage(
                                 state = state,
@@ -791,6 +810,7 @@ internal fun MusicPlayerContent(
                                 onToggleCoverStyle = {
                                     coverStyle = resolveNextCoverStyle(coverStyle)
                                 },
+                                showQuickFormatControls = true,
                                 showLyricsPreview = true,
                                 onOpenLyrics = {
                                     pagerScope.launch {
@@ -826,6 +846,7 @@ internal fun MusicPlayerContent(
                                 lyricsUiStyle = lyricsUiStyle,
                                 modifier = Modifier.padding(bottom = MUSIC_PLAYER_COMPACT_DOCK_BOTTOM_PADDING_DP.dp)
                             )
+                        }
                         }
                     }
                     BottomBarLiquidSegmentedControl(
@@ -1765,7 +1786,7 @@ private fun PlayerPage(
                         isPlaying = state.isPlaying,
                         reduceMotion = reduceMotion,
                         isDarkEnvironment = isDarkEnvironment,
-                        onClick = onToggleCoverStyle
+                        onClick = onOpenLyrics ?: onToggleCoverStyle
                     )
                 }
                 if (showLyricsPreview) {
@@ -1855,46 +1876,6 @@ private fun PlayerPage(
                     }
                 }
             }
-            if (showQuickFormatControls) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (onAudioQualityClick != null) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            MusicAudioQualityControl(
-                                label = audioQualityLabel,
-                                isHiResSelected = isHiResAudioSelected,
-                                isDolbySelected = isDolbyAudioSelected,
-                                onClick = onAudioQualityClick,
-                                glassTintColor = glassTintColor,
-                                isDarkEnvironment = isDarkEnvironment
-                            )
-                        }
-                    }
-                    AppSurface(
-                        onClick = onToggleCoverStyle,
-                        shape = AppShapes.container(ContainerLevel.Dialog),
-                        color = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
-                        border = BorderStroke(0.8.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AppText(
-                                text = resolveCoverStyleShortLabel(resolveNextCoverStyle(coverStyle)),
-                                color = MusicAccentColor,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
             Spacer(Modifier.height(10.dp))
             MusicProgress(
                 state = state,
@@ -1921,6 +1902,46 @@ private fun PlayerPage(
                     glassTintColor = glassTintColor,
                     isDarkEnvironment = isDarkEnvironment
                 )
+            }
+            if (showQuickFormatControls) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (onAudioQualityClick != null) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            MusicAudioQualityControl(
+                                label = audioQualityLabel,
+                                isHiResSelected = isHiResAudioSelected,
+                                isDolbyAudioSelected = isDolbyAudioSelected,
+                                onClick = onAudioQualityClick,
+                                glassTintColor = glassTintColor,
+                                isDarkEnvironment = isDarkEnvironment
+                            )
+                        }
+                    }
+                    AppSurface(
+                        onClick = onToggleCoverStyle,
+                        shape = AppShapes.container(ContainerLevel.Dialog),
+                        color = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
+                        border = BorderStroke(0.8.dp, resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)),
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AppText(
+                                text = resolveCoverStyleShortLabel(resolveNextCoverStyle(coverStyle)),
+                                color = MusicAccentColor,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(10.dp))
             MusicSecondaryControls(
@@ -3085,10 +3106,10 @@ private fun MusicPlayPauseButton(
 ) {
     // Keep the standalone landscape button visually identical to the main player control.
     val playButtonBg = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
-        .copy(alpha = if (isDarkEnvironment) 0.62f else 0.52f)
-    val playButtonFg = MusicContentColor
+        .copy(alpha = if (isDarkEnvironment) 0.42f else 0.36f)
+    val playButtonFg = MusicContentColor.copy(alpha = 0.92f)
     val playButtonBorder = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
-        .copy(alpha = 0.62f)
+        .copy(alpha = 0.45f)
     Box(
         modifier = modifier
             .size(sizeDp.dp)
@@ -3118,7 +3139,7 @@ private fun MusicPlayPauseButton(
                 imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (state.isPlaying) "暂停" else "播放",
                 tint = playButtonFg,
-                modifier = Modifier.size((sizeDp * 0.45f).dp)
+                modifier = Modifier.size((sizeDp * 0.40f).dp)
             )
         }
     }

@@ -1560,6 +1560,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     // 直播间 SC 醒目留言浮层：默认开启；关闭弹幕时一律隐藏，此处提供独立开关
     private val KEY_LIVE_SUPER_CHAT_FLASH_ENABLED =
         booleanPreferencesKey("live_super_chat_flash_enabled")
+    private val KEY_LIVE_DANMAKU_ENABLED = booleanPreferencesKey("live_danmaku_enabled")
     private val KEY_VIDEO_TRANSITION_REALTIME_BLUR_ENABLED =
         booleanPreferencesKey("video_transition_realtime_blur_enabled")
     private val KEY_VIDEO_SHARED_TRANSITION_SPEED =
@@ -3166,6 +3167,16 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     fun getLiveSuperChatFlashEnabled(context: Context): Flow<Boolean> =
         context.settingsDataStore.data
             .map { preferences -> preferences[KEY_LIVE_SUPER_CHAT_FLASH_ENABLED] ?: true }
+
+    fun getLiveDanmakuEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data
+            .map { preferences -> preferences[KEY_LIVE_DANMAKU_ENABLED] ?: true }
+
+    suspend fun setLiveDanmakuEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIVE_DANMAKU_ENABLED] = value
+        }
+    }
 
     suspend fun setLiveSuperChatFlashEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->

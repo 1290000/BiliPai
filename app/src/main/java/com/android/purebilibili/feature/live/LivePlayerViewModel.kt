@@ -69,6 +69,11 @@ data class LiveDanmakuItem(
     val superChatDuration: Int = 0
 )
 
+internal data class LiveChatMessage(
+    val sequence: Long,
+    val item: LiveDanmakuItem,
+)
+
 /**
  * 主播信息
  */
@@ -128,6 +133,8 @@ sealed class LivePlayerState {
 
 sealed interface LivePlayerEvent {
     data class Toast(val message: String) : LivePlayerEvent
+    data object DanmakuSent : LivePlayerEvent
+    data object EmoticonSent : LivePlayerEvent
 }
 
 /**
@@ -148,6 +155,10 @@ class LivePlayerViewModel : ViewModel() {
         extraBufferCapacity = 120
     )
     val danmakuFlow = _danmakuFlow.asSharedFlow()
+
+    private val _chatHistory = MutableStateFlow<List<LiveChatMessage>>(emptyList())
+    val chatHistory = _chatHistory.asStateFlow()
+    private var nextChatSequence = 0L
 
     private val _superChatItems = MutableStateFlow<List<LiveDanmakuItem>>(emptyList())
     val superChatItems = _superChatItems.asStateFlow()
@@ -213,6 +224,8 @@ class LivePlayerViewModel : ViewModel() {
         pauseLiveHeartbeat()
         if (currentRoomId != roomId) {
             _voteSnapshot.value = LiveVoteSnapshot()
+            _chatHistory.value = emptyList()
+            nextChatSequence = 0L
         }
         currentRoomId = roomId
         currentRequestedQuality = qn
@@ -856,10 +869,12 @@ class LivePlayerViewModel : ViewModel() {
     }
 
     private suspend fun preloadLiveRoomMessages(roomId: Long) {
+        _chatHistory.value = emptyList()
+        nextChatSequence = 0L
         val prefetchedSuperChats = mutableListOf<LiveDanmakuItem>()
         LiveRepository.getLiveDanmakuHistory(roomId).onSuccess { items ->
             items.filter { shouldRenderLiveDanmaku(it.text, it.emoticonUrl) }.forEach { seed ->
-                _danmakuFlow.tryEmit(
+                appendChatHistory(
                     LiveDanmakuItem(
                         text = seed.text,
                         uid = seed.uid,
@@ -888,7 +903,7 @@ class LivePlayerViewModel : ViewModel() {
                     superChatReportTs = seed.reportTs
                 )
                 prefetchedSuperChats += item
-                _danmakuFlow.tryEmit(item)
+                appendChatHistory(item)
             }
         }
         if (prefetchedSuperChats.isNotEmpty()) {
@@ -948,6 +963,7 @@ class LivePlayerViewModel : ViewModel() {
                 recentSentDanmaku = text
                 recentSentTime = System.currentTimeMillis()
                 _replyTarget.value = null
+                _events.tryEmit(LivePlayerEvent.DanmakuSent)
                 
                 // 发送成功，模拟一条本地弹幕立即上屏（沿用所选颜色与模式）
                 val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
@@ -959,7 +975,7 @@ class LivePlayerViewModel : ViewModel() {
                     uname = "我",
                     isSelf = true
                 )
-                _danmakuFlow.tryEmit(item)
+                emitOwnLiveChatItem(item)
             }.onFailure { e ->
                 android.util.Log.e("LivePlayer", "Send danmaku failed: ${e.message}")
                 _events.tryEmit(LivePlayerEvent.Toast(e.message ?: "弹幕发送失败"))
@@ -970,22 +986,30 @@ class LivePlayerViewModel : ViewModel() {
     fun sendEmoticon(item: LiveEmoticonItem) {
         if (currentRoomId == 0L || item.emoji.isBlank()) return
         viewModelScope.launch {
+            val reply = _replyTarget.value
             val request = LiveDanmakuSendRequest(
                 roomId = currentRoomId,
                 message = item.emoji,
+                replyMid = reply?.uid ?: 0L,
+                replyAttr = if (reply != null) 1 else 0,
+                replyUname = reply?.uname.orEmpty(),
+                replayDmid = reply?.idStr.orEmpty(),
                 dmType = if (item.emoticonOptions != null) 1 else null,
                 emoticonOptions = item.emoticonOptions
             )
             LiveRepository.sendDanmaku(request).onSuccess {
                 recentSentDanmaku = item.emoji
                 recentSentTime = System.currentTimeMillis()
+                _replyTarget.value = null
+                _events.tryEmit(LivePlayerEvent.EmoticonSent)
                 val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
-                _danmakuFlow.tryEmit(
+                emitOwnLiveChatItem(
                     LiveDanmakuItem(
                         text = item.emoji,
                         uid = mid,
                         uname = "我",
                         isSelf = true,
+                        replyToName = reply?.uname.orEmpty(),
                         emoticonUrl = item.url
                     )
                 )
@@ -1229,7 +1253,7 @@ class LivePlayerViewModel : ViewModel() {
                 }
             }
             is LiveRealtimeAction.RecallDanmaku -> {
-                _danmakuFlow.tryEmit(
+                emitLiveChatItem(
                     LiveDanmakuItem(
                         text = "有弹幕被撤回",
                         uname = "系统",
@@ -1280,6 +1304,16 @@ class LivePlayerViewModel : ViewModel() {
             android.util.Log.d("LivePlayer", "🔄 Skipped duplicate self-sent danmaku: ${item.text}")
             return
         }
+        appendChatHistory(item)
+        _danmakuFlow.tryEmit(item)
+    }
+
+    private fun appendChatHistory(item: LiveDanmakuItem) {
+        _chatHistory.value = (_chatHistory.value + LiveChatMessage(++nextChatSequence, item)).takeLast(200)
+    }
+
+    private fun emitOwnLiveChatItem(item: LiveDanmakuItem) {
+        appendChatHistory(item)
         _danmakuFlow.tryEmit(item)
     }
 

@@ -280,7 +280,8 @@ internal fun AudioModeMusicPlayer(
     }
 
     val effectiveLyrics = remember(lyricsState.lyricsDocument, subtitleLyrics) {
-        BiliSubtitleLyricsPolicy.resolveEffectiveLyrics(
+        // 视频字幕与搜索歌词都存在时，按时间轴对齐度取舍，避免错位的搜索歌词盖过本地字幕
+        BiliSubtitleLyricsPolicy.resolveEffectiveLyricsWithAlignment(
             musicLyrics = lyricsState.lyricsDocument,
             subtitleLyrics = subtitleLyrics
         )

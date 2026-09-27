@@ -44,6 +44,7 @@ data class LiveLandscapeChatOverlayMetrics(
 enum class LiveRequestedOrientationMode {
     Unspecified,
     SensorLandscape,
+    SensorPortrait,
     Portrait,
 }
 
@@ -54,10 +55,12 @@ enum class LiveRequestedOrientationMode {
 fun resolveLiveRequestedOrientationMode(
     displayContext: AppDisplayContext,
     isFullscreen: Boolean,
+    isPortraitLive: Boolean = false,
 ): LiveRequestedOrientationMode {
     return when {
         displayContext.usesInWindowFullscreen -> LiveRequestedOrientationMode.Unspecified
         !shouldUsePhonePlayerOrientation(displayContext) -> LiveRequestedOrientationMode.Unspecified
+        isFullscreen && isPortraitLive -> LiveRequestedOrientationMode.SensorPortrait
         isFullscreen -> LiveRequestedOrientationMode.SensorLandscape
         else -> LiveRequestedOrientationMode.Portrait
     }
@@ -68,10 +71,12 @@ fun resolveLiveRequestedOrientationMode(
     isFullscreen: Boolean,
     isFoldableCoverWindow: Boolean = false,
     usesInWindowFullscreen: Boolean = false,
+    isPortraitLive: Boolean = false,
 ): LiveRequestedOrientationMode {
     return when {
         usesInWindowFullscreen -> LiveRequestedOrientationMode.Unspecified
         isTabletDevice && !isFoldableCoverWindow -> LiveRequestedOrientationMode.Unspecified
+        isFullscreen && isPortraitLive -> LiveRequestedOrientationMode.SensorPortrait
         isFullscreen -> LiveRequestedOrientationMode.SensorLandscape
         else -> LiveRequestedOrientationMode.Portrait
     }
@@ -85,7 +90,8 @@ fun resolveLiveRoomLayoutMode(
 ): LiveRoomLayoutMode {
     return if (isTablet) {
         if (isFullscreen) {
-            LiveRoomLayoutMode.LandscapeOverlay
+            if (!isLandscape && isPortraitLive) LiveRoomLayoutMode.PortraitVerticalOverlay
+            else LiveRoomLayoutMode.LandscapeOverlay
         } else if (isLandscape) {
             LiveRoomLayoutMode.LandscapeSplit
         } else if (isPortraitLive) {
@@ -94,7 +100,9 @@ fun resolveLiveRoomLayoutMode(
             LiveRoomLayoutMode.PortraitPanel
         }
     } else {
-        if (isLandscape || isFullscreen) {
+        if (isFullscreen && !isLandscape && isPortraitLive) {
+            LiveRoomLayoutMode.PortraitVerticalOverlay
+        } else if (isLandscape || isFullscreen) {
             LiveRoomLayoutMode.LandscapeOverlay
         } else if (isPortraitLive) {
             LiveRoomLayoutMode.PortraitVerticalOverlay

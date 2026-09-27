@@ -89,6 +89,7 @@ import com.android.purebilibili.data.model.response.LiveQuality
 import com.android.purebilibili.data.repository.LiveRedPocketInfo
 import com.android.purebilibili.feature.live.components.LandscapeChatOverlay
 import com.android.purebilibili.feature.live.components.LiveChatSection
+import com.android.purebilibili.feature.live.components.LiveChatInputBar
 import com.android.purebilibili.feature.live.components.LiveContributionRankSheet
 import com.android.purebilibili.feature.live.components.LiveDmBlockSheet
 import com.android.purebilibili.feature.live.components.LiveEmoticonSheet
@@ -196,6 +197,7 @@ fun LivePlayerScreen(
     var showPortraitMoreSheet by remember(roomId, siteId) { mutableStateOf(false) }
     var showPortraitInteractionSheet by remember(roomId, siteId) { mutableStateOf(false) }
     var isPortraitClearScreen by rememberSaveable(roomId, siteId) { mutableStateOf(false) }
+    var showPortraitPlayerControls by rememberSaveable(roomId, siteId) { mutableStateOf(true) }
     var isPortraitChatVisible by rememberSaveable(roomId, siteId) { mutableStateOf(true) }
     var reportTarget by remember { mutableStateOf<LiveDanmakuItem?>(null) }
     var isFullscreen by rememberSaveable { mutableStateOf(false) }
@@ -217,6 +219,7 @@ fun LivePlayerScreen(
     val successState = uiState as? LivePlayerState.Success
     val isLiveAudioOnly = successState?.isAudioOnly == true
     val superChatItems by viewModel.superChatItems.collectAsStateWithLifecycle()
+    val chatHistory by viewModel.chatHistory.collectAsStateWithLifecycle()
     val replyTarget by viewModel.replyTarget.collectAsStateWithLifecycle()
     val emoticonPackages by viewModel.emoticonPackages.collectAsStateWithLifecycle()
     val shieldInfo by viewModel.shieldInfo.collectAsStateWithLifecycle()
@@ -267,6 +270,7 @@ fun LivePlayerScreen(
         layoutMode = liveLayoutMode,
         clearScreen = isPortraitClearScreen,
         chatVisible = isPortraitChatVisible,
+        controlsVisible = showPortraitPlayerControls,
     )
     val playerGesturePolicy = resolveLivePlayerGesturePolicy(liveLayoutMode)
     LaunchedEffect(liveLayoutMode) {
@@ -279,20 +283,6 @@ fun LivePlayerScreen(
         configuration.screenHeightDp,
         configuration.fontScale,
     )
-    val portraitChatMessages = remember(roomId, siteId) { mutableStateListOf<LiveDanmakuItem>() }
-    var portraitDanmakuSequence by remember(roomId, siteId) { mutableLongStateOf(0L) }
-    // 持续监听当前直播间的弹幕流；状态转换与清屏不会导致消息丢失或清空重置
-    LaunchedEffect(roomId, siteId, viewModel.danmakuFlow) {
-        portraitChatMessages.clear()
-        portraitDanmakuSequence = 0L
-        viewModel.danmakuFlow.collect { item ->
-            if (shouldRenderLiveDanmaku(item.text, item.emoticonUrl)) {
-                portraitChatMessages.add(item)
-                if (portraitChatMessages.size > 200) portraitChatMessages.removeAt(0)
-                portraitDanmakuSequence++
-            }
-        }
-    }
     val visibleInteractionOverlay = if (portraitPresentation.usePortraitControls) {
         portraitPresentation.showChatPreview
     } else {
@@ -308,6 +298,9 @@ fun LivePlayerScreen(
     val liveSuperChatFlashEnabled by SettingsManager
         .getLiveSuperChatFlashEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
+    val pipNoDanmaku by SettingsManager
+        .getPipNoDanmakuEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val portraitOverlayMetrics = remember(configuration.screenHeightDp) {
         resolveLivePortraitOverlayMetrics(configuration.screenHeightDp)
     }
@@ -377,6 +370,7 @@ fun LivePlayerScreen(
     fun toggleFullscreen() {
         showPortraitMoreSheet = false
         showPortraitInteractionSheet = false
+        showPortraitPlayerControls = true
         isFullscreen = !isFullscreen
     }
 
@@ -499,6 +493,13 @@ fun LivePlayerScreen(
             when (event) {
                 is LivePlayerEvent.Toast -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                LivePlayerEvent.DanmakuSent -> {
+                    if (showSendDanmakuSheet) showSendDanmakuSheet = false
+                }
+                LivePlayerEvent.EmoticonSent -> {
+                    showEmoticonSheet = false
+                    if (showSendDanmakuSheet) showSendDanmakuSheet = false
                 }
             }
         }
@@ -797,7 +798,10 @@ fun LivePlayerScreen(
         val window = activity?.window ?: return@LaunchedEffect
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         
-        if (liveLayoutMode == LiveRoomLayoutMode.LandscapeOverlay) {
+        if (
+            liveLayoutMode == LiveRoomLayoutMode.LandscapeOverlay ||
+            (liveLayoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay && isFullscreen)
+        ) {
             // 隐藏状态栏和导航栏
             windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
@@ -807,10 +811,11 @@ fun LivePlayerScreen(
         }
     }
 
-    val liveRequestedOrientationMode = remember(displayContext, isFullscreen) {
+    val liveRequestedOrientationMode = remember(displayContext, isFullscreen, isPortraitLive) {
         resolveLiveRequestedOrientationMode(
             displayContext = displayContext,
             isFullscreen = isFullscreen,
+            isPortraitLive = isPortraitLive,
         )
     }
     var previousLiveDisplayRole by remember {
@@ -836,6 +841,8 @@ fun LivePlayerScreen(
                 ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             LiveRequestedOrientationMode.SensorLandscape ->
                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            LiveRequestedOrientationMode.SensorPortrait ->
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
             LiveRequestedOrientationMode.Portrait ->
                 ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
@@ -914,7 +921,11 @@ fun LivePlayerScreen(
             
             // Danmaku Overlay (Only render if enabled)
             val successState = uiState as? LivePlayerState.Success
-            if (portraitPresentation.showMediaOverlays && shouldRenderLiveDanmakuOverlayForAudioOnly(
+            if (
+                portraitPresentation.showMediaOverlays &&
+                (liveLayoutMode != LiveRoomLayoutMode.PortraitVerticalOverlay || isFullscreen) &&
+                !(isPipRequested && pipNoDanmaku) &&
+                shouldRenderLiveDanmakuOverlayForAudioOnly(
                     isDanmakuEnabled = successState?.isDanmakuEnabled == true,
                     isAudioOnly = isLiveAudioOnly
                 )
@@ -939,9 +950,9 @@ fun LivePlayerScreen(
                 gesturePolicy = playerGesturePolicy,
                 usePortraitControls = portraitPresentation.usePortraitControls,
                 isClearScreen = portraitPresentation.clearScreen,
-                onPortraitTap = { isPortraitClearScreen = !isPortraitClearScreen },
+                onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
                 onOpenPortraitMore = {
-                    isPortraitClearScreen = false
+                    showPortraitPlayerControls = true
                     showPortraitMoreSheet = true
                 },
                 showTopBar = shouldShowLivePlayerControlsTopBar(
@@ -954,7 +965,7 @@ fun LivePlayerScreen(
                     if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
                 },
                 onToggleFullscreen = { toggleFullscreen() },
-                onBack = { exitLiveRoom() },
+                onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
                 // 侧边栏开关
                 isChatVisible = isInteractionPanelVisible,
                 onToggleChat = { isInteractionPanelVisible = !isInteractionPanelVisible },
@@ -1040,7 +1051,7 @@ fun LivePlayerScreen(
     
     val chatContent: @Composable (Boolean, Boolean) -> Unit = { isOverlay, showHeader ->
         LiveChatSection(
-            danmakuFlow = viewModel.danmakuFlow,
+            messages = chatHistory,
             onSendDanmaku = { text -> viewModel.sendDanmaku(text) },
             headerTitle = "实时互动",
             supportingText = "发送弹幕和主播互动",
@@ -1068,7 +1079,19 @@ fun LivePlayerScreen(
             onReportDanmaku = { item ->
                 reportTarget = item
             },
+            showInputBar = liveLayoutMode != LiveRoomLayoutMode.PortraitPanel,
             modifier = Modifier.fillMaxSize()
+        )
+    }
+
+    val portraitPersistentInput: @Composable () -> Unit = {
+        LiveChatInputBar(
+            isOverlay = false,
+            isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
+            onToggleDanmaku = { viewModel.toggleDanmaku() },
+            onLike = { count -> viewModel.clickLike(count) },
+            onOpenEmote = { showEmoticonSheet = true },
+            onSend = { text -> viewModel.sendDanmaku(text) },
         )
     }
 
@@ -1077,6 +1100,9 @@ fun LivePlayerScreen(
             selectedTab = selectedInteractionTab,
             onSelectedTab = { selectedInteractionTab = it },
             chatContent = { chatContent(isOverlay, false) },
+            persistentFooter = if (liveLayoutMode == LiveRoomLayoutMode.PortraitPanel) {
+                portraitPersistentInput
+            } else null,
             superChatContent = {
                 LiveSuperChatSection(
                     items = superChatItems,
@@ -1086,6 +1112,8 @@ fun LivePlayerScreen(
                             viewModel.dismissSuperChat(item.superChatId)
                         }
                     },
+                    onUserClick = onUserClick,
+                    onReport = { item -> reportTarget = item },
                 )
             },
             voteContent = { LiveVotePanel(voteSnapshot, Modifier.fillMaxSize()) }
@@ -1253,7 +1281,7 @@ fun LivePlayerScreen(
                         roomTitle = liveRoomTitle,
                         anchorInfo = anchorInfo,
                         subtitle = liveSubtitle,
-                        onBack = { exitLiveRoom() },
+                        onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
                         onUserClick = onUserClick,
                         onCopyLink = { copyLiveUrl() },
                         onShare = { shareLiveUrl() },
@@ -1272,6 +1300,8 @@ fun LivePlayerScreen(
                         },
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
+                }
+                if (portraitPresentation.showChatPreview || portraitPresentation.showChrome) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -1286,17 +1316,16 @@ fun LivePlayerScreen(
                     ) {
                         if (portraitPresentation.showChatPreview) {
                             LivePortraitChatStream(
-                                messages = portraitChatMessages,
-                                danmakuSequence = portraitDanmakuSequence,
+                                messages = chatHistory,
                                 superChatCount = superChatItems.size,
-                                onOpenSuperChat = {
-                                    selectedInteractionTab = 1
-                                    showPortraitInteractionSheet = true
-                                },
                                 onUserClick = onUserClick,
                                 onAtUser = { item ->
                                     viewModel.setReplyTarget(item)
                                     showSendDanmakuSheet = true
+                                },
+                                onOpenSuperChat = {
+                                    selectedInteractionTab = 1
+                                    showPortraitInteractionSheet = true
                                 },
                                 onBlockUser = { item ->
                                     if (item.uid > 0L) {
@@ -1319,22 +1348,28 @@ fun LivePlayerScreen(
                                     .heightIn(max = portraitOverlayPanelHeightDp.dp),
                             )
                         }
-                        LivePortraitBottomBar(
-                            isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
-                            chatVisible = isPortraitChatVisible,
-                            onToggleDanmaku = { viewModel.toggleDanmaku() },
-                            onOpenSend = { showSendDanmakuSheet = true },
-                            onOpenEmote = { showEmoticonSheet = true },
-                            onToggleChat = { isPortraitChatVisible = !isPortraitChatVisible },
-                            onOpenMore = { showPortraitMoreSheet = true },
-                            onLike = { count -> viewModel.clickLike(count) },
-                            hazeState = hazeState,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        if (portraitPresentation.showChrome) {
+                            LivePortraitBottomBar(
+                                isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
+                                chatVisible = isPortraitChatVisible,
+                                onToggleDanmaku = { viewModel.toggleDanmaku() },
+                                onOpenSend = { showSendDanmakuSheet = true },
+                                onOpenEmote = { showEmoticonSheet = true },
+                                onToggleChat = { isPortraitChatVisible = !isPortraitChatVisible },
+                                onOpenMore = { showPortraitMoreSheet = true },
+                                onLike = { count -> viewModel.clickLike(count) },
+                                hazeState = hazeState,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
-                } else {
+                }
+                if (portraitPresentation.clearScreen) {
                     AppSurface(
-                        onClick = { isPortraitClearScreen = false },
+                        onClick = {
+                            isPortraitClearScreen = false
+                            showPortraitPlayerControls = true
+                        },
                         shape = AppShapes.container(ContainerLevel.Pill),
                         color = LiveStatusPalette.MediaScrim.copy(alpha = 0.56f),
                         contentColor = LiveStatusPalette.MediaContent,
@@ -1621,7 +1656,6 @@ fun LivePlayerScreen(
             packages = emoticonPackages,
             onSelected = { item ->
                 viewModel.sendEmoticon(item)
-                showEmoticonSheet = false
             },
             onDismiss = { showEmoticonSheet = false }
         )
@@ -1674,12 +1708,10 @@ fun LivePlayerScreen(
             },
             onSend = { message, color, mode ->
                 viewModel.sendDanmaku(message, color, mode)
-                showSendDanmakuSheet = false
             },
             permission = successState?.danmakuPermission ?: com.android.purebilibili.data.repository.LiveDanmakuPermission(),
             replyTarget = replyTarget,
             onOpenEmote = {
-                showSendDanmakuSheet = false
                 showEmoticonSheet = true
             },
         )
@@ -2072,7 +2104,8 @@ private fun LivePrimaryInteractionPanel(
     onSelectedTab: (Int) -> Unit,
     chatContent: @Composable () -> Unit,
     superChatContent: @Composable () -> Unit,
-    voteContent: @Composable () -> Unit
+    voteContent: @Composable () -> Unit,
+    persistentFooter: (@Composable () -> Unit)? = null,
 ) {
     val playerChromeProfile = rememberAppPlayerChromeProfile()
     val segmentedSpec = remember(playerChromeProfile.compactChromeSpec) {
@@ -2140,6 +2173,7 @@ private fun LivePrimaryInteractionPanel(
                 else -> Box(modifier = Modifier.fillMaxSize()) { voteContent() }
             }
         }
+        persistentFooter?.invoke()
         }
     }
 }

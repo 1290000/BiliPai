@@ -12,13 +12,14 @@ internal fun resolveLivePortraitPresentation(
     layoutMode: LiveRoomLayoutMode,
     clearScreen: Boolean,
     chatVisible: Boolean,
+    controlsVisible: Boolean = true,
 ): LivePortraitPresentation {
     val portrait = layoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay
     val cleared = portrait && clearScreen
     return LivePortraitPresentation(
         usePortraitControls = portrait,
         clearScreen = cleared,
-        showChrome = portrait && !cleared,
+        showChrome = portrait && !cleared && controlsVisible,
         showChatPreview = portrait && !cleared && chatVisible,
         showMediaOverlays = !cleared,
     )
@@ -36,6 +37,6 @@ fun resolveLivePlayerGesturePolicy(layoutMode: LiveRoomLayoutMode): LivePlayerGe
     val portrait = layoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay
     return LivePlayerGesturePolicy(
         doubleTapPlayback = !portrait,
-        centerDragFullscreen = !portrait,
+        centerDragFullscreen = true,
     )
 }
