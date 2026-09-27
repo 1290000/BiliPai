@@ -202,6 +202,8 @@ internal fun resolveVideoInfoInitialExpandedState(
 private const val BGM_DISCOVERY_LOAD_DELAY_MS = 420L
 private const val BGM_RECOMMEND_PAGE_SIZE = 5
 private const val BGM_RECOMMEND_ROW_START_INDEX = 4
+/** 悬浮音频播放条的高度余量，避免底部面板内容被遮挡。 */
+private const val AUDIO_NOW_PLAYING_BAR_CLEARANCE_DP = 64
 private val BGM_DETAIL_CARD_HEIGHT = 168.dp
 
 /**
@@ -1543,7 +1545,12 @@ private fun BgmSelectionSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.68f),
-            contentPadding = PaddingValues(bottom = 20.dp)
+            // 底部额外预留系统导航栏与悬浮播放条的高度，
+            // 避免「使用该音乐的视频」最后一张卡片被遮挡。
+            contentPadding = PaddingValues(
+                bottom = 20.dp + WindowInsets.navigationBars.asPaddingValues()
+                    .calculateBottomPadding() + AUDIO_NOW_PLAYING_BAR_CLEARANCE_DP.dp
+            )
         ) {
             item {
                 Row(
