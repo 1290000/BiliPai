@@ -1241,6 +1241,10 @@ internal fun MusicPlayerContent(
                                     showActions = false
                                     showQueue = true
                                 }
+                                MusicActionSheetItem("导入歌单", contentColor = sheetContentColor) {
+                                    showActions = false
+                                    showImportDialog = true
+                                }
                                 onVideoModeClick?.let { action ->
                                     MusicActionSheetItem("返回视频", contentColor = sheetContentColor) {
                                         showActions = false
