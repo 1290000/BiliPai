@@ -295,6 +295,8 @@ fun DynamicScreen(
 
     val dynamicVisibleTabIds by SettingsManager.getDynamicTabVisibleTabs(context)
         .collectAsStateWithLifecycle(initialValue = defaultDynamicTabVisibleIds)
+    val dynamicTabOrder by SettingsManager.getDynamicTabOrder(context)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
     val dynamicAllTabHorizontalUserListVisible by SettingsManager
         .getDynamicAllTabHorizontalUserListVisible(context)
         .collectAsStateWithLifecycle(initialValue = false)
@@ -304,8 +306,8 @@ fun DynamicScreen(
     val dynamicTopActionsCollapsed by SettingsManager
         .getDynamicTopActionsCollapsed(context)
         .collectAsStateWithLifecycle(initialValue = false)
-    val visibleTabs = remember(dynamicVisibleTabIds) {
-        resolveDynamicVisibleTabs(dynamicVisibleTabIds)
+    val visibleTabs = remember(dynamicVisibleTabIds, dynamicTabOrder) {
+        resolveDynamicVisibleTabs(dynamicVisibleTabIds, dynamicTabOrder)
     }
     val isUserTabVisible = remember(visibleTabs) {
         isDynamicUserTabVisible(visibleTabs)
@@ -1912,15 +1914,26 @@ private fun HorizontalUserList(
                             .alpha(if (user.isHidden) 0.5f else 1f)
                     ) {
                         Box {
+                            val hasUpdate = user.uid in uplistUpdateMids
                             Box(
                                 modifier = Modifier
                                     .size(AppSpacingTokens.TripleExtraLarge)
                                     .clip(CircleShape)
                                     .then(
-                                        if (isSelected)
-                                            Modifier.border(AppSpacingTokens.Micro, MaterialTheme.colorScheme.primary, CircleShape)
-                                        else
-                                            Modifier
+                                        when {
+                                            isSelected -> Modifier.border(
+                                                AppSpacingTokens.Micro,
+                                                MaterialTheme.colorScheme.primary,
+                                                CircleShape
+                                            )
+                                            // 有新动态的 UP：主题色圆环提示，比单独的小红点更显眼
+                                            hasUpdate -> Modifier.border(
+                                                2.dp,
+                                                MaterialTheme.colorScheme.primary,
+                                                CircleShape
+                                            )
+                                            else -> Modifier
+                                        }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1934,8 +1947,8 @@ private fun HorizontalUserList(
                                     contentScale = ContentScale.Crop
                                 )
                             }
-                            //  [新增] UP 未读红点（对齐 BiliPai up_panel 8px 红点）
-                            if (user.uid in uplistUpdateMids) {
+                            // UP 未读提示点：有新动态时显示主题色小圆点
+                            if (hasUpdate) {
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)

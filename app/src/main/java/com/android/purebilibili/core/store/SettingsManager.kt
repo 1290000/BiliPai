@@ -1441,6 +1441,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     //  搜索结果页分类栏顺序（SearchType.value 逗号分隔）
     private val KEY_SEARCH_FILTER_TAB_ORDER = stringPreferencesKey("search_filter_tab_order")
     private val KEY_DYNAMIC_TAB_VISIBLE_TABS = stringPreferencesKey("dynamic_tab_visible_tabs")
+    private val KEY_DYNAMIC_TAB_ORDER = stringPreferencesKey("dynamic_tab_order")
     private val KEY_DYNAMIC_IMAGE_PREVIEW_TEXT_VISIBLE =
         booleanPreferencesKey("dynamic_image_preview_text_visible")
     private val KEY_DYNAMIC_DETAIL_IMAGE_LAYOUT = intPreferencesKey("dynamic_detail_image_layout")
@@ -1494,6 +1495,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     /** 首页顶部 dock 标签数量上限。 */
     const val MAX_TOP_TABS = 5
     private const val DEFAULT_DYNAMIC_TAB_VISIBLE = "all,video,pgc,article,up"
+    private const val DEFAULT_DYNAMIC_TAB_ORDER = "all,video,pgc,article,up"
     //  [新增] 模糊效果开关
     private val KEY_HEADER_BLUR_ENABLED = booleanPreferencesKey("header_blur_enabled")
     private val KEY_HOME_HEADER_BLUR_MODE = intPreferencesKey("home_header_blur_mode")
@@ -3762,6 +3764,18 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     suspend fun setDynamicTabVisibleTabs(context: Context, tabs: Set<String>) {
         context.settingsDataStore.edit { prefs ->
             prefs[KEY_DYNAMIC_TAB_VISIBLE_TABS] = tabs.joinToString(",")
+        }
+    }
+
+    /** 动态栏位顺序：id 用逗号连接，缺失的 id 按默认顺序排在后面。 */
+    fun getDynamicTabOrder(context: Context): Flow<List<String>> = context.settingsDataStore.data.map { prefs ->
+        val orderString = prefs[KEY_DYNAMIC_TAB_ORDER] ?: DEFAULT_DYNAMIC_TAB_ORDER
+        orderString.split(",").filter { it.isNotBlank() }
+    }
+
+    suspend fun setDynamicTabOrder(context: Context, order: List<String>) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[KEY_DYNAMIC_TAB_ORDER] = order.joinToString(",")
         }
     }
 

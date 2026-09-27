@@ -1083,7 +1083,32 @@ data class DynamicAdditionalVote(
 data class DynamicAdditionalMatch(
     val title: String = "",
     val sub_title: String = "",
-    val jump_url: String = ""
+    val jump_url: String = "",
+    @SerialName("match_info")
+    val matchInfo: DynamicMatchInfo? = null
+)
+
+@Serializable
+data class DynamicMatchInfo(
+    val title: String = "",
+    @Serializable(with = FlexibleStringSerializer::class)
+    val sub_title: String = "",
+    @SerialName("center_top")
+    val centerTop: List<String> = emptyList(),
+    @SerialName("center_bottom")
+    val centerBottom: String = "",
+    @SerialName("left_team")
+    val leftTeam: DynamicMatchTeam? = null,
+    @SerialName("right_team")
+    val rightTeam: DynamicMatchTeam? = null
+)
+
+@Serializable
+data class DynamicMatchTeam(
+    val name: String = "",
+    val pic: String = "",
+    val score: String = "",
+    val id: Long = 0
 )
 
 @Serializable

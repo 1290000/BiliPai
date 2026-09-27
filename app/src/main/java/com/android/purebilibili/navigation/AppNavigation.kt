@@ -2570,7 +2570,17 @@ fun AppNavigation(
                             },
                             onBangumiClick = { seasonId, epId ->
                                 if (seasonId > 0L || epId > 0L) {
-                                    pushNavigation3Route(ScreenRoutes.BangumiDetail.createRoute(seasonId, epId))
+                                    if (epId > 0L) {
+                                        // 动态里的番剧卡带集数信息，直接播放该集
+                                        pushNavigation3Key(
+                                            BiliPaiNavKey.BangumiPlayer(
+                                                seasonId = seasonId,
+                                                epId = epId
+                                            )
+                                        )
+                                    } else {
+                                        pushNavigation3Route(ScreenRoutes.BangumiDetail.createRoute(seasonId, epId))
+                                    }
                                 }
                             },
                             onArticleClick = { articleId, title ->
@@ -2739,9 +2749,19 @@ fun AppNavigation(
                                     onVideoClick = { bvid -> navigateToVideoInNavigation3(bvid, 0L, "") },
                                     onBangumiClick = { seasonId, epId ->
                                         if (seasonId > 0L || epId > 0L) {
-                                            pushNavigation3Key(
-                                                BiliPaiNavKey.BangumiDetail(seasonId = seasonId, epId = epId)
-                                            )
+                                            if (epId > 0L) {
+                                                // 动态里的番剧卡带集数信息，直接播放该集
+                                                pushNavigation3Key(
+                                                    BiliPaiNavKey.BangumiPlayer(
+                                                        seasonId = seasonId,
+                                                        epId = epId
+                                                    )
+                                                )
+                                            } else {
+                                                pushNavigation3Key(
+                                                    BiliPaiNavKey.BangumiDetail(seasonId = seasonId, epId = epId)
+                                                )
+                                            }
                                         }
                                     },
                                     onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) },
@@ -2835,9 +2855,19 @@ fun AppNavigation(
                                 onVideoClick = { bvid -> navigateToVideoInNavigation3(bvid, 0L, "") },
                                 onBangumiClick = { seasonId, epId ->
                                     if (seasonId > 0L || epId > 0L) {
-                                        pushNavigation3Key(
-                                            BiliPaiNavKey.BangumiDetail(seasonId = seasonId, epId = epId)
-                                        )
+                                        if (epId > 0L) {
+                                            // 动态里的番剧卡带集数信息，直接播放该集
+                                            pushNavigation3Key(
+                                                BiliPaiNavKey.BangumiPlayer(
+                                                    seasonId = seasonId,
+                                                    epId = epId
+                                                )
+                                            )
+                                        } else {
+                                            pushNavigation3Key(
+                                                BiliPaiNavKey.BangumiDetail(seasonId = seasonId, epId = epId)
+                                            )
+                                        }
                                     }
                                 },
                                 onBangumiMoreClick = { navigateFromProfile(ScreenRoutes.Bangumi.createRoute(1)) },

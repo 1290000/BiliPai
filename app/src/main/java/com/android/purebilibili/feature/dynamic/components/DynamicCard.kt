@@ -1988,17 +1988,81 @@ private fun DynamicAdditionalCard(
     onActionClick: (() -> Unit)?,
     onClick: () -> Unit
 ) {
-    DynamicNativeLinkCard(
-        title = model.title,
-        subtitle = model.subtitle,
-        cover = model.cover,
-        kindLabel = model.kindLabel,
-        actionLabel = model.actionLabel,
-        enabled = model.enabled,
-        actionEnabled = !model.reserveButtonDisabled && !actionLoading,
-        onActionClick = onActionClick,
-        onClick = onClick,
-    )
+    Column {
+        DynamicNativeLinkCard(
+            title = model.title,
+            subtitle = model.subtitle,
+            cover = model.cover,
+            kindLabel = model.kindLabel,
+            actionLabel = model.actionLabel,
+            enabled = model.enabled,
+            actionEnabled = !model.reserveButtonDisabled && !actionLoading,
+            onActionClick = onActionClick,
+            onClick = onClick,
+        )
+        // 赛事比分行：左队 标志+名称 | 比分/阶段 | 右队 名称+标志
+        if (model.matchTeams.size == 2) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppSpacingTokens.Small, vertical = AppSpacingTokens.Small),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val left = model.matchTeams[0]
+                val right = model.matchTeams[1]
+                AsyncImage(
+                    model = left.logoUrl.takeIf { it.isNotBlank() },
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp).clip(CircleShape),
+                    contentScale = ContentScale.Fit
+                )
+                AppText(
+                    text = left.name,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = AppSpacingTokens.ExtraSmall)
+                )
+                AppText(
+                    text = left.score.ifBlank { model.matchCenterLabel }.ifBlank { "VS" },
+                    fontSize = MaterialTheme.typography.titleSmall.fontSize,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                AppText(
+                    text = right.name,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = AppSpacingTokens.ExtraSmall)
+                )
+                AsyncImage(
+                    model = right.logoUrl.takeIf { it.isNotBlank() },
+                    contentDescription = null,
+                    modifier = Modifier.size(26.dp).clip(CircleShape),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            if (left.score.isNotBlank() && model.matchCenterLabel.isNotBlank()) {
+                AppText(
+                    text = model.matchCenterLabel,
+                    fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = AppSpacingTokens.Small)
+                )
+            }
+        }
+    }
 }
 
 @Composable
