@@ -401,6 +401,10 @@ private class MatchRowsAdapter(
     private var secondaryColor: Int = android.graphics.Color.LTGRAY
     private var errorColor: Int = android.graphics.Color.RED
 
+    init {
+        setHasStableIds(true)
+    }
+
     fun update(
         outcomes: List<ExternalPlaylistRepository.MatchOutcome>,
         editingIndex: Int?,
