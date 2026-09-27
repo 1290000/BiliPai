@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -244,14 +245,14 @@ object ExternalPlaylistRepository {
                 candidate.tid !in BLACKLIST_ZONES &&
                     candidate.duration in 1..Int.MAX_VALUE &&
                     track.durationMs > 0L &&
-                    kotlin.math.abs(candidate.duration - track.durationMs / 1000L) <= DURATION_TOLERANCE_SEC
+                    kotlin.math.abs(candidate.duration.toLong() - track.durationMs / 1000L) <= DURATION_TOLERANCE_SEC
             }?.let {
                 MatchedVideo(
                     bvid = it.bvid,
                     title = it.title,
                     cover = it.pic,
                     author = it.owner.name,
-                    durationSec = it.duration
+                    durationSec = it.duration.toLong()
                 )
             }
         }.getOrNull()

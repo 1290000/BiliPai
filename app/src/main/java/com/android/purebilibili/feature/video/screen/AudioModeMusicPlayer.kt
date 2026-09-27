@@ -13,6 +13,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,7 +39,6 @@ import com.android.purebilibili.feature.video.player.MiniPlayerManager
 import com.android.purebilibili.core.store.PlayHistoryEntry
 import com.android.purebilibili.core.store.PlayHistoryStore
 import com.android.purebilibili.core.store.PlayLastSession
-import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.feature.video.player.PlaylistItem
 import com.android.purebilibili.feature.video.player.PlaylistManager
 import com.android.purebilibili.feature.video.playback.audio.resolveAudioQualityControlPresentation
@@ -168,7 +168,7 @@ internal fun AudioModeMusicPlayer(
                 title = displayTitle,
                 cover = info.pic,
                 owner = info.owner.name,
-                durationSec = 0L
+                durationSec = 0L,
                 lastPlayedAtMs = System.currentTimeMillis()
             )
         )
@@ -197,7 +197,7 @@ internal fun AudioModeMusicPlayer(
         AudioStartupAutoPlayGuard.handled = true
         val enabled = SettingsManager.getStartupAutoPlayEnabledSync(context)
         if (!enabled) return@LaunchedEffect
-        if (PlaylistManager.playlist.isNotEmpty()) return@LaunchedEffect
+        if (PlaylistManager.playlist.value.isNotEmpty()) return@LaunchedEffect
         val session = PlayHistoryStore.lastSession(context).firstOrNull() ?: return@LaunchedEffect
         if (session.bvid.isBlank()) return@LaunchedEffect
         PlaylistManager.addToPlaylist(

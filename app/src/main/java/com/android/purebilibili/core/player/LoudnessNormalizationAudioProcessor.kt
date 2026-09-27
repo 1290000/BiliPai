@@ -27,7 +27,7 @@ internal class LoudnessNormalizationAudioProcessor(
 ) : AudioProcessor {
 
     private var inputAudioFormat: AudioFormat =
-        AudioFormat(C.SAMPLE_RATE_UNSPECIFIED, C.CHANNELS_UNSPECIFIED, C.ENCODING_INVALID)
+        AudioFormat(androidx.media3.common.Format.NO_VALUE, -1, C.ENCODING_INVALID)
     private var outputAudioFormat: AudioFormat = inputAudioFormat
 
     private var buffer: ByteBuffer = ByteBuffer.allocateDirect(0)
@@ -66,8 +66,6 @@ internal class LoudnessNormalizationAudioProcessor(
     override fun getOutput(): ByteBuffer = buffer
 
     override fun isEnded(): Boolean = inputEnded && !buffer.hasRemaining()
-
-    override fun hasPendingOutput(): Boolean = buffer.hasRemaining()
 
     override fun queueEndOfStream() {
         inputEnded = true

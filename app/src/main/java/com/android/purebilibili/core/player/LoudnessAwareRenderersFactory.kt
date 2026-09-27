@@ -22,14 +22,12 @@ internal class LoudnessAwareRenderersFactory(
     override fun buildAudioSink(
         context: Context,
         enableFloatOutput: Boolean,
-        enableAudioTrackPlaybackParams: Boolean,
-        enableOffload: Boolean
+        enableAudioTrackPlaybackParams: Boolean
     ): AudioSink {
+        // 注入音频处理器后 offload 会被旁路，PCM 处理链路保持生效
         return DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-            // 注入音频处理器后不使用 offload，否则 PCM 链路被旁路
-            .setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
             .setAudioProcessors(arrayOf(loudnessProcessor as AudioProcessor))
             .build()
     }

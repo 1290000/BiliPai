@@ -95,6 +95,7 @@ import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppTextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -1932,7 +1933,7 @@ private fun PlayerPage(
                             MusicAudioQualityControl(
                                 label = audioQualityLabel,
                                 isHiResSelected = isHiResAudioSelected,
-                                isDolbyAudioSelected = isDolbyAudioSelected,
+                                isDolbySelected = isDolbyAudioSelected,
                                 onClick = onAudioQualityClick,
                                 glassTintColor = glassTintColor,
                                 isDarkEnvironment = isDarkEnvironment

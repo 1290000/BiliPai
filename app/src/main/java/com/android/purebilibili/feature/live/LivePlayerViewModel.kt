@@ -70,7 +70,7 @@ data class LiveDanmakuItem(
     val superChatDuration: Int = 0
 )
 
-internal data class LiveChatMessage(
+data class LiveChatMessage(
     val sequence: Long,
     val item: LiveDanmakuItem,
 )

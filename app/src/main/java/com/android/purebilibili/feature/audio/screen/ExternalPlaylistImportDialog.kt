@@ -244,6 +244,7 @@ fun ExternalPlaylistImportDialog(
                         }
                         Spacer(Modifier.height(8.dp))
                         MatchResultList(
+                            modifier = Modifier.weight(1f),
                             results = matchResults,
                             editingIndex = editingIndex,
                             manualKeyword = manualKeyword,
@@ -272,7 +273,7 @@ fun ExternalPlaylistImportDialog(
                                                         title = it.title,
                                                         cover = it.pic,
                                                         author = it.owner.name,
-                                                        durationSec = it.duration
+                                                        durationSec = it.duration.toLong()
                                                     )
                                                 }
                                             }
@@ -342,6 +343,7 @@ fun ExternalPlaylistImportDialog(
                         }
                         Spacer(Modifier.height(8.dp))
                         MatchResultList(
+                            modifier = Modifier.weight(1f),
                             results = matchResults.ifEmpty {
                                 playlist?.tracks?.map {
                                     ExternalPlaylistRepository.MatchOutcome(it, null)
@@ -365,6 +367,7 @@ fun ExternalPlaylistImportDialog(
 
 @Composable
 private fun MatchResultList(
+    modifier: Modifier = Modifier,
     results: List<ExternalPlaylistRepository.MatchOutcome>,
     editingIndex: Int?,
     manualKeyword: String,
@@ -376,9 +379,7 @@ private fun MatchResultList(
     onPickVideo: (Int, ExternalPlaylistRepository.MatchedVideo) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxWidth()
-            .weight(1f),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         items(results.size) { index ->

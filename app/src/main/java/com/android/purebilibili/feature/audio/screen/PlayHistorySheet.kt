@@ -1,6 +1,8 @@
 // File: feature/audio/screen/PlayHistorySheet.kt
 package com.android.purebilibili.feature.audio.screen
 
+@file:androidx.compose.material3.ExperimentalMaterial3Api::class
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,9 +28,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.android.purebilibili.core.store.PlayHistoryEntry
 import com.android.purebilibili.core.store.PlayHistoryStore
-import com.android.purebilibili.core.ui.components.AppModalBottomSheet
+import com.android.purebilibili.core.ui.AppModalBottomSheet
 import com.android.purebilibili.core.ui.components.AppText
-import androidx.compose.runtime.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 
 /** 最近播放：按播放时间倒序展示，含播放次数。点击立即切歌。 */
