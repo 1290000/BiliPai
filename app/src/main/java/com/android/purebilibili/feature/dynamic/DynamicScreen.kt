@@ -666,42 +666,28 @@ fun DynamicScreen(
     }
 
     // 瀑布流 lane 会切换首个可见 item，index 不适合判断方向；改用 nested-scroll 增量。
-    var bottomBarScrollState by remember { mutableStateOf(DynamicBottomBarScrollState()) }
-    val currentShouldAutoCollapseBottomBar by rememberUpdatedState(shouldAutoCollapseBottomBar)
+    val bottomBarScrollState = remember { mutableStateOf(DynamicBottomBarScrollState()) }
     val currentActiveListState by rememberUpdatedState(activeListState)
-    val currentSetBottomBarVisible by rememberUpdatedState(setBottomBarVisible)
-    val currentBottomBarChromeScrollOffset by rememberUpdatedState(bottomBarChromeScrollOffset)
-    val bottomBarScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // 与推荐页相同：连续累计偏移，供搜索胶囊 24dp 阈值双向凑满。
-                val nextOffset = com.android.purebilibili.feature.home.resolveNextHomeGlobalScrollOffset(
-                    currentOffset = currentBottomBarChromeScrollOffset.value,
-                    scrollDeltaY = available.y,
-                    liquidGlassEnabled = false,
-                )
-                if (nextOffset != null) {
-                    currentBottomBarChromeScrollOffset.value = nextOffset
-                }
-                if (!currentShouldAutoCollapseBottomBar) return Offset.Zero
-                val listState = currentActiveListState ?: return Offset.Zero
-                val isAtTop = listState.firstVisibleItemIndex == 0 &&
-                    listState.firstVisibleItemScrollOffset < DynamicBottomBarTopRevealPx
-                val update = reduceDynamicBottomBarScrollDelta(
-                    previousState = bottomBarScrollState,
-                    deltaY = available.y,
-                    isAtTop = isAtTop,
-                )
-                bottomBarScrollState = update.state
-                when (update.intent) {
-                    DynamicBottomBarScrollIntent.SHOW -> currentSetBottomBarVisible(true)
-                    DynamicBottomBarScrollIntent.HIDE -> currentSetBottomBarVisible(false)
-                    null -> Unit
-                }
-                return Offset.Zero
+    val bottomBarScrollConnection = com.android.purebilibili.core.ui.rememberBottomBarScrollHideConnection(
+        chromeScrollOffset = bottomBarChromeScrollOffset,
+        autoHideEnabled = shouldAutoCollapseBottomBar,
+        isAtTop = {
+            val listState = currentActiveListState
+            listState != null &&
+                listState.firstVisibleItemIndex == 0 &&
+                listState.firstVisibleItemScrollOffset < DynamicBottomBarTopRevealPx
+        },
+        isActivePage = isCurrentPage,
+        onVisibilityIntent = { intent ->
+            when (intent) {
+                com.android.purebilibili.core.ui.BottomBarScrollHideIntent.SHOW ->
+                    setBottomBarVisible(true)
+                com.android.purebilibili.core.ui.BottomBarScrollHideIntent.HIDE ->
+                    setBottomBarVisible(false)
             }
-        }
-    }
+        },
+        hideState = bottomBarScrollState,
+    )
 
     LaunchedEffect(filteredItems.size, activeLoading, displayedLogicalTab, isSelectedUserTabActive) {
         if (shouldRevealDynamicBottomBarForStaticContent(
@@ -711,7 +697,7 @@ fun DynamicScreen(
         ) {
             setBottomBarVisible(true)
             bottomBarChromeScrollOffset.value = 0f
-            bottomBarScrollState = DynamicBottomBarScrollState()
+            bottomBarScrollState.value = DynamicBottomBarScrollState()
         }
     }
 
@@ -719,6 +705,7 @@ fun DynamicScreen(
         if (!shouldAutoCollapseBottomBar) {
             setBottomBarVisible(true)
             bottomBarChromeScrollOffset.value = 0f
+            bottomBarScrollState.value = DynamicBottomBarScrollState()
         }
     }
 
@@ -748,7 +735,7 @@ fun DynamicScreen(
         onDispose {
             setBottomBarVisible(true)
             bottomBarChromeScrollOffset.value = 0f
-            bottomBarScrollState = DynamicBottomBarScrollState()
+            bottomBarScrollState.value = DynamicBottomBarScrollState()
         }
     }
 
