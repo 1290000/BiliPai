@@ -875,7 +875,7 @@ fun AdaptiveSliderPreferenceRenderer(
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Slider(
+        AppSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,

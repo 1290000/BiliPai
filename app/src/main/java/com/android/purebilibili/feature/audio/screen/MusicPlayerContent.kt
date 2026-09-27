@@ -2353,6 +2353,7 @@ private fun MusicProgress(
                 activeColor = MusicAccentColor,
                 inactiveColor = inactiveTrackColor,
                 thumbColor = MusicAccentColor,
+                hapticStep = (duration.toFloat() * 0.05f).coerceAtLeast(1_000f),
                 modifier = Modifier.height(48.dp),
             )
         }
@@ -2450,6 +2451,7 @@ private fun MusicVolumeSlider(
                 activeColor = MusicAccentColor,
                 inactiveColor = inactiveTrackColor,
                 thumbColor = MusicAccentColor,
+                hapticStep = 1f / maxVolume.toFloat(),
                 modifier = Modifier.height(40.dp)
             )
         }
@@ -3200,9 +3202,7 @@ private fun MusicPlayPauseButton(
                 imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (state.isPlaying) "暂停" else "播放",
                 tint = playButtonFg,
-                modifier = Modifier
-                    .size((sizeDp * 0.44f).dp)
-                    .then(if (state.isPlaying) Modifier else Modifier.offset(x = 2.dp))
+                modifier = Modifier.size((sizeDp * 0.44f).dp)
             )
         }
     }
