@@ -33,6 +33,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -407,6 +408,7 @@ internal fun MusicPlayerContent(
     var artworkBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var showQueue by remember { mutableStateOf(false) }
     var isQueueCoverFlow by remember { mutableStateOf(true) }
+    var musicTitleCollapsed by rememberSaveable { mutableStateOf(false) }
     var showActions by remember { mutableStateOf(false) }
     var expandedRightPaneTab by remember { mutableStateOf(ExpandedRightPaneTab.LYRICS) }
     var layoutPreferenceName by rememberSaveable {
@@ -432,7 +434,7 @@ internal fun MusicPlayerContent(
     }
     val musicChromeAlpha by animateFloatAsState(
         targetValue = if (musicChromeVisible) 1f else 0.28f,
-        animationSpec = if (effectiveReduceMotion) snap() else tween(400),
+        animationSpec = if (reduceMotion) snap() else tween(400),
         label = "music_chrome_alpha"
     )
     var lyricsControlsVisible by remember(state.title) { mutableStateOf(false) }
@@ -826,6 +828,8 @@ internal fun MusicPlayerContent(
                                 },
                                 chromeVisible = musicChromeVisible,
                                 onChromeTap = { showMusicChrome() },
+                                titleCollapsed = musicTitleCollapsed,
+                                onToggleTitleCollapsed = { musicTitleCollapsed = !musicTitleCollapsed },
                                 modifier = Modifier.padding(bottom = MUSIC_PLAYER_COMPACT_DOCK_BOTTOM_PADDING_DP.dp)
                             )
                         } else {
@@ -1197,6 +1201,13 @@ internal fun MusicPlayerContent(
                                     settingsScope.launch {
                                         SettingsManager.setMusicLyricsUiStyle(context, nextStyle)
                                     }
+                                }
+                                MusicActionSheetItem(
+                                    if (musicTitleCollapsed) "展开标题" else "折叠标题",
+                                    contentColor = sheetContentColor
+                                ) {
+                                    showActions = false
+                                    musicTitleCollapsed = !musicTitleCollapsed
                                 }
                                 if (
                                     !adaptiveInfo.foldingFeature.hasObstructingHinge &&
@@ -1571,7 +1582,7 @@ private fun ImmersiveBottomQueueShelf(
                         },
                     ) { _, dragAmount ->
                         dragScope.launch {
-                            dragOffsetY.snapTo((dragOffsetY.value + dragAmount.y).coerceAtLeast(0f))
+                            dragOffsetY.snapTo((dragOffsetY.value + dragAmount).coerceAtLeast(0f))
                         }
                     }
                 }
@@ -1813,6 +1824,8 @@ private fun PlayerPage(
     isQueueActive: Boolean = false,
     chromeVisible: Boolean = true,
     onChromeTap: (() -> Unit)? = null,
+    titleCollapsed: Boolean = false,
+    onToggleTitleCollapsed: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val topPadding = if (compactLandscape) 0.dp else if (isExpandedLayout) 12.dp else 56.dp
@@ -1845,6 +1858,11 @@ private fun PlayerPage(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .clipToBounds()
+                    .pointerInput(onChromeTap) {
+                        if (onChromeTap == null) return@pointerInput
+                        detectTapGestures { onChromeTap() }
+                    }
                     .then(
                         if (!isExpandedLayout && !compactLandscape) {
                             Modifier.offset(y = 12.dp)
@@ -1918,14 +1936,47 @@ private fun PlayerPage(
 
         // 下半部：歌曲信息与控制组件区（始终稳定坐落于底端，完整展示播放/暂停与切歌）
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = if (chromeVisible) 1f else 0.28f }
+                .pointerInput(onChromeTap) {
+                    if (onChromeTap == null) return@pointerInput
+                    detectTapGestures { onChromeTap() }
+                },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(onToggleTitleCollapsed, titleCollapsed, chromeVisible) {
+                        if (onToggleTitleCollapsed == null) return@pointerInput
+                        var accumulatedDrag = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = { accumulatedDrag = 0f },
+                            onDragEnd = {
+                                // 沉浸态（控件已隐藏）下滑折叠标题；任意时刻上滑展开。
+                                when {
+                                    chromeVisible && accumulatedDrag < -90f ->
+                                        if (titleCollapsed) onToggleTitleCollapsed()
+                                    !chromeVisible && accumulatedDrag > 90f && !titleCollapsed ->
+                                        onToggleTitleCollapsed()
+                                }
+                            },
+                        ) { change, dragAmount ->
+                            change.consume()
+                            accumulatedDrag += dragAmount
+                        }
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(Modifier.weight(1f)) {
+                AnimatedVisibility(
+                    visible = !titleCollapsed,
+                    enter = fadeIn(AppMotionTokens.standardSpec()) +
+                        slideInVertically(AppMotionTokens.standardSpec()) { it / 2 },
+                    exit = fadeOut(AppMotionTokens.standardSpec()) +
+                        slideOutVertically(AppMotionTokens.standardSpec()) { it / 2 },
+                ) {
+                    Column(Modifier.weight(1f)) {
                     AppText(
                         text = state.title,
                         color = MusicContentColor,
@@ -1951,9 +2002,15 @@ private fun PlayerPage(
                     state.error?.let {
                         AppText(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
+                    }
                 }
                 onLikeClick?.let { like ->
-                    AppIconButton(onClick = like, modifier = Modifier.size(48.dp)) {
+                    AppIconButton(
+                        onClick = like,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .graphicsLayer { alpha = if (chromeVisible) 1f else 0.28f }
+                    ) {
                         AppIcon(
                             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = if (isLiked) "取消点赞" else "点赞",

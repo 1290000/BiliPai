@@ -32,6 +32,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.Animatable
@@ -1254,7 +1255,11 @@ internal fun VideoDetailScreenStateHolder(
 
     // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
     // 使用 rememberSaveable 确保状态在横竖屏切换时保持
-    var userRequestedFullscreen by rememberSaveable { mutableStateOf(false) }
+    // 分屏 / 系统小窗下打开视频即进入全屏（横屏形态），无需手动点全屏
+    var userRequestedFullscreen by rememberSaveable {
+        // displayContext 此时已可用；isActivityInMultiWindowMode 在下方才声明
+        mutableStateOf(displayContext.isInMultiWindowMode)
+    }
     var manualPortraitHoldActive by rememberSaveable { mutableStateOf(false) }
     var preserveCurrentFrameOnFullscreenChange by remember { mutableStateOf(false) }
     var pendingFullscreenPositionRestoreMs by remember { mutableLongStateOf(-1L) }
@@ -5390,13 +5395,39 @@ internal fun VideoDetailScreenStateHolder(
         )
     }
 
-    VideoDetailScreenContent(
-        transitionState = transitionState,
-        routeSheetMotion = routeSheetMotion,
-        isFullscreenMode = isFullscreenMode,
-        backgroundColor = AppSurfaceTokens.background(),
-        modifier = detailShellModifier,
-        mainContent = { VideoDetailRouteSheetMainContent() },
-        overlayContent = { VideoDetailRouteSheetOverlayContent() }
-    )
+    //  分屏 / 系统小窗内横屏：窗口保持竖形而系统忽略转屏请求时，
+    //  把横屏全屏 UI 旋转 90° 直接画满窗口，视频以横屏形态呈现。
+    val rotatedInWindowLandscape = isFullscreenMode &&
+        isActivityInMultiWindowMode &&
+        configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+    if (rotatedInWindowLandscape) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .size(width = maxHeight, height = maxWidth)
+                    .align(Alignment.Center)
+                    .graphicsLayer { rotationZ = -90f }
+            ) {
+                VideoDetailScreenContent(
+                    transitionState = transitionState,
+                    routeSheetMotion = routeSheetMotion,
+                    isFullscreenMode = isFullscreenMode,
+                    backgroundColor = AppSurfaceTokens.background(),
+                    modifier = Modifier.fillMaxSize(),
+                    mainContent = { VideoDetailRouteSheetMainContent() },
+                    overlayContent = { VideoDetailRouteSheetOverlayContent() }
+                )
+            }
+        }
+    } else {
+        VideoDetailScreenContent(
+            transitionState = transitionState,
+            routeSheetMotion = routeSheetMotion,
+            isFullscreenMode = isFullscreenMode,
+            backgroundColor = AppSurfaceTokens.background(),
+            modifier = detailShellModifier,
+            mainContent = { VideoDetailRouteSheetMainContent() },
+            overlayContent = { VideoDetailRouteSheetOverlayContent() }
+        )
+    }
 }
