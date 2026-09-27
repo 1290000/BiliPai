@@ -1475,8 +1475,7 @@ internal fun VideoDetailScreenStateHolder(
                     if (!shouldApplyStartFullscreenOrientationRequest(
                             startInFullscreen = startInFullscreen,
                             isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
-                            isLandscape = isLandscape,
-                            isInMultiWindowMode = isInMultiWindowMode
+                            isLandscape = isLandscape
                         )
                     ) {
                         if (isInMultiWindowMode) {
