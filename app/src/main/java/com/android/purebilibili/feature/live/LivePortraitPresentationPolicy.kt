@@ -29,7 +29,7 @@ internal fun resolveLivePortraitPresentation(
 }
 
 internal fun resolveLivePortraitChatPreviewCount(heightDp: Int, fontScale: Float): Int =
-    if (heightDp < 720 || fontScale > 1.2f) 4 else 6
+    if (heightDp < 720 || fontScale > 1.2f) 3 else 4
 
 data class LivePlayerGesturePolicy(
     val doubleTapPlayback: Boolean,

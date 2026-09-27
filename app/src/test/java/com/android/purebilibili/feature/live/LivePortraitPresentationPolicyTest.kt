@@ -69,9 +69,9 @@ class LivePortraitPresentationPolicyTest {
 
     @Test
     fun `compact windows and large text reduce chat preview density`() {
-        assertEquals(4, resolveLivePortraitChatPreviewCount(640, 1f))
-        assertEquals(4, resolveLivePortraitChatPreviewCount(900, 1.5f))
-        assertEquals(6, resolveLivePortraitChatPreviewCount(844, 1f))
+        assertEquals(3, resolveLivePortraitChatPreviewCount(640, 1f))
+        assertEquals(3, resolveLivePortraitChatPreviewCount(900, 1.5f))
+        assertEquals(4, resolveLivePortraitChatPreviewCount(844, 1f))
     }
 
     @Test

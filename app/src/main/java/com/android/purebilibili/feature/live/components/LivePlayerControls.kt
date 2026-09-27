@@ -204,6 +204,7 @@ fun LivePlayerControls(
     usePortraitControls: Boolean = false,
     isClearScreen: Boolean = false,
     onPortraitTap: () -> Unit = {},
+    onTogglePortraitClearScreen: () -> Unit = {},
     onOpenPortraitMore: () -> Unit = {},
 ) {
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -247,6 +248,7 @@ fun LivePlayerControls(
     val latestToggleFullscreen by rememberUpdatedState(onToggleFullscreen)
     val latestToggleDanmaku by rememberUpdatedState(onToggleDanmaku)
     val latestPortraitTap by rememberUpdatedState(onPortraitTap)
+    val latestTogglePortraitClearScreen by rememberUpdatedState(onTogglePortraitClearScreen)
     val latestOpenPortraitMore by rememberUpdatedState(onOpenPortraitMore)
     val latestOnLike by rememberUpdatedState(onLike)
     
@@ -280,24 +282,30 @@ fun LivePlayerControls(
                                 } else null,
                             )
                         }
-                        .pointerInput(usePortraitControls, isDanmakuEnabled) {
+                        .pointerInput(usePortraitControls, isDanmakuEnabled, isClearScreen) {
                             if (usePortraitControls) {
                                 var horizontalDrag = 0f
+                                var startedInCenter = false
                                 detectHorizontalDragGestures(
-                                    onDragStart = { horizontalDrag = 0f },
+                                    onDragStart = { offset ->
+                                        horizontalDrag = 0f
+                                        startedInCenter = offset.x in (size.width / 3f)..(size.width * 2f / 3f)
+                                    },
                                     onHorizontalDrag = { change, dragAmount ->
                                         horizontalDrag += dragAmount
                                         change.consume()
                                     },
                                     onDragEnd = {
                                         val threshold = size.width * 0.16f
-                                        if (horizontalDrag <= -threshold && isDanmakuEnabled) {
+                                        if (startedInCenter && kotlin.math.abs(horizontalDrag) >= threshold) {
+                                            latestTogglePortraitClearScreen()
+                                        } else if (!isClearScreen && !startedInCenter && horizontalDrag <= -threshold && isDanmakuEnabled) {
                                             latestToggleDanmaku()
-                                        } else if (horizontalDrag >= threshold && !isDanmakuEnabled) {
+                                        } else if (!isClearScreen && !startedInCenter && horizontalDrag >= threshold && !isDanmakuEnabled) {
                                             latestToggleDanmaku()
                                         }
                                     },
-                                    onDragCancel = { horizontalDrag = 0f },
+                                    onDragCancel = { horizontalDrag = 0f; startedInCenter = false },
                                 )
                             }
                         }

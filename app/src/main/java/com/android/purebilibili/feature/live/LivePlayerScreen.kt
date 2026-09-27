@@ -1027,6 +1027,10 @@ fun LivePlayerScreen(
                 usePortraitControls = portraitPresentation.usePortraitControls,
                 isClearScreen = portraitPresentation.clearScreen,
                 onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
+                onTogglePortraitClearScreen = {
+                    isPortraitClearScreen = !isPortraitClearScreen
+                    if (!isPortraitClearScreen) showPortraitPlayerControls = true
+                },
                 onOpenPortraitMore = {
                     showPortraitPlayerControls = true
                     showPortraitMoreSheet = true
@@ -1449,7 +1453,7 @@ fun LivePlayerScreen(
                     ) {
                         if (portraitPresentation.showChatPreview) {
                             LivePortraitChatStream(
-                                messages = chatHistory,
+                                messages = chatHistory.takeLast(portraitChatPreviewCount),
                                 superChatCount = superChatItems.size,
                                 onUserClick = onUserClick,
                                 onAtUser = { item ->
