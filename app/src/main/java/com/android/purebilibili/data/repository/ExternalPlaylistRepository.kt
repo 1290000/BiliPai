@@ -1,10 +1,15 @@
 // File: data/repository/ExternalPlaylistRepository.kt
 package com.android.purebilibili.data.repository
 
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.android.purebilibili.core.network.NetworkModule
+import com.android.purebilibili.core.store.settingsDataStore
 import com.android.purebilibili.core.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -58,7 +63,50 @@ object ExternalPlaylistRepository {
         val video: MatchedVideo?
     )
 
+    data class ImportCheckpoint(
+        val playlist: ExternalPlaylistMeta,
+        val outcomes: List<MatchOutcome>,
+        val completedCount: Int,
+    )
+
+    @Serializable
+    private data class SerializableMatchOutcome(
+        val track: ExternalTrack,
+        val video: MatchedVideo? = null,
+    )
+
     private val json = Json { ignoreUnknownKeys = true }
+    private val importCheckpointKey = stringPreferencesKey("external_playlist_import_checkpoint_v1")
+
+    suspend fun loadImportCheckpoint(context: Context): ImportCheckpoint? = runCatching {
+        val raw = context.settingsDataStore.data.first()[importCheckpointKey] ?: return null
+        val stored = json.decodeFromString<StoredImportCheckpoint>(raw)
+        ImportCheckpoint(
+            playlist = stored.playlist,
+            outcomes = stored.outcomes.map { MatchOutcome(it.track, it.video) },
+            completedCount = stored.completedCount.coerceIn(0, stored.playlist.tracks.size),
+        )
+    }.getOrNull()
+
+    suspend fun saveImportCheckpoint(context: Context, checkpoint: ImportCheckpoint) {
+        val stored = StoredImportCheckpoint(
+            playlist = checkpoint.playlist,
+            outcomes = checkpoint.outcomes.map { SerializableMatchOutcome(it.track, it.video) },
+            completedCount = checkpoint.completedCount.coerceIn(0, checkpoint.playlist.tracks.size),
+        )
+        context.settingsDataStore.edit { it[importCheckpointKey] = json.encodeToString(stored) }
+    }
+
+    suspend fun clearImportCheckpoint(context: Context) {
+        context.settingsDataStore.edit { it.remove(importCheckpointKey) }
+    }
+
+    @Serializable
+    private data class StoredImportCheckpoint(
+        val playlist: ExternalPlaylistMeta,
+        val outcomes: List<SerializableMatchOutcome>,
+        val completedCount: Int,
+    )
 
     // 匹配过滤规则：音MAD/现场/翻唱/科普/运动分区一律排除，避免匹配到非音乐内容
     private val BLACKLIST_ZONES = setOf(26, 29, 31, 201, 238)
@@ -261,10 +309,12 @@ object ExternalPlaylistRepository {
 
     suspend fun matchTracks(
         tracks: List<ExternalTrack>,
-        onProgress: (completed: Int, total: Int, outcome: MatchOutcome) -> Unit
+        startIndex: Int = 0,
+        onProgress: suspend (completed: Int, total: Int, outcome: MatchOutcome) -> Unit
     ): List<MatchOutcome> {
         val results = mutableListOf<MatchOutcome>()
         tracks.forEachIndexed { index, track ->
+            if (index < startIndex) return@forEachIndexed
             val outcome = matchTrack(track)
             results += outcome
             onProgress(index + 1, tracks.size, outcome)

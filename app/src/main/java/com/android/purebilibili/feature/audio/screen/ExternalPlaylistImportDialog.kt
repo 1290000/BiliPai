@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -100,25 +101,47 @@ fun ExternalPlaylistImportDialog(
         mutableStateOf<List<ExternalPlaylistRepository.MatchedVideo>>(emptyList())
     }
 
+    LaunchedEffect(context) {
+        ExternalPlaylistRepository.loadImportCheckpoint(context)?.let { checkpoint ->
+            playlist = checkpoint.playlist
+            matchResults = checkpoint.outcomes.map { ExternalPlaylistRepository.MatchOutcome(it.track, it.video) }
+            matchTotal = checkpoint.playlist.tracks.size
+            matchCompleted = checkpoint.completedCount
+        }
+    }
+
     fun dismissEditing() {
         editingIndex = null
         manualResults = emptyList()
         manualKeyword = ""
     }
 
-    fun startMatching() {
+    fun startMatching(resume: Boolean = false) {
         val meta = playlist ?: return
         matching = true
-        matchCompleted = 0
         matchTotal = meta.tracks.size
-        matchResults = meta.tracks.map { ExternalPlaylistRepository.MatchOutcome(it, null) }
+        val startIndex = if (resume) matchCompleted.coerceIn(0, meta.tracks.size) else 0
+        if (!resume || matchResults.size != meta.tracks.size) {
+            matchCompleted = 0
+            matchResults = meta.tracks.map { ExternalPlaylistRepository.MatchOutcome(it, null) }
+        }
+        scope.launch {
+            ExternalPlaylistRepository.saveImportCheckpoint(
+                context,
+                ExternalPlaylistRepository.ImportCheckpoint(meta, matchResults, matchCompleted),
+            )
+        }
         matchJob = scope.launch {
-            ExternalPlaylistRepository.matchTracks(meta.tracks) { completed, _, outcome ->
+            ExternalPlaylistRepository.matchTracks(meta.tracks, startIndex) { completed, _, outcome ->
                 matchCompleted = completed
                 matchingTrackTitle = outcome.track.title
                 matchResults = matchResults.toMutableList().also { list ->
                     if (completed - 1 in list.indices) list[completed - 1] = outcome
                 }
+                ExternalPlaylistRepository.saveImportCheckpoint(
+                    context,
+                    ExternalPlaylistRepository.ImportCheckpoint(meta, matchResults, completed),
+                )
             }
             matching = false
         }
@@ -146,6 +169,7 @@ fun ExternalPlaylistImportDialog(
                 items = items,
             )
             LocalPlaylistStore.savePlaylist(context, local)
+            ExternalPlaylistRepository.clearImportCheckpoint(context)
             onSaved?.invoke(local)
             onDismiss()
         }
@@ -236,7 +260,22 @@ fun ExternalPlaylistImportDialog(
                                     ExternalPlaylistRepository.fetchPlaylist(sourceAndId.first, sourceAndId.second)
                                         .onSuccess { fetched ->
                                             if (fetched.tracks.isEmpty()) fetchError = "歌单为空或为私密歌单"
-                                            else playlist = fetched
+                                            else {
+                                                playlist = fetched
+                                                matchResults = fetched.tracks.map {
+                                                    ExternalPlaylistRepository.MatchOutcome(it, null)
+                                                }
+                                                matchCompleted = 0
+                                                matchTotal = fetched.tracks.size
+                                                ExternalPlaylistRepository.saveImportCheckpoint(
+                                                    context,
+                                                    ExternalPlaylistRepository.ImportCheckpoint(
+                                                        fetched,
+                                                        matchResults,
+                                                        completedCount = 0,
+                                                    ),
+                                                )
+                                            }
                                         }
                                         .onFailure { fetchError = it.message ?: "获取歌单失败" }
                                 }
@@ -278,10 +317,17 @@ fun ExternalPlaylistImportDialog(
                                     matchJob?.cancel()
                                     matching = false
                                 } else {
-                                    startMatching()
+                                    startMatching(resume = matchCompleted in 1 until meta.tracks.size)
                                 }
                             }) {
-                                Text(if (matching) "停止" else if (matchResults.isEmpty()) "开始匹配" else "重新匹配")
+                                Text(
+                                    when {
+                                        matching -> "停止"
+                                        matchCompleted in 1 until meta.tracks.size -> "继续匹配"
+                                        matchCompleted >= meta.tracks.size -> "重新匹配"
+                                        else -> "开始匹配"
+                                    },
+                                )
                             }
                         }
                     }
@@ -423,6 +469,16 @@ fun ExternalPlaylistImportDialog(
                                             modifier = Modifier.fillMaxWidth().clickable {
                                                 matchResults = matchResults.toMutableList().also { list ->
                                                     list[index] = ExternalPlaylistRepository.MatchOutcome(list[index].track, video)
+                                                }
+                                                scope.launch {
+                                                    ExternalPlaylistRepository.saveImportCheckpoint(
+                                                        context,
+                                                        ExternalPlaylistRepository.ImportCheckpoint(
+                                                            meta,
+                                                            matchResults,
+                                                            matchCompleted,
+                                                        ),
+                                                    )
                                                 }
                                                 dismissEditing()
                                             },
