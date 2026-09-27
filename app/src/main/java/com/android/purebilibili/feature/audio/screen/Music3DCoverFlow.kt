@@ -62,10 +62,10 @@ import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
+import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.feature.audio.player.MusicQueueItemUi
 import com.android.purebilibili.feature.home.components.LiquidGlassTuning
-import com.android.purebilibili.feature.home.components.biliPaiFloatingDockShell
 import com.android.purebilibili.feature.home.components.resolveLiquidGlassTuning
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
 import kotlinx.coroutines.launch
@@ -385,20 +385,20 @@ internal fun Music3DCoverFlow(
 
             Spacer(Modifier.height(12.dp))
 
-            // 底部悬浮胶囊控制条（药丸毛玻璃容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
+            // 底部悬浮胶囊控制条（主题色容器 + 歌名 - 歌手 + 心形/上一首/播放/下一首）
             val playingItem = queue[validCurrentIndex]
-            val pillContainerColor = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment)
-            val pillBorderColor = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment)
-            val pillContentColor = MusicContentColor
+            val pillContainerColor = AppSurfaceTokens.surfaceContainer()
+            val pillBorderColor = MaterialTheme.colorScheme.outlineVariant
+            val pillContentColor = MaterialTheme.colorScheme.onSurface
 
             AppSurface(
                 shape = CircleShape,
-                color = if (miuixBackdrop != null) Color.Transparent else pillContainerColor,
+                color = pillContainerColor,
                 border = BorderStroke(
                     width = 0.8.dp,
                     color = pillBorderColor
                 ),
-                shadowElevation = if (miuixBackdrop != null) 0.dp else 6.dp,
+                shadowElevation = 6.dp,
                 modifier = Modifier
                     .widthIn(max = controlsWidthDp.dp)
                     .fillMaxWidth()
@@ -411,15 +411,6 @@ internal fun Music3DCoverFlow(
                         alpha = chromeEntrance
                         translationY = if (reduceMotion) 0f else (1f - chromeEntrance) * 12.dp.toPx()
                     }
-                    .biliPaiFloatingDockShell(
-                        backdrop = miuixBackdrop,
-                        containerColor = pillContainerColor,
-                        pressProgress = 0f,
-                        shape = CircleShape,
-                        enabled = glassEnabled && miuixBackdrop != null,
-                        blurEnabled = !glassEnabled,
-                        liquidGlassTuning = liquidGlassTuning
-                    )
             ) {
                 Row(
                     modifier = Modifier
