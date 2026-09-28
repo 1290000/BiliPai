@@ -3920,125 +3920,20 @@ private fun SpaceTopVideoCard(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
-    val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-    val screenWidthPx = remember(configuration.screenWidthDp, density) {
-        with(density) { configuration.screenWidthDp.dp.toPx() }
-    }
-    val screenHeightPx = remember(configuration.screenHeightDp, density) {
-        with(density) { configuration.screenHeightDp.dp.toPx() }
-    }
-    val densityValue = density.density
-    val sourceRoute = LocalVideoCardSharedElementSourceRoute.current
-    val nativeCardSnapshot = rememberNativeVideoCardSnapshotController(
-        sharedTransitionKey ?: video.pic,
-    )
-    var cardBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    var coverBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    val stationaryCoverUrl = remember(video.pic) {
-        FormatUtils.buildSizedImageUrl(video.pic, width = 560, height = 352)
-    }
-    val stationaryCoverRequest = remember(stationaryCoverUrl) {
-        ImageRequest.Builder(context)
-            .data(stationaryCoverUrl)
-            .crossfade(false)
-            .memoryCacheKey(stationaryCoverUrl)
-            .diskCacheKey(stationaryCoverUrl)
-            .build()
-    }
-    val coverShape = AppShapes.mediaCover()
-    val cardCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Card).value.roundToInt()
-    val coverModifier = Modifier.spaceVideoCoverSharedBounds(
+    // 与单列投稿同款横向视频卡：封面时长角标 + "置顶" badge，不再卡片套卡片
+    SpaceArchiveListItemRow(
+        title = video.title,
+        cover = video.pic,
+        duration = FormatUtils.formatDuration(video.duration),
+        publishTime = video.reason.ifBlank { FormatUtils.formatPublishTime(video.pubdate) },
+        play = video.stat.view,
+        secondaryCount = video.stat.danmaku,
+        badgeLabel = "置顶",
+        onClick = onClick,
         sharedTransitionKey = sharedTransitionKey,
-        coverShape = coverShape,
         sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope
+        animatedVisibilityScope = animatedVisibilityScope,
     )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(AppShapes.container(ContainerLevel.Card))
-            .then(nativeCardSnapshot.modifier)
-            .background(AppSurfaceTokens.cardContainer())
-            .onGloballyPositioned { coordinates ->
-                cardBounds = coordinates.boundsInRoot()
-            }
-            .clickable {
-                cardBounds?.let { bounds ->
-                    CardPositionManager.recordVideoCardPosition(
-                        bvid = sharedTransitionKey.orEmpty(),
-                        sourceRoute = sourceRoute,
-                        bounds = bounds,
-                        screenWidth = screenWidthPx,
-                        screenHeight = screenHeightPx,
-                        density = densityValue,
-                        sourceCornerDp = cardCornerRadiusDp,
-                        coverBounds = coverBounds,
-                        sourceLayout = VideoCardSourceLayout.SIDE_BY_SIDE,
-                        sourceChromeSnapshot = VideoCardSourceChromeSnapshot(
-                            title = video.title,
-                            ownerName = "",
-                            ownerFaceUrl = "",
-                            viewText = FormatUtils.formatStat(video.stat.view),
-                            danmakuText = FormatUtils.formatStat(video.stat.danmaku),
-                            durationText = FormatUtils.formatDuration(video.duration),
-                            infoPresentation = com.android.purebilibili.core.ui.transition
-                                .resolveVideoCardSourceInfoPresentation(
-                                    publishTimeText = "",
-                                    showStatsInInfo = true,
-                                ),
-                            coverUrl = stationaryCoverUrl,
-                            coverCacheKey = stationaryCoverUrl,
-                        ).withMeasuredCoverDecodeSize(coverBounds),
-                    )
-                    nativeCardSnapshot.capture()
-                }
-                onClick()
-            }
-            .padding(14.dp)
-    ) {
-        AppText(
-            text = "置顶视频",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalVideoCardFrame(
-            coverModifier = coverModifier
-                    .onGloballyPositioned { coordinates ->
-                        coverBounds = coordinates.boundsInRoot()
-                    },
-            coverContent = {
-                AsyncImage(
-                    model = stationaryCoverRequest,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            },
-            infoContent = {
-                AppText(
-                    text = video.title,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    maxLines = videoCardTitleMaxLines(),
-                    overflow = videoCardTitleOverflow()
-                )
-                AppText(
-                    text = video.reason.ifBlank { FormatUtils.formatPublishTime(video.pubdate) },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                AppText(
-                    text = "${FormatUtils.formatStat(video.stat.view)}播放 · ${FormatUtils.formatStat(video.stat.like)}点赞",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-        )
-    }
 }
 
 @Composable
