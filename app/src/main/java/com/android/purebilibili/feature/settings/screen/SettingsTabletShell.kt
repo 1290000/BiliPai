@@ -63,10 +63,10 @@ import com.android.purebilibili.feature.settings.resolveSettingsVisualSpec
 import com.android.purebilibili.feature.settings.shouldRenderSettingsTabletDetailPane
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import ListDetailPaneScaffold
-import PaneAdaptedValue
-import ThreePaneScaffoldPaneScope
-import ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldPaneScope
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
