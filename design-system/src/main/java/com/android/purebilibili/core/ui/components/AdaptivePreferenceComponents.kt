@@ -1697,9 +1697,9 @@ fun AppSearchEntry(
         val searchBarState = rememberSearchBarState()
         val textFieldState = rememberTextFieldState(initialText = "")
         LaunchedEffect(searchBarState, onClick) {
-            snapshotFlow { searchBarState.isExpanded }
-                .collect { expanded ->
-                    if (expanded) {
+            snapshotFlow { searchBarState.currentValue }
+                .collect { value ->
+                    if (value == SearchBarValue.Expanded) {
                         onClick()
                         searchBarState.animateToCollapsed()
                     }
