@@ -35,6 +35,7 @@ import com.android.purebilibili.feature.dynamic.components.DynamicReserveAction
 import com.android.purebilibili.feature.dynamic.components.DynamicReserveResult
 import com.android.purebilibili.feature.dynamic.components.buildDynamicVisibilityObjectId
 import com.android.purebilibili.feature.dynamic.components.resolveDynamicVisibilityAction
+import com.android.purebilibili.feature.dynamic.notification.LiveReserveReminderScheduler
 import com.android.purebilibili.feature.video.viewmodel.resolveRoutedCommentRootReply
 import com.android.purebilibili.feature.video.viewmodel.resolveSubReplyLoadedTotalCount
 import com.android.purebilibili.feature.video.viewmodel.isSortedSubReplyPageEnd
@@ -1837,15 +1838,17 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 if (response.code != 0 || response.data == null) {
                     throw IllegalStateException(response.message.ifBlank { "预约操作失败" })
                 }
-                onResult(
-                    Result.success(
-                        DynamicReserveResult(
-                            description = response.data.desc_update,
-                            reserveTotal = response.data.reserve_update,
-                            buttonStatus = response.data.final_btn_status,
-                        )
-                    )
+                val result = DynamicReserveResult(
+                    description = response.data.desc_update,
+                    reserveTotal = response.data.reserve_update,
+                    buttonStatus = response.data.final_btn_status,
                 )
+                if (action.buttonType > 0 && result.buttonStatus == action.buttonType) {
+                    LiveReserveReminderScheduler.schedule(getApplication(), action)
+                } else {
+                    LiveReserveReminderScheduler.cancel(getApplication(), action.reserveId)
+                }
+                onResult(Result.success(result))
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

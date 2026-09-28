@@ -1847,6 +1847,9 @@ fun DynamicCardV2(
                                     reserveId = additionalCard.reserveId,
                                     currentButtonStatus = additionalCard.reserveButtonStatus,
                                     reserveTotal = additionalCard.reserveTotal,
+                                    buttonType = additionalCard.reserveButtonType,
+                                    title = additionalCard.title,
+                                    startAtMillis = additionalCard.reserveStartAtMillis,
                                 )
                             ) { result ->
                                 reserveSubmitting = false
