@@ -1077,6 +1077,7 @@ private fun SubReplyDetailItem(
     var hatedBodyExpanded by remember(item.rpid, isHated) { mutableStateOf(false) }
     val collapseHatedBody = isHated && !hatedBodyExpanded
     var hatePromptHandled by remember(item.rpid) { mutableStateOf(false) }
+    var confirmBlockUser by remember(item.rpid) { mutableStateOf(false) }
     val hateCollapseSpring: SpringSpec<androidx.compose.ui.unit.IntSize> = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMedium
@@ -1146,7 +1147,7 @@ private fun SubReplyDetailItem(
             },
             onReply = onReplyClick,
             onBlockUser = {
-                blockReplyUser()
+                confirmBlockUser = true
             },
             onReport = { showReportDialog = true },
             onToggleTop = {},
@@ -1173,6 +1174,24 @@ private fun SubReplyDetailItem(
             showReportDialog = false
         }
     )
+
+    if (confirmBlockUser) {
+        com.android.purebilibili.core.ui.AppAlertDialog(
+            onDismissRequest = { confirmBlockUser = false },
+            title = { AppText("拉黑该用户？") },
+            text = { AppText("拉黑「${item.member.uname}」后将不再显示 TA 的评论和动态，可在设置中解除。") },
+            confirmButton = {
+                com.android.purebilibili.core.ui.AppDialogAction(onClick = {
+                    confirmBlockUser = false
+                    hatePromptHandled = true
+                    blockReplyUser()
+                }) { AppText("确认拉黑") }
+            },
+            dismissButton = {
+                com.android.purebilibili.core.ui.AppDialogAction(onClick = { confirmBlockUser = false }) { AppText("取消") }
+            },
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -1294,10 +1313,7 @@ private fun SubReplyDetailItem(
                                 ReplyTextAction(
                                     label = "屏蔽该用户",
                                     appearance = appearance,
-                                    onClick = {
-                                        hatePromptHandled = true
-                                        blockReplyUser()
-                                    }
+                                    onClick = { confirmBlockUser = true }
                                 )
                                 ReplyTextAction(
                                     label = "举报",

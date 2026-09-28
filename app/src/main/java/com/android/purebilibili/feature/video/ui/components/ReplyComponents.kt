@@ -1423,6 +1423,8 @@ fun ReplyItemView(
         }
     }
 
+    var confirmBlockUser by remember(item.rpid) { mutableStateOf(false) }
+
     if (showActionSheet) {
         ReplyActionSheet(
             queryAuthorUid = replyMemberMid,
@@ -1452,7 +1454,7 @@ fun ReplyItemView(
                 onReplyClick?.invoke() ?: onSubClick(item, 0L)
             },
             onBlockUser = {
-                blockReplyUser()
+                confirmBlockUser = true
             },
             onReport = {
                 showReportDialog = true
@@ -1485,6 +1487,24 @@ fun ReplyItemView(
             showReportDialog = false
         }
     )
+
+    if (confirmBlockUser) {
+        com.android.purebilibili.core.ui.AppAlertDialog(
+            onDismissRequest = { confirmBlockUser = false },
+            title = { AppText("拉黑该用户？") },
+            text = { AppText("拉黑「${item.member.uname}」后将不再显示 TA 的评论和动态，可在设置中解除。") },
+            confirmButton = {
+                com.android.purebilibili.core.ui.AppDialogAction(onClick = {
+                    confirmBlockUser = false
+                    hatePromptHandled = true
+                    blockReplyUser()
+                }) { AppText("确认拉黑") }
+            },
+            dismissButton = {
+                com.android.purebilibili.core.ui.AppDialogAction(onClick = { confirmBlockUser = false }) { AppText("取消") }
+            },
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -1627,10 +1647,7 @@ fun ReplyItemView(
                                 ReplyTextAction(
                                     label = "屏蔽该用户",
                                     appearance = appearance,
-                                    onClick = {
-                                        hatePromptHandled = true
-                                        blockReplyUser()
-                                    }
+                                    onClick = { confirmBlockUser = true }
                                 )
                                 ReplyTextAction(
                                     label = "举报",
