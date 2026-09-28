@@ -2571,6 +2571,21 @@ private fun SpaceHeader(
     val avatarPreviewEnabled = userInfo.face.isNotBlank()
     val isOwner = userInfo.mid > 0L &&
         userInfo.mid == com.android.purebilibili.core.store.TokenManager.midCache
+    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
+    val uiSkinState = com.android.purebilibili.core.plugin.skin.LocalUiSkinState.current
+    val activeProfileSkin = uiSkinState.activeSkin?.takeIf {
+        uiSkinState.enabled &&
+            isOwner &&
+            com.android.purebilibili.core.plugin.skin.UiSkinSurface.PROFILE in it.manifest.surfaces
+    }
+    val skinSpaceBackgroundPaths = activeProfileSkin?.manifest?.assets?.spaceBackgrounds.orEmpty()
+        .mapNotNull { background ->
+            val preferLandscape = windowSizeClass.widthDp > windowSizeClass.heightDp
+            activeProfileSkin?.assetFilePath(
+                if (preferLandscape) background.landscape ?: background.portrait
+                else background.portrait ?: background.landscape
+            )
+        }
     val followLabel = resolveSpaceFollowActionLabel(
         isOwner = isOwner,
         relationStatus = userInfo.relationStatus,
@@ -2604,8 +2619,6 @@ private fun SpaceHeader(
     val avatarSize = 80.dp
     val avatarBannerOverlap = 20.dp
     val actionsTopMargin = 5.dp
-    val windowSizeClass = com.android.purebilibili.core.util.LocalWindowSizeClass.current
-
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         // The hero is rendered beyond the grid's content padding. Use that exact rendered
         // width for both the banner height and avatar anchor so a wide window cannot create
@@ -2674,13 +2687,15 @@ private fun SpaceHeader(
                     }
                     .align(Alignment.TopCenter)
                     .clickable(
-                        enabled = shouldEnableSpaceTopPhotoPreview(topPhotoUrl) || userInfo.topImages.isNotEmpty(),
+                        enabled = skinSpaceBackgroundPaths.isEmpty() &&
+                            (shouldEnableSpaceTopPhotoPreview(topPhotoUrl) || userInfo.topImages.isNotEmpty()),
                         onClick = { onTopPhotoClick(topPhotoRect.value) }
                     )
             ) {
                 SpaceHeaderBanner(
                     topImages = userInfo.topImages,
                     fallbackTopPhotoUrl = topPhotoUrl,
+                    skinBackgroundPaths = skinSpaceBackgroundPaths,
                     isDarkTheme = isDarkTheme,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -5095,13 +5110,41 @@ private fun SpaceHeaderMetricDivider() {
 private fun SpaceHeaderBanner(
     topImages: List<com.android.purebilibili.data.model.response.SpaceTopImageItem>,
     fallbackTopPhotoUrl: String,
+    skinBackgroundPaths: List<String> = emptyList(),
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     // 与 PiliPlus 一致：所有背景图统一做亮/暗色调色，保证顶栏与头像在任意封面上可读。
     val bannerColorFilter = resolveSpaceBannerColorFilter(isLight = !isDarkTheme)
-    if (topImages.size > 1) {
+    if (skinBackgroundPaths.isNotEmpty()) {
+        val pagerState = rememberPagerState { skinBackgroundPaths.size }
+        Box(modifier = modifier) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(skinBackgroundPaths[page])
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            if (skinBackgroundPaths.size > 1) {
+                AppLinearProgressIndicator(
+                    progress = { (pagerState.currentPage + 1f) / skinBackgroundPaths.size },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.5.dp)
+                        .align(Alignment.BottomCenter),
+                    color = Color.White,
+                    trackColor = Color(0x669E9E9E),
+                )
+            }
+        }
+    } else if (topImages.size > 1) {
         val pagerState = rememberPagerState { topImages.size }
         Box(modifier = modifier) {
             HorizontalPager(

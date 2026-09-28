@@ -513,10 +513,30 @@ object UiSkinImportPackageResolver {
             }
             val entry = outerEntries.entries.firstOrNull { (path, _) ->
                 path.startsWith("skin/") &&
-                    path.substringAfterLast('/').matches(Regex("$stem[0-9a-f]{32}\\.(png|jpg)"))
+                    path.substringAfterLast('/').matches(Regex("$stem[0-9a-f]{40}\\.(png|jpg)"))
             } ?: return@forEach
             val extension = entry.key.substringAfterLast('.')
             backgrounds["$stem.$extension"] = entry.value
+        }
+        outerEntries.forEach { (path, bytes) ->
+            val name = path.substringAfterLast('/')
+            when {
+                path.startsWith("space_bg/") &&
+                    name.matches(Regex("image[1-9][0-9]*_(portrait|landscape)[a-f0-9]{40}\\.(png|jpg)")) -> {
+                    val canonicalStem = name.substringBeforeLast('.').replace(Regex("[a-f0-9]{40}$"), "")
+                    val canonicalName = "$canonicalStem.${name.substringAfterLast('.')}"
+                    if (packageEntries.keys.none { it.substringAfterLast('/') == canonicalName }) {
+                        backgrounds["space_bg/$canonicalName"] = bytes
+                    }
+                }
+                path.startsWith("emoji_package/") &&
+                    name != "弥咔Mika.png" &&
+                    !name.endsWith("_512x512.webp") &&
+                    name.matches(Regex(".+\\.(png|webp)")) &&
+                    packageEntries.keys.none { it.substringAfterLast('/') == name } -> {
+                    backgrounds["emoji_package/$name"] = bytes
+                }
+            }
         }
         return backgrounds
     }
@@ -547,6 +567,23 @@ object UiSkinImportPackageResolver {
             "head_myself_squared_bg.png"
         )?.let { (path, bytes) ->
             assetBytes["assets/${path.substringAfterLast("/")}"] = bytes
+        }
+        packageEntries.forEach { (path, bytes) ->
+            val name = path.substringAfterLast('/')
+            if (
+                path.startsWith("space_bg/") &&
+                name.matches(Regex("image[1-9][0-9]*_(portrait|landscape)\\.(png|jpg)"))
+            ) {
+                assetBytes["assets/space_bg/$name"] = bytes
+            }
+            if (
+                path.startsWith("emoji_package/") &&
+                name != "弥咔Mika.png" &&
+                !name.endsWith("_512x512.webp") &&
+                name.matches(Regex(".+\\.(png|webp)"))
+            ) {
+                assetBytes["assets/emojis/$name"] = bytes
+            }
         }
         firstExisting(packageEntries, "head_myself_mp4_bg.mp4")?.let { (path, bytes) ->
             assetBytes["assets/${path.substringAfterLast("/")}"] = bytes
@@ -637,6 +674,9 @@ object UiSkinImportPackageResolver {
             if (assetPaths.any { it.contains("head_myself_") }) {
                 add(UiSkinSurface.PROFILE)
             }
+            if (assetPaths.any { it.startsWith("assets/space_bg/") }) {
+                add(UiSkinSurface.PROFILE)
+            }
             if (
                 assetPaths.any { it.contains("tail_icon_pub_btn_bg") } ||
                 theme.publishPlusColor != null ||
@@ -713,7 +753,12 @@ object UiSkinImportPackageResolver {
                 playerProgressStaticIcon = assetPaths.firstOrNull {
                     it.endsWith("progress_static_icon.png")
                 },
-                bottomBarIcons = iconPaths
+                bottomBarIcons = iconPaths,
+                spaceBackgrounds = buildSpaceBackgrounds(assetPaths),
+                emojiImages = assetPaths.mapNotNull { path ->
+                    if (!path.startsWith("assets/emojis/")) return@mapNotNull null
+                    path.substringAfterLast('/').substringBeforeLast('.').let { name -> name to path }
+                }.toMap(),
             ),
             colors = UiSkinColorTokens(
                 bottomBarTrimTint = theme.tailColor.validColorOrNull(),
@@ -742,6 +787,21 @@ object UiSkinImportPackageResolver {
             communityShareable = false,
             containsOfficialAssets = true
         )
+    }
+
+    private fun buildSpaceBackgrounds(assetPaths: Set<String>): List<UiSkinSpaceBackground> {
+        val pattern = Regex("assets/space_bg/image([1-9][0-9]*)_(portrait|landscape)\\.(png|jpg)")
+        return assetPaths.mapNotNull { path ->
+            pattern.matchEntire(path)?.let { match -> match.groupValues[1] to (match.groupValues[2] to path) }
+        }.groupBy({ it.first }, { it.second })
+            .toSortedMap(compareBy { it.toInt() })
+            .values
+            .map { variants ->
+                UiSkinSpaceBackground(
+                    portrait = variants.firstOrNull { it.first == "portrait" }?.second,
+                    landscape = variants.firstOrNull { it.first == "landscape" }?.second,
+                )
+            }
     }
 
     private fun buildBpskinPackage(
