@@ -2608,6 +2608,10 @@ private fun PortraitTopBar(
                     onDismissRequest = { showMoreMenu = false },
                 ) {
                     AppDropdownMenuItem(
+                        text = { AppText("播放设置") },
+                        onClick = { showMoreMenu = false; onSettings() },
+                    )
+                    AppDropdownMenuItem(
                         text = { AppText(if (sleepTimerMinutes == null) "定时关闭" else "取消定时关闭（${sleepTimerMinutes}分钟）") },
                         onClick = {
                             showMoreMenu = false
@@ -2630,6 +2634,10 @@ private fun PortraitTopBar(
                     expanded = showMoreMenu,
                     onDismissRequest = { showMoreMenu = false }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text("播放设置") },
+                        onClick = { showMoreMenu = false; onSettings() }
+                    )
                     DropdownMenuItem(
                         text = { Text(if (sleepTimerMinutes == null) "定时关闭" else "取消定时关闭（${sleepTimerMinutes}分钟）") },
                         onClick = {
