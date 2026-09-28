@@ -1984,10 +1984,16 @@ class SpaceViewModel(
                 
                 if (result != null && result.code == 0) {
                     val newItems = result.data?.data ?: emptyList()
-                    val allItems = if (refresh) newItems else currentState.audios + newItems
-                    val totalCount = result.data?.totalSize ?: currentState.totalAudios
-                    val hasMore = allItems.size < totalCount.coerceAtLeast(allItems.size)
-                    
+                    // 按 id 去重后追加；新页为空立即终止，防止 totalSize 虚高导致无限加载
+                    val existingIds = currentState.audios.mapTo(HashSet()) { it.id }
+                    val dedupedNew = newItems.filter { existingIds.add(it.id) }
+                    val allItems = if (refresh) dedupedNew else currentState.audios + dedupedNew
+                    val totalCount = maxOf(
+                        result.data?.totalSize ?: 0,
+                        allItems.size,
+                    )
+                    val hasMore = dedupedNew.isNotEmpty() && allItems.size < totalCount
+
                     _uiState.value = currentState.copy(
                         audios = allItems,
                         totalAudios = totalCount,

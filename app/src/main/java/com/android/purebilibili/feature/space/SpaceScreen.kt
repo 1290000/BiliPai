@@ -4311,7 +4311,7 @@ private fun SpaceAudioListItem(
             )
             Spacer(modifier = Modifier.height(6.dp))
             AppText(
-                text = "${FormatUtils.formatStat(audio.play_count.toLong())}播放 · ${FormatUtils.formatDuration(audio.duration)}",
+                text = "${FormatUtils.formatStat((audio.statistic?.play ?: audio.play_count.toLong()).coerceAtLeast(0L))}播放 · ${FormatUtils.formatDuration(audio.duration)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -857,7 +857,18 @@ data class SpaceAudioItem(
     val play_count: Int = 0,
     val reply_count: Int = 0,
     val share_count: Int = 0,
-    val collect_count: Int = 0
+    val collect_count: Int = 0,
+    // 真实播放/收藏/评论数在嵌套 statistic 里（顶层 play_count 恒为 0）
+    val statistic: SpaceAudioStatistic? = null
+)
+
+@Serializable
+data class SpaceAudioStatistic(
+    val sid: Long = 0,
+    val play: Long = 0,
+    val collect: Long = 0,
+    val comment: Long = 0,
+    val share: Long = 0
 )
 
 // ==========  Space Article Models ==========
