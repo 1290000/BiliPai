@@ -151,6 +151,7 @@ data class SearchVideoItem(
     val mid: Long = 0,
     // 视频分区 id，外部歌单匹配时用于过滤不相关分区
     @SerialName("typeid")
+    @Serializable(with = FlexibleIntSerializer::class)
     val typeId: Int = 0
 ) {
     fun toVideoItem(): VideoItem {
