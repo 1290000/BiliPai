@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -234,6 +235,9 @@ internal fun rememberVideoDetailRouteSheetFrameProvider(
     var settleDirection by remember {
         mutableStateOf(VideoDetailRouteSheetSettleDirection.None)
     }
+    // predictive back 预览被取消时（exit → 重新 enter），tween 若仍用全时长会显得拖沓；
+    // 按剩余进度比例缩短恢复段时长，保持原 easing 设计。
+    var previousExitInProgress by remember { mutableStateOf(false) }
 
     LaunchedEffect(
         effectiveMotion.enabled,
@@ -247,16 +251,26 @@ internal fun rememberVideoDetailRouteSheetFrameProvider(
             settleDirection = VideoDetailRouteSheetSettleDirection.None
             routeSheetSettleProgress.snapTo(0f)
             routeSheetProgress.snapTo(1f)
+            previousExitInProgress = false
             return@LaunchedEffect
         }
 
+        val isCancelRecovery = previousExitInProgress && !isExitTransitionInProgress
+        previousExitInProgress = isExitTransitionInProgress
         settleDirection = VideoDetailRouteSheetSettleDirection.None
         routeSheetSettleProgress.snapTo(0f)
         val targetProgress = if (isExitTransitionInProgress) 0f else 1f
         routeSheetProgress.animateTo(
             targetValue = targetProgress,
             animationSpec = tween(
-                durationMillis = effectiveMotion.mainDurationMillis,
+                durationMillis = if (isCancelRecovery) {
+                    val remaining = 1f - routeSheetProgress.value
+                    (effectiveMotion.mainDurationMillis * remaining)
+                        .roundToInt()
+                        .coerceIn(60, effectiveMotion.mainDurationMillis)
+                } else {
+                    effectiveMotion.mainDurationMillis
+                },
                 easing = if (isExitTransitionInProgress) {
                     effectiveMotion.returnEasing
                 } else {
