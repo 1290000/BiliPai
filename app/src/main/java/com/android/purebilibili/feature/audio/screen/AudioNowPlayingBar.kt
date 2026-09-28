@@ -185,11 +185,10 @@ internal fun AudioNowPlayingBar(
         darkTheme = resolveBottomBarDarkTheme(AppSurfaceTokens.background()),
         liquidGlassTuning = liquidGlassTuning,
     )
+    // 迷你条封面不旋转：旋转动画每帧失效，叠加条的实时模糊外壳每帧重新采样背景，
+    // 会让静态页面全局掉帧。旋转只保留在全屏音乐播放页（MusicPlayerContent）。
     val coverRotationDegrees = rememberMusicArtworkRotationDegrees(
-        active = shouldRotateMusicArtwork(
-            isPlaying = state.isPlaying,
-            reduceMotion = reduceMotion
-        ),
+        active = false,
         contentKey = state.coverUrl,
         playbackSpeed = state.playbackSpeed
     )
