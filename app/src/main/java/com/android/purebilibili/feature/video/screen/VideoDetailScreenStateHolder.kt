@@ -673,6 +673,7 @@ internal fun VideoDetailScreenStateHolder(
                 }
             },
             toggleLike = engagementViewModel::toggleLike,
+            toggleDislike = engagementViewModel::toggleDislike,
             openCoinDialog = engagementViewModel::openCoinDialog,
             doTripleAction = engagementViewModel::doTripleAction,
             toggleWatchLater = engagementViewModel::toggleWatchLater

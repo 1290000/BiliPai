@@ -1352,6 +1352,14 @@ interface BilibiliApi {
     suspend fun hasLiked(
         @Query("aid") aid: Long
     ): HasLikedResponse
+
+    //  点踩/取消点踩视频（App 端点，鉴权依赖 CookieJar 注入的登录态）
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("https://app.bilibili.com/x/v2/view/dislike")
+    suspend fun dislikeVideo(
+        @retrofit2.http.Field("aid") aid: Long,
+        @retrofit2.http.Field("dislike") dislike: Int   // 0=点踩, 1=取消点踩
+    ): SimpleApiResponse
     
     //  [新增] 投币
     @retrofit2.http.FormUrlEncoded

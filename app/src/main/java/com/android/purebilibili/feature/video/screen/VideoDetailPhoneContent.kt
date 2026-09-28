@@ -249,6 +249,7 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                     isFollowing = engagementState.isFollowing,
                                     isFavorited = engagementState.isFavorited,
                                     isLiked = engagementState.isLiked,
+                                    isDisliked = engagementState.isDisliked,
                                     coinCount = engagementState.coinCount,
                                     currentPageIndex = currentPageIndex,
                                     downloadProgress = downloadProgress,
@@ -292,6 +293,7 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                         openFavoriteFolders(VideoFavoriteEntryPoint.DetailActionRow, false)
                                     },
                                     onLikeClick = engagementActions.toggleLike,
+                                    onDislikeClick = engagementActions.toggleDislike,
                                     onCoinClick = engagementActions.openCoinDialog,
                                     onTripleClick = engagementActions.doTripleAction,
                                     onPageSelect = playbackActions.switchPage,
