@@ -18,7 +18,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
@@ -37,9 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.android.purebilibili.core.ui.AppScaffold
 import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.components.AppCircularProgressIndicator
@@ -65,8 +67,8 @@ fun SpaceUpowerRankScreen(
 ) {
     val viewModel: SpaceUpowerRankViewModel = viewModel(
         key = "space_upower_rank_$mid",
-        factory = androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer {
+        factory = viewModelFactory {
+            initializer {
                 SpaceUpowerRankViewModel(upMid = mid, upName = name, initialCount = count)
             }
         },
@@ -220,8 +222,8 @@ fun SpaceMemberGuardScreen(
 ) {
     val viewModel: SpaceMemberGuardViewModel = viewModel(
         key = "space_member_guard_$mid",
-        factory = androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer {
+        factory = viewModelFactory {
+            initializer {
                 SpaceMemberGuardViewModel(ruid = mid, upName = name, initialCount = count)
             }
         },
@@ -414,8 +416,8 @@ private fun SpaceGuardMemberRow(
 @Composable
 private fun SpaceSupporterAvatar(url: String, size: androidx.compose.ui.unit.Dp) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    coil.compose.AsyncImage(
-        model = coil.request.ImageRequest.Builder(context)
+    AsyncImage(
+        model = ImageRequest.Builder(context)
             .data(FormatUtils.buildSizedImageUrl(url, width = 120, height = 120))
             .crossfade(true)
             .build(),

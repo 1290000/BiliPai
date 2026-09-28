@@ -112,8 +112,10 @@ internal fun resolveBiliPaiNavEntryContentRole(key: BiliPaiNavKey): BiliPaiNavEn
         is BiliPaiNavKey.WatchLaterSearch -> BiliPaiNavEntryContentRole.WATCH_LATER
         BiliPaiNavKey.Onboarding -> BiliPaiNavEntryContentRole.ONBOARDING
         is BiliPaiNavKey.Following -> BiliPaiNavEntryContentRole.FOLLOWING
-        is BiliPaiNavKey.UpowerRank -> BiliPaiNavEntryContentRole.UPOWER_RANK
-        is BiliPaiNavKey.MemberGuard -> BiliPaiNavEntryContentRole.MEMBER_GUARD
+        is BiliPaiNavKey.UpowerRank,
+        BiliPaiNavKey.UpowerRank.Companion -> BiliPaiNavEntryContentRole.UPOWER_RANK
+        is BiliPaiNavKey.MemberGuard,
+        BiliPaiNavKey.MemberGuard.Companion -> BiliPaiNavEntryContentRole.MEMBER_GUARD
         BiliPaiNavKey.DownloadList -> BiliPaiNavEntryContentRole.DOWNLOAD_LIST
         is BiliPaiNavKey.OfflineVideoPlayer -> BiliPaiNavEntryContentRole.OFFLINE_VIDEO_PLAYER
         BiliPaiNavKey.LiveList -> BiliPaiNavEntryContentRole.LIVE_LIST

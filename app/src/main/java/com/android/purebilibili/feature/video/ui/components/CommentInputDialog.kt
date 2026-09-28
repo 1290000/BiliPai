@@ -788,33 +788,37 @@ indicatorPresentation = AppTabRowIndicatorPresentation.TONAL_PILL,
                                                 }
                                             }
                                         }
-                                        currentTab == emotePackages.size + 2 && skinEmojiImages.isNotEmpty() -> {
-                                            val emotes = skinEmojiImages.toList()
-                                            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                                                columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(60.dp),
-                                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            ) {
-                                                items(emotes.size, key = { emotes[it].first }) { index ->
-                                                    val (emoteText, imagePath) = emotes[index]
-                                                    Column(
-                                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                                        modifier = Modifier.clickable {
-                                                            insertTextAtCursor(emoteText)
-                                                        },
-                                                    ) {
-                                                        AsyncImage(
-                                                            model = File(imagePath),
-                                                            contentDescription = emoteText,
-                                                            modifier = Modifier.size(50.dp),
-                                                        )
-                                                        AppText(
-                                                            text = emoteText.removePrefix("[").removeSuffix("]"),
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                        )
+                                        emotePackages.size + 2 -> { // 皮肤表情
+                                            // when(currentTab) 的分支必须是常量；空列表时留白，
+                                            // 与原本「布尔条件不命中落入 else」的空态一致。
+                                            if (skinEmojiImages.isNotEmpty()) {
+                                                val emotes = skinEmojiImages.toList()
+                                                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                                                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(60.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                ) {
+                                                    items(emotes.size, key = { emotes[it].first }) { index ->
+                                                        val (emoteText, imagePath) = emotes[index]
+                                                        Column(
+                                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                                            modifier = Modifier.clickable {
+                                                                insertTextAtCursor(emoteText)
+                                                            },
+                                                        ) {
+                                                            AsyncImage(
+                                                                model = File(imagePath),
+                                                                contentDescription = emoteText,
+                                                                modifier = Modifier.size(50.dp),
+                                                            )
+                                                            AppText(
+                                                                text = emoteText.removePrefix("[").removeSuffix("]"),
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis,
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }

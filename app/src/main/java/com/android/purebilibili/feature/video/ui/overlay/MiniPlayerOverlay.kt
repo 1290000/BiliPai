@@ -335,6 +335,12 @@ fun MiniPlayerOverlay(
         offsetY = clamped.y
     }
 
+    // X 轴速度注入状态：声明须先于 snapMiniPlayerToNearestHorizontalEdge
+    // 等局部函数，Kotlin 局部函数不能前向引用局部 val。
+    val offsetXAnimatable = remember { Animatable(targetOffsetX) }
+    var pendingSnapVelocityX by remember { mutableFloatStateOf(0f) }
+    val dragVelocityTracker = remember { VelocityTracker() }
+
     fun snapMiniPlayerToNearestHorizontalEdge() {
         offsetX = if (offsetX < screenWidthPx / 2 - miniPlayerWidthPx / 2) {
             paddingPx
@@ -359,10 +365,6 @@ fun MiniPlayerOverlay(
         clampCurrentOffset()
     }
 
-    // X 轴用 Animatable 驱动：贴边时注入手势松手速度，快速甩动不再「慢半拍」。
-    val offsetXAnimatable = remember { Animatable(targetOffsetX) }
-    var pendingSnapVelocityX by remember { mutableFloatStateOf(0f) }
-    val dragVelocityTracker = remember { VelocityTracker() }
     LaunchedEffect(
         targetOffsetX,
         isDraggingPosition,

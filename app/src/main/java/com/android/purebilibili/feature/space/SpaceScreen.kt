@@ -50,8 +50,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.grid.stickyHeader
-import androidx.compose.foundation.offset
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1468,7 +1467,8 @@ private fun SpaceContent(
 
             // Tab 栏吸顶（对齐 PiliPlus 的 pinned TabBar）：头部滚走后固定在顶栏下方，
             // 长列表里切换 Tab 不必先滚回顶部。
-            stickyHeader(key = "space_tabs", span = { GridItemSpan(maxLineSpan) }) {
+            // Grid 版 stickyHeader 自动占满整行 span（foundation 内部即 maxLineSpan）。
+            stickyHeader(key = "space_tabs") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

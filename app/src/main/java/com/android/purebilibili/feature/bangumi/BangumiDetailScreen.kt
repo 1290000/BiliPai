@@ -1543,6 +1543,7 @@ private fun BangumiFollowStatusDialog(
 @Composable
 private fun EpisodeChip(
     episode: BangumiEpisode,
+    progressFraction: Float? = null,
     onClick: () -> Unit
 ) {
     //  带封面图的设计，集数和标题在同一行
@@ -1582,6 +1583,24 @@ private fun EpisodeChip(
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                             color = badgeColors.contentColor,
                             style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+
+                // 单集观看进度条
+                if (progressFraction != null && progressFraction > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progressFraction.coerceIn(0f, 1f))
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.primary)
                         )
                     }
                 }

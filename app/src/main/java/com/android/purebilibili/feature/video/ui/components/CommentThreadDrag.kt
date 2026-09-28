@@ -2,7 +2,6 @@ package com.android.purebilibili.feature.video.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.asState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -10,6 +9,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -142,7 +142,7 @@ internal fun rememberCommentThreadDrag(
         onDragStopped = { velocity -> latestSettleWithVelocity(velocity) },
     )
     return CommentThreadDrag(
-        offsetPx = offset.asState(),
+        offsetPx = remember { derivedStateOf { offset.value } },
         heightPx = height,
         containerModifier = Modifier
             .onSizeChanged { height.floatValue = it.height.toFloat() }

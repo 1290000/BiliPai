@@ -126,9 +126,9 @@ fun shouldShowLiveSplitChatPanel(
     layoutMode: LiveRoomLayoutMode,
     isInteractionPanelVisible: Boolean
 ): Boolean {
-    @Suppress("UNUSED_PARAMETER")
-    val ignored = isInteractionPanelVisible
-    return layoutMode == LiveRoomLayoutMode.LandscapeSplit
+    // 分栏聊天列跟随用户开关：退出全屏回到分栏布局时不再自动弹出聊天列
+    // （否则大屏设备退出横屏会看到视频被压缩、四周露出暗背景）。
+    return layoutMode == LiveRoomLayoutMode.LandscapeSplit && isInteractionPanelVisible
 }
 
 /** PiliPlus desktop: video ~56–70% width, remaining chat column capped at 400dp. */
