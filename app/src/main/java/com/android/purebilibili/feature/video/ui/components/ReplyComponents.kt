@@ -13,6 +13,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Rect
@@ -1364,6 +1366,12 @@ fun ReplyItemView(
     // [新增] 点踩折叠：已点踩的评论正文收起为一行，点击展开；取消点踩自动恢复
     var hatedBodyExpanded by remember(item.rpid, isHated) { mutableStateOf(false) }
     val collapseHatedBody = isHated && !hatedBodyExpanded
+    var hatePromptHandled by remember(item.rpid) { mutableStateOf(false) }
+    // 与仓库既有回弹手感一致（bouncyClickable 等使用的同组弹簧参数）
+    val hateCollapseSpring = spring(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
     val displayMessage = remember(translatedMessage, item.content.message) {
         translatedMessage ?: item.content.message
     }
@@ -1595,6 +1603,7 @@ fun ReplyItemView(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize(animationSpec = hateCollapseSpring)
                         .padding(start = startPadding)
                 ) {
                     if (collapseHatedBody) {
@@ -1609,6 +1618,29 @@ fun ReplyItemView(
                                 .clickable { hatedBodyExpanded = true }
                                 .padding(vertical = 2.dp)
                         )
+                        if (!hatePromptHandled) {
+                            Row(
+                                modifier = Modifier.padding(top = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                ReplyTextAction(
+                                    label = "屏蔽该用户",
+                                    appearance = appearance,
+                                    onClick = {
+                                        hatePromptHandled = true
+                                        blockReplyUser()
+                                    }
+                                )
+                                ReplyTextAction(
+                                    label = "举报",
+                                    appearance = appearance,
+                                    onClick = {
+                                        hatePromptHandled = true
+                                        showReportDialog = true
+                                    }
+                                )
+                            }
+                        }
                     } else {
                     ReplyMessageText(
                         text = displayMessage,
