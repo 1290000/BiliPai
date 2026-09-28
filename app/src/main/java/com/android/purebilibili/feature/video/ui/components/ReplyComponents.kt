@@ -2178,7 +2178,8 @@ fun RichCommentText(
 
     val content: @Composable () -> Unit = {
         //  使用 Text + pointerInput 实现带表情的可点击文本
-        var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }        val textModifier = if (hasTapHandler) {
+        var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+        val textModifier = if (hasTapHandler) {
             Modifier.pointerInput(annotatedString, text, onPlainTextClick) {
                 detectTapWithSelectionFriendly { offset ->
                     textLayoutResult?.let { layoutResult ->
