@@ -36,6 +36,10 @@ import androidx.compose.ui.platform.LocalContext
 import com.android.purebilibili.core.theme.resolveAdaptivePrimaryAccentColors
 import com.android.purebilibili.core.theme.resolveAdaptiveTertiaryAccentColors
 import com.android.purebilibili.core.theme.iOSYellow
+import com.android.purebilibili.core.util.FormatUtils
+import com.android.purebilibili.data.model.response.BangumiDetail
+import com.android.purebilibili.data.model.response.BangumiEpisode
+import com.android.purebilibili.data.model.response.SeasonInfo
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
 
 /** 每集本地观看进度（0..1）；无 bvid / 无时长 / 无观看记录时返回 null。 */
@@ -59,12 +63,6 @@ fun rememberBangumiEpisodeProgressLookup(): (BangumiEpisode) -> Float? {
     }
 }
 
-
-
-import com.android.purebilibili.core.util.FormatUtils
-import com.android.purebilibili.data.model.response.BangumiDetail
-import com.android.purebilibili.data.model.response.BangumiEpisode
-import com.android.purebilibili.data.model.response.SeasonInfo
 
 /**
  * 番剧详情头部组件 - 手机端
