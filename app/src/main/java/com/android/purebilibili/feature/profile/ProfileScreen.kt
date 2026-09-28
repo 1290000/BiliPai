@@ -130,6 +130,7 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import com.android.purebilibili.core.ui.AppSplitLayout
 import com.android.purebilibili.core.ui.TopReadabilityChrome
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
+import com.android.purebilibili.core.ui.LocalBottomBarContentPadding
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppBookmarkIcon
 import com.android.purebilibili.core.ui.rememberAppChevronDownIcon
@@ -1239,6 +1240,8 @@ private fun ProfileSpaceContent(
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (isTablet) {
+            // 悬浮底栏会盖在双栏内容上，列表尾部需要与手机分支同等的让位。
+            val bottomDockClearance = LocalBottomBarContentPadding.current
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1275,6 +1278,7 @@ private fun ProfileSpaceContent(
                         onFavoriteFolderClick = onFavoriteFolderClick,
                         contentColor = contentChrome.onSurfaceColor,
                     )
+                    Spacer(modifier = Modifier.height(bottomDockClearance))
                 }
                 ProfileSpaceFeedColumn(
                     user = user,
@@ -1300,7 +1304,7 @@ private fun ProfileSpaceContent(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(
                         top = tabletWallpaperRevealHeight,
-                        bottom = 48.dp
+                        bottom = maxOf(48.dp, bottomDockClearance)
                     ),
                     listState = tabletFeedListState,
                 )
