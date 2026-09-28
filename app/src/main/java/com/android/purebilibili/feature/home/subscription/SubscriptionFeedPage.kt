@@ -105,6 +105,7 @@ import com.android.purebilibili.core.plugin.feed.loadFeedSources
 import com.android.purebilibili.core.plugin.feed.parseFeedHtml
 import com.android.purebilibili.core.plugin.feed.stabilizeFeedOrder
 import com.android.purebilibili.core.ui.AppShapes
+import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.ContainerLevel
@@ -298,42 +299,49 @@ fun SubscriptionFeedPage(
                     animatedVisibilityScope = this,
                 )
             } else {
-                SubscriptionFeedGrid(
-                    sources = sources,
-                    visibleItems = visibleItems,
-                    loading = loading,
-                    errors = loadErrors,
-                    unreadOnly = unreadOnly,
-                    onUnreadOnlyChange = { unreadOnly = it },
-                    readKeys = readKeys,
-                    selectedSourceId = selectedSourceId,
-                    onSelectSource = { selectedSourceId = it },
+                AdaptivePullToRefreshBox(
+                    isRefreshing = loading,
                     onRefresh = { reloadToken += 1 },
-                    onOpen = { item ->
-                        opened = item
-                        val key = feedItemKey(item)
-                        readKeys = readKeys + key
-                        scope.launch {
-                            runCatching { FeedReadingStore.setRead(context, key, true) }
-                                .onFailure { loadErrors = loadErrors + "阅读状态保存失败" }
-                        }
-                        scope.launch {
-                            transitionState.animateTo(
-                                targetState = item,
-                                animationSpec = tween(360, easing = LinearEasing)
-                            )
-                        }
-                    },
-                    contentPadding = contentPadding,
-                    listState = listState,
-                    gridColumns = gridColumns,
-                    pinchEnabled = pinchEnabled,
-                    pinchBounds = pinchBounds,
-                    onColumnsChange = onColumnsChange,
-                    onPinchEnd = onPinchEnd,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    animatedVisibilityScope = this,
-                )
+                    indicatorTopInset = contentPadding.calculateTopPadding(),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    SubscriptionFeedGrid(
+                        sources = sources,
+                        visibleItems = visibleItems,
+                        loading = loading,
+                        errors = loadErrors,
+                        unreadOnly = unreadOnly,
+                        onUnreadOnlyChange = { unreadOnly = it },
+                        readKeys = readKeys,
+                        selectedSourceId = selectedSourceId,
+                        onSelectSource = { selectedSourceId = it },
+                        onRefresh = { reloadToken += 1 },
+                        onOpen = { item ->
+                            opened = item
+                            val key = feedItemKey(item)
+                            readKeys = readKeys + key
+                            scope.launch {
+                                runCatching { FeedReadingStore.setRead(context, key, true) }
+                                    .onFailure { loadErrors = loadErrors + "阅读状态保存失败" }
+                            }
+                            scope.launch {
+                                transitionState.animateTo(
+                                    targetState = item,
+                                    animationSpec = tween(360, easing = LinearEasing)
+                                )
+                            }
+                        },
+                        contentPadding = contentPadding,
+                        listState = listState,
+                        gridColumns = gridColumns,
+                        pinchEnabled = pinchEnabled,
+                        pinchBounds = pinchBounds,
+                        onColumnsChange = onColumnsChange,
+                        onPinchEnd = onPinchEnd,
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = this,
+                    )
+                }
             }
         }
     }
