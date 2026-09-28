@@ -1601,7 +1601,10 @@ fun HomeHeader(
     val isTabFloating = topTabStyle.floating
     val isTabGlassEnabled = topChromeMaterialMode == TopTabMaterialMode.LIQUID_GLASS
     val isTabBlurEnabled = topChromeMaterialMode == TopTabMaterialMode.BLUR
-    val useUnifiedTopPanel = shouldUseUnifiedHomeTopPanel(topChromePolicy)
+    val topTrimImagePath = uiSkinDecoration?.topAtmosphereImagePath
+    val hasIllustratedHeader = !topTrimImagePath.isNullOrBlank() ||
+        !uiSkinDecoration?.topTabBackgroundImagePath.isNullOrBlank()
+    val useUnifiedTopPanel = !hasIllustratedHeader && shouldUseUnifiedHomeTopPanel(topChromePolicy)
     val useDetachedTopTabDock = shouldUseDetachedHomeTopTabDock(
         presentation = topChromePolicy.tabPresentation,
         liquidGlassEnabled = topChromeLiquidGlassEnabled,
@@ -2065,119 +2068,139 @@ fun HomeHeader(
         tabContentAlpha = tabContentAlpha
     )
     val tabBorderAlpha = if (isTabFloating) tabChromeStyle.borderAlpha else 0f
-    val topTrimImagePath = uiSkinDecoration?.topAtmosphereImagePath
     val topLayoutOrder = homeSettings?.homeTopLayoutOrder ?: HomeTopLayoutOrder.SEARCH_THEN_TABS
     val topTabsContent: @Composable (Dp) -> Unit = { maxDockWidth ->
-        HomeTopTabChrome(
-            currentTabHeight = currentTabHeight,
-            tabAlpha = tabAlpha,
-            tabContentAlpha = tabContentAlpha,
-            containerZIndex = if (useUnifiedTopPanel) 0f else -1f,
-            // 分栏 dock 最大宽度 = 顶部三控件合计宽度，保证左右对齐。
-            maxDockWidth = maxDockWidth,
-            tabHorizontalPadding = if (embedTopTabsInUnifiedPanel) {
-                resolveNonNegativeHomeTopPadding(resolveHomeTopEmbeddedTabHorizontalPadding(topChromePolicy))
-            } else {
-                resolveNonNegativeHomeTopPadding(tabHorizontalPadding)
-            },
-            tabVerticalPadding = if (embedTopTabsInUnifiedPanel || topTabInnerOwnsFloatingDockShell) {
-                AppSpacingTokens.None
-            } else {
-                resolveNonNegativeHomeTopPadding(tabVerticalPadding)
-            },
-            tabVerticalOffset = if (embedTopTabsInUnifiedPanel) AppSpacingTokens.None else tabVerticalOffset,
-            isTabFloating = if (embedTopTabsInUnifiedPanel) false else isTabFloating,
-            effectiveTabShadowElevation = if (embedTopTabsInUnifiedPanel) AppSpacingTokens.None else effectiveTabShadowElevation,
-            tabShape = if (useUnifiedTopPanel) {
-                resolveSharedBottomBarCapsuleShape()
-            } else {
-                tabShape
-            },
-            tabChromeRenderMode = if (useTopTabBottomBarMatchedDock) {
-                topTabDockChromeRenderMode
-            } else {
-                effectiveTabChromeRenderMode
-            },
-            tabSurfaceColor = effectiveTabSurfaceColor,
-            hazeState = topTabDockHazeState,
-            miuixBackdrop = miuixBackdrop,
-            liquidStyle = liquidStyle,
-            liquidGlassTuning = liquidGlassTuning,
-            liquidGlassPreset = bottomBarLiquidGlassPreset,
-            motionTier = motionTier,
-            isScrolling = tabChromeMotionPolicy.isScrolling,
-            isTransitionRunning = tabChromeMotionPolicy.isTransitionRunning,
-            forceLowBlurBudget = forceLowBlurBudget,
-            preferFlatGlass = !embedTopTabsInUnifiedPanel,
-            tabBorderAlpha = if (embedTopTabsInUnifiedPanel) {
-                0f
-            } else {
-                tabBorderAlpha
-            },
-            tabHighlightColor = Color.Transparent,
-            tabContentUnderlayColor = if (embedTopTabsInUnifiedPanel) {
-                Color.Transparent
-            } else {
-                resolveHomeTopInnerUnderlayColor(
-                    isLightMode = isLightMode,
-                    renderMode = tabChromeRenderMode,
-                    softenWideChrome = true
+        Box(modifier = Modifier.fillMaxWidth()) {
+            uiSkinDecoration?.topTabBackgroundImagePath?.let { tabBackground ->
+                AsyncImage(
+                    model = File(tabBackground),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.BottomCenter,
+                    modifier = Modifier.matchParentSize().clearAndSetSemantics {},
                 )
-            },
-            gestureEnabled = topTabsVisible &&
-                isTopTabsManualCollapseEnabled &&
-                !isHeaderCollapseEnabled &&
-                !isTopTabsAutoCollapseEnabled,
-            isTabsCollapsed = topTabsCollapsed,
-            onTabsCollapsedChange = onTopTabsCollapsedChange,
-            drawChromeSurface = shouldHomeTopTabChromeDrawOuterShell(
-                drawOuterChrome = drawTopTabDockChrome,
-                innerOwnsFloatingDock = topTabInnerOwnsFloatingDockShell,
-            ),
-            useBottomBarMatchedSurface = useTopTabBottomBarMatchedDock,
-            drawMatchedShellLens = topTabLiquidGlassEnabled,
-            matchedShellLensIntensity = resolveFloatingDockGeometryScale(
-                currentTabHeight.value
-            ),
-            // Floating / matched dock: length follows icon+text × tab count (no full-bleed empty glass).
-            wrapDockWidth = wrapTopTabDockWidth,
-            dockCategoryCount = topCategories.size,
-            dockLabelMode = topTabLabelMode,
-        ) {
-            CategoryTabRow(
-                categories = topCategories,
-                categoryKeys = topCategoryKeys,
-                selectedIndex = categoryIndex,
-                onCategorySelected = { index ->
-                    if (topTabsVisible) onCategorySelected(index)
+            }
+            HomeTopTabChrome(
+                currentTabHeight = currentTabHeight,
+                tabAlpha = tabAlpha,
+                tabContentAlpha = tabContentAlpha,
+                containerZIndex = if (useUnifiedTopPanel) 0f else -1f,
+                // 分栏 dock 最大宽度 = 顶部三控件合计宽度，保证左右对齐。
+                maxDockWidth = maxDockWidth,
+                tabHorizontalPadding = if (embedTopTabsInUnifiedPanel) {
+                    resolveNonNegativeHomeTopPadding(resolveHomeTopEmbeddedTabHorizontalPadding(topChromePolicy))
+                } else {
+                    resolveNonNegativeHomeTopPadding(tabHorizontalPadding)
                 },
-                onPartitionClick = {
-                    if (topTabsVisible) onPartitionClick()
+                tabVerticalPadding = if (embedTopTabsInUnifiedPanel || topTabInnerOwnsFloatingDockShell) {
+                    AppSpacingTokens.None
+                } else {
+                    resolveNonNegativeHomeTopPadding(tabVerticalPadding)
                 },
-                pagerState = pagerState,
-                labelMode = topTabLabelMode,
-                isLiquidGlassEnabled = resolveHomeTopTabIndicatorLiquidGlassEnabled(
-                    homeSettings = homeSettings,
-                ),
-                liquidGlassStyle = liquidStyle,
+                tabVerticalOffset = if (embedTopTabsInUnifiedPanel) AppSpacingTokens.None else tabVerticalOffset,
+                isTabFloating = if (hasIllustratedHeader || embedTopTabsInUnifiedPanel) false else isTabFloating,
+                effectiveTabShadowElevation = if (embedTopTabsInUnifiedPanel) AppSpacingTokens.None else effectiveTabShadowElevation,
+                tabShape = if (useUnifiedTopPanel) {
+                    resolveSharedBottomBarCapsuleShape()
+                } else {
+                    tabShape
+                },
+                tabChromeRenderMode = if (hasIllustratedHeader) {
+                    HomeTopChromeRenderMode.PLAIN
+                } else if (useTopTabBottomBarMatchedDock) {
+                    topTabDockChromeRenderMode
+                } else {
+                    effectiveTabChromeRenderMode
+                },
+                tabSurfaceColor = if (hasIllustratedHeader) Color.Transparent else effectiveTabSurfaceColor,
+                hazeState = topTabDockHazeState,
+                miuixBackdrop = miuixBackdrop,
+                liquidStyle = liquidStyle,
                 liquidGlassTuning = liquidGlassTuning,
                 liquidGlassPreset = bottomBarLiquidGlassPreset,
-                hazeState = hazeState,
-                miuixBackdrop = miuixBackdrop,
-                isFloatingStyle = isTabFloating,
-                edgeToEdge = integratedCollapsedTopBar,
-                hasOuterChromeSurface = drawTopTabDockChrome,
-                // Same wrap decision as HomeTopTabChrome so shell length matches tab content.
-                wrapDockWidth = wrapTopTabDockWidth,
-                interactionBudget = interactionBudget,
                 motionTier = motionTier,
-                isTransitionRunning = isTransitionRunning,
+                isScrolling = tabChromeMotionPolicy.isScrolling,
+                isTransitionRunning = tabChromeMotionPolicy.isTransitionRunning,
                 forceLowBlurBudget = forceLowBlurBudget,
-                isViewportSyncEnabled = isTopTabViewportSyncEnabled,
-                maxDockWidthDp = maxDockWidth.value,
-                forceMaterialUnderline = useLegacyHomeTopTabs &&
-                    LocalAppUiStyle.current == AppUiStyle.MATERIAL3
-            )
+                preferFlatGlass = !embedTopTabsInUnifiedPanel,
+                tabBorderAlpha = if (embedTopTabsInUnifiedPanel) {
+                    0f
+                } else {
+                    tabBorderAlpha
+                },
+                tabHighlightColor = Color.Transparent,
+                tabContentUnderlayColor = if (hasIllustratedHeader || embedTopTabsInUnifiedPanel) {
+                    Color.Transparent
+                } else {
+                    resolveHomeTopInnerUnderlayColor(
+                        isLightMode = isLightMode,
+                        renderMode = tabChromeRenderMode,
+                        softenWideChrome = true
+                    )
+                },
+                gestureEnabled = topTabsVisible &&
+                    isTopTabsManualCollapseEnabled &&
+                    !isHeaderCollapseEnabled &&
+                    !isTopTabsAutoCollapseEnabled,
+                isTabsCollapsed = topTabsCollapsed,
+                onTabsCollapsedChange = onTopTabsCollapsedChange,
+                drawChromeSurface = !hasIllustratedHeader && shouldHomeTopTabChromeDrawOuterShell(
+                    drawOuterChrome = drawTopTabDockChrome,
+                    innerOwnsFloatingDock = topTabInnerOwnsFloatingDockShell,
+                ),
+                useBottomBarMatchedSurface = !hasIllustratedHeader && useTopTabBottomBarMatchedDock,
+                drawMatchedShellLens = topTabLiquidGlassEnabled,
+                matchedShellLensIntensity = resolveFloatingDockGeometryScale(
+                    currentTabHeight.value
+                ),
+                // Floating / matched dock: length follows icon+text × tab count (no full-bleed empty glass).
+                wrapDockWidth = !hasIllustratedHeader && wrapTopTabDockWidth,
+                dockCategoryCount = topCategories.size,
+                dockLabelMode = topTabLabelMode,
+            ) {
+                CategoryTabRow(
+                    categories = topCategories,
+                    categoryKeys = topCategoryKeys,
+                    selectedIndex = categoryIndex,
+                    onCategorySelected = { index ->
+                        if (topTabsVisible) onCategorySelected(index)
+                    },
+                    onPartitionClick = {
+                        if (topTabsVisible) onPartitionClick()
+                    },
+                    pagerState = pagerState,
+                    labelMode = if (hasIllustratedHeader) 2 else topTabLabelMode,
+                    isLiquidGlassEnabled = resolveHomeTopTabIndicatorLiquidGlassEnabled(
+                        homeSettings = homeSettings,
+                    ),
+                    liquidGlassStyle = liquidStyle,
+                    liquidGlassTuning = liquidGlassTuning,
+                    liquidGlassPreset = bottomBarLiquidGlassPreset,
+                    hazeState = hazeState,
+                    miuixBackdrop = miuixBackdrop,
+                    skinPlainStyle = hasIllustratedHeader,
+                    skinPlainContentColor = uiSkinDecoration?.takeIf { hasIllustratedHeader }?.let {
+                        resolveHomeSkinTopTabContentColor(
+                            topAtmosphereTint = it.topAtmosphereTint,
+                            hasTopAtmosphereImage = true,
+                            darkTheme = !isLightMode,
+                        )
+                    },
+                    isFloatingStyle = !hasIllustratedHeader && isTabFloating,
+                    edgeToEdge = integratedCollapsedTopBar,
+                    hasOuterChromeSurface = !hasIllustratedHeader && drawTopTabDockChrome,
+                    // Same wrap decision as HomeTopTabChrome so shell length matches tab content.
+                    wrapDockWidth = !hasIllustratedHeader && wrapTopTabDockWidth,
+                    interactionBudget = interactionBudget,
+                    motionTier = motionTier,
+                    isTransitionRunning = isTransitionRunning,
+                    forceLowBlurBudget = forceLowBlurBudget,
+                    isViewportSyncEnabled = isTopTabViewportSyncEnabled,
+                    maxDockWidthDp = maxDockWidth.value,
+                    forceMaterialUnderline = useLegacyHomeTopTabs &&
+                        LocalAppUiStyle.current == AppUiStyle.MATERIAL3
+                )
+            }
         }
     }
 
@@ -2266,7 +2289,8 @@ fun HomeHeader(
                         Brush.verticalGradient(
                             0.00f to Color.Transparent,
                             0.72f to Color.Transparent,
-                            1.00f to headerChromeColors.containerColor.copy(alpha = 0.42f),
+                            1.00f to (uiSkinDecoration?.topAtmosphereTint
+                                ?: headerChromeColors.containerColor).copy(alpha = 0.42f),
                         )
                     )
                     .clearAndSetSemantics {}

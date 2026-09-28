@@ -18,6 +18,21 @@ import kotlin.test.assertTrue
 class BottomBarUiSkinDecorationTest {
 
     @Test
+    fun illustratedNavigationRequiresArtworkAndKeepsTabletNavigation() {
+        assertTrue(shouldUseIllustratedSkinBottomBar(true, true, false))
+        assertTrue(!shouldUseIllustratedSkinBottomBar(false, true, false))
+        assertTrue(!shouldUseIllustratedSkinBottomBar(true, false, false))
+        assertTrue(!shouldUseIllustratedSkinBottomBar(true, true, true))
+    }
+
+    @Test
+    fun illustratedIconsFitNarrowSlotsWithoutCroppingCharacters() {
+        assertEquals(52.dp, resolveIllustratedSkinIconSize(80.dp))
+        assertEquals(40.dp, resolveIllustratedSkinIconSize(48.dp))
+        assertEquals(24.dp, resolveIllustratedSkinIconSize(24.dp))
+    }
+
+    @Test
     fun bottomSkinDecorativeTrimSupportsOptionalShapeClipForFloatingShell() {
         val source = File("src/main/java/com/android/purebilibili/feature/home/components/BottomBarUiSkin.kt")
             .readText()

@@ -145,6 +145,22 @@ data class HomeUiSkinDecoration(
     }
 }
 
+internal fun shouldUseIllustratedSkinBottomBar(
+    hasBackground: Boolean,
+    hasIcons: Boolean,
+    isTablet: Boolean,
+): Boolean = hasBackground && hasIcons && !isTablet
+
+internal fun BottomBarUiSkinDecoration?.usesIllustratedNavigation(isTablet: Boolean): Boolean =
+    shouldUseIllustratedSkinBottomBar(
+        hasBackground = !this?.bottomTrimImagePath.isNullOrBlank(),
+        hasIcons = this?.bottomBarIconPaths?.isNotEmpty() == true,
+        isTablet = isTablet,
+    )
+
+internal fun resolveIllustratedSkinIconSize(slotWidth: Dp): Dp =
+    (slotWidth - 8.dp).coerceIn(24.dp, 52.dp)
+
 internal fun resolveBottomBarSkinDockIconSize(): Dp = AppSpacingTokens.DoubleExtraLarge
 
 internal fun resolveBottomBarSkinDockHeight(): Dp = AppSpacingTokens.TripleExtraLarge + AppSpacingTokens.Large
