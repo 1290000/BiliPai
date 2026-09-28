@@ -2714,7 +2714,7 @@ internal fun ReplySpecialLabelChip(text: String) {
 }
 
 @Composable
-private fun ReplyTextAction(
+internal fun ReplyTextAction(
     label: String,
     appearance: VideoCommentAppearance,
     onClick: () -> Unit
