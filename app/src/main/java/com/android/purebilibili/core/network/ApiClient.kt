@@ -1998,6 +1998,10 @@ interface SpaceApi {
     @GET("x/space/wbi/acc/info")
     suspend fun getSpaceInfo(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceInfoResponse
 
+    // App 端空间接口，仅用于头部充电（elec）/大航海（guard）摘要（需 appkey 签名）
+    @GET("https://app.bilibili.com/x/v2/space")
+    suspend fun getAppSpaceSupporters(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceSupportersResponse
+
     @GET("x/space/wbi/acc/info")
     suspend fun getSpaceInfoRaw(@QueryMap params: Map<String, String>): okhttp3.ResponseBody
     

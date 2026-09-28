@@ -984,3 +984,38 @@ data class SpaceCheeseItem(
     val title: String = "",
     val ctime: String = ""
 )
+
+// App 端 /x/v2/space 的充电（elec）与大航海（guard）摘要，仅解析头部展示所需字段
+@Serializable
+data class SpaceSupportersResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SpaceSupportersData? = null
+)
+
+@Serializable
+data class SpaceSupportersData(
+    val elec: SpaceElecBlock? = null,
+    val guard: SpaceGuardBlock? = null
+)
+
+@Serializable
+data class SpaceElecBlock(
+    val total: Long = 0L,
+    val list: List<SpaceSupporterUser> = emptyList()
+)
+
+@Serializable
+data class SpaceGuardBlock(
+    val uri: String = "",
+    val desc: String = "",
+    val item: List<SpaceSupporterUser> = emptyList()
+)
+
+@Serializable
+data class SpaceSupporterUser(
+    val mid: Long = 0L,
+    val uname: String = "",
+    val avatar: String = "",
+    val face: String = ""
+)

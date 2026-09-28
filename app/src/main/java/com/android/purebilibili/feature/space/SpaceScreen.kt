@@ -51,6 +51,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.stickyHeader
+import androidx.compose.foundation.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1437,6 +1438,9 @@ private fun SpaceContent(
                     upStat = state.headerState.upStat ?: state.upStat,
                     collapseFraction = headerCollapseFraction.value,
                     bannerScrollOffsetPx = bannerScrollOffsetPx.value,
+                    chargeGroup = state.chargeGroup,
+                    guardGroup = state.guardGroup,
+                    onWebClick = onWebClick,
                     onFollowClick = onFollowClick,
                     onMessageClick = onMessageClick,
                     onFollowingClick = onFollowingClick,
@@ -2540,6 +2544,9 @@ private fun SpaceHeader(
     upStat: UpStatData?,
     collapseFraction: Float,
     bannerScrollOffsetPx: Float = 0f,
+    chargeGroup: SpaceSupporterGroup? = null,
+    guardGroup: SpaceSupporterGroup? = null,
+    onWebClick: (String, String) -> Unit = { _, _ -> },
     onFollowClick: () -> Unit,
     onMessageClick: () -> Unit,
     onFollowingClick: () -> Unit,
@@ -2843,6 +2850,18 @@ private fun SpaceHeader(
                     .padding(start = 4.dp, end = 0.dp, top = 10.dp, bottom = 8.dp),
             )
         }
+
+        // 充电/大航海统计行（对齐 PiliPlus _buildChargeAndGuard）
+        SpaceChargeGuardRow(
+            chargeGroup = chargeGroup,
+            guardGroup = guardGroup,
+            mid = userInfo.mid,
+            onWebClick = onWebClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = headerContentAlpha }
+                .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
+        )
         }
     }
 }
@@ -3252,6 +3271,85 @@ private fun SpaceContributionVideoSummaryBar(
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpaceChargeGuardRow(
+    chargeGroup: SpaceSupporterGroup?,
+    guardGroup: SpaceSupporterGroup?,
+    mid: Long,
+    onWebClick: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (chargeGroup == null && guardGroup == null) return
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        chargeGroup?.let { group ->
+            Row(
+                modifier = Modifier.clickable {
+                    onWebClick("https://space.bilibili.com/$mid/upower/rank", "充电排行")
+                },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                SpaceSupporterAvatarStack(avatarUrls = group.avatarUrls)
+                AppText(
+                    text = "${FormatUtils.formatStat(group.count)}人为TA充电",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                AppIcon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+        guardGroup?.let { group ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                SpaceSupporterAvatarStack(avatarUrls = group.avatarUrls)
+                AppText(
+                    text = "${FormatUtils.formatStat(group.count)}人加入大航海",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpaceSupporterAvatarStack(avatarUrls: List<String>) {
+    val context = LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        avatarUrls.take(3).forEachIndexed { index, url ->
+            Box(
+                modifier = Modifier
+                    .offset(x = (-6 * index).dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(FormatUtils.buildSizedImageUrl(url, width = 72, height = 72))
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
