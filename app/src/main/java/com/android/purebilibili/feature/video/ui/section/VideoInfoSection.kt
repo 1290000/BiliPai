@@ -331,7 +331,8 @@ fun VideoTitleSection(
 @Composable
 fun VideoDetailSponsorLabelChip(
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maxLines: Int = 1,
 ) {
     androidx.compose.material3.Surface(
         modifier = modifier,
@@ -360,7 +361,7 @@ fun VideoDetailSponsorLabelChip(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 lineHeight = MaterialTheme.typography.labelSmall.fontSize,
-                maxLines = 1
+                maxLines = maxLines
             )
         }
     }
@@ -463,6 +464,15 @@ fun VideoTitleWithDesc(
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = horizontalPadding, vertical = if (isMaterial3) 4.dp else 3.dp)
     ) {
+        val stackSponsorLabel = sponsorLabel.isNotBlank() && shouldStackSponsorLabelAboveTitle(sponsorLabel)
+        if (stackSponsorLabel) {
+            // 长徽标独立成行，避免挤压标题
+            VideoDetailSponsorLabelChip(
+                label = sponsorLabel,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 2,
+            )
+        }
         // Title row (expandable); top-aligned so the sponsor badge lines up with the first title line
         Row(
             modifier = Modifier
@@ -495,7 +505,7 @@ fun VideoTitleWithDesc(
                 }
             }
 
-            if (sponsorLabel.isNotBlank()) {
+            if (sponsorLabel.isNotBlank() && !stackSponsorLabel) {
                 VideoDetailSponsorLabelChip(
                     label = sponsorLabel,
                     modifier = Modifier.padding(end = 6.dp, top = 2.dp)
