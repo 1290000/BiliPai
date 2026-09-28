@@ -3373,6 +3373,26 @@ fun AppNavigation(
                                     onUserClick = { userMid -> pushNavigation3Key(BiliPaiNavKey.Space(userMid)) }
                                 )
                             }
+                        BiliPaiNavEntryContentRole.UPOWER_RANK -> {
+                                val upowerRankKey = key as BiliPaiNavKey.UpowerRank
+                                com.android.purebilibili.feature.space.SpaceUpowerRankScreen(
+                                    mid = upowerRankKey.mid,
+                                    name = upowerRankKey.name,
+                                    count = upowerRankKey.count,
+                                    onBack = { performSystemBackAction() },
+                                    onUserClick = { userMid -> pushNavigation3Key(BiliPaiNavKey.Space(userMid)) }
+                                )
+                            }
+                        BiliPaiNavEntryContentRole.MEMBER_GUARD -> {
+                                val memberGuardKey = key as BiliPaiNavKey.MemberGuard
+                                com.android.purebilibili.feature.space.SpaceMemberGuardScreen(
+                                    mid = memberGuardKey.mid,
+                                    name = memberGuardKey.name,
+                                    count = memberGuardKey.count,
+                                    onBack = { performSystemBackAction() },
+                                    onUserClick = { userMid -> pushNavigation3Key(BiliPaiNavKey.Space(userMid)) }
+                                )
+                            }
                         BiliPaiNavEntryContentRole.DOWNLOAD_LIST ->
                             com.android.purebilibili.feature.download.DownloadListScreen(
                                 onBack = { performSystemBackAction() },
@@ -3996,6 +4016,24 @@ fun AppNavigation(
                                             BiliPaiNavKey.Web(
                                                 url = "https://space.bilibili.com/$fansMid/fans/fans",
                                                 title = "粉丝"
+                                            )
+                                        )
+                                    },
+                                    onUpowerRankClick = { upMid, upName, upCount ->
+                                        pushNavigation3Key(
+                                            BiliPaiNavKey.UpowerRank(
+                                                mid = upMid,
+                                                name = upName,
+                                                count = upCount
+                                            )
+                                        )
+                                    },
+                                    onMemberGuardClick = { guardMid, guardName, guardCount ->
+                                        pushNavigation3Key(
+                                            BiliPaiNavKey.MemberGuard(
+                                                mid = guardMid,
+                                                name = guardName,
+                                                count = guardCount
                                             )
                                         )
                                     },

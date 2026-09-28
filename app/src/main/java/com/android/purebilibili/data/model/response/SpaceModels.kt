@@ -1019,3 +1019,56 @@ data class SpaceSupporterUser(
     val avatar: String = "",
     val face: String = ""
 )
+
+// 充电排行 /x/upower/up/member/rank/v2
+@Serializable
+data class SpaceUpowerRankResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SpaceUpowerRankData? = null
+)
+
+@Serializable
+data class SpaceUpowerRankData(
+    @SerialName("rank_info") val rankInfo: List<SpaceUpowerRankItem> = emptyList(),
+    @SerialName("privilege_type") val privilegeType: Int = 0,
+    val tabs: List<Int> = emptyList(),
+    @SerialName("level_info") val levelInfo: List<SpaceUpowerLevelInfo> = emptyList()
+)
+
+@Serializable
+data class SpaceUpowerRankItem(
+    val mid: Long = 0L,
+    val nickname: String = "",
+    val avatar: String = "",
+    val day: Int = 0
+)
+
+@Serializable
+data class SpaceUpowerLevelInfo(
+    @SerialName("privilege_type") val privilegeType: Int = 0,
+    val name: String = "",
+    @SerialName("member_total") val memberTotal: Int = 0
+)
+
+// 大航海 /xlive/app-ucenter/v1/guard/MainGuardCardAll
+@Serializable
+data class SpaceMemberGuardResponse(
+    val code: Int = 0,
+    val message: String = "",
+    val data: SpaceMemberGuardData? = null
+)
+
+@Serializable
+data class SpaceMemberGuardData(
+    @SerialName("guard_top_list") val guardTopList: List<SpaceGuardMemberItem> = emptyList(),
+    @SerialName("has_more") val hasMore: Int = 0
+)
+
+@Serializable
+data class SpaceGuardMemberItem(
+    val uid: Long = 0L,
+    val username: String = "",
+    val face: String = "",
+    @SerialName("guard_level") val guardLevel: Int = 0
+)

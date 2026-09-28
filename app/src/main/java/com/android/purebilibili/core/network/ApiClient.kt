@@ -2002,6 +2002,14 @@ interface SpaceApi {
     @GET("https://app.bilibili.com/x/v2/space")
     suspend fun getAppSpaceSupporters(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceSupportersResponse
 
+    // 充电排行（网页端接口）
+    @GET("x/upower/up/member/rank/v2")
+    suspend fun getUpowerRank(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceUpowerRankResponse
+
+    // 大航海/舰队列表（直播域名）
+    @GET("https://api.live.bilibili.com/xlive/app-ucenter/v1/guard/MainGuardCardAll")
+    suspend fun getMemberGuard(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceMemberGuardResponse
+
     @GET("x/space/wbi/acc/info")
     suspend fun getSpaceInfoRaw(@QueryMap params: Map<String, String>): okhttp3.ResponseBody
     

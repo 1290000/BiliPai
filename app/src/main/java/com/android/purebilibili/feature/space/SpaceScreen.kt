@@ -269,6 +269,8 @@ fun SpaceScreen(
     onMessageClick: (Long, String, String) -> Unit = { _, _, _ -> },
     onFollowingClick: (Long) -> Unit = {},
     onFansClick: (Long) -> Unit = {},
+    onUpowerRankClick: ((Long, String, Long) -> Unit)? = null,
+    onMemberGuardClick: ((Long, String, Long) -> Unit)? = null,
     viewModel: SpaceViewModel = viewModel(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
@@ -733,6 +735,10 @@ fun SpaceScreen(
                             },
                             onFollowingClick = { onFollowingClick(state.userInfo.mid) },
                             onFansClick = { onFansClick(state.userInfo.mid) },
+                            onUpowerRankClick = onUpowerRankClick
+                                ?: { m, _, _ -> onWebClick("https://space.bilibili.com/$m/upower/rank", "充电排行") },
+                            onMemberGuardClick = onMemberGuardClick
+                                ?: { m, _, _ -> onWebClick("https://space.bilibili.com/$m", "大航海") },
                             onTopPhotoClick = { rect ->
                                 topPhotoSourceRect = rect
                                 showTopPhotoPreview = true
@@ -1117,6 +1123,8 @@ private fun SpaceContent(
     onMessageClick: () -> Unit,
     onFollowingClick: () -> Unit,
     onFansClick: () -> Unit,
+    onUpowerRankClick: (Long, String, Long) -> Unit = { _, _, _ -> },
+    onMemberGuardClick: (Long, String, Long) -> Unit = { _, _, _ -> },
     onTopPhotoClick: (Rect?) -> Unit,
     onAvatarClick: (Rect?) -> Unit,
     dynamicCardItems: List<com.android.purebilibili.data.model.response.DynamicItem>,
@@ -1441,6 +1449,8 @@ private fun SpaceContent(
                     chargeGroup = state.chargeGroup,
                     guardGroup = state.guardGroup,
                     onWebClick = onWebClick,
+                    onUpowerRankClick = onUpowerRankClick,
+                    onMemberGuardClick = onMemberGuardClick,
                     onFollowClick = onFollowClick,
                     onMessageClick = onMessageClick,
                     onFollowingClick = onFollowingClick,
@@ -2551,6 +2561,8 @@ private fun SpaceHeader(
     onMessageClick: () -> Unit,
     onFollowingClick: () -> Unit,
     onFansClick: () -> Unit,
+    onUpowerRankClick: (Long, String, Long) -> Unit = { _, _, _ -> },
+    onMemberGuardClick: (Long, String, Long) -> Unit = { _, _, _ -> },
     onTopPhotoClick: (Rect?) -> Unit,
     onAvatarClick: (Rect?) -> Unit,
     onLiveClick: (Long, String, String) -> Unit,
@@ -2870,8 +2882,12 @@ private fun SpaceHeader(
         SpaceChargeGuardRow(
             chargeGroup = chargeGroup,
             guardGroup = guardGroup,
-            mid = userInfo.mid,
-            onWebClick = onWebClick,
+            onUpowerRankClick = {
+                onUpowerRankClick(userInfo.mid, userInfo.name, chargeGroup?.count ?: 0L)
+            },
+            onMemberGuardClick = {
+                onMemberGuardClick(userInfo.mid, userInfo.name, guardGroup?.count ?: 0L)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { alpha = headerContentAlpha }
@@ -3295,8 +3311,8 @@ private fun SpaceContributionVideoSummaryBar(
 private fun SpaceChargeGuardRow(
     chargeGroup: SpaceSupporterGroup?,
     guardGroup: SpaceSupporterGroup?,
-    mid: Long,
-    onWebClick: (String, String) -> Unit,
+    onUpowerRankClick: () -> Unit,
+    onMemberGuardClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (chargeGroup == null && guardGroup == null) return
@@ -3307,9 +3323,7 @@ private fun SpaceChargeGuardRow(
     ) {
         chargeGroup?.let { group ->
             Row(
-                modifier = Modifier.clickable {
-                    onWebClick("https://space.bilibili.com/$mid/upower/rank", "充电排行")
-                },
+                modifier = Modifier.clickable(onClick = onUpowerRankClick),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -3329,6 +3343,7 @@ private fun SpaceChargeGuardRow(
         }
         guardGroup?.let { group ->
             Row(
+                modifier = Modifier.clickable(onClick = onMemberGuardClick),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
