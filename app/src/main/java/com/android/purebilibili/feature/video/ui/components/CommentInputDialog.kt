@@ -795,7 +795,8 @@ indicatorPresentation = AppTabRowIndicatorPresentation.TONAL_PILL,
                                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                             ) {
-                                                items(emotes, key = { it.first }) { (emoteText, imagePath) ->
+                                                items(emotes.size, key = { emotes[it].first }) { index ->
+                                                    val (emoteText, imagePath) = emotes[index]
                                                     Column(
                                                         horizontalAlignment = Alignment.CenterHorizontally,
                                                         modifier = Modifier.clickable {
