@@ -349,7 +349,7 @@ fun SubscriptionFeedPage(
                         onColumnsChange = onColumnsChange,
                         onPinchEnd = onPinchEnd,
                         sharedTransitionScope = this@SharedTransitionLayout,
-                        animatedVisibilityScope = this,
+                        animatedVisibilityScope = this@AnimatedContent,
                     )
                 }
             }
@@ -589,6 +589,7 @@ private fun SubscriptionArticleScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val articleScope = rememberCoroutineScope()
     var articleHtml by remember(item.sourceId, item.id, item.link) {
         mutableStateOf(cachedBody ?: item.htmlContent.ifBlank { item.summary })
     }
@@ -660,7 +661,7 @@ private fun SubscriptionArticleScreen(
                         AppTextButton(
                             onClick = {
                                 fontScale = (fontScale + 1) % 3
-                                scope.launch {
+                                articleScope.launch {
                                     com.android.purebilibili.core.store.SettingsManager
                                         .setSubscriptionArticleFontScale(context, fontScale)
                                 }

@@ -591,6 +591,7 @@ internal fun VideoContentSection(
     val onFollowClick = primaryActions.onFollowClick
     val onFavoriteClick = primaryActions.onFavoriteClick
     val onLikeClick = primaryActions.onLikeClick
+    val onDislikeClick = primaryActions.onDislikeClick
     val onCoinClick = primaryActions.onCoinClick
     val onTripleClick = primaryActions.onTripleClick
     val onPageSelect = primaryActions.onPageSelect
