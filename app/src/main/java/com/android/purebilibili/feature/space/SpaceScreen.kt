@@ -3971,11 +3971,13 @@ private fun SpaceNoticeCard(notice: String) {
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
         )
         Spacer(modifier = Modifier.height(10.dp))
-        AppText(
-            text = notice,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        SelectionContainer {
+            AppText(
+                text = notice,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
