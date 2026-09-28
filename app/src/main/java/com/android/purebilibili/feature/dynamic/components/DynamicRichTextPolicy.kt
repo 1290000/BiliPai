@@ -241,11 +241,9 @@ internal fun resolveDynamicOpusTextBlockRichDesc(
             rich_text_nodes = resolvedBlockNodes,
         )
     }
-    if (preferredDesc == null) return null
-    // Detail opus payloads often omit emoji nodes while retaining shortcode text. Always
-    // route text blocks through RichTextContent so its existing catalog fallback can expand
-    // those shortcodes just as it does in the dynamic preview.
-    return preferredDesc.copy(text = blockText)
+    // Even when both metadata sources are absent, route the paragraph through
+    // RichTextContent so its plain-text @/topic fallback can still run.
+    return preferredDesc?.copy(text = blockText) ?: DynamicDesc(text = blockText)
 }
 
 /**
@@ -794,10 +792,14 @@ private fun AnnotatedString.Builder.appendDynamicRichTextExpandableText(
 }
 
 private val DYNAMIC_RICH_TEXT_TOPIC_PATTERN = Regex("""#([^#\n\r\t]+)#""")
+private val DYNAMIC_RICH_TEXT_MENTION_PATTERN =
+    Regex("""(?<![\p{L}\p{N}_.])@[\p{L}\p{N}_.·-]{1,32}""")
+
+private enum class DynamicPlainTextTokenKind { URL, TOPIC, MENTION }
 
 private data class DynamicPlainTextToken(
     val range: IntRange,
-    val isUrl: Boolean,
+    val kind: DynamicPlainTextTokenKind,
     val value: String,
     val keyword: String? = null
 )
@@ -811,7 +813,7 @@ private fun AnnotatedString.Builder.appendDynamicRichTextPlainText(
     DYNAMIC_RICH_TEXT_URL_PATTERN.findAll(text).forEach { match ->
         tokens += DynamicPlainTextToken(
             range = match.range,
-            isUrl = true,
+            kind = DynamicPlainTextTokenKind.URL,
             value = match.value
         )
     }
@@ -824,11 +826,26 @@ private fun AnnotatedString.Builder.appendDynamicRichTextPlainText(
             if (kw.isNotEmpty()) {
                 tokens += DynamicPlainTextToken(
                     range = match.range,
-                    isUrl = false,
+                    kind = DynamicPlainTextTokenKind.TOPIC,
                     value = match.value,
                     keyword = kw
                 )
             }
+        }
+    }
+    // Detail paragraphs can contain only TEXT nodes, while other spans in the same
+    // paragraph still have metadata. Highlight missing mentions inside plain fragments;
+    // structured AT nodes keep their user IDs and are rendered before this fallback.
+    DYNAMIC_RICH_TEXT_MENTION_PATTERN.findAll(text).forEach { match ->
+        val overlapsExisting = tokens.any { existing ->
+            match.range.first <= existing.range.last && match.range.last >= existing.range.first
+        }
+        if (!overlapsExisting) {
+            tokens += DynamicPlainTextToken(
+                range = match.range,
+                kind = DynamicPlainTextTokenKind.MENTION,
+                value = match.value,
+            )
         }
     }
     tokens.sortBy { it.range.first }
@@ -838,30 +855,36 @@ private fun AnnotatedString.Builder.appendDynamicRichTextPlainText(
         if (token.range.first > lastIndex) {
             append(text.substring(lastIndex, token.range.first))
         }
-        if (token.isUrl) {
-            appendDynamicRichTextLink(
+        when (token.kind) {
+            DynamicPlainTextTokenKind.URL -> appendDynamicRichTextLink(
                 displayText = token.value,
                 targetUrl = token.value,
                 primaryColor = primaryColor,
-                linkListener = linkListener
+                linkListener = linkListener,
             )
-        } else {
-            val kw = token.keyword.orEmpty()
-            if (kw.isNotEmpty()) {
-                withLink(
-                    dynamicRichTextLinkAnnotation(
-                        DYNAMIC_RICH_TEXT_LINK_TOPIC_KEYWORD_PREFIX + kw,
-                        linkListener,
-                    )
-                ) {
+            DynamicPlainTextTokenKind.TOPIC -> {
+                val kw = token.keyword.orEmpty()
+                if (kw.isNotEmpty()) {
+                    withLink(
+                        dynamicRichTextLinkAnnotation(
+                            DYNAMIC_RICH_TEXT_LINK_TOPIC_KEYWORD_PREFIX + kw,
+                            linkListener,
+                        )
+                    ) {
+                        withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.SemiBold)) {
+                            append(token.value)
+                        }
+                    }
+                } else {
                     withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.SemiBold)) {
                         append(token.value)
                     }
                 }
-            } else {
-                withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.SemiBold)) {
-                    append(token.value)
-                }
+            }
+            DynamicPlainTextTokenKind.MENTION -> withStyle(
+                SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium)
+            ) {
+                append(token.value)
             }
         }
         lastIndex = token.range.last + 1
