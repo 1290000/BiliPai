@@ -1369,7 +1369,7 @@ fun ReplyItemView(
     val collapseHatedBody = isHated && !hatedBodyExpanded
     var hatePromptHandled by remember(item.rpid) { mutableStateOf(false) }
     // 与仓库既有回弹手感一致（bouncyClickable 等使用的同组弹簧参数）
-    val hateCollapseSpring: SpringSpec<Float> = spring(
+    val hateCollapseSpring: SpringSpec<androidx.compose.ui.unit.IntSize> = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMedium
     )
