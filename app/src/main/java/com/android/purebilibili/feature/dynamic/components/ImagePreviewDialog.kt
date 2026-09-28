@@ -64,11 +64,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -232,16 +234,23 @@ fun ImagePreviewOverlayHost(
 ) {
     val activeRequest by ImagePreviewOverlayController.request.collectAsStateWithLifecycle()
     activeRequest?.let { request ->
+        var dismissRequestCount by remember(request.token) { mutableIntStateOf(0) }
         Dialog(
             onDismissRequest = {
-                ImagePreviewOverlayController.dismiss(request.token)
-                request.onDismiss()
+                dismissRequestCount++
             },
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
                 decorFitsSystemWindows = false
             )
         ) {
+            val dialogView = LocalView.current
+            SideEffect {
+                // The image itself already performs the return morph. The platform Dialog
+                // window animation would scale it a second time when the window is removed.
+                ((dialogView.parent as? DialogWindowProvider) ?: (dialogView as? DialogWindowProvider))
+                    ?.window?.setWindowAnimations(0)
+            }
             ImagePreviewOverlayContent(
                 images = request.images,
                 livePhotoVideos = request.livePhotoVideos,
@@ -251,6 +260,7 @@ fun ImagePreviewOverlayHost(
                 textContent = request.textContent,
                 defaultTextVisible = request.defaultTextVisible,
                 onImageLongPress = request.onImageLongPress,
+                dismissRequestCount = dismissRequestCount,
                 onDismiss = {
                     ImagePreviewOverlayController.dismiss(request.token)
                     request.onDismiss()
@@ -273,6 +283,7 @@ private fun ImagePreviewOverlayContent(
     textContent: ImagePreviewTextContent? = null,
     defaultTextVisible: Boolean = true,
     onImageLongPress: ((String) -> Unit)? = null,
+    dismissRequestCount: Int = 0,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -615,26 +626,34 @@ private fun ImagePreviewOverlayContent(
                 }
             }
 
+            LaunchedEffect(dismissRequestCount) {
+                if (dismissRequestCount > 0) triggerDismiss()
+            }
+
             NavigationBackHandler(
                 state = backEventState,
                 isBackEnabled = !isDismissing,
                 onBackCancelled = {
-                    scope.launch {
-                        backRecovering = true
-                        val dismissMotion = imagePreviewDismissMotion()
-                        animateTrigger.snapTo(lastScrubRawProgress)
-                        animateTrigger.animateTo(
-                            targetValue = 1f,
-                            animationSpec = emphasizedEnterTween(
-                                durationMillis = dismissMotion.cancelRecoverDurationMillis
-                            ),
-                        )
-                        lastScrubRawProgress = 1f
-                        backRecovering = false
+                    if (!isDismissing) {
+                        scope.launch {
+                            if (isDismissing) return@launch
+                            backRecovering = true
+                            val dismissMotion = imagePreviewDismissMotion()
+                            animateTrigger.snapTo(lastScrubRawProgress)
+                            animateTrigger.animateTo(
+                                targetValue = 1f,
+                                animationSpec = emphasizedEnterTween(
+                                    durationMillis = dismissMotion.cancelRecoverDurationMillis
+                                ),
+                            )
+                            lastScrubRawProgress = 1f
+                            backRecovering = false
+                        }
                     }
                 },
                 onBackCompleted = {
                     scope.launch {
+                        if (isDismissing) return@launch
                         animateTrigger.snapTo(lastScrubRawProgress)
                         triggerDismiss()
                     }
@@ -2606,4 +2625,3 @@ private fun LivePhotoOffIcon(
         )
     }
 }
-

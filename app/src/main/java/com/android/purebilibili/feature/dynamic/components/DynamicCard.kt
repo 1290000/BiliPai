@@ -43,9 +43,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.ui.text.Placeholder
@@ -1383,6 +1386,7 @@ fun DynamicCardV2(
                                     .build()
                             }
                             if (expandOpusDetailImages) {
+                                val expandedImageSourceRect = rememberImagePreviewSourceRect()
                                 AsyncImage(
                                     model = imageRequest,
                                     contentDescription = opus.title.orEmpty(),
@@ -1396,8 +1400,11 @@ fun DynamicCardV2(
                                             }
                                         )
                                         .clip(AppShapes.container(ContainerLevel.Card))
+                                        .imagePreviewSourceBounds(expandedImageSourceRect)
+                                        .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
                                         .clickable(enabled = currentImageIndex in previewImages.indices) {
                                             fullContentSelectedImageIndex = currentImageIndex
+                                            thumbnailSourceRect = expandedImageSourceRect.value
                                         },
                                     contentScale = ContentScale.FillWidth
                                 )
@@ -1472,7 +1479,12 @@ fun DynamicCardV2(
                         },
                         images = previewImages,
                         initialIndex = fullContentSelectedImageIndex,
-                        sourceRect = if (expandOpusDetailImages) null else thumbnailSourceRect,
+                        sourceRect = thumbnailSourceRect,
+                        sourceCornerRadiusDp = if (expandOpusDetailImages) {
+                            AppShapes.containerCornerDp(ContainerLevel.Card).value
+                        } else {
+                            resolveDrawGridCornerRadiusDp().toFloat()
+                        },
                         textContent = opusPreviewText,
                         defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { fullContentSelectedImageIndex = -1 }
@@ -1485,6 +1497,7 @@ fun DynamicCardV2(
                 )
                 if (expandOpusFallbackImages) {
                     renderableOpusPics.forEachIndexed { index, pic ->
+                        val expandedImageSourceRect = rememberImagePreviewSourceRect()
                         val aspectRatio = if (pic.width > 0 && pic.height > 0) {
                             pic.width.toFloat() / pic.height.toFloat()
                         } else {
@@ -1507,9 +1520,11 @@ fun DynamicCardV2(
                                 .fillMaxWidth()
                                 .aspectRatio(aspectRatio)
                                 .clip(AppShapes.container(ContainerLevel.Card))
+                                .imagePreviewSourceBounds(expandedImageSourceRect)
+                                .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
                                 .clickable {
                                     selectedImageIndex = index
-                                    sourceRect = null
+                                    sourceRect = expandedImageSourceRect.value
                                 },
                             contentScale = ContentScale.FillWidth,
                         )
@@ -1559,6 +1574,11 @@ fun DynamicCardV2(
                         images = renderableOpusPics.map { it.url },
                         initialIndex = selectedImageIndex,
                         sourceRect = sourceRect,
+                        sourceCornerRadiusDp = if (expandOpusFallbackImages) {
+                            AppShapes.containerCornerDp(ContainerLevel.Card).value
+                        } else {
+                            resolveDrawGridCornerRadiusDp().toFloat()
+                        },
                         textContent = opusPreviewText,
                         defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { selectedImageIndex = -1 }
@@ -2300,21 +2320,22 @@ fun RichTextContent(
     }
     val copyText = remember(desc.rich_text_nodes, desc.text) {
         val richNodeText = resolveDynamicRichTextNodeDisplayText(desc.rich_text_nodes)
-        richNodeText.ifBlank { desc.text }.trim()
+        desc.text.ifBlank { richNodeText }.trim()
     }
     var showTextSelectionSheet by remember(copyText) { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
-    // 动态正文始终带可交互注解（@/链接/话题/投票），由 BasicText 内部原生链接
-    // 手势分发；复制走长按操作面板，无需 SelectionContainer。空白区域点击由
-    // 外层轻触兜底（链接点击会消费 up，本检测器不会触发）。
-    val blankTapModifier = if (onBlankTap != null) {
-        Modifier.pointerInput(annotatedText, onBlankTap) {
-            detectTapWithSelectionFriendly { _ ->
-                onBlankTap.invoke()
-            }
-        }
-    } else {
-        Modifier
+    // 保留 BasicText 原生链接点击；长按打开全文选择面板，轻触空白才走转发回调。
+    val textGestureModifier = Modifier.pointerInput(annotatedText, onBlankTap, copyText) {
+        detectTapWithSelectionFriendly(
+            onLongPress = {
+                if (copyText.isNotBlank()) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showTextSelectionSheet = true
+                }
+            },
+            onTap = onBlankTap?.let { callback -> { _: Offset -> callback() } },
+        )
     }
     AppText(
         text = annotatedText,
@@ -2325,7 +2346,7 @@ fun RichTextContent(
         maxLines = maxLines,
         overflow = overflow,
         color = textColor,
-        modifier = modifier.then(blankTapModifier)
+        modifier = modifier.then(textGestureModifier)
     )
 
     if (showTextSelectionSheet) {
