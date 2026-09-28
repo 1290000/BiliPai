@@ -835,6 +835,24 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     /**
      * 切换清晰度
      */
+    /**
+     * DRM 加密流（课程高码率档常见）当前播放器不支持解密。对齐 PiliPlus 的实际表现：
+     * 低档清晰度（qn=80 蓝光）下发的是未加密流，因此收到 DRM 错误时自动降档重试一次。
+     */
+    fun handlePlaybackDrmError() {
+        val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
+        if (currentState.quality > 80) {
+            viewModelScope.launch {
+                _toastEvent.send("当前清晰度受版权保护，已切换为蓝光")
+                changeQuality(80)
+            }
+        } else {
+            viewModelScope.launch {
+                _toastEvent.send("该内容受版权保护，暂时无法播放")
+            }
+        }
+    }
+
     fun changeQuality(qualityId: Int) {
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         val currentPos = getPlayerCurrentPosition()
