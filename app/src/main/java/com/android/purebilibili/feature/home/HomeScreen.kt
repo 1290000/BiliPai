@@ -919,6 +919,7 @@ fun HomeScreen(
         recommendOldContentRevealKey
     ) {
         if (currentCategory != HomeCategory.RECOMMEND) return@LaunchedEffect
+        if (!homeSettings.homeRefreshTipVisible) return@LaunchedEffect
         if ((refreshNewItemsCount ?: 0) <= 0) return@LaunchedEffect
         val targetKey = refreshNewItemsKey
         if (targetKey <= 0L || recommendOldContentRevealKey == targetKey) return@LaunchedEffect
@@ -2415,7 +2416,8 @@ fun HomeScreen(
                                              refreshNewItemsKey = refreshNewItemsKey,
                                              revealedRefreshKey = recommendOldContentRevealKey,
                                              anchorBvid = recommendOldContentAnchorBvid,
-                                             oldContentStartIndex = recommendOldContentStartIndex
+                                             oldContentStartIndex = recommendOldContentStartIndex,
+                                             refreshTipVisible = homeSettings.homeRefreshTipVisible
                                          )
                                      ) {
                                          recommendOldContentAnchorBvid
@@ -2427,12 +2429,19 @@ fun HomeScreen(
                                              refreshNewItemsKey = refreshNewItemsKey,
                                              revealedRefreshKey = recommendOldContentRevealKey,
                                              anchorBvid = recommendOldContentAnchorBvid,
-                                             oldContentStartIndex = recommendOldContentStartIndex
+                                             oldContentStartIndex = recommendOldContentStartIndex,
+                                             refreshTipVisible = homeSettings.homeRefreshTipVisible
                                          )
                                      ) {
                                          recommendOldContentStartIndex
                                      } else {
                                          null
+                                     },
+                                     onOldContentDividerClick = {
+                                         coroutineScope.launch {
+                                             contentGridState.animateScrollToItem(0)
+                                         }
+                                         viewModel.refresh(category)
                                      },
                                      todayWatchEnabled = category == HomeCategory.RECOMMEND && todayWatchPluginEnabled,
                                      todayWatchMode = todayWatchMode,

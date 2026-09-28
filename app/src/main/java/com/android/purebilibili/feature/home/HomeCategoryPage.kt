@@ -217,6 +217,7 @@ internal fun HomeCategoryPageContent(
     onGetPreviewUrl: suspend (String, Long) -> String? = { _, _ -> null },
     oldContentAnchorBvid: String? = null,
     oldContentStartIndex: Int? = null,
+    onOldContentDividerClick: () -> Unit = {},
     todayWatchEnabled: Boolean = false,
     todayWatchMode: TodayWatchMode = TodayWatchMode.RELAX,
     todayWatchPlan: TodayWatchPlan? = null,
@@ -610,7 +611,7 @@ internal fun HomeCategoryPageContent(
                                 contentType = "home_old_content_divider",
                                 span = StaggeredGridItemSpan.FullLine
                             ) {
-                                OldContentDivider()
+                                OldContentDivider(onClick = onOldContentDividerClick)
                             }
                         }
                         item(key = videoGridKeys[index], contentType = "home_video_card") {
@@ -635,7 +636,7 @@ internal fun HomeCategoryPageContent(
                                 contentType = "home_old_content_divider",
                                 span = StaggeredGridItemSpan.FullLine
                             ) {
-                                OldContentDivider()
+                                OldContentDivider(onClick = onOldContentDividerClick)
                             }
                         }
                         val rowKey = rowIndices.joinToString(
@@ -1147,11 +1148,13 @@ private fun WaterfallReveal(
 }
 
 @Composable
-private fun OldContentDivider() {
+private fun OldContentDivider(onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = AppSpacingTokens.Medium, vertical = AppSpacingTokens.ExtraSmall + AppSpacingTokens.Micro),
+            .padding(horizontal = AppSpacingTokens.Medium, vertical = AppSpacingTokens.ExtraSmall + AppSpacingTokens.Micro)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(10.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1164,7 +1167,7 @@ private fun OldContentDivider() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             AppText(
-                text = "上次刷新到这里",
+                text = "上次刷新到这里，点击回顶刷新",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,

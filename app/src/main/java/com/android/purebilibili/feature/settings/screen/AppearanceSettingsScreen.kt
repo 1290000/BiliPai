@@ -491,6 +491,9 @@ fun AppearanceSettingsContent(
     val homeUpAvatarsVisible by SettingsManager
         .getHomeUpAvatarsVisible(context)
         .collectAsStateWithLifecycle(initialValue = true)
+    val homeRefreshTipVisible by SettingsManager
+        .getHomeRefreshTipVisible(context)
+        .collectAsStateWithLifecycle(initialValue = true)
     val homePublishTimeVisible by SettingsManager
         .getHomePublishTimeVisible(context)
         .collectAsStateWithLifecycle(initialValue = true)
@@ -1562,6 +1565,24 @@ fun AppearanceSettingsContent(
                             onCheckedChange = {
                                 scope.launch {
                                     SettingsManager.setHomeUpBadgesVisible(context, it)
+                                }
+                            },
+                            iconTint = com.android.purebilibili.core.theme.iOSBlue
+                        )
+
+                        AppPreferenceDivider(modifier = Modifier.padding(start = 16.dp))
+                        AppSwitchPreference(
+                            icon = rememberSettingsSemanticIcon(SettingsIconRole.HOME_UP_BADGES),
+                            title = "上次刷新提示",
+                            subtitle = if (homeRefreshTipVisible) {
+                                "推荐流刷新后保留旧内容，并在刷新位置显示提示"
+                            } else {
+                                "关闭后刷新直接替换推荐内容，不显示刷新位置提示"
+                            },
+                            checked = homeRefreshTipVisible,
+                            onCheckedChange = {
+                                scope.launch {
+                                    SettingsManager.setHomeRefreshTipVisible(context, it)
                                 }
                             },
                             iconTint = com.android.purebilibili.core.theme.iOSBlue

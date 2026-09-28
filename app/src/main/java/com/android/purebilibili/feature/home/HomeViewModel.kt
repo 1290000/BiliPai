@@ -1508,7 +1508,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         useIncrementalRecommendRefresh -> {
                             val merged = prependDistinctByKey(oldState.videos, incomingVideos, ::videoItemKey)
                             addedCount = (merged.size - oldState.videos.size).coerceAtLeast(0)
-                            merged.toImmutableList()
+                            val keptOldCount = resolveHomeRefreshKeptOldItemCount(oldState.videos.size)
+                            if (keptOldCount < oldState.videos.size) {
+                                merged.take(addedCount + keptOldCount).toImmutableList()
+                            } else {
+                                merged.toImmutableList()
+                            }
                         }
                         else -> incomingVideos.toImmutableList()
                     }
