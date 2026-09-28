@@ -72,6 +72,7 @@ private data class ArticleImagePreviewRequest(
     val images: List<String>,
     val initialIndex: Int,
     val sourceRect: Rect?,
+    val sourceRects: Map<Int, Rect>,
     val sourceCornerRadiusDp: Float
 )
 
@@ -218,6 +219,16 @@ private fun ArticleDetailContent(
     val bodyImageSourceRects = remember(article.blocks) {
         mutableStateMapOf<Int, Rect>()
     }
+    fun currentPreviewSourceRects(): Map<Int, Rect> = buildMap {
+        if (hasBannerImage) bannerSourceRect?.let { put(0, it) }
+        var pageIndex = bodyImageIndexOffset
+        article.blocks.forEachIndexed { blockIndex, block ->
+            if (block is ArticleContentBlock.Image) {
+                bodyImageSourceRects[blockIndex]?.let { put(pageIndex, it) }
+                pageIndex++
+            }
+        }
+    }
     var imagePreviewRequest by remember(article.bannerUrl, article.blocks) {
         mutableStateOf<ArticleImagePreviewRequest?>(null)
     }
@@ -232,6 +243,7 @@ private fun ArticleDetailContent(
                 images = previewImages,
                 initialIndex = 0,
                 sourceRect = bannerSourceRect,
+                sourceRects = currentPreviewSourceRects(),
                 sourceCornerRadiusDp = ARTICLE_BANNER_CORNER_RADIUS_DP
             )
         }
@@ -462,6 +474,7 @@ private fun ArticleDetailContent(
                                     images = previewImages,
                                     initialIndex = payload.initialIndex + bodyImageIndexOffset,
                                     sourceRect = bodyImageSourceRects[index],
+                                    sourceRects = currentPreviewSourceRects(),
                                     sourceCornerRadiusDp = ARTICLE_BODY_IMAGE_CORNER_RADIUS_DP
                                 )
                             },
@@ -477,6 +490,7 @@ private fun ArticleDetailContent(
             images = request.images,
             initialIndex = request.initialIndex,
             sourceRect = request.sourceRect,
+            sourceRects = request.sourceRects,
             sourceCornerRadiusDp = request.sourceCornerRadiusDp,
             onDismiss = { imagePreviewRequest = null }
         )

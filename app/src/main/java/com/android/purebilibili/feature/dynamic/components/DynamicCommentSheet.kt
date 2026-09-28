@@ -284,6 +284,7 @@ fun DynamicCommentSheet(
             images = previewImages,
             initialIndex = previewInitialIndex,
             sourceRect = previewSourceRect?.rect,
+            sourceRects = previewSourceRect?.galleryRects.orEmpty(),
             sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
                 ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,

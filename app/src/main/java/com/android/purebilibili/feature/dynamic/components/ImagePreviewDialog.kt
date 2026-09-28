@@ -153,6 +153,8 @@ private data class ImagePreviewOverlayRequest(
     val livePhotoVideos: Map<String, String>,
     val initialIndex: Int,
     val sourceRect: androidx.compose.ui.geometry.Rect?,
+    val sourceRects: Map<Int, androidx.compose.ui.geometry.Rect>,
+    val activeSourceRect: androidx.compose.ui.geometry.Rect? = sourceRect,
     val sourceCornerRadiusDp: Float,
     val textContent: ImagePreviewTextContent?,
     val defaultTextVisible: Boolean,
@@ -163,13 +165,13 @@ private data class ImagePreviewOverlayRequest(
 /**
  * 源缩略图在图片预览打开期间应隐藏，否则飞出的图片会与原位卡片重影；
  * overlay request 在回位动画结束后才清空，因此卡片等「飞回落地」才恢复。
- * 匹配规则：捕获的 bounds 中心落在 request.sourceRect 外扩 8px 范围内。
+ * 匹配规则：捕获的 bounds 中心落在当前页来源矩形外扩 8px 范围内。
  */
 @Composable
 fun isImagePreviewSourceHidden(bounds: androidx.compose.ui.geometry.Rect?): Boolean {
     if (bounds == null) return false
     val request by ImagePreviewOverlayController.request.collectAsStateWithLifecycle()
-    val sourceRect = request?.sourceRect ?: return false
+    val sourceRect = request?.activeSourceRect ?: return false
     return sourceRect.inflate(8f).contains(bounds.center)
 }
 
@@ -179,6 +181,13 @@ private object ImagePreviewOverlayController {
 
     fun show(request: ImagePreviewOverlayRequest) {
         _request.value = request
+    }
+
+    fun updateActiveSourceRect(token: Long, sourceRect: androidx.compose.ui.geometry.Rect?) {
+        val current = _request.value ?: return
+        if (current.token == token && current.activeSourceRect != sourceRect) {
+            _request.value = current.copy(activeSourceRect = sourceRect)
+        }
     }
 
     fun dismiss(token: Long? = null) {
@@ -195,6 +204,7 @@ fun ImagePreviewDialog(
     initialIndex: Int,
     livePhotoVideos: Map<String, String> = emptyMap(),
     sourceRect: androidx.compose.ui.geometry.Rect? = null,
+    sourceRects: Map<Int, androidx.compose.ui.geometry.Rect> = emptyMap(),
     sourceCornerRadiusDp: Float = resolveDrawGridCornerRadiusDp().toFloat(),
     textContent: ImagePreviewTextContent? = null,
     defaultTextVisible: Boolean = true,
@@ -202,7 +212,7 @@ fun ImagePreviewDialog(
     onDismiss: () -> Unit
 ) {
     val latestOnDismiss by rememberUpdatedState(onDismiss)
-    val requestToken = remember(images, initialIndex, sourceRect, sourceCornerRadiusDp, livePhotoVideos) { System.nanoTime() }
+    val requestToken = remember(images, initialIndex, sourceRect, sourceRects, sourceCornerRadiusDp, livePhotoVideos) { System.nanoTime() }
 
     LaunchedEffect(requestToken) {
         ImagePreviewOverlayController.show(
@@ -212,6 +222,7 @@ fun ImagePreviewDialog(
                 livePhotoVideos = livePhotoVideos,
                 initialIndex = initialIndex,
                 sourceRect = sourceRect,
+                sourceRects = sourceRects,
                 sourceCornerRadiusDp = sourceCornerRadiusDp,
                 textContent = textContent,
                 defaultTextVisible = defaultTextVisible,
@@ -256,6 +267,8 @@ fun ImagePreviewOverlayHost(
                 livePhotoVideos = request.livePhotoVideos,
                 initialIndex = request.initialIndex,
                 sourceRect = request.sourceRect,
+                sourceRects = request.sourceRects,
+                requestToken = request.token,
                 sourceCornerRadiusDp = request.sourceCornerRadiusDp,
                 textContent = request.textContent,
                 defaultTextVisible = request.defaultTextVisible,
@@ -279,6 +292,8 @@ private fun ImagePreviewOverlayContent(
     initialIndex: Int,
     livePhotoVideos: Map<String, String> = emptyMap(),
     sourceRect: androidx.compose.ui.geometry.Rect? = null,
+    sourceRects: Map<Int, androidx.compose.ui.geometry.Rect> = emptyMap(),
+    requestToken: Long,
     sourceCornerRadiusDp: Float = resolveDrawGridCornerRadiusDp().toFloat(),
     textContent: ImagePreviewTextContent? = null,
     defaultTextVisible: Boolean = true,
@@ -344,6 +359,7 @@ private fun ImagePreviewOverlayContent(
         0f
     }
     var isDismissing by remember { mutableStateOf(false) }
+    var dismissBackdropStartAlpha by remember { mutableFloatStateOf(1f) }
     var currentImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var dismissImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
@@ -389,6 +405,16 @@ private fun ImagePreviewOverlayContent(
         initialPage = initialIndex,
         pageCount = { images.size }
     )
+
+    fun sourceRectForPage(page: Int): androidx.compose.ui.geometry.Rect? =
+        sourceRect.takeIf { page == initialIndex } ?: sourceRects[page]
+
+    LaunchedEffect(pagerState.currentPage, sourceRects, sourceRect, initialIndex, requestToken) {
+        ImagePreviewOverlayController.updateActiveSourceRect(
+            token = requestToken,
+            sourceRect = sourceRectForPage(pagerState.currentPage)
+        )
+    }
 
     // 已通过「查看原图」切换为全分辨率加载的页（按页索引记录）。
     var originalQualityPages by remember { mutableStateOf(setOf<Int>()) }
@@ -543,11 +569,9 @@ private fun ImagePreviewOverlayContent(
             )
             
             //  计算容器位置和大小
-            // 只有当前页仍是最初点击的图片、且画廊停稳时，来源矩形才代表当前图片。
-            // 切到其他页或正滑动时关闭，改用淡出回退，避免把错图飞回原缩略图。
-            val shouldUseRectAnim = sourceRect != null &&
-                pagerState.currentPage == initialIndex &&
-                !pagerState.isScrollInProgress
+            // 按当前页查找同一画廊中的缩略图。没有可见来源，或仍在翻页时则淡出回退。
+            val currentSourceRect = sourceRectForPage(pagerState.currentPage)
+            val shouldUseRectAnim = currentSourceRect != null && !pagerState.isScrollInProgress
             val transitionFrame = resolveImagePreviewTransitionFrame(
                 rawProgress = rawProgress,
                 hasSourceRect = shouldUseRectAnim,
@@ -568,13 +592,16 @@ private fun ImagePreviewOverlayContent(
                 blurEnabled = !isDismissing && backProgress <= 0f,
             )
             val backdropAlpha = if (isDismissing) {
-                resolveImagePreviewDismissBackdropAlpha(transitionFrame.visualProgress)
+                resolveImagePreviewDismissBackdropAlpha(
+                    visualProgress = transitionFrame.visualProgress,
+                    startAlpha = dismissBackdropStartAlpha,
+                )
             } else {
                 visualFrame.backdropAlpha * verticalDragFrame.backdropAlphaMultiplier
             }
             val dismissRectFrame = resolveImagePreviewDismissRectFrame(
                 transitionProgress = transitionFrame.layoutProgress,
-                sourceRect = if (shouldUseRectAnim && isDismissing) sourceRect else null,
+                sourceRect = if (shouldUseRectAnim && isDismissing) currentSourceRect else null,
                 displayedImageRect = if (shouldUseRectAnim && isDismissing) dismissImageDisplayRect else null
             )
             
@@ -607,10 +634,12 @@ private fun ImagePreviewOverlayContent(
                     displayedImageRect = currentImageDisplayRect,
                     // 从真实显示图区域飞回缩略图，黑边不参与 morph，观感更干净。
                     preferPreviewSurface = false
-                )
+                ),
+                backdropStartAlpha: Float = 1f,
             ) {
                 if (isDismissing) return
                 dismissImageDisplayRect = startRect
+                dismissBackdropStartAlpha = backdropStartAlpha.coerceIn(0f, 1f)
                 isVerticalDismissDragging = false
                 isDismissing = true
                 scope.launch {
@@ -663,7 +692,7 @@ private fun ImagePreviewOverlayContent(
             )
             
             val (currentLeft, currentTop, currentWidth, currentHeight) = if (shouldUseRectAnim) {
-                val source = sourceRect
+                val source = currentSourceRect!!
                 val sourceLeft = with(density) { source.left.toDp() }
                 val sourceTop = with(density) { source.top.toDp() }
                 val sourceWidth = with(density) { source.width.toDp() }
@@ -845,7 +874,10 @@ private fun ImagePreviewOverlayContent(
                                             containerHeightPx = fullHeightPx
                                         )
                                     ) {
-                                        ImagePreviewVerticalDismissDecision.DISMISS -> triggerDismiss(draggedRect)
+                                        ImagePreviewVerticalDismissDecision.DISMISS -> triggerDismiss(
+                                            startRect = draggedRect,
+                                            backdropStartAlpha = verticalDragFrame.backdropAlphaMultiplier,
+                                        )
                                         ImagePreviewVerticalDismissDecision.SNAP_BACK -> {
                                             scope.launch {
                                                 verticalDismissSnapAnim.snapTo(verticalDismissOffsetYPx)

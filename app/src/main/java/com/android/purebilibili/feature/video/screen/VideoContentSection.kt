@@ -1159,6 +1159,7 @@ internal fun VideoContentSection(
                 images = previewImages,
                 initialIndex = previewInitialIndex,
                 sourceRect = sourceRect?.rect,
+                sourceRects = sourceRect?.galleryRects.orEmpty(),
                 sourceCornerRadiusDp = sourceRect?.cornerRadiusDp
                     ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
                 textContent = previewTextContent,
@@ -1768,6 +1769,7 @@ internal fun LandscapeCommentPanel(
             images = previewImages,
             initialIndex = previewInitialIndex,
             sourceRect = previewSourceRect?.rect,
+            sourceRects = previewSourceRect?.galleryRects.orEmpty(),
             sourceCornerRadiusDp = previewSourceRect?.cornerRadiusDp
                 ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,

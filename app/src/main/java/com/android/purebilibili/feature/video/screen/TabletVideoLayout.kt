@@ -870,6 +870,7 @@ internal fun TabletSecondaryContent(
             images = previewImages,
             initialIndex = previewInitialIndex,
             sourceRect = sourceRect?.rect,
+            sourceRects = sourceRect?.galleryRects.orEmpty(),
             sourceCornerRadiusDp = sourceRect?.cornerRadiusDp
                 ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = previewTextContent,

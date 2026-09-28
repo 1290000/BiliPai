@@ -497,6 +497,7 @@ fun VideoCommentSheetHost(
             images = fallbackPreviewImages,
             initialIndex = fallbackPreviewIndex,
             sourceRect = fallbackPreviewSourceRect?.rect,
+            sourceRects = fallbackPreviewSourceRect?.galleryRects.orEmpty(),
             sourceCornerRadiusDp = fallbackPreviewSourceRect?.cornerRadiusDp
                 ?: AppShapes.containerCornerDp(ContainerLevel.Field).value,
             textContent = fallbackPreviewTextContent,

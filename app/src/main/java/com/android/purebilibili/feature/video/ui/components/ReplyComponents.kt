@@ -2838,6 +2838,7 @@ fun CommentPictures(
             url
         }
     }
+    val galleryRects = remember(imageUrls) { mutableMapOf<Int, Rect>() }
     val context = LocalContext.current
     val totalCount = pictures.size  //  [优化] 保存总图片数用于角标显示
     // 单图 Card / 九宫格 Field 的真实圆角不同，捕获时构造锚点供回位 morph 使用
@@ -2878,12 +2879,19 @@ fun CommentPictures(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .onGloballyPositioned { coordinates ->
                         imageRect = coordinates.boundsInWindow()
+                        imageRect?.let { galleryRects[0] = it }
                     }
                     .clickable(enabled = !sourceHidden) {
                         onImageClick(
                             imageUrls,
                             0,
-                            imageRect?.let { ImagePreviewSourceAnchor(it, singleImageCornerDp) }
+                            imageRect?.let {
+                                ImagePreviewSourceAnchor(
+                                    it,
+                                    singleImageCornerDp,
+                                    galleryRects = galleryRects.toMap()
+                                )
+                            }
                         )
                     }
             ) {
@@ -2926,12 +2934,19 @@ fun CommentPictures(
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .onGloballyPositioned { coordinates ->
                                         imageRect = coordinates.boundsInWindow()
+                                        imageRect?.let { galleryRects[globalIndex] = it }
                                     }
                                     .clickable(enabled = !sourceHidden) {
                                         onImageClick(
                                             imageUrls,
                                             globalIndex,
-                                            imageRect?.let { ImagePreviewSourceAnchor(it, gridImageCornerDp) }
+                                            imageRect?.let {
+                                                ImagePreviewSourceAnchor(
+                                                    it,
+                                                    gridImageCornerDp,
+                                                    galleryRects = galleryRects.toMap()
+                                                )
+                                            }
                                         )
                                     },
                                 contentAlignment = Alignment.Center

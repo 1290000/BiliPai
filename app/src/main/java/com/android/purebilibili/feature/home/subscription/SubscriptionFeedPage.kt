@@ -69,6 +69,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Size
@@ -150,6 +152,7 @@ fun SubscriptionFeedPage(
     var previewImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var previewIndex by remember { mutableIntStateOf(0) }
     var previewSourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var previewSourceRects by remember { mutableStateOf<Map<Int, androidx.compose.ui.geometry.Rect>>(emptyMap()) }
     var loading by remember { mutableStateOf(false) }
 
     val density = LocalDensity.current
@@ -285,10 +288,11 @@ fun SubscriptionFeedPage(
                             opened = null
                         }
                     },
-                    onOpenImages = { images, index, rect ->
+                    onOpenImages = { images, index, rect, rects ->
                         previewImages = images
                         previewIndex = index
                         previewSourceRect = rect
+                        previewSourceRects = rects
                     },
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this,
@@ -338,12 +342,16 @@ fun SubscriptionFeedPage(
             images = previewImages,
             initialIndex = previewIndex.coerceIn(0, previewImages.lastIndex),
             sourceRect = previewSourceRect,
+            sourceRects = previewSourceRects,
             // FeedArticleImage 用 MaterialTheme.shapes.medium 裁角，回位圆角保持一致
             sourceCornerRadiusDp = with(density) {
                 (MaterialTheme.shapes.medium as? CornerBasedShape)?.topStart
                     ?.toPx(Size.Unspecified, this)?.toDp()?.value
             } ?: 12f,
-            onDismiss = { previewImages = emptyList() },
+            onDismiss = {
+                previewImages = emptyList()
+                previewSourceRects = emptyMap()
+            },
         )
     }
 }
@@ -527,7 +535,12 @@ private fun SubscriptionArticleScreen(
     onReadChange: (Boolean) -> Unit,
     onFullBody: (String) -> Unit,
     onBack: () -> Unit,
-    onOpenImages: (List<String>, Int, androidx.compose.ui.geometry.Rect?) -> Unit,
+    onOpenImages: (
+        List<String>,
+        Int,
+        androidx.compose.ui.geometry.Rect?,
+        Map<Int, androidx.compose.ui.geometry.Rect>
+    ) -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
@@ -564,6 +577,9 @@ private fun SubscriptionArticleScreen(
     }
     val imageUrls = remember(blocks) {
         blocks.filterIsInstance<FeedBlock.Image>().map { it.url }.distinct()
+    }
+    val imageSourceRects = remember(item.sourceId, item.id, item.link) {
+        mutableMapOf<Int, androidx.compose.ui.geometry.Rect>()
     }
     val layoutDirection = LocalLayoutDirection.current
     AppSurface(
@@ -687,9 +703,11 @@ private fun SubscriptionArticleScreen(
                         is FeedBlock.Image -> FeedArticleImage(
                             url = block.url,
                             alt = block.alt,
+                            pageIndex = imageUrls.indexOf(block.url).coerceAtLeast(0),
+                            galleryRects = imageSourceRects,
                             onClick = { rect ->
                                 val index = imageUrls.indexOf(block.url).coerceAtLeast(0)
-                                onOpenImages(imageUrls, index, rect)
+                                onOpenImages(imageUrls, index, rect, imageSourceRects.toMap())
                             },
                         )
                         is FeedBlock.BulletList -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -768,6 +786,8 @@ private fun FeedInlineText(
 private fun FeedArticleImage(
     url: String,
     alt: String,
+    pageIndex: Int,
+    galleryRects: MutableMap<Int, androidx.compose.ui.geometry.Rect>,
     modifier: Modifier = Modifier,
     onClick: (androidx.compose.ui.geometry.Rect?) -> Unit,
 ) {
@@ -794,6 +814,9 @@ private fun FeedArticleImage(
                 .clip(MaterialTheme.shapes.medium)
                 .alpha(if (sourceHidden) 0f else 1f)
                 .imagePreviewSourceBounds(sourceRect)
+                .onGloballyPositioned { coordinates ->
+                    galleryRects[pageIndex] = coordinates.boundsInWindow()
+                }
                 .clickable(enabled = !sourceHidden) { onClick(sourceRect.value) },
             contentScale = ContentScale.Fit,
             onError = { failed = true },

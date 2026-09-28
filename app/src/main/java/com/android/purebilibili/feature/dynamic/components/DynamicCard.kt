@@ -1085,7 +1085,7 @@ fun DynamicCardV2(
             )
         }?.let { draw ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
-            var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+            var sourceAnchor by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
             val renderableDrawItems = remember(draw.items) {
                 resolveRenderableDrawItems(draw.items)
             }
@@ -1100,11 +1100,11 @@ fun DynamicCardV2(
                 items = renderableDrawItems,
                 gifImageLoader = gifImageLoader,
                 maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
-                onImageClick = { index, rect ->
+                onImagePreviewClick = { index, anchor ->
                     val action = resolveDynamicCardMediaAction(item, index)
                     if (action is DynamicCardMediaAction.PreviewImages) {
                         selectedImageIndex = action.initialIndex
-                        sourceRect = rect
+                        sourceAnchor = anchor
                     }
                 }
             )
@@ -1129,7 +1129,10 @@ fun DynamicCardV2(
                     },
                     images = renderableDrawItems.map { it.src },
                     initialIndex = selectedImageIndex,
-                    sourceRect = sourceRect,  //  [新增] 传递源位置用于展开动画
+                    sourceRect = sourceAnchor?.rect,
+                    sourceRects = sourceAnchor?.galleryRects.orEmpty(),
+                    sourceCornerRadiusDp = sourceAnchor?.cornerRadiusDp
+                        ?: resolveDrawGridCornerRadiusDp().toFloat(),
                     textContent = drawPreviewText,
                     defaultTextVisible = dynamicPreviewTextVisible,
                     onDismiss = { selectedImageIndex = -1 }
@@ -1140,7 +1143,11 @@ fun DynamicCardV2(
         //  [新增] Opus 图文动态 (新版格式)
         content?.major?.opus?.let { opus ->
             var selectedImageIndex by remember { mutableIntStateOf(-1) }
-            var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+            var sourceAnchor by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
+            val opusExpandedSourceRects = remember(renderableOpusPics) {
+                mutableMapOf<Int, androidx.compose.ui.geometry.Rect>()
+            }
+            val opusExpandedImageCornerRadiusDp = AppShapes.containerCornerDp(ContainerLevel.Card).value
             val visibleOpusSummaryDesc = remember(opus.summary, renderableOpusPics) {
                 opus.summary?.let { summary ->
                     resolveDynamicOpusSummaryDescForImages(
@@ -1178,8 +1185,8 @@ fun DynamicCardV2(
                         .associateBy { it.url }
                 }
                 var fullContentSelectedImageIndex by remember { mutableIntStateOf(-1) }
-                var thumbnailSourceRect by remember {
-                    mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+                var thumbnailSourceAnchor by remember {
+                    mutableStateOf<ImagePreviewSourceAnchor?>(null)
                 }
                 val thumbnailItems = remember(renderableOpusPics) {
                     renderableOpusPics.map { pic ->
@@ -1205,9 +1212,9 @@ fun DynamicCardV2(
                             items = thumbnailItems,
                             gifImageLoader = gifImageLoader,
                             maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
-                            onImageClick = { index, rect ->
+                            onImagePreviewClick = { index, anchor ->
                                 fullContentSelectedImageIndex = index
-                                thumbnailSourceRect = rect
+                                thumbnailSourceAnchor = anchor
                             }
                         )
                         Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
@@ -1402,10 +1409,20 @@ fun DynamicCardV2(
                                         )
                                         .clip(AppShapes.container(ContainerLevel.Card))
                                         .imagePreviewSourceBounds(expandedImageSourceRect)
+                                        .imagePreviewGallerySourceBounds(
+                                            target = opusExpandedSourceRects,
+                                            pageIndex = currentImageIndex,
+                                        )
                                         .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
                                         .clickable(enabled = currentImageIndex in previewImages.indices) {
                                             fullContentSelectedImageIndex = currentImageIndex
-                                            thumbnailSourceRect = expandedImageSourceRect.value
+                                            thumbnailSourceAnchor = expandedImageSourceRect.value?.let {
+                                                ImagePreviewSourceAnchor(
+                                                    rect = it,
+                                                    cornerRadiusDp = opusExpandedImageCornerRadiusDp,
+                                                    galleryRects = opusExpandedSourceRects.toMap(),
+                                                )
+                                            }
                                         },
                                     contentScale = ContentScale.FillWidth
                                 )
@@ -1454,9 +1471,9 @@ fun DynamicCardV2(
                         items = thumbnailItems,
                         gifImageLoader = gifImageLoader,
                         maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
-                        onImageClick = { index, rect ->
+                        onImagePreviewClick = { index, anchor ->
                             fullContentSelectedImageIndex = index
-                            thumbnailSourceRect = rect
+                            thumbnailSourceAnchor = anchor
                         }
                     )
                     Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
@@ -1480,12 +1497,10 @@ fun DynamicCardV2(
                         },
                         images = previewImages,
                         initialIndex = fullContentSelectedImageIndex,
-                        sourceRect = thumbnailSourceRect,
-                        sourceCornerRadiusDp = if (expandOpusDetailImages) {
-                            AppShapes.containerCornerDp(ContainerLevel.Card).value
-                        } else {
-                            resolveDrawGridCornerRadiusDp().toFloat()
-                        },
+                        sourceRect = thumbnailSourceAnchor?.rect,
+                        sourceRects = thumbnailSourceAnchor?.galleryRects.orEmpty(),
+                        sourceCornerRadiusDp = thumbnailSourceAnchor?.cornerRadiusDp
+                            ?: resolveDrawGridCornerRadiusDp().toFloat(),
                         textContent = opusPreviewText,
                         defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { fullContentSelectedImageIndex = -1 }
@@ -1522,10 +1537,20 @@ fun DynamicCardV2(
                                 .aspectRatio(aspectRatio)
                                 .clip(AppShapes.container(ContainerLevel.Card))
                                 .imagePreviewSourceBounds(expandedImageSourceRect)
+                                .imagePreviewGallerySourceBounds(
+                                    target = opusExpandedSourceRects,
+                                    pageIndex = index,
+                                )
                                 .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
                                 .clickable {
                                     selectedImageIndex = index
-                                    sourceRect = expandedImageSourceRect.value
+                                    sourceAnchor = expandedImageSourceRect.value?.let {
+                                        ImagePreviewSourceAnchor(
+                                            rect = it,
+                                            cornerRadiusDp = opusExpandedImageCornerRadiusDp,
+                                            galleryRects = opusExpandedSourceRects.toMap(),
+                                        )
+                                    }
                                 },
                             contentScale = ContentScale.FillWidth,
                         )
@@ -1544,11 +1569,11 @@ fun DynamicCardV2(
                         items = drawItems,
                         gifImageLoader = gifImageLoader,
                         maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
-                        onImageClick = { index, rect ->
+                        onImagePreviewClick = { index, anchor ->
                             val action = resolveDynamicCardMediaAction(item, index)
                             if (action is DynamicCardMediaAction.PreviewImages) {
                                 selectedImageIndex = action.initialIndex
-                                sourceRect = rect
+                                sourceAnchor = anchor
                             }
                         }
                     )
@@ -1574,8 +1599,9 @@ fun DynamicCardV2(
                         },
                         images = renderableOpusPics.map { it.url },
                         initialIndex = selectedImageIndex,
-                        sourceRect = sourceRect,
-                        sourceCornerRadiusDp = if (expandOpusFallbackImages) {
+                        sourceRect = sourceAnchor?.rect,
+                        sourceRects = sourceAnchor?.galleryRects.orEmpty(),
+                        sourceCornerRadiusDp = sourceAnchor?.cornerRadiusDp ?: if (expandOpusFallbackImages) {
                             AppShapes.containerCornerDp(ContainerLevel.Card).value
                         } else {
                             resolveDrawGridCornerRadiusDp().toFloat()
@@ -1592,7 +1618,7 @@ fun DynamicCardV2(
             val articleCovers = remember(article.covers) { resolveArticleCoverUrls(article) }
             if (articleCovers.isNotEmpty()) {
                 var selectedImageIndex by remember { mutableIntStateOf(-1) }
-                var sourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+                var sourceAnchor by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
                 val articlePreviewText = remember(author?.name, visibleDynamicDesc?.text, article.title, article.desc) {
                     val body = visibleDynamicDesc?.text
                         .takeUnless { it.isNullOrBlank() }
@@ -1607,11 +1633,11 @@ fun DynamicCardV2(
                     items = drawItems,
                     gifImageLoader = gifImageLoader,
                     maxDisplayImages = resolveDynamicOpusPreviewImageLimit(isDetail),
-                    onImageClick = { index, rect ->
+                    onImagePreviewClick = { index, anchor ->
                         when (val action = resolveDynamicCardMediaAction(item, index, isDetail = isDetail)) {
                             is DynamicCardMediaAction.PreviewImages -> {
                                 selectedImageIndex = action.initialIndex
-                                sourceRect = rect
+                                sourceAnchor = anchor
                             }
                             is DynamicCardMediaAction.OpenDynamicDetail -> {
                                 openDynamicDetail?.invoke(action.dynamicId)
@@ -1640,7 +1666,10 @@ fun DynamicCardV2(
                     },
                         images = articleCovers,
                         initialIndex = selectedImageIndex,
-                        sourceRect = sourceRect,
+                        sourceRect = sourceAnchor?.rect,
+                        sourceRects = sourceAnchor?.galleryRects.orEmpty(),
+                        sourceCornerRadiusDp = sourceAnchor?.cornerRadiusDp
+                            ?: resolveDrawGridCornerRadiusDp().toFloat(),
                         textContent = articlePreviewText,
                         defaultTextVisible = dynamicPreviewTextVisible,
                         onDismiss = { selectedImageIndex = -1 }
