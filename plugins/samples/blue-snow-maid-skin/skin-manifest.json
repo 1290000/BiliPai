@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "skinId": "official.blue_snow_maid",
+  "displayName": "蓝雪女仆",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "author": "BiliPai",
+  "surfaces": [
+    "HOME_TOP_CHROME",
+    "HOME_BOTTOM_BAR"
+  ],
+  "assets": {
+    "topAtmosphere": "assets/top_atmosphere.png",
+    "bottomBarTrim": "assets/bottom_trim.png"
+  },
+  "colors": {
+    "bottomBarTrimTint": "#F6DCEB",
+    "topAtmosphereTint": "#F6DCEB",
+    "searchCapsuleTint": "#FFFFFF",
+    "bottomBarSelectedTint": "#D65C99"
+  },
+  "communityShareable": false,
+  "containsOfficialAssets": true
+}
