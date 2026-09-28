@@ -2400,6 +2400,10 @@ open class MainActivity : AppCompatActivity() {
                             player = miniPlayerManager.player
                         )
                     )
+                    // 从小窗当前位置无缝收缩进 PIP，而不是从全屏默认收缩
+                    .apply {
+                        miniPlayerManager.miniPlayerSourceBoundsPx?.let { setSourceRectHint(it) }
+                    }
                 
                 // Android 12+: 启用自动进入和无缝调整
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -2437,6 +2441,7 @@ open class MainActivity : AppCompatActivity() {
                     )
                 )
                 .apply {
+                    miniPlayerManager.miniPlayerSourceBoundsPx?.let { setSourceRectHint(it) }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         setSeamlessResizeEnabled(true)
                     }

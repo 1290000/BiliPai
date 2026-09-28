@@ -434,11 +434,13 @@ class VideoActivity : ComponentActivity() {
         //  [修复] 使用 SettingsManager 读取正确的小窗模式设置
         val mode = com.android.purebilibili.core.store.SettingsManager.getMiniPlayerModeSync(this)
         val shouldEnterPip = mode.supportsSystemPip
-        
+        val mini = MiniPlayerManager.getInstance(this)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && shouldEnterPip) {
             val state = viewModel.uiState.value
             if (state is VideoPlaybackUiState.Success) {
-                enterPictureInPictureMode(buildPipParams(true))
+                // 按真实播放状态生成遥控按钮，避免暂停态下仍显示「暂停」action。
+                enterPictureInPictureMode(buildPipParams(isPlaying = mini.isPlaying))
             }
         }
     }

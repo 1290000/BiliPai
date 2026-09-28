@@ -49,6 +49,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.stickyHeader
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -110,6 +111,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
@@ -1339,6 +1341,18 @@ private fun SpaceContent(
             }
         }
 
+        // 背景图视差（对齐 PiliPlus DynamicFlexibleSpaceBar 的 1/4 速率）：
+        // 把头部 item 的原始滚动位移交给 SpaceHeader，在图片向上溢出的余量内做 translationY。
+        val bannerScrollOffsetPx = remember {
+            derivedStateOf {
+                if (gridState.firstVisibleItemIndex > 0) {
+                    Float.MAX_VALUE
+                } else {
+                    gridState.firstVisibleItemScrollOffset.toFloat()
+                }
+            }
+        }
+
         // 视频类内容继续跟随首页的卡宽/固定列数设置；动态卡片
         // 使用 360dp 的可读宽度，避免在展开屏上被媒体卡片的紧密列数压窄。
         val preferredGridColumns = resolveSpaceContentGridColumnCount(
@@ -1416,6 +1430,7 @@ private fun SpaceContent(
                     relationStat = state.headerState.relationStat ?: state.relationStat,
                     upStat = state.headerState.upStat ?: state.upStat,
                     collapseFraction = headerCollapseFraction.value,
+                    bannerScrollOffsetPx = bannerScrollOffsetPx.value,
                     onFollowClick = onFollowClick,
                     onMessageClick = onMessageClick,
                     onFollowingClick = onFollowingClick,
@@ -1431,13 +1446,21 @@ private fun SpaceContent(
                 )
             }
 
-            item(key = "space_tabs", span = { GridItemSpan(maxLineSpan) }) {
-                SpaceContentTabs(
-                    state = state,
-                    onMainTabSelected = onMainTabSelected,
-                    onContributionTabSelected = onContributionTabSelected,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // Tab 栏吸顶（对齐 PiliPlus 的 pinned TabBar）：头部滚走后固定在顶栏下方，
+            // 长列表里切换 Tab 不必先滚回顶部。
+            stickyHeader(key = "space_tabs", span = { GridItemSpan(maxLineSpan) }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                ) {
+                    SpaceContentTabs(
+                        state = state,
+                        onMainTabSelected = onMainTabSelected,
+                        onContributionTabSelected = onContributionTabSelected,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             val showSearch = selectedMainTab == SpaceMainTab.DYNAMIC ||

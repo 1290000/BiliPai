@@ -394,6 +394,26 @@ fun MiniPlayerOverlay(
         label = "offsetY"
     )
 
+    // 回报小窗屏幕边界，供 PIP sourceRectHint 做无缝过渡。
+    LaunchedEffect(
+        animatedOffsetX,
+        animatedOffsetY,
+        miniPlayerWidthPx,
+        miniPlayerHeightPx,
+        suppressContentForPip
+    ) {
+        miniPlayerManager.miniPlayerSourceBoundsPx = if (suppressContentForPip) {
+            null
+        } else {
+            android.graphics.Rect(
+                animatedOffsetX.roundToInt(),
+                animatedOffsetY.roundToInt(),
+                (animatedOffsetX + miniPlayerWidthPx).roundToInt(),
+                (animatedOffsetY + miniPlayerHeightPx).roundToInt(),
+            )
+        }
+    }
+
     val visibilitySlideSpec: FiniteAnimationSpec<IntOffset> =
         iosMorphTween(MINI_PLAYER_VISIBILITY_DURATION_MILLIS)
     val visibilityFadeSpec: FiniteAnimationSpec<Float> =
