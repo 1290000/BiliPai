@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Clear
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1566,7 +1568,6 @@ fun AdaptivePreferenceGridItemRenderer(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("DEPRECATION")
 fun AdaptiveSearchFieldRenderer(
     query: String,
     onQueryChange: (String) -> Unit,
@@ -1612,14 +1613,33 @@ fun AdaptiveSearchFieldRenderer(
             interactionSource = interactionSource,
         )
     } else {
+        // 现行 SearchBar API：TextFieldState 驱动文本，SearchBarState 驱动展开。
+        // 与外部 query: String 状态双向同步，外部写（如清除按钮）与内部输入互不回环。
+        val searchBarState = rememberSearchBarState()
+        val textFieldState = rememberTextFieldState(initialText = query)
+        LaunchedEffect(textFieldState) {
+            snapshotFlow { textFieldState.text }
+                .collect { text ->
+                    val updated = text.toString()
+                    if (updated != query) {
+                        onQueryChange(updated)
+                    }
+                }
+        }
+        LaunchedEffect(query) {
+            val current = textFieldState.text.toString()
+            if (current != query) {
+                textFieldState.edit { replace(0, length, query) }
+            }
+        }
         SearchBarDefaults.InputField(
-            query = query,
-            onQueryChange = onQueryChange,
+            textFieldState = textFieldState,
+            searchBarState = searchBarState,
             onSearch = { onSearch() },
-            expanded = forceExpandedInput || query.isNotBlank(),
-            onExpandedChange = {},
             modifier = fieldModifier,
-            placeholder = { Text(placeholder) },
+            placeholder = {
+                Text(placeholder)
+            },
             leadingIcon = {
                 Icon(
                     Icons.Default.Search,
@@ -1649,7 +1669,6 @@ fun AdaptiveSearchFieldRenderer(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("DEPRECATION")
 fun AppSearchEntry(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1674,12 +1693,22 @@ fun AppSearchEntry(
             color = miuixContainerColor,
         )
     } else {
+        // 现行 SearchBar API：静态入口无文本，点击/聚焦触发展开时导航并立即收起。
+        val searchBarState = rememberSearchBarState()
+        val textFieldState = rememberTextFieldState(initialText = "")
+        LaunchedEffect(searchBarState, onClick) {
+            snapshotFlow { searchBarState.isExpanded }
+                .collect { expanded ->
+                    if (expanded) {
+                        onClick()
+                        searchBarState.animateToCollapsed()
+                    }
+                }
+        }
         SearchBarDefaults.InputField(
-            query = "",
-            onQueryChange = {},
+            textFieldState = textFieldState,
+            searchBarState = searchBarState,
             onSearch = { onClick() },
-            expanded = false,
-            onExpandedChange = { if (it) onClick() },
             modifier = modifier.fillMaxWidth(),
             placeholder = { Text(placeholder) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
