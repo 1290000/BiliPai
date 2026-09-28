@@ -343,6 +343,20 @@ private fun SkinCatalogCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
+                if (entry.officialExample) {
+                    AppSurface(
+                        shape = AppShapes.container(ContainerLevel.Chip),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
+                    ) {
+                        AppText(
+                            text = "官方示例",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
                 // 颜色色块预览（右上角）
                 Row(
                     modifier = Modifier
@@ -427,7 +441,8 @@ private fun SkinCatalogPreviewDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     AppText(
-                        text = "素材来自 B 站官方付费/限定主题存档，仅供本地私用，不得作为社区包分发。",
+                        text = entry.licenseNote
+                            ?: "素材来自 B 站官方付费/限定主题存档，仅供本地私用，不得作为社区包分发。",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
