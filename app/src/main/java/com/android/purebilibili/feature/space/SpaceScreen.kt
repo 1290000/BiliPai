@@ -1608,7 +1608,16 @@ private fun SpaceContent(
                         SpaceSectionHeader(
                             title = "最近投币的视频",
                             count = state.homeCoinVideoCount.takeIf { it > 0 } ?: state.homeCoinVideos.size,
-                            actionLabel = null
+                            actionLabel = "查看全部",
+                            onActionClick = {
+                                onViewAllClick(
+                                    "coin",
+                                    0L,
+                                    state.userInfo.mid,
+                                    "最近投币的视频",
+                                    state.userInfo.name
+                                )
+                            }
                         )
                     }
                     itemsIndexed(

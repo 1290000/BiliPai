@@ -2351,7 +2351,9 @@ fun AppNavigation(
                                     pushNavigation3Route(ScreenRoutes.Category.createRoute(tid, name))
                                 },
                                 onFavoriteClick = { pushNavigation3Route(ScreenRoutes.Favorite.route) },
-                                onLikedVideosClick = { pushNavigation3Route(ScreenRoutes.LikedVideos.route) },
+                                onLikedVideosClick = { upMid, upName ->
+                                    pushNavigation3Route(ScreenRoutes.LikedVideos.createRoute(upMid, upName))
+                                },
                                 onLiveListClick = { pushNavigation3Route(ScreenRoutes.LiveList.route) },
                                 onLiveSearchClick = { pushNavigation3Key(BiliPaiNavKey.LiveSearch) },
                                 onLiveAreaClick = { pushNavigation3Key(BiliPaiNavKey.LiveArea) },
@@ -3641,14 +3643,16 @@ fun AppNavigation(
                                 val likedVideosKey = key as? BiliPaiNavKey.LikedVideos
                                 val targetMid = likedVideosKey?.mid?.takeIf { it > 0L }
                                 val ownerName = likedVideosKey?.ownerName?.takeIf { it.isNotBlank() }.orEmpty()
+                                val isCoinArchive = likedVideosKey?.isCoinArchive == true
                                 val context = androidx.compose.ui.platform.LocalContext.current
                                 val application = context.applicationContext as android.app.Application
                                 val likedVideosViewModel: LikedVideosViewModel = viewModel(
-                                    key = targetMid?.let { "liked_videos_$it" } ?: "liked_videos_self",
+                                    key = "${if (isCoinArchive) "coin_videos" else "liked_videos"}_${targetMid ?: "self"}",
                                     factory = com.android.purebilibili.feature.list.LikedVideosViewModelFactory(
                                         application = application,
                                         targetMid = targetMid,
-                                        ownerName = ownerName
+                                        ownerName = ownerName,
+                                        isCoinArchive = isCoinArchive,
                                     )
                                 )
                                 val sourceRoute = (key as? BiliPaiNavKey)?.toLegacyRoute()
@@ -3974,7 +3978,15 @@ fun AppNavigation(
                                         }
                                     },
                                     onViewAllClick = { type, id, mid, title, ownerName ->
-                                        if (type.equals("like", ignoreCase = true) || type.equals("liked", ignoreCase = true)) {
+                                        if (type.equals("coin", ignoreCase = true)) {
+                                            pushNavigation3Key(
+                                                BiliPaiNavKey.LikedVideos(
+                                                    mid = mid,
+                                                    ownerName = ownerName,
+                                                    isCoinArchive = true,
+                                                )
+                                            )
+                                        } else if (type.equals("like", ignoreCase = true) || type.equals("liked", ignoreCase = true)) {
                                             pushNavigation3Key(
                                                 BiliPaiNavKey.LikedVideos(
                                                     mid = mid,

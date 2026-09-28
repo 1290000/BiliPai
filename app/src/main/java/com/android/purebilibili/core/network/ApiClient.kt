@@ -2004,6 +2004,18 @@ interface SpaceApi {
         @QueryMap params: Map<String, String>
     ): com.android.purebilibili.data.model.response.LikedVideosResponse
 
+    @retrofit2.http.Headers(
+        "User-Agent: Mozilla/5.0 BiliDroid/8.43.0 (bbcallen@gmail.com) os/android model/android mobi_app/android build/8430300 channel/master innerVer/8430300 osVer/15 network/2",
+        "bili-http-engine: cronet",
+        "env: prod",
+        "app-key: android64",
+        "x-bili-aurora-zone: sh001"
+    )
+    @GET("https://app.bilibili.com/x/v2/space/coinarc")
+    suspend fun getSpaceCoinArchive(
+        @QueryMap params: Map<String, String>
+    ): com.android.purebilibili.data.model.response.LikedVideosResponse
+
     // 获取用户详细信息 (需要 WBI 签名)
     @GET("x/space/wbi/acc/info")
     suspend fun getSpaceInfo(@QueryMap params: Map<String, String>): com.android.purebilibili.data.model.response.SpaceInfoResponse
@@ -2156,6 +2168,22 @@ suspend fun SpaceApi.getSpaceLikedArchive(
     pageSize: Int = 20,
 ): com.android.purebilibili.data.model.response.LikedVideosResponse {
     return getSpaceLikedArchive(
+        buildSpaceLikedArchiveParams(
+            mid = mid,
+            page = page,
+            pageSize = pageSize,
+            accessToken = TokenManager.accessTokenCache,
+            accessTokenPlatform = TokenManager.accessTokenPlatformCache,
+        )
+    )
+}
+
+suspend fun SpaceApi.getSpaceCoinArchive(
+    mid: Long,
+    page: Int = 1,
+    pageSize: Int = 20,
+): com.android.purebilibili.data.model.response.LikedVideosResponse {
+    return getSpaceCoinArchive(
         buildSpaceLikedArchiveParams(
             mid = mid,
             page = page,
