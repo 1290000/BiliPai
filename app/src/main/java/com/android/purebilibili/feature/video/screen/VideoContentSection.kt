@@ -60,8 +60,10 @@ import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppTextButton
 import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
+import com.android.purebilibili.core.ui.components.resolveReadableNativeTabMinWidth
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.util.FormatUtils
 import com.android.purebilibili.feature.home.components.biliPaiProgressiveTopBlur
 import com.android.purebilibili.core.ui.blur.topSolidProgressiveFade
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
@@ -636,7 +638,19 @@ internal fun VideoContentSection(
         !themeConfig.headerBlurEnabled
     val immersiveVideoContentChromeEnabled = progressiveCommentHeaderEnabled ||
         solidProgressiveCommentHeaderEnabled
-    val tabs = listOf("简介", "评论")
+    val showVideoDetailCommentCount by SettingsManager
+        .getShowVideoDetailCommentCount(context)
+        .collectAsStateWithLifecycle(initialValue = true)
+    val tabs = remember(replyCount, showVideoDetailCommentCount) {
+        listOf(
+            "简介",
+            if (showVideoDetailCommentCount) {
+                "评论 ${FormatUtils.formatStat(replyCount.coerceAtLeast(0).toLong())}"
+            } else {
+                "评论"
+            },
+        )
+    }
     val scope = rememberCoroutineScope()
     var showCommentSearchSheet by remember { mutableStateOf(false) }
     TrackJankStateFlag(
@@ -1988,6 +2002,15 @@ private fun VideoContentTabBar(
             layoutSpec = layoutSpec,
         )
     }
+    val tabItemWidth = remember(tabs, liquidChromeSpec.labelFontSizeSp) {
+        resolveReadableNativeTabMinWidth(
+            requestedMinWidth = resolveVideoContentTabBarDockItemWidthDp(
+                liquidChromeSpec.labelFontSizeSp,
+            ).dp,
+            labels = tabs,
+            allowLabelOverflow = true,
+        )
+    }
     Column(
         modifier = modifier
     ) {
@@ -2016,11 +2039,7 @@ private fun VideoContentTabBar(
             }
         ) {
             Box(
-                modifier = Modifier.width(
-                    (resolveVideoContentTabBarDockItemWidthDp(
-                        liquidChromeSpec.labelFontSizeSp,
-                    ) * tabs.size).dp,
-                ),
+                modifier = Modifier.width(tabItemWidth * tabs.size),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 AppThemeAdaptiveTabRow(

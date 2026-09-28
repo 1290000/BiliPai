@@ -6924,6 +6924,8 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     private val KEY_SHOW_FULLSCREEN_TIME = booleanPreferencesKey("show_fullscreen_time")
     private val KEY_SHOW_FULLSCREEN_ACTION_ITEMS = booleanPreferencesKey("show_fullscreen_action_items")
     private val KEY_SHOW_ONLINE_COUNT = booleanPreferencesKey("show_online_count")
+    private val KEY_SHOW_VIDEO_DETAIL_COMMENT_COUNT =
+        booleanPreferencesKey("show_video_detail_comment_count")
     private val KEY_SHOW_PROFILE_EDIT_BUTTON = booleanPreferencesKey("show_profile_edit_button")
     private val KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT =
         intPreferencesKey("comment_collapsed_reply_preview_limit")
@@ -7287,6 +7289,15 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
 
     fun getShowOnlineCount(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_SHOW_ONLINE_COUNT] ?: false }
+
+    fun getShowVideoDetailCommentCount(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SHOW_VIDEO_DETAIL_COMMENT_COUNT] ?: true }
+
+    suspend fun setShowVideoDetailCommentCount(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SHOW_VIDEO_DETAIL_COMMENT_COUNT] = enabled
+        }
+    }
 
     suspend fun setShowOnlineCount(context: Context, enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
@@ -8032,6 +8043,10 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
             IntShareablePreferenceDefinition(KEY_TABLET_COMMENT_PANEL_WIDTH_PRESET, SettingsShareSection.PLAYBACK),
             IntShareablePreferenceDefinition(KEY_TABLET_SECONDARY_DEFAULT_TAB, SettingsShareSection.PLAYBACK),
             BooleanShareablePreferenceDefinition(KEY_SHOW_ONLINE_COUNT, SettingsShareSection.PLAYBACK),
+            BooleanShareablePreferenceDefinition(
+                KEY_SHOW_VIDEO_DETAIL_COMMENT_COUNT,
+                SettingsShareSection.PLAYBACK,
+            ),
             IntShareablePreferenceDefinition(KEY_COMMENT_COLLAPSED_REPLY_PREVIEW_LIMIT, SettingsShareSection.PLAYBACK),
 
             BooleanShareablePreferenceDefinition(KEY_HAPTIC_FEEDBACK_ENABLED, SettingsShareSection.GESTURE),
