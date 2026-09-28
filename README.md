@@ -211,7 +211,7 @@ cd BiliPai
 
 ## 最近更新
 
-当前构建为 `0.2.3-alpha.7 / versionCode 400`；最新完整版本记录为 `v0.2.3-alpha.7`。源码与变更以 GitHub 和 [CHANGELOG.md](CHANGELOG.md) 为准；安装包与公告见 [Telegram 频道](https://t.me/bilipai666) / [交流群](https://t.me/bilipai888/1)：
+当前构建为 `0.2.3-alpha.8 / versionCode 403`；最新完整版本记录为 `v0.2.3-alpha.8`。源码与变更以 GitHub 和 [CHANGELOG.md](CHANGELOG.md) 为准；安装包与公告见 [Telegram 频道](https://t.me/bilipai666) / [交流群](https://t.me/bilipai888/1)：
 
 - 听视频新增沉浸歌词、语言切换、播放历史、启动续播与可恢复的外部歌单导入。
 - 直播交互与视频分屏/自由窗口播放适配完善；动态、文章和收藏列表交互更新。
