@@ -2118,12 +2118,7 @@ private fun PlayerPage(
             androidx.compose.animation.AnimatedVisibility(
                 visible = !chromeHidden && !compactLandscape,
                 enter = androidx.compose.animation.fadeIn(tween(260)),
-                exit = androidx.compose.animation.fadeOut(tween(260)) +
-                    androidx.compose.animation.expandVertically(
-                        tween(260), alignment = Alignment.TopCenter
-                    ) + androidx.compose.animation.shrinkVertically(
-                        tween(260), alignment = Alignment.TopCenter
-                    ),
+                exit = androidx.compose.animation.fadeOut(tween(260)),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(Modifier.height(10.dp))
