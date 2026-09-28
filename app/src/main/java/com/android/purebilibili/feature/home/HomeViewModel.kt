@@ -353,6 +353,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private var livePage = 1     //  直播分页
     private var hasMoreLiveData = true  //  是否还有更多直播数据
     private var incrementalTimelineRefreshEnabled = false
+
+    // 「上次刷新提示」开启时推荐流刷新也保留旧内容（独立于增量时间线开关）。
+    private var homeRefreshTipVisible = true
     
     //  [新增] 刷新撤销快照
     private var _undoSnapshot: HomeRefreshUndoSnapshot? = null
@@ -384,6 +387,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             SettingsManager.getIncrementalTimelineRefresh(getApplication()).collect { enabled ->
                 incrementalTimelineRefreshEnabled = enabled
+            }
+        }
+        viewModelScope.launch {
+            SettingsManager.getHomeRefreshTipVisible(getApplication()).collect { visible ->
+                homeRefreshTipVisible = visible
             }
         }
         // Monitor blocked list
@@ -1491,7 +1499,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             
             val useIncrementalRecommendRefresh = !isLoadMore &&
                 currentCategory == HomeCategory.RECOMMEND &&
-                incrementalTimelineRefreshEnabled
+                (incrementalTimelineRefreshEnabled || homeRefreshTipVisible)
 
             val incomingVideos = selectHomeFeedIncomingVideos(
                 responseVideos = filteredVideos,

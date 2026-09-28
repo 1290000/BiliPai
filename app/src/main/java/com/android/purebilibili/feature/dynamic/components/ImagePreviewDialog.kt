@@ -818,6 +818,20 @@ private fun ImagePreviewOverlayContent(
                         val imageUrl = remember(images.getOrNull(page)) {
                             normalizeImageUrl(images.getOrNull(page) ?: "")
                         }
+                        // 缩略图与预览图的 URL 不同（预览剥离 @尺寸后缀），内存缓存键对不上，
+                        // 原图下载前内容层只剩黑底。把网格已加载的缩略图 URL 设为
+                        // placeholderMemoryCacheKey，morph 期间立即垫图，杜绝「先黑后图」。
+                        val placeholderCacheKey = remember(images.getOrNull(page)) {
+                            images.getOrNull(page)?.trim()?.let { raw ->
+                                when {
+                                    raw.startsWith("https://") -> raw
+                                    raw.startsWith("http://") -> raw.replace("http://", "https://")
+                                    raw.startsWith("//") -> "https:$raw"
+                                    raw.isNotEmpty() -> "https://$raw"
+                                    else -> ""
+                                }
+                            }.orEmpty().takeIf { it.isNotEmpty() }
+                        }
                         val decodeSize = remember(page, imageUrl, page in originalQualityPages) {
                             resolveImageDecodeSize(
                                 if (page in originalQualityPages) {
@@ -827,12 +841,13 @@ private fun ImagePreviewOverlayContent(
                                 }
                             )
                         }
-                        
+
                         ZoomableImage(
                             model = ImageRequest.Builder(context)
                                 .data(imageUrl)
                                 // 预览必须采样解码，避免超大原图超过 Canvas 单位图绘制上限。
                                 .size(decodeSize.widthPx, decodeSize.heightPx)
+                                .placeholderMemoryCacheKey(placeholderCacheKey)
                                 .httpHeaders(NetworkHeaders.Builder().set("Referer", "https://www.bilibili.com/").build())
                                 // 退出 morph 时关闭 crossfade，避免尺寸变化触发二次淡入发黏。
                                 .crossfade(!isDismissing)
