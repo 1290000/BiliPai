@@ -1353,13 +1353,14 @@ interface BilibiliApi {
         @Query("aid") aid: Long
     ): HasLikedResponse
 
-    //  点踩/取消点踩视频（App 端点，鉴权依赖 CookieJar 注入的登录态，POST 需携带 csrf）
+    //  点踩/取消点踩视频（App 端点：优先 APP access_key 鉴权，同时依赖 CookieJar 注入的登录态与 csrf）
     @retrofit2.http.FormUrlEncoded
     @retrofit2.http.POST("https://app.bilibili.com/x/v2/view/dislike")
     suspend fun dislikeVideo(
         @retrofit2.http.Field("aid") aid: Long,
         @retrofit2.http.Field("dislike") dislike: Int,   // 0=点踩, 1=取消点踩
-        @retrofit2.http.Field("csrf") csrf: String
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("access_key") accessKey: String? = null
     ): SimpleApiResponse
     
     //  [新增] 投币
