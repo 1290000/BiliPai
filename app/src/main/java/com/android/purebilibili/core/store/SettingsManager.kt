@@ -5756,6 +5756,18 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
         context.settingsDataStore.edit { preferences -> preferences[KEY_TRIPLE_JUMP_ENABLED] = value }
     }
 
+    // --- 订阅文章阅读字号 (0=小 1=标准 2=大) ---
+    private val KEY_SUBSCRIPTION_ARTICLE_FONT_SCALE = intPreferencesKey("subscription_article_font_scale")
+
+    fun getSubscriptionArticleFontScale(context: Context): Flow<Int> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_SUBSCRIPTION_ARTICLE_FONT_SCALE] ?: 1 }
+
+    suspend fun setSubscriptionArticleFontScale(context: Context, value: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_SUBSCRIPTION_ARTICLE_FONT_SCALE] = value.coerceIn(0, 2)
+        }
+    }
+
     fun getPortraitFullscreenEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_PORTRAIT_FULLSCREEN_ENABLED] ?: true }
 

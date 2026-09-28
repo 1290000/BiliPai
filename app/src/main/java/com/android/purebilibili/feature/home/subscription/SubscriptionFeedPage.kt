@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.home.subscription
 
-import android.content.Intent
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -63,6 +62,7 @@ import androidx.compose.runtime.withFrameMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
@@ -157,6 +157,7 @@ fun SubscriptionFeedPage(
     var previewIndex by remember { mutableIntStateOf(0) }
     var previewSourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var previewSourceRects by remember { mutableStateOf<Map<Int, androidx.compose.ui.geometry.Rect>>(emptyMap()) }
+    var webUrl by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
 
     val density = LocalDensity.current
@@ -271,6 +272,7 @@ fun SubscriptionFeedPage(
                     contentPadding = articleContentPadding,
                     cachedBody = cachedBodies[feedItemKey(article)],
                     isRead = feedItemKey(article) in readKeys,
+                    onOpenUrl = { url -> webUrl = url },
                     onReadChange = { read ->
                         val key = feedItemKey(article)
                         readKeys = if (read) readKeys + key else readKeys - key
@@ -352,6 +354,13 @@ fun SubscriptionFeedPage(
                 }
             }
         }
+    }
+    if (webUrl != null) {
+        com.android.purebilibili.feature.web.WebViewScreen(
+            url = webUrl.orEmpty(),
+            title = "原文",
+            onBack = { webUrl = null },
+        )
     }
     if (previewImages.isNotEmpty()) {
         ImagePreviewDialog(
@@ -568,6 +577,7 @@ private fun SubscriptionArticleScreen(
     onReadChange: (Boolean) -> Unit,
     onFullBody: (String) -> Unit,
     onBack: () -> Unit,
+    onOpenUrl: (String) -> Unit = {},
     onOpenImages: (
         List<String>,
         Int,
@@ -585,6 +595,12 @@ private fun SubscriptionArticleScreen(
     var loadingBody by remember(item.sourceId, item.id, item.link) { mutableStateOf(false) }
     var bodyError by remember(item.sourceId, item.id, item.link) { mutableStateOf<String?>(null) }
     var retryToken by remember(item.sourceId, item.id, item.link) { mutableIntStateOf(0) }
+    var fontScale by remember { mutableIntStateOf(1) }
+    LaunchedEffect(Unit) {
+        fontScale = com.android.purebilibili.core.store.SettingsManager
+            .getSubscriptionArticleFontScale(context).first()
+    }
+    val textScale = remember(fontScale) { floatArrayOf(0.88f, 1f, 1.18f)[fontScale.coerceIn(0, 2)] }
     LaunchedEffect(item.sourceId, item.id, item.link, retryToken) {
         if (cachedBody != null || !feedBodyNeedsRemoteFetch(item)) return@LaunchedEffect
         loadingBody = true
@@ -642,6 +658,18 @@ private fun SubscriptionArticleScreen(
                     },
                     actions = {
                         AppTextButton(
+                            onClick = {
+                                fontScale = (fontScale + 1) % 3
+                                scope.launch {
+                                    com.android.purebilibili.core.store.SettingsManager
+                                        .setSubscriptionArticleFontScale(context, fontScale)
+                                }
+                            },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            AppText("Aa")
+                        }
+                        AppTextButton(
                             onClick = { onReadChange(!isRead) },
                             modifier = Modifier.heightIn(min = 48.dp),
                         ) {
@@ -657,11 +685,7 @@ private fun SubscriptionArticleScreen(
                         }
                         if (isHttpFeedUrl(item.link)) {
                             AppTextButton(
-                                onClick = {
-                                    runCatching {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(item.link)))
-                                    }
-                                },
+                                onClick = { onOpenUrl(item.link) },
                                 modifier = Modifier.heightIn(min = 48.dp),
                             ) {
                                 AppText("原文")
@@ -694,7 +718,12 @@ private fun SubscriptionArticleScreen(
                             .joinToString(" · "),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (loadingBody) AppText("正在补全正文，当前内容仍可阅读", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (loadingBody) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            AppText("正在补全正文，当前内容仍可阅读", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FeedBodySkeleton()
+                        }
+                    }
                     bodyError?.let { error ->
                         AppText(error, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         AppTextButton(onClick = { retryToken += 1 }) { AppText("重试读取全文") }
@@ -708,6 +737,8 @@ private fun SubscriptionArticleScreen(
                         is FeedBlock.Heading -> SelectionContainer {
                             FeedInlineText(
                                 block.inlines,
+                                fontScale = textScale,
+                                onLinkClick = onOpenUrl,
                                 style = when (block.level) {
                                     1 -> MaterialTheme.typography.headlineSmall
                                     2 -> MaterialTheme.typography.titleLarge
@@ -715,12 +746,16 @@ private fun SubscriptionArticleScreen(
                                 },
                             )
                         }
-                        is FeedBlock.Paragraph -> SelectionContainer { FeedInlineText(block.inlines) }
+                        is FeedBlock.Paragraph -> SelectionContainer {
+                            FeedInlineText(block.inlines, fontScale = textScale, onLinkClick = onOpenUrl)
+                        }
                         is FeedBlock.Quote -> SelectionContainer {
                             FeedInlineText(
                                 block.inlines,
                                 modifier = Modifier.padding(start = 12.dp),
                                 italic = true,
+                                fontScale = textScale,
+                                onLinkClick = onOpenUrl,
                             )
                         }
                         is FeedBlock.Code -> SelectionContainer {
@@ -747,7 +782,7 @@ private fun SubscriptionArticleScreen(
                             block.items.forEach { line ->
                                 Row {
                                     AppText("• ")
-                                    FeedInlineText(line, modifier = Modifier.weight(1f))
+                                    FeedInlineText(line, modifier = Modifier.weight(1f), fontScale = textScale, onLinkClick = onOpenUrl)
                                 }
                             }
                         }
@@ -755,16 +790,12 @@ private fun SubscriptionArticleScreen(
                             block.items.forEachIndexed { index, line ->
                                 Row {
                                     AppText("${index + 1}. ")
-                                    FeedInlineText(line, modifier = Modifier.weight(1f))
+                                    FeedInlineText(line, modifier = Modifier.weight(1f), fontScale = textScale, onLinkClick = onOpenUrl)
                                 }
                             }
                         }
                         is FeedBlock.EmbeddedLink -> AppTextButton(
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(block.url)))
-                                }
-                            },
+                            onClick = { onOpenUrl(block.url) },
                             modifier = Modifier.heightIn(min = 48.dp),
                         ) { AppText(block.title) }
                     }
@@ -783,8 +814,17 @@ private fun FeedInlineText(
     modifier: Modifier = Modifier,
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
     italic: Boolean = false,
+    fontScale: Float = 1f,
+    onLinkClick: ((String) -> Unit)? = null,
 ) {
     val linkColor = MaterialTheme.colorScheme.primary
+    val linkInteractionListener = remember(onLinkClick) {
+        onLinkClick?.let { handler ->
+            androidx.compose.ui.text.LinkInteractionListener { link ->
+                (link as? LinkAnnotation.Url)?.url?.let(handler)
+            }
+        }
+    }
     val annotated = buildAnnotatedString {
         inlines.forEach { inline ->
             when (inline) {
@@ -800,6 +840,7 @@ private fun FeedInlineText(
                     LinkAnnotation.Url(
                         inline.url,
                         TextLinkStyles(SpanStyle(color = linkColor)),
+                        linkInteractionListener,
                     )
                 ) {
                     append(inline.text)
@@ -807,12 +848,32 @@ private fun FeedInlineText(
             }
         }
     }
+    val scaledStyle = if (fontScale != 1f) {
+        style.copy(fontSize = style.fontSize * fontScale, lineHeight = style.lineHeight * fontScale)
+    } else {
+        style
+    }
     Text(
         text = annotated,
         modifier = modifier,
-        style = style.copy(lineHeight = style.fontSize * 1.55f),
+        style = scaledStyle.copy(lineHeight = scaledStyle.fontSize * 1.55f),
         color = MaterialTheme.colorScheme.onSurface,
     )
+}
+
+@Composable
+private fun FeedBodySkeleton(modifier: Modifier = Modifier) {
+    val barColor = MaterialTheme.colorScheme.surfaceVariant
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        listOf(0.92f, 1f, 0.78f, 1f, 0.64f).forEach { fraction ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .height(14.dp)
+                    .background(barColor, MaterialTheme.shapes.small),
+            )
+        }
+    }
 }
 
 @Composable
