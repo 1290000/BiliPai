@@ -1384,6 +1384,7 @@ object SettingsManager {
     //  [新增] 双击跳转秒数 (可分开设置快进和后退)
     private val KEY_DOUBLE_TAP_SEEK_ENABLED = booleanPreferencesKey("double_tap_seek_enabled")
     private val KEY_SEEK_FORWARD_SECONDS = intPreferencesKey("seek_forward_seconds")
+    private val KEY_LIVE_QUALITY = intPreferencesKey("live_quality")
     private val KEY_SEEK_BACKWARD_SECONDS = intPreferencesKey("seek_backward_seconds")
     private val KEY_LONG_PRESS_SPEED_HINT_CLOSE_ENABLED =
         booleanPreferencesKey("long_press_speed_hint_close_enabled")
@@ -2716,6 +2717,16 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
 
     fun getSeekForwardSeconds(context: Context): Flow<Int> = context.settingsDataStore.data
         .map { preferences -> preferences[KEY_SEEK_FORWARD_SECONDS] ?: 10 }
+
+    /** 直播清晰度记忆（对齐 PiliPlus liveQuality）：0 表示未选择，走默认策略。 */
+    fun getLivePreferredQuality(context: Context): Flow<Int> = context.settingsDataStore.data
+        .map { preferences -> preferences[KEY_LIVE_QUALITY] ?: 0 }
+
+    suspend fun setLivePreferredQuality(context: Context, qn: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_LIVE_QUALITY] = qn
+        }
+    }
 
     suspend fun setSeekForwardSeconds(context: Context, seconds: Int) {
         context.settingsDataStore.edit { preferences -> 

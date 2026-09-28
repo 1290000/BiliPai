@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.plugin.PluginManager
+import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TokenManager
+import kotlinx.coroutines.flow.first
 import com.android.purebilibili.core.util.CrashReporter
 import com.android.purebilibili.data.model.response.LiveQuality
 import com.android.purebilibili.data.repository.LiveDanmakuReportRequest
@@ -195,6 +197,10 @@ class LivePlayerViewModel : ViewModel() {
     private var currentUid: Long = 0
     private var currentRequestedQuality: Int = 10000
     private var currentAudioOnly: Boolean = false
+    // 清晰度记忆：仅首次加载读取一次用户上次选择的清晰度
+    private var preferredQualityLoaded = false
+    // 进房历史上报去重（每个房间只报一次）
+    private var roomEntryReportedFor: Long = 0
     private var resolvedPlayback: ResolvedLivePlayback? = null
     private var activeCandidateIndex: Int = 0
     private var activeUrlIndex: Int = 0
@@ -239,12 +245,25 @@ class LivePlayerViewModel : ViewModel() {
                 _uiState.value = LivePlayerState.Loading
                 CrashReporter.markLivePlaybackStage("load_stream_loading")
             }
-            
+
+            // 清晰度记忆（对齐 PiliPlus liveQuality）：首次加载时读取用户上次选择的清晰度
+            var effectiveQn = qn
+            if (!preferredQualityLoaded) {
+                preferredQualityLoaded = true
+                val appContext = NetworkModule.appContext
+                if (appContext != null) {
+                    SettingsManager.getLivePreferredQuality(appContext).first()
+                        .takeIf { it > 0 }
+                        ?.let { effectiveQn = it }
+                }
+            }
+            currentRequestedQuality = effectiveQn
+
             // 并行加载直播流、初始化信息和直播间详情
             val playUrlDeferred = async {
                 LiveRepository.getLivePlayUrlWithQuality(
                     roomId = roomId,
-                    qn = qn,
+                    qn = effectiveQn,
                     onlyAudio = currentAudioOnly
                 )
             }
@@ -287,6 +306,12 @@ class LivePlayerViewModel : ViewModel() {
             val roomInitData = roomInitResponse?.data
             val realRoomId = roomInitData?.roomId?.takeIf { it > 0L } ?: roomId
             currentRoomId = realRoomId
+
+            // 进房上报（登录态，写入直播观看历史；每房间一次）
+            if (roomEntryReportedFor != realRoomId && (TokenManager.midCache ?: 0L) > 0L) {
+                roomEntryReportedFor = realRoomId
+                launch { LiveRepository.reportRoomEntry(realRoomId) }
+            }
             
             var roomInfo = RoomInfo()
             var anchorInfo = AnchorInfo()
@@ -522,6 +547,10 @@ class LivePlayerViewModel : ViewModel() {
         android.util.Log.d("LivePlayer", "🔴 changeQuality called: qn=$qn")
         currentRequestedQuality = qn
         resetPlaybackReloadBudget()
+        // 持久化用户选择的直播清晰度（下次进入房间沿用）
+        NetworkModule.appContext?.let { ctx ->
+            viewModelScope.launch { SettingsManager.setLivePreferredQuality(ctx, qn) }
+        }
         
         liveStreamLoadJob?.cancel()
         liveStreamLoadJob = viewModelScope.launch {

@@ -746,6 +746,16 @@ interface BilibiliApi {
         @retrofit2.http.Field("csrf_token") csrfToken: String
     ): SimpleApiResponse
 
+    //  进房上报（登录态，写入直播观看历史；对齐 PiliPlus roomEntryAction）
+    @retrofit2.http.FormUrlEncoded
+    @retrofit2.http.POST("https://api.live.bilibili.com/xlive/web-room/v1/index/roomEntryAction")
+    suspend fun reportLiveRoomEntry(
+        @retrofit2.http.Field("room_id") roomId: Long,
+        @retrofit2.http.Field("platform") platform: String = "pc",
+        @retrofit2.http.Field("csrf") csrf: String,
+        @retrofit2.http.Field("csrf_token") csrfToken: String
+    ): SimpleApiResponse
+
     //  [新增] 获取直播弹幕表情
     @GET("https://api.live.bilibili.com/xlive/web-ucenter/v2/emoticon/GetEmoticons")
     suspend fun getLiveEmoticons(
