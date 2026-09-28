@@ -26,6 +26,7 @@ internal const val DYNAMIC_RICH_TEXT_TOPIC_KEYWORD_TAG = "TOPIC_KEYWORD"
 /** 动态富文本原生链接 payload 前缀：LinkAnnotation.Clickable 用单一 tag 承载「类型:载荷」。 */
 internal const val DYNAMIC_RICH_TEXT_LINK_URL_PREFIX = "URL:"
 internal const val DYNAMIC_RICH_TEXT_LINK_USER_PREFIX = "USER:"
+internal const val DYNAMIC_RICH_TEXT_LINK_USER_NAME_PREFIX = "USERNAME:"
 internal const val DYNAMIC_RICH_TEXT_LINK_VOTE_PREFIX = "VOTE:"
 internal const val DYNAMIC_RICH_TEXT_LINK_TOPIC_ID_PREFIX = "TOPIC:"
 internal const val DYNAMIC_RICH_TEXT_LINK_TOPIC_KEYWORD_PREFIX = "TOPICKW:"
@@ -44,6 +45,7 @@ private fun dynamicRichTextLinkAnnotation(
 internal sealed interface DynamicRichTextLinkAction {
     data class Url(val url: String) : DynamicRichTextLinkAction
     data class User(val mid: Long) : DynamicRichTextLinkAction
+    data class UserName(val name: String) : DynamicRichTextLinkAction
     data class Vote(val voteId: Long) : DynamicRichTextLinkAction
     data class TopicId(val topicId: Long) : DynamicRichTextLinkAction
     data class TopicKeyword(val keyword: String) : DynamicRichTextLinkAction
@@ -57,6 +59,10 @@ internal fun resolveDynamicRichTextLinkAction(tag: String): DynamicRichTextLinkA
             tag.removePrefix(DYNAMIC_RICH_TEXT_LINK_USER_PREFIX).toLongOrNull()
                 ?.takeIf { it > 0L }
                 ?.let(DynamicRichTextLinkAction::User)
+        tag.startsWith(DYNAMIC_RICH_TEXT_LINK_USER_NAME_PREFIX) ->
+            tag.removePrefix(DYNAMIC_RICH_TEXT_LINK_USER_NAME_PREFIX)
+                .takeIf { it.isNotBlank() }
+                ?.let(DynamicRichTextLinkAction::UserName)
         tag.startsWith(DYNAMIC_RICH_TEXT_LINK_VOTE_PREFIX) ->
             tag.removePrefix(DYNAMIC_RICH_TEXT_LINK_VOTE_PREFIX).toLongOrNull()
                 ?.takeIf { it > 0L }
@@ -269,9 +275,15 @@ internal fun mergeDynamicRichTextMetadataIntoText(
     var cursor = 0
     // Detail nodes and preview metadata can be appended in different orders. Follow the
     // actual paragraph order so a later mention cannot advance past an earlier one.
-    actionableNodes.sortedBy { node ->
-        findDynamicRichTextNodeMatch(text, node, 0)?.start ?: Int.MAX_VALUE
-    }.forEach { node ->
+    actionableNodes.sortedWith(
+        compareBy<RichTextNode> { node ->
+            findDynamicRichTextNodeMatch(text, node, 0)?.start ?: Int.MAX_VALUE
+        }.thenByDescending { node ->
+            if (node.type.trim().removePrefix("RICH_TEXT_NODE_TYPE_").equals("AT", ignoreCase = true) &&
+                resolveDynamicRichTextUserMid(node) != null
+            ) 1 else 0
+        }
+    ).forEach { node ->
         val match = findDynamicRichTextNodeMatch(text, node, cursor) ?: return@forEach
         val token = match.token
         val start = match.start
@@ -692,8 +704,16 @@ private fun AnnotatedString.Builder.appendDynamicRichTextAtMention(
             }
         }
     } else {
-        withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium)) {
-            append(resolveDynamicRichTextNodeToken(node))
+        val display = resolveDynamicRichTextNodeToken(node)
+        val name = display.trim().removePrefix("@").trim()
+        if (name.isNotEmpty()) {
+            withLink(dynamicRichTextLinkAnnotation(DYNAMIC_RICH_TEXT_LINK_USER_NAME_PREFIX + name, linkListener)) {
+                withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium)) {
+                    append(display)
+                }
+            }
+        } else {
+            append(display)
         }
     }
 }
@@ -793,7 +813,7 @@ private fun AnnotatedString.Builder.appendDynamicRichTextExpandableText(
 
 private val DYNAMIC_RICH_TEXT_TOPIC_PATTERN = Regex("""#([^#\n\r\t]+)#""")
 private val DYNAMIC_RICH_TEXT_MENTION_PATTERN =
-    Regex("""(?<![\p{L}\p{N}_.])@[\p{L}\p{N}_.·-]{1,32}""")
+    Regex("""(?<![A-Za-z0-9_.])@[\p{L}\p{N}_.·-]{1,32}""")
 
 private enum class DynamicPlainTextTokenKind { URL, TOPIC, MENTION }
 
@@ -881,10 +901,15 @@ private fun AnnotatedString.Builder.appendDynamicRichTextPlainText(
                     }
                 }
             }
-            DynamicPlainTextTokenKind.MENTION -> withStyle(
-                SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium)
+            DynamicPlainTextTokenKind.MENTION -> withLink(
+                dynamicRichTextLinkAnnotation(
+                    DYNAMIC_RICH_TEXT_LINK_USER_NAME_PREFIX + token.value.removePrefix("@"),
+                    linkListener,
+                )
             ) {
-                append(token.value)
+                withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Medium)) {
+                    append(token.value)
+                }
             }
         }
         lastIndex = token.range.last + 1

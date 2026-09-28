@@ -92,6 +92,7 @@ import com.android.purebilibili.core.ui.rememberAppHistoryIcon
 import com.android.purebilibili.core.ui.rememberAppDeleteIcon
 import com.android.purebilibili.core.ui.rememberAppLinkIcon
 import com.android.purebilibili.data.model.response.DynamicDesc
+import com.android.purebilibili.data.repository.SearchRepository
 import com.android.purebilibili.core.store.SettingsManager.DynamicDetailImageLayout
 import com.android.purebilibili.data.model.response.DynamicItem
 import com.android.purebilibili.data.model.response.DrawItem
@@ -2382,6 +2383,36 @@ private fun dispatchDynamicRichTextLinkPayload(
     when (val action = resolveDynamicRichTextLinkAction(payload)) {
         is DynamicRichTextLinkAction.User ->
             onUserClick?.invoke(action.mid)
+        is DynamicRichTextLinkAction.UserName -> scope.launch {
+            // Missing AT IDs cannot be inferred from the display text. Resolve an exact
+            // account match on tap; ambiguous or unavailable results open user search.
+            val matches = SearchRepository.searchUp(action.name).getOrNull()
+                ?.first.orEmpty()
+                .filter { it.uname == action.name && it.mid > 0L }
+                .distinctBy { it.mid }
+            val mid = matches.singleOrNull()?.mid
+            if (mid != null && onUserClick != null) {
+                onUserClick(mid)
+            } else {
+                val searchUrl = "bilibili://search?keyword=" +
+                    java.net.URLEncoder.encode(action.name, java.nio.charset.StandardCharsets.UTF_8.name())
+                if (onTopicKeywordClick != null) {
+                    onTopicKeywordClick(action.name)
+                } else if (onLinkClick != null) {
+                    onLinkClick(searchUrl)
+                } else {
+                    val inAppIntent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(searchUrl)
+                    ).setPackage(context.packageName)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val launched = runCatching { context.startActivity(inAppIntent) }.isSuccess
+                    if (!launched) {
+                        openDynamicRichTextLinkExternally(context, searchUrl, uriHandler)
+                    }
+                }
+            }
+        }
         is DynamicRichTextLinkAction.Vote ->
             onVoteClick?.invoke(action.voteId)
         is DynamicRichTextLinkAction.TopicId ->

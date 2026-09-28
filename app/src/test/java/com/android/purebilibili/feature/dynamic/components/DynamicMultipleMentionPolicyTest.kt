@@ -96,6 +96,57 @@ class DynamicMultipleMentionPolicyTest {
     }
 
     @Test
+    fun detailMentionsNextToChineseTextRemainClickableWithoutIds() {
+        val text = "谢谢@椒椒椒、@艾香亦心动 还有谢谢@叽雨云_ @悔恨的老军"
+        val body = resolveDynamicOpusTextBlockRichDesc(
+            blockText = text,
+            preferredDesc = null,
+            blockRichTextNodes = listOf(
+                RichTextNode(type = "TEXT", text = "谢谢@椒椒椒、@艾香亦心动 还有谢谢@叽雨云_ "),
+                RichTextNode(type = "AT", text = "@悔恨的老军"),
+            ),
+        ) ?: error("expected full body")
+
+        val annotated = buildDynamicRichTextAnnotatedString(body, Color.Blue, Color.Black)
+        val links = annotated.getLinkAnnotations(0, annotated.length)
+            .mapNotNull { (it.item as? LinkAnnotation.Clickable)?.tag }
+            .filter { it.startsWith(DYNAMIC_RICH_TEXT_LINK_USER_NAME_PREFIX) }
+
+        assertEquals(text, annotated.text)
+        assertEquals(
+            listOf("@椒椒椒", "@艾香亦心动", "@叽雨云_", "@悔恨的老军"),
+            annotated.highlightedText(),
+        )
+        assertEquals(
+            listOf("USERNAME:椒椒椒", "USERNAME:艾香亦心动", "USERNAME:叽雨云_", "USERNAME:悔恨的老军"),
+            links,
+        )
+        assertEquals(
+            DynamicRichTextLinkAction.UserName("椒椒椒"),
+            resolveDynamicRichTextLinkAction(links.first()),
+        )
+    }
+
+    @Test
+    fun richerPreviewMentionIdWinsOverDetailMentionWithoutId() {
+        val body = resolveDynamicOpusTextBlockRichDesc(
+            blockText = "谢谢@甲",
+            preferredDesc = DynamicDesc(rich_text_nodes = listOf(RichTextNode(type = "AT", text = "@甲", rid = "42"))),
+            blockRichTextNodes = listOf(
+                RichTextNode(type = "TEXT", text = "谢谢"),
+                RichTextNode(type = "AT", text = "@甲"),
+            ),
+        ) ?: error("expected full body")
+
+        val annotated = buildDynamicRichTextAnnotatedString(body, Color.Blue, Color.Black)
+        val links = annotated.getLinkAnnotations(0, annotated.length)
+            .mapNotNull { (it.item as? LinkAnnotation.Clickable)?.tag }
+
+        assertEquals("谢谢@甲", annotated.text)
+        assertEquals(listOf("USER:42"), links)
+    }
+
+    @Test
     fun plainTextMentionFallbackIgnoresEmailAndUrlAtSigns() {
         val annotated = buildDynamicRichTextAnnotatedString(
             desc = DynamicDesc(text = "邮箱 foo@example.com，链接 https://example.com/@path，@真正用户"),

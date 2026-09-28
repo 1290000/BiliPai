@@ -707,6 +707,20 @@ class DynamicDetailFallbackPolicyTest {
     }
 
     @Test
+    fun mergeDetailRichTextNodes_replacesIdlessMentionWithSeedUserId() {
+        val detailMention = RichTextNode(type = "AT", text = "@叽米")
+        val seedMention = RichTextNode(type = "AT", text = "@叽米", rid = "12345")
+
+        assertEquals(
+            listOf(seedMention),
+            mergeDynamicDetailRichTextNodes(
+                detailNodes = listOf(detailMention),
+                seedEmojiNodes = listOf(seedMention),
+            ),
+        )
+    }
+
+    @Test
     fun mergeRicherOpusDetailContent_retainsCandidateEmojiNodesInMergedSummaryAndDesc() {
         val emojiNode = RichTextNode(
             type = "EMOJI",
