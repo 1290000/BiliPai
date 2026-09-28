@@ -17,6 +17,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -53,6 +54,7 @@ import androidx.compose.foundation.lazy.grid.stickyHeader
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -705,6 +707,7 @@ fun SpaceScreen(
                             onCategorySelected = viewModel::selectCategory,
                             onSelectSortOrder = viewModel::selectSortOrder,
                             contributionVideoLayoutMode = contributionVideoLayoutMode,
+                            onPlayAllVideos = playAllSpaceVideos,
                             onLoadMoreVideos = viewModel::loadMoreVideos,
                             onLoadHome = viewModel::loadSpaceHome,
                             onLoadDynamic = { viewModel.loadSpaceDynamic(refresh = true) },
@@ -1091,6 +1094,7 @@ private fun SpaceContent(
     onCategorySelected: (Int) -> Unit,
     onSelectSortOrder: (VideoSortOrder) -> Unit = {},
     contributionVideoLayoutMode: SpaceContributionVideoLayoutMode,
+    onPlayAllVideos: () -> Unit = {},
     onLoadMoreVideos: () -> Unit,
     onLoadHome: () -> Unit,
     onLoadDynamic: () -> Unit,
@@ -1327,6 +1331,8 @@ private fun SpaceContent(
             .then(modifier)
     ) {
         val density = LocalDensity.current
+        // 吸顶 Tab 行的实际高度，用于把投稿悬浮工具条定位在它正下方。
+        var pinnedTabsHeightPx by remember { mutableStateOf(0) }
         // [重构] 折叠进度：header 是 index 0，滚动偏移驱动 header 内容上移淡出（视差折叠）。
         // 折叠范围用 dp 换算，避免固定像素在不同 density 下曲线不一致
         val headerCollapseRangePx = with(density) { 320.dp.toPx() }
@@ -1453,6 +1459,7 @@ private fun SpaceContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surface)
+                        .onSizeChanged { pinnedTabsHeightPx = it.height }
                 ) {
                     SpaceContentTabs(
                         state = state,
@@ -1895,81 +1902,12 @@ private fun SpaceContent(
                     SpaceSubTab.VIDEO, SpaceSubTab.CHARGING_VIDEO -> {
                         if (state.videos.isNotEmpty() || state.totalVideos > 0) {
                             item(key = "space_video_summary_bar", span = { GridItemSpan(maxLineSpan) }) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    val totalCount = state.totalVideos.takeIf { it > 0 } ?: state.videos.size
-                                    AppText(
-                                        text = "共${totalCount}视频",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.width(14.dp))
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(CircleShape)
-                                            .clickable {
-                                                state.videos.firstOrNull()?.let { playVideoFromSpace(it.bvid) }
-                                            }
-                                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        AppIcon(
-                                            imageVector = Icons.Outlined.PlayCircleOutline,
-                                            contentDescription = "播放全部",
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        AppText(
-                                            text = "播放全部",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.weight(1f))
-
-                                    var sortMenuExpanded by remember { mutableStateOf(false) }
-                                    Box {
-                                        Row(
-                                            modifier = Modifier
-                                                .clip(CircleShape)
-                                                .clickable { sortMenuExpanded = true }
-                                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            AppIcon(
-                                                imageVector = Icons.AutoMirrored.Outlined.Sort,
-                                                contentDescription = "排序",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            AppText(
-                                                text = resolveSpaceVideoSortCompactLabel(state.sortOrder) + "发布",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        DropdownMenu(
-                                            expanded = sortMenuExpanded,
-                                            onDismissRequest = { sortMenuExpanded = false }
-                                        ) {
-                                            VideoSortOrder.entries.forEach { order ->
-                                                DropdownMenuItem(
-                                                    text = { AppText(order.displayName) },
-                                                    onClick = {
-                                                        onSelectSortOrder(order)
-                                                        sortMenuExpanded = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                                SpaceContributionVideoSummaryBar(
+                                    totalCount = state.totalVideos.takeIf { it > 0 } ?: state.videos.size,
+                                    currentOrder = state.sortOrder,
+                                    onSelectSortOrder = onSelectSortOrder,
+                                    onPlayAll = onPlayAllVideos,
+                                )
                             }
                         }
 
@@ -2537,6 +2475,45 @@ private fun SpaceContent(
             }
         }
     }
+
+        // 投稿视频悬浮工具条（对齐 PiliPlus 的 SliverFloatingHeaderWidget）：
+        // 统计条随内容滚走后，在吸顶 Tab 行正下方悬浮同一组操作。
+        val isContributionVideoTab = selectedMainTab == SpaceMainTab.CONTRIBUTION &&
+            selectedContributionTab.subTab in setOf(SpaceSubTab.VIDEO, SpaceSubTab.CHARGING_VIDEO)
+        val isContributionSummaryScrolledAway by remember {
+            derivedStateOf {
+                gridState.firstVisibleItemIndex > 2 ||
+                    (gridState.firstVisibleItemIndex == 2 && gridState.firstVisibleItemScrollOffset > 0)
+            }
+        }
+        if (isContributionVideoTab && !state.isSearchMode) {
+            val pinnedTabsTopPadding = chromeTopInset + with(density) { pinnedTabsHeightPx.toDp() }
+            AnimatedVisibility(
+                visible = isContributionSummaryScrolledAway,
+                enter = fadeIn(tween(140)) + slideInVertically(tween(180)) { -it / 2 },
+                exit = fadeOut(tween(140)),
+                modifier = Modifier.align(Alignment.TopCenter),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = pinnedTabsTopPadding, start = 12.dp, end = 12.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+                                MaterialTheme.colorScheme.surface
+                            ).copy(alpha = 0.94f)
+                        )
+                ) {
+                    SpaceContributionVideoSummaryBar(
+                        totalCount = state.totalVideos.takeIf { it > 0 } ?: state.videos.size,
+                        currentOrder = state.sortOrder,
+                        onSelectSortOrder = onSelectSortOrder,
+                        onPlayAll = onPlayAllVideos,
+                    )
+                }
+            }
+        }
 
         // [新增] 双指缩放切换网格列数 HUD 胶囊 (自适应 MD3 / MIUIX)
         GridPinchColumnHudPill(
@@ -3188,6 +3165,88 @@ private fun SpaceMainTabRow(
                 .fillMaxWidth()
                 .padding(horizontal = spec.horizontalPaddingDp.dp),
         )
+    }
+}
+
+@Composable
+private fun SpaceContributionVideoSummaryBar(
+    totalCount: Int,
+    currentOrder: VideoSortOrder,
+    onSelectSortOrder: (VideoSortOrder) -> Unit,
+    onPlayAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AppText(
+            text = "共${totalCount}视频",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Row(
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onPlayAll)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            AppIcon(
+                imageVector = Icons.Outlined.PlayCircleOutline,
+                contentDescription = "播放全部",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            AppText(
+                text = "播放全部",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.weight(1f))
+
+        var sortMenuExpanded by remember { mutableStateOf(false) }
+        Box {
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable { sortMenuExpanded = true }
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                AppIcon(
+                    imageVector = Icons.AutoMirrored.Outlined.Sort,
+                    contentDescription = "排序",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                AppText(
+                    text = resolveSpaceVideoSortCompactLabel(currentOrder) + "发布",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            DropdownMenu(
+                expanded = sortMenuExpanded,
+                onDismissRequest = { sortMenuExpanded = false }
+            ) {
+                VideoSortOrder.entries.forEach { order ->
+                    DropdownMenuItem(
+                        text = { AppText(order.displayName) },
+                        onClick = {
+                            onSelectSortOrder(order)
+                            sortMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -4935,6 +4994,8 @@ private fun SpaceHeaderBanner(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // 与 PiliPlus 一致：所有背景图统一做亮/暗色调色，保证顶栏与头像在任意封面上可读。
+    val bannerColorFilter = resolveSpaceBannerColorFilter(isLight = !isDarkTheme)
     if (topImages.size > 1) {
         val pagerState = rememberPagerState { topImages.size }
         Box(modifier = modifier) {
@@ -4952,6 +5013,7 @@ private fun SpaceHeaderBanner(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     alignment = alignment,
+                    colorFilter = bannerColorFilter,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -4988,6 +5050,7 @@ private fun SpaceHeaderBanner(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = alignment,
+                colorFilter = bannerColorFilter,
                 modifier = Modifier.fillMaxSize()
             )
             if (item.title != null && item.title.title.isNotBlank()) {
@@ -5000,10 +5063,6 @@ private fun SpaceHeaderBanner(
             }
         }
     } else if (fallbackTopPhotoUrl.isNotBlank()) {
-        val colorFilter = resolveSpaceBannerColorFilter(
-            isLight = !isDarkTheme,
-            hasFilter = true
-        )
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(fallbackTopPhotoUrl)
@@ -5012,7 +5071,7 @@ private fun SpaceHeaderBanner(
             contentDescription = null,
             contentScale = ContentScale.Crop,
             alignment = Alignment.Center,
-            colorFilter = colorFilter,
+            colorFilter = bannerColorFilter,
             modifier = modifier
         )
     } else {
