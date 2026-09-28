@@ -168,6 +168,6 @@ JSON 需符合导入器支持的主题或装扮结构；不是任意 JSON。远�
 示例：
 
 - [冬日云朵](../plugins/samples/winter-cloud-skin/README.md)：顶部、底栏及导航图标。
-- [蓝雪女仆](../plugins/samples/blue-snow-maid-skin/README.md)：顶部、底栏和颜色；附可直接导入的包。
+- [蓝雪女仆](../plugins/samples/blue-snow-maid-skin/README.md)：顶部、底栏和五组双态导航图标；附可直接导入的包。
 
 实现参考：[数据模型](../app/src/main/java/com/android/purebilibili/core/plugin/skin/UiSkinModels.kt)、[包校验](../app/src/main/java/com/android/purebilibili/core/plugin/skin/UiSkinPackageReader.kt)、[导入转换](../app/src/main/java/com/android/purebilibili/core/plugin/skin/UiSkinImportPackageResolver.kt)。
