@@ -54,15 +54,15 @@ data class BottomBarUiSkinDecoration(
     val iconMotion: BottomBarSkinMotionSpec = BottomBarSkinMotionSpec(),
     val bottomBarIconPaths: Map<BottomNavItem, BottomBarSkinIconPaths> = emptyMap()
 ) {
+    @Suppress("UNUSED_PARAMETER")
     fun iconPathFor(item: BottomNavItem, selected: Boolean = false): String? {
         val paths = bottomBarIconPaths[item] ?: return null
-        // Full illustrated bars use the skin's selected character artwork. Compact
-        // navigation keeps its stable icon while the host indicator moves between tabs.
-        return if (selected && usesIllustratedNavigation(isTablet = false)) {
-            paths.pathFor(selected = true)
-        } else {
-            paths.unselected
-        }
+        // Compact navigation keeps a stable icon while the host indicator moves.
+        return paths.unselected
+    }
+
+    fun illustratedIconPathFor(item: BottomNavItem, selected: Boolean): String? {
+        return bottomBarIconPaths[item]?.pathFor(selected)
     }
 }
 

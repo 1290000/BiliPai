@@ -153,10 +153,10 @@ class BottomBarUiSkinDecorationTest {
             UiSkinState(enabled = true, activeSkin = installed)
         )
 
-        assertEquals("/tmp/tail_icon_main.png", decoration?.iconPathFor(BottomNavItem.HOME))
+        assertEquals("/tmp/tail_icon_main.png", decoration?.illustratedIconPathFor(BottomNavItem.HOME, selected = false))
         assertEquals(
             "/tmp/tail_icon_selected_main.png",
-            decoration?.iconPathFor(BottomNavItem.HOME, selected = true),
+            decoration?.illustratedIconPathFor(BottomNavItem.HOME, selected = true),
         )
     }
 

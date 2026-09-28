@@ -3266,7 +3266,7 @@ internal fun IllustratedSkinBottomBar(
                     val selected = item == currentItem
                     val label = resolveBottomNavItemLabel(item, itemLabels)
                     val contentColor = if (selected) colors.selectedColor else colors.unselectedColor
-                    val iconPath = decoration.iconPathFor(item, selected)
+                    val iconPath = decoration.illustratedIconPathFor(item, selected)
                     val badge = formatBottomBarDynamicReminderBadge(
                         if (shouldShowBottomBarDynamicReminderBadge(item, dynamicUnreadCount)) {
                             dynamicUnreadCount
