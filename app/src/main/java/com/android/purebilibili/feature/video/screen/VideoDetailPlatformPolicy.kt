@@ -368,7 +368,7 @@ internal fun toggleVideoDetailFullscreen(
     )
     if (isOrientationDrivenFullscreen && isInMultiWindowMode && isFullscreenMode) {
         onUserRequestedFullscreenChange(false)
-        onManualPortraitHoldActiveChange(isLandscape)
+        onManualPortraitHoldActiveChange(true)
         activity.applyPlayerRequestedOrientation(
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
             displayContext = displayContext,
@@ -401,7 +401,10 @@ internal fun toggleVideoDetailFullscreen(
 
     if (isFullscreenMode) {
         onUserRequestedFullscreenChange(false)
-        onManualPortraitHoldActiveChange(isLandscape)
+        // 无条件置位竖屏保持：此前仅 isLandscape 时置位——退出瞬间配置已短暂
+        // 回竖屏时 hold=false，传感器在手机仍横持时会立刻把界面抢回横屏。
+        // hold 由「传感器读到稳定竖屏姿态」释放，退出后自然交还自动旋转。
+        onManualPortraitHoldActiveChange(true)
         activity.applyPlayerRequestedOrientation(
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
             displayContext = displayContext,

@@ -849,6 +849,7 @@ private fun VideoPlayerSectionContent(
     val shouldUseAnime4kPipeline = anime4kOutputDecision.shouldUsePipeline
     val anime4kBypassReason = anime4kOutputDecision.bypassReason
     val latestAnime4kPipelineRequested by rememberUpdatedState(shouldUseAnime4kPipeline)
+    val latestFullscreenForOrientationRestore by rememberUpdatedState(isFullscreen)
     val latestAnime4kDisplayedFirstFrame by rememberUpdatedState(anime4kDisplayedFirstFrame)
     val videoOutputRouter = remember(playerState.player) { VideoOutputRouter(playerState.player) }
     DisposableEffect(videoOutputRouter) {
@@ -1332,9 +1333,13 @@ private fun VideoPlayerSectionContent(
         }
         AppScreenshotGestureBlockState.fullscreenPlayerLocked = shouldBlockAppScreenshot
         onDispose {
+            // 因退出全屏而 dispose 时不得恢复快照的横屏方向：退出路径刚写入
+            // PORTRAIT，恢复 SENSOR_LANDSCAPE 会让界面跳回横屏。只有仍在全屏内
+            // （用户仅关闭锁定）才回滚到锁定前的方向。
             if (
                 lockedActivity?.requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_LOCKED &&
-                previousRequestedOrientation != null
+                previousRequestedOrientation != null &&
+                latestFullscreenForOrientationRestore
             ) {
                 lockedActivity.applyPlayerRequestedOrientation(previousRequestedOrientation)
             }
