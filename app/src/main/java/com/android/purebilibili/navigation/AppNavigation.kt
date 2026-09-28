@@ -557,6 +557,8 @@ fun AppNavigation(
             LocalLiquidGlassRenderConfig provides liquidGlassRenderConfig,
             com.android.purebilibili.feature.home.components.cards.LocalHomeCardDynamicTintEnabled provides
                 effectiveHomeSettings.homeCardDynamicTintEnabled,
+            com.android.purebilibili.feature.home.components.cards.LocalHomeCardFrostedGlassEnabled provides
+                effectiveHomeSettings.homeCardFrostedGlassEnabled,
             com.android.purebilibili.core.plugin.skin.LocalUiSkinState provides uiSkinState,
         ) {
         // [新增] 全局底栏状态管理

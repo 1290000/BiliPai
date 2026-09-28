@@ -1362,7 +1362,7 @@ fun HomeScreen(
         )
     }
     val shouldCaptureHomeWallpaperBackdrop =
-        homeSettings.homeCardDynamicTintEnabled &&
+        homeSettings.homeCardFrostedGlassEnabled &&
             homeWallpaperBackdropAppearance.visible &&
             homeWallpaperUri.isNotBlank() &&
             isStaticHomeWallpaperUri(homeWallpaperUri) &&

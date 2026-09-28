@@ -529,6 +529,22 @@ private val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
         focusId = SettingsSearchFocusIds.APPEARANCE_THEME
     ),
     SettingsSearchEntry(
+        target = SettingsSearchTarget.HOME_FEED,
+        title = "卡片毛玻璃",
+        subtitle = "独立控制视频卡片信息区的壁纸模糊",
+        section = settingsDestinationCopy(SettingsSearchTarget.HOME_FEED).title,
+        aliases = listOf("卡片模糊", "磨砂卡片", "视频卡片毛玻璃"),
+        focusId = SettingsSearchFocusIds.HOME_OVERVIEW,
+    ),
+    SettingsSearchEntry(
+        target = SettingsSearchTarget.HOME_FEED,
+        title = "卡片动态取色",
+        subtitle = "独立控制视频卡片跟随壁纸或封面颜色",
+        section = settingsDestinationCopy(SettingsSearchTarget.HOME_FEED).title,
+        aliases = listOf("卡片取色", "封面取色", "视频卡片动态取色"),
+        focusId = SettingsSearchFocusIds.HOME_OVERVIEW,
+    ),
+    SettingsSearchEntry(
         target = SettingsSearchTarget.APPEARANCE,
         title = "屏幕帧率",
         subtitle = "跟随系统自动调节，或手动选择设备支持的显示模式",

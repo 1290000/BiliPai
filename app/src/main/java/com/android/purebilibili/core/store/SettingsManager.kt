@@ -690,7 +690,8 @@ data class HomeSettings(
     val showHomePublishTime: Boolean = true, // 首页视频卡片发布时间（默认显示，可关闭）
     val showFullVideoCardContent: Boolean = false, // 视频卡片标题完整展示(默认关闭,设置后全局生效)
     val videoCardLongPressActionEnabled: Boolean = false, // 长按视频卡片快捷操作与预览（默认关闭）
-    val homeCardDynamicTintEnabled: Boolean = true, // 卡片毛玻璃与动态取色
+    val homeCardDynamicTintEnabled: Boolean = false, // 卡片动态取色
+    val homeCardFrostedGlassEnabled: Boolean = false, // 卡片毛玻璃
     val homeDurationStyle: HomeDurationStyle = HomeDurationStyle.OUTSIDE_COVER,
     val easterEggEnabled: Boolean = false, // 下拉刷新趣味提示开关
     //  [修复] 默认值改为 true，避免在 Flow 加载实际值之前错误触发弹窗
@@ -700,6 +701,11 @@ data class HomeSettings(
     val isLiquidGlassEnabled: Boolean
         get() = androidNativeLiquidGlassEnabled
 }
+
+internal fun resolveHomeCardFrostedGlassEnabled(
+    storedValue: Boolean?,
+    legacyCombinedValue: Boolean?,
+): Boolean = storedValue ?: legacyCombinedValue ?: false
 
 data class AppThemeSettings(
     val uiStyle: AppUiStyle = AppUiStyle.MATERIAL3,
@@ -1606,6 +1612,8 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
         booleanPreferencesKey("video_card_long_press_action_enabled")
     private val KEY_HOME_CARD_DYNAMIC_TINT_ENABLED =
         booleanPreferencesKey("home_card_dynamic_tint_enabled")
+    private val KEY_HOME_CARD_FROSTED_GLASS_ENABLED =
+        booleanPreferencesKey("home_card_frosted_glass_enabled")
     private val KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE =
         booleanPreferencesKey("home_video_duration_badges_visible")
     private val KEY_HOME_DURATION_STYLE = intPreferencesKey("home_duration_style")
@@ -1821,7 +1829,11 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
             showHomePublishTime = preferences[KEY_HOME_PUBLISH_TIME_VISIBLE] ?: true,
             showFullVideoCardContent = preferences[KEY_FULL_VIDEO_CARD_CONTENT_VISIBLE] ?: false,
             videoCardLongPressActionEnabled = preferences[KEY_VIDEO_CARD_LONG_PRESS_ACTION_ENABLED] ?: false,
-            homeCardDynamicTintEnabled = preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED] ?: true,
+            homeCardDynamicTintEnabled = preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED] ?: false,
+            homeCardFrostedGlassEnabled = resolveHomeCardFrostedGlassEnabled(
+                storedValue = preferences[KEY_HOME_CARD_FROSTED_GLASS_ENABLED],
+                legacyCombinedValue = preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED],
+            ),
             homeDurationStyle = preferences[KEY_HOME_DURATION_STYLE]
                 ?.let(HomeDurationStyle::fromValue)
                 ?: if (preferences[KEY_HOME_VIDEO_DURATION_BADGES_VISIBLE] ?: true) {
@@ -3496,11 +3508,29 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     }
 
     fun getHomeCardDynamicTintEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
-        .map { preferences -> preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED] ?: true }
+        .map { preferences -> preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED] ?: false }
 
     suspend fun setHomeCardDynamicTintEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
+            if (preferences[KEY_HOME_CARD_FROSTED_GLASS_ENABLED] == null) {
+                preferences[KEY_HOME_CARD_FROSTED_GLASS_ENABLED] =
+                    preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED] ?: false
+            }
             preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED] = value
+        }
+    }
+
+    fun getHomeCardFrostedGlassEnabled(context: Context): Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences ->
+            resolveHomeCardFrostedGlassEnabled(
+                storedValue = preferences[KEY_HOME_CARD_FROSTED_GLASS_ENABLED],
+                legacyCombinedValue = preferences[KEY_HOME_CARD_DYNAMIC_TINT_ENABLED],
+            )
+        }
+
+    suspend fun setHomeCardFrostedGlassEnabled(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[KEY_HOME_CARD_FROSTED_GLASS_ENABLED] = value
         }
     }
 
