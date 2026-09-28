@@ -125,10 +125,16 @@ internal fun rememberVideoDetailTransitionState(
         requireNotNull(animatedVisibilityScope).transition.animateFloat(
             transitionSpec = {
                 if (targetState == EnterExitState.PostExit) {
-                    // 返回：Linear + 满 morph 时长，与 videoSharedElementReturnTweenSpec 一致
+                    // 返回：Linear + 满 morph 时长——spec 直读 bounds 侧的单一事实来源
+                    // （videoSharedElementReturnMorph*），与 sharedBounds 严格同源。
                     tween(
-                        durationMillis = motionSpec.durationMillis.coerceAtLeast(0),
-                        easing = androidx.compose.animation.core.LinearEasing,
+                        durationMillis =
+                            com.android.purebilibili.core.ui.transition
+                                .videoSharedElementReturnMorphDurationMillis(
+                                    motionSpec.durationMillis.coerceAtLeast(0),
+                                ),
+                        easing = com.android.purebilibili.core.ui.transition
+                            .videoSharedElementReturnMorphEasing(),
                     )
                 } else {
                     // 进场：Continuity + 满 morph 时长，与 bounds enter 一致

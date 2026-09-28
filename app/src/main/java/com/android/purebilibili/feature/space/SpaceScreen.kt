@@ -1458,7 +1458,11 @@ private fun SpaceContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(
+                            com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+                                MaterialTheme.colorScheme.surface
+                            )
+                        )
                         .onSizeChanged { pinnedTabsHeightPx = it.height }
                 ) {
                     SpaceContentTabs(
@@ -2486,7 +2490,9 @@ private fun SpaceContent(
                     (gridState.firstVisibleItemIndex == 2 && gridState.firstVisibleItemScrollOffset > 0)
             }
         }
-        if (isContributionVideoTab && !state.isSearchMode) {
+        if (isContributionVideoTab && !state.isSearchMode &&
+            (state.videos.isNotEmpty() || state.totalVideos > 0)
+        ) {
             val pinnedTabsTopPadding = chromeTopInset + with(density) { pinnedTabsHeightPx.toDp() }
             AnimatedVisibility(
                 visible = isContributionSummaryScrolledAway,
@@ -2637,9 +2643,10 @@ private fun SpaceHeader(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // graphicsLayer 置于 bounds 修饰符之前，让预览回位框把视差位移算进去。
+                    .graphicsLayer { translationY = bannerParallaxTranslationPx }
                     .imagePreviewSourceBounds(topPhotoRect)
                     .alpha(if (topPhotoHidden) 0f else 1f)
-                    .graphicsLayer { translationY = bannerParallaxTranslationPx }
                     .layout { measurable, constraints ->
                         val horizontalInsetPx = outerPadding.coerceAtLeast(0.dp).roundToPx()
                         val topInsetPx = chromeTopInset.coerceAtLeast(0.dp).roundToPx()
