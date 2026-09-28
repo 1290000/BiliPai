@@ -1034,9 +1034,9 @@ fun SearchScreen(
         globalWallpaperVisible = globalWallpaperVisible,
         useHeaderBlur = shouldUseSearchTopBarBlur
     )
-    // Solid chrome needs an opaque page surface so route transitions never reveal the
-    // host window's white background through the search screen.
-    val searchChromeSurface = AppSurfaceTokens.groupedListContainer().copy(alpha = 1f)
+    val searchChromeSurface = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+        AppSurfaceTokens.groupedListContainer()
+    )
     val emptyStateCopy = remember(state.emptyStateReason, state.searchType) {
         if (state.emptyStateReason == SearchEmptyStateReason.NONE) {
             null
