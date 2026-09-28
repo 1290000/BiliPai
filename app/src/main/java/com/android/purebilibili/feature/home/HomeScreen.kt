@@ -2008,6 +2008,7 @@ fun HomeScreen(
                                         start = AppSpacingTokens.Large,
                                         end = AppSpacingTokens.Large,
                                     ),
+                                    onOpenPluginSettings = onPluginsClick,
                                     articleContentPadding = PaddingValues(
                                         top = statusBarHeight + AppSpacingTokens.Small,
                                         bottom = homeListBottomPadding,

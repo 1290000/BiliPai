@@ -113,6 +113,7 @@ import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.ImmersiveAppScaffold
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.components.AppAssistChip
+import com.android.purebilibili.core.ui.components.AppButton
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppSurface
@@ -139,6 +140,7 @@ fun SubscriptionFeedPage(
     onColumnsChange: (Int) -> Unit = {},
     onPinchEnd: (Int) -> Unit = {},
     onArticleOpenChanged: (Boolean) -> Unit = {},
+    onOpenPluginSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -321,6 +323,7 @@ fun SubscriptionFeedPage(
                         selectedSourceId = selectedSourceId,
                         onSelectSource = { selectedSourceId = it },
                         onRefresh = { reloadToken += 1 },
+                        onOpenPluginSettings = onOpenPluginSettings,
                         onOpen = { item ->
                             opened = item
                             val key = feedItemKey(item)
@@ -382,6 +385,7 @@ private fun SubscriptionFeedGrid(
     selectedSourceId: String?,
     onSelectSource: (String?) -> Unit,
     onRefresh: () -> Unit,
+    onOpenPluginSettings: () -> Unit,
     onOpen: (ParsedFeedItem) -> Unit,
     contentPadding: PaddingValues,
     listState: LazyStaggeredGridState,
@@ -435,17 +439,33 @@ private fun SubscriptionFeedGrid(
         }
         if (sources.isEmpty() && !loading) {
             item(span = StaggeredGridItemSpan.FullLine) {
-                AppText("还没有订阅。到插件中心打开「订阅」，添加 RSS 或 Atom 地址。")
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AppText("还没有可用的订阅源。到插件中心添加 RSS 或 Atom 地址，或启用已添加的订阅。")
+                    AppButton(
+                        onClick = onOpenPluginSettings,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        AppText("去添加订阅")
+                    }
+                }
             }
         }
         if (errors.isNotEmpty()) {
             item(span = StaggeredGridItemSpan.FullLine) {
-                AppText(
-                    text = errors.take(2).joinToString("；"),
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    AppText(
+                        text = errors.take(2).joinToString("；"),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    AppTextButton(
+                        onClick = onRefresh,
+                        enabled = !loading,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        AppText(if (loading) "刷新中" else "重试失败的源")
+                    }
+                }
             }
         }
         if (sources.isNotEmpty() && visibleItems.isEmpty() && !loading) {
