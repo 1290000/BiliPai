@@ -250,7 +250,9 @@ object UiSkinImportPackageResolver {
                 illegalPathMessage = "装扮资源包包含非法路径"
             )
         }
-        val assetBytesByPath = buildAssetBytes(packageEntries)
+        val assetBytesByPath = buildAssetBytes(
+            packageEntries + outerProfileBackgrounds(outerEntries, packageEntries)
+        )
         if (assetBytesByPath.isEmpty()) {
             throw IllegalArgumentException("装扮资源包缺少可转换资源")
         }
@@ -392,6 +394,7 @@ object UiSkinImportPackageResolver {
             .toList()
             .sortedWith(compareBy(
                 { (path, _) -> if (path.substringAfterLast("/") == "${path.parentName()}.json") 0 else 1 },
+                { (path, _) -> if (path.substringAfterLast("/") in setOf("data.json", "skin_suit.json")) 1 else 0 },
                 { (path, _) -> if (path.substringAfterLast("/") == "个性装扮.json") 1 else 0 },
                 { (path, _) -> path }
             ))
@@ -419,6 +422,7 @@ object UiSkinImportPackageResolver {
         val dataObject = root.objectOrNull("data")
         val themeObject = root.resolveThemeObject()
         val properties = themeObject?.objectOrNull("properties")
+            ?: themeObject?.objectOrNull("data")
             ?: dataObject?.objectOrNull("properties")
             ?: root.objectOrNull("properties")
             ?: dataObject
@@ -496,6 +500,25 @@ object UiSkinImportPackageResolver {
         } else {
             utf8
         }
+    }
+
+    private fun outerProfileBackgrounds(
+        outerEntries: Map<String, ByteArray>,
+        packageEntries: Map<String, ByteArray>,
+    ): Map<String, ByteArray> {
+        val backgrounds = linkedMapOf<String, ByteArray>()
+        listOf("head_myself_bg", "head_myself_squared_bg").forEach { stem ->
+            if (packageEntries.keys.any { it.substringAfterLast('/').matches(Regex("$stem\\.(png|jpg)")) }) {
+                return@forEach
+            }
+            val entry = outerEntries.entries.firstOrNull { (path, _) ->
+                path.startsWith("skin/") &&
+                    path.substringAfterLast('/').matches(Regex("$stem[0-9a-f]{32}\\.(png|jpg)"))
+            } ?: return@forEach
+            val extension = entry.key.substringAfterLast('.')
+            backgrounds["$stem.$extension"] = entry.value
+        }
+        return backgrounds
     }
 
     private fun buildAssetBytes(packageEntries: Map<String, ByteArray>): Map<String, ByteArray> {

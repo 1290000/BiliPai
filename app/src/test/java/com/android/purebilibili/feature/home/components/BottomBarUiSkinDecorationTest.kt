@@ -123,6 +123,44 @@ class BottomBarUiSkinDecorationTest {
     }
 
     @Test
+    fun illustratedBottomBarUsesProvidedSelectedCharacterArtwork() {
+        val installed = InstalledUiSkinPackage(
+            manifest = UiSkinManifest(
+                formatVersion = 1,
+                skinId = "dev.example.illustrated",
+                displayName = "插画底栏",
+                version = "1.0.0",
+                apiVersion = 1,
+                surfaces = setOf(UiSkinSurface.HOME_BOTTOM_BAR),
+                assets = UiSkinAssets(
+                    bottomBarTrim = "assets/tail_bg.png",
+                    bottomBarIcons = mapOf(
+                        "home" to "assets/tail_icon_main.png",
+                        "home_selected" to "assets/tail_icon_selected_main.png",
+                    ),
+                ),
+            ),
+            packageSha256 = "sha",
+            packagePath = "/tmp/illustrated.bpskin",
+            installedAtMillis = 42L,
+            assetFiles = mapOf(
+                "assets/tail_bg.png" to "/tmp/tail_bg.png",
+                "assets/tail_icon_main.png" to "/tmp/tail_icon_main.png",
+                "assets/tail_icon_selected_main.png" to "/tmp/tail_icon_selected_main.png",
+            ),
+        )
+        val decoration = resolveBottomBarUiSkinDecoration(
+            UiSkinState(enabled = true, activeSkin = installed)
+        )
+
+        assertEquals("/tmp/tail_icon_main.png", decoration?.iconPathFor(BottomNavItem.HOME))
+        assertEquals(
+            "/tmp/tail_icon_selected_main.png",
+            decoration?.iconPathFor(BottomNavItem.HOME, selected = true),
+        )
+    }
+
+    @Test
     fun activeExternalSkinKeepsEachBottomDestinationOnItsStableUnselectedArtwork() {
         val installed = InstalledUiSkinPackage(
             manifest = UiSkinManifest(
