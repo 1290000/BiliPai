@@ -1680,7 +1680,11 @@ class SpaceViewModel(
                 }
             }
             SpaceSubTab.AUDIO -> {
-                if (current.audios.isEmpty() && !current.isLoadingAudios) {
+                // 聚合接口只给 3 条音频预览但 totalAudios 是全量数（如 15）：
+                // 预览不足以填满时必须用 song/upper 补拉全量，否则列表与计数不符。
+                if ((current.audios.isEmpty() || current.audios.size < current.totalAudios) &&
+                    !current.isLoadingAudios
+                ) {
                     loadSpaceAudios(refresh = true)
                 }
             }

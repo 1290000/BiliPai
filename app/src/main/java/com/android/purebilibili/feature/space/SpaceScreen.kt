@@ -1337,10 +1337,14 @@ private fun SpaceContent(
             .fillMaxSize()
             .responsiveContentWidth(maxWidth = adaptiveLayoutSpec.contentMaxWidthDp.dp)
             .then(modifier)
+            .onGloballyPositioned { gridContainerRootTopPx = it.boundsInRoot().top }
     ) {
         val density = LocalDensity.current
-        // 吸顶 Tab 行的实际高度，用于把投稿悬浮工具条定位在它正下方。
-        var pinnedTabsHeightPx by remember { mutableStateOf(0) }
+        // 吸顶 Tab 行在窗口根坐标系中的底边，用于把投稿悬浮工具条 dock 在它正下方
+        // （推算 chromeTopInset+高度会双算/漏算 chrome，导致悬浮条压到封面上）。
+        var pinnedTabsRootBottomPx by remember { mutableStateOf(0f) }
+        // 网格容器在根坐标系中的顶边（悬浮条的父容器），用于换算相对 padding。
+        var gridContainerRootTopPx by remember { mutableStateOf(0f) }
         // [重构] 折叠进度：header 是 index 0，滚动偏移驱动 header 内容上移淡出（视差折叠）。
         // 折叠范围用 dp 换算，避免固定像素在不同 density 下曲线不一致
         val headerCollapseRangePx = with(density) { 320.dp.toPx() }
@@ -1473,11 +1477,13 @@ private fun SpaceContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
+                            // 吸顶行需要足够不透明：壁纸模式下 74% 会让「主页/动态/投稿」
+                            // 变成叠在亮封面上的幽灵文字。
                             com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
                                 MaterialTheme.colorScheme.surface
-                            )
+                            ).let { if (it.alpha < 0.97f) it.copy(alpha = 0.97f) else it }
                         )
-                        .onSizeChanged { pinnedTabsHeightPx = it.height }
+                        .onGloballyPositioned { pinnedTabsRootBottomPx = it.boundsInRoot().bottom }
                 ) {
                     SpaceContentTabs(
                         state = state,
@@ -2507,7 +2513,10 @@ private fun SpaceContent(
         if (isContributionVideoTab && !state.isSearchMode &&
             (state.videos.isNotEmpty() || state.totalVideos > 0)
         ) {
-            val pinnedTabsTopPadding = chromeTopInset + with(density) { pinnedTabsHeightPx.toDp() }
+            // 实测 dock：吸顶 Tab 行底边（根坐标）− 父容器顶边（根坐标）。
+            val pinnedTabsTopPadding = with(density) {
+                (pinnedTabsRootBottomPx - gridContainerRootTopPx).coerceAtLeast(0f).toDp()
+            }
             AnimatedVisibility(
                 visible = isContributionSummaryScrolledAway,
                 enter = fadeIn(tween(140)) + slideInVertically(tween(180)) { -it / 2 },
@@ -2522,7 +2531,7 @@ private fun SpaceContent(
                         .background(
                             com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
                                 MaterialTheme.colorScheme.surface
-                            ).copy(alpha = 0.94f)
+                            ).let { if (it.alpha < 0.97f) it.copy(alpha = 0.97f) else it }
                         )
                 ) {
                     SpaceContributionVideoSummaryBar(

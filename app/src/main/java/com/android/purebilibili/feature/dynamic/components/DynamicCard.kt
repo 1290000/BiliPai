@@ -2243,7 +2243,6 @@ fun RichTextContent(
     // 外层 pointerInput 查表，与划选/卡片长按不再竞争。每次组合重建 dispatch
     // 闭包以捕获最新回调，并作为 remember key 同步重建富文本。
     val dispatchDynamicLink: (String) -> Unit = { payload ->
-        com.android.purebilibili.core.util.Logger.d("DynamicRichText", "link tapped payload=\$payload")
         dispatchDynamicRichTextLinkPayload(
             payload = payload,
             context = context,
