@@ -8,6 +8,7 @@ import com.android.purebilibili.core.util.Logger
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
@@ -337,6 +338,12 @@ fun MiniPlayerOverlay(
         clampCurrentOffset()
     }
 
+    /** 读取累积的手势速度并转交给 X 轴贴边动画，随后清空累积。 */
+    fun handOffDragVelocityToSnapAnimation() {
+        pendingSnapVelocityX = dragVelocityTracker.calculateVelocity().x
+        dragVelocityTracker.resetTracking()
+    }
+
     LaunchedEffect(
         miniPlayerWidthPx,
         miniPlayerHeightPx,
@@ -346,15 +353,31 @@ fun MiniPlayerOverlay(
         clampCurrentOffset()
     }
 
-    val animatedOffsetX by animateFloatAsState(
-        targetValue = targetOffsetX,
-        animationSpec = if (isDraggingPosition || isResizing || reduceMotion) {
-            snap()
+    // X 轴用 Animatable 驱动：贴边时注入手势松手速度，快速甩动不再「慢半拍」。
+    val offsetXAnimatable = remember { Animatable(targetOffsetX) }
+    var pendingSnapVelocityX by remember { mutableFloatStateOf(0f) }
+    val dragVelocityTracker = remember { VelocityTracker() }
+    LaunchedEffect(
+        targetOffsetX,
+        isDraggingPosition,
+        isResizing,
+        isStashed,
+        reduceMotion
+    ) {
+        if (isDraggingPosition || isResizing || reduceMotion) {
+            offsetXAnimatable.snapTo(targetOffsetX)
+            pendingSnapVelocityX = 0f
         } else {
-            spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)
-        },
-        label = "offsetX"
-    )
+            val initialVelocity = pendingSnapVelocityX
+            pendingSnapVelocityX = 0f
+            offsetXAnimatable.animateTo(
+                targetValue = targetOffsetX,
+                animationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium),
+                initialVelocity = initialVelocity,
+            )
+        }
+    }
+    val animatedOffsetX = offsetXAnimatable.value
     val animatedOffsetY by animateFloatAsState(
         targetValue = targetOffsetY,
         animationSpec = if (isDraggingPosition || isResizing || reduceMotion) {
@@ -511,6 +534,7 @@ fun MiniPlayerOverlay(
                                         dragProgressStartPosition = currentPosition.coerceAtLeast(0L)
                                         showControls = true
                                         lastInteractionTime = System.currentTimeMillis()
+                                        dragVelocityTracker.resetTracking()
                                     },
                                     onDragEnd = {
                                         when (contentDragIntent) {
@@ -527,10 +551,12 @@ fun MiniPlayerOverlay(
                                                 isDraggingProgress = false
                                                 dragProgressDelta = 0f
                                                 dragProgressStartPosition = 0L
+                                                dragVelocityTracker.resetTracking()
                                                 lastInteractionTime = System.currentTimeMillis()
                                             }
                                             MiniPlayerContentDragIntent.MOVE -> {
                                                 isDraggingPosition = false
+                                                handOffDragVelocityToSnapAnimation()
                                                 snapMiniPlayerToNearestHorizontalEdge()
                                                 lastInteractionTime = System.currentTimeMillis()
                                             }
@@ -545,6 +571,7 @@ fun MiniPlayerOverlay(
                                         isDraggingPosition = false
                                         dragProgressDelta = 0f
                                         dragProgressStartPosition = 0L
+                                        dragVelocityTracker.resetTracking()
                                         lastInteractionTime = System.currentTimeMillis()
                                         contentDragIntent = MiniPlayerContentDragIntent.UNDECIDED
                                         contentDragTotalX = 0f
@@ -552,6 +579,7 @@ fun MiniPlayerOverlay(
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
+                                        dragVelocityTracker.addPosition(change.uptimeMillis, change.position)
                                         contentDragTotalX += dragAmount.x
                                         contentDragTotalY += dragAmount.y
                                         if (contentDragIntent == MiniPlayerContentDragIntent.UNDECIDED) {
@@ -616,18 +644,22 @@ fun MiniPlayerOverlay(
                                     isDraggingPosition = true
                                     showControls = true
                                     lastInteractionTime = System.currentTimeMillis()
+                                    dragVelocityTracker.resetTracking()
                                 },
                                 onDragEnd = {
                                     isDraggingPosition = false
+                                    handOffDragVelocityToSnapAnimation()
                                     snapMiniPlayerToNearestHorizontalEdge()
                                     lastInteractionTime = System.currentTimeMillis()
                                 },
                                 onDragCancel = {
                                     isDraggingPosition = false
+                                    dragVelocityTracker.resetTracking()
                                     lastInteractionTime = System.currentTimeMillis()
                                 },
                                 onDrag = { change, dragAmount ->
                                     change.consume()
+                                    dragVelocityTracker.addPosition(change.uptimeMillis, change.position)
                                     moveMiniPlayerBy(dragAmount.x, dragAmount.y)
                                 }
                             )
