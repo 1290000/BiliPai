@@ -426,14 +426,24 @@ internal fun MusicPlayerContent(
     // 沉浸模式：播放中静置数秒后控制元素自动减淡，任意点击恢复。
     var musicChromeVisible by remember(state.title) { mutableStateOf(true) }
     var chromeInteractionTick by remember { mutableIntStateOf(0) }
+    // 第二段沉浸：降透明静置后进一步真隐藏（顶栏胶囊/进度/音量/次操作/分段控件），
+    // 保留封面、歌词与播放三键；进度退化为 2dp 细线。任意点击回到第一段。
+    var musicChromeHidden by remember(state.title) { mutableStateOf(false) }
     val showMusicChrome = {
         musicChromeVisible = true
+        musicChromeHidden = false
         chromeInteractionTick += 1
     }
     LaunchedEffect(state.isPlaying, chromeInteractionTick, musicChromeVisible) {
         if (state.isPlaying && musicChromeVisible) {
             kotlinx.coroutines.delay(4000)
             musicChromeVisible = false
+        }
+    }
+    LaunchedEffect(state.isPlaying, chromeInteractionTick, musicChromeVisible, musicChromeHidden) {
+        if (state.isPlaying && !musicChromeVisible && !musicChromeHidden) {
+            kotlinx.coroutines.delay(4000)
+            musicChromeHidden = true
         }
     }
     val musicChromeAlpha by animateFloatAsState(
@@ -831,6 +841,8 @@ internal fun MusicPlayerContent(
                                     }
                                 },
                                 chromeVisible = musicChromeVisible,
+                                chromeHidden = musicChromeHidden,
+                                chromeAlpha = musicChromeAlpha,
                                 onChromeTap = { showMusicChrome() },
                                 titleCollapsed = musicTitleCollapsed,
                                 onToggleTitleCollapsed = { musicTitleCollapsed = !musicTitleCollapsed },
@@ -866,6 +878,19 @@ internal fun MusicPlayerContent(
                         }
                         }
                     }
+                    // 沉浸第二段隐藏分段控件；轻点任意处回到第一段恢复。
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !musicChromeHidden,
+                        enter = androidx.compose.animation.fadeIn(tween(300)) +
+                            androidx.compose.animation.slideInVertically(tween(300)) { it / 2 },
+                        exit = androidx.compose.animation.fadeOut(tween(300)) +
+                            androidx.compose.animation.slideOutVertically(tween(300)) { it / 2 },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                            .padding(vertical = 8.dp)
+                            .wrapContentWidth(Alignment.CenterHorizontally),
+                    ) {
                     BottomBarLiquidSegmentedControl(
                         items = resolveMusicPlayerPageTabs(),
                         selectedIndex = pagerState.currentPage,
@@ -876,11 +901,6 @@ internal fun MusicPlayerContent(
                             }
                         },
                         itemWidth = 84.dp,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding()
-                            .padding(vertical = 8.dp)
-                            .wrapContentWidth(Alignment.CenterHorizontally),
                         height = 48.dp,
                         indicatorHeight = 36.dp,
                         containerVerticalPadding = 6.dp,
@@ -900,6 +920,7 @@ internal fun MusicPlayerContent(
                         },
                         externalPagerMotionEffectsEnabled = true,
                     )
+                    }
                 }
             }
 
@@ -1338,7 +1359,9 @@ internal fun MusicPlayerContent(
                     {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.graphicsLayer { alpha = musicChromeAlpha }
+                            modifier = Modifier.graphicsLayer {
+                                alpha = if (musicChromeHidden) 0f else musicChromeAlpha
+                            }
                         ) {
                             if (onAudioQualitySelected != null) {
                                 GlassTextButton(
@@ -1864,6 +1887,10 @@ private fun PlayerPage(
     compactLandscape: Boolean = false,
     isQueueActive: Boolean = false,
     chromeVisible: Boolean = true,
+    /** 沉浸第二段：真隐藏进度交互/音量/次操作行，仅留细进度线与播放三键。 */
+    chromeHidden: Boolean = false,
+    /** 第一段降透明系数（标题/点赞行沿用）。 */
+    chromeAlpha: Float = 1f,
     onChromeTap: (() -> Unit)? = null,
     titleCollapsed: Boolean = false,
     onToggleTitleCollapsed: (() -> Unit)? = null,
@@ -1979,7 +2006,6 @@ private fun PlayerPage(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { alpha = if (chromeVisible) 1f else 0.28f }
                 .pointerInput(onChromeTap) {
                     if (onChromeTap == null) return@pointerInput
                     detectTapGestures { onChromeTap() }
@@ -1989,6 +2015,7 @@ private fun PlayerPage(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer { alpha = chromeAlpha }
                     .pointerInput(onToggleTitleCollapsed, titleCollapsed, chromeVisible) {
                         if (onToggleTitleCollapsed == null) return@pointerInput
                         var accumulatedDrag = 0f
@@ -2050,7 +2077,6 @@ private fun PlayerPage(
                         onClick = like,
                         modifier = Modifier
                             .size(48.dp)
-                            .graphicsLayer { alpha = if (chromeVisible) 1f else 0.28f }
                     ) {
                         AppIcon(
                             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
@@ -2061,14 +2087,23 @@ private fun PlayerPage(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            MusicProgress(
-                state = state,
-                onSeek = onSeek,
-                glassEnabled = chromeSpec.glassEnabled,
-                glassTintColor = glassTintColor,
-                isDarkEnvironment = isDarkEnvironment,
-                miuixBackdrop = miuixBackdrop,
-            )
+            if (chromeHidden) {
+                // 沉浸第二段：进度退化为不可交互细线，位置信息让位于内容。
+                // 复用歌词页的沉浸进度线，保持两页视觉一致。
+                LyricsImmersiveProgress(
+                    state = state,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            } else {
+                MusicProgress(
+                    state = state,
+                    onSeek = onSeek,
+                    glassEnabled = chromeSpec.glassEnabled,
+                    glassTintColor = glassTintColor,
+                    isDarkEnvironment = isDarkEnvironment,
+                    miuixBackdrop = miuixBackdrop,
+                )
+            }
             Spacer(Modifier.height(8.dp))
             PlaybackControls(
                 state = state,
@@ -2080,24 +2115,43 @@ private fun PlayerPage(
                 isDarkEnvironment = isDarkEnvironment,
                 glassTintColor = glassTintColor
             )
-            if (!compactLandscape) {
-                Spacer(Modifier.height(10.dp))
-                MusicVolumeSlider(
-                    glassTintColor = glassTintColor,
-                    isDarkEnvironment = isDarkEnvironment
-                )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !chromeHidden && !compactLandscape,
+                enter = androidx.compose.animation.fadeIn(tween(260)),
+                exit = androidx.compose.animation.fadeOut(tween(260)) +
+                    androidx.compose.animation.expandVertically(
+                        tween(260), alignment = Alignment.TopCenter
+                    ) + androidx.compose.animation.shrinkVertically(
+                        tween(260), alignment = Alignment.TopCenter
+                    ),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(Modifier.height(10.dp))
+                    MusicVolumeSlider(
+                        glassTintColor = glassTintColor,
+                        isDarkEnvironment = isDarkEnvironment
+                    )
+                }
             }
-            Spacer(Modifier.height(10.dp))
-            MusicSecondaryControls(
-                mode = state.playMode,
-                shuffleEnabled = state.shuffleEnabled,
-                showQueue = state.queueControls.showQueue || state.queue.isNotEmpty(),
-                onPlayModeChange = onPlayModeChange,
-                onShuffleEnabledChange = onShuffleEnabledChange,
-                onCommentsClick = onCommentsClick,
-                onQueueClick = onQueueClick,
-                isQueueActive = isQueueActive
-            )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !chromeHidden,
+                enter = androidx.compose.animation.fadeIn(tween(260)),
+                exit = androidx.compose.animation.fadeOut(tween(260)),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(Modifier.height(10.dp))
+                    MusicSecondaryControls(
+                        mode = state.playMode,
+                        shuffleEnabled = state.shuffleEnabled,
+                        showQueue = state.queueControls.showQueue || state.queue.isNotEmpty(),
+                        onPlayModeChange = onPlayModeChange,
+                        onShuffleEnabledChange = onShuffleEnabledChange,
+                        onCommentsClick = onCommentsClick,
+                        onQueueClick = onQueueClick,
+                        isQueueActive = isQueueActive
+                    )
+                }
+            }
         }
     }
 }
