@@ -93,6 +93,7 @@ import com.android.purebilibili.core.plugin.feed.FeedInline
 import com.android.purebilibili.core.plugin.feed.ParsedFeedItem
 import com.android.purebilibili.core.plugin.feed.FeedSource
 import com.android.purebilibili.core.plugin.feed.FeedReadingStore
+import com.android.purebilibili.core.plugin.feed.FeedConditionalStore
 import com.android.purebilibili.core.plugin.feed.SubscriptionFeedStore
 import com.android.purebilibili.core.plugin.feed.feedItemKey
 import com.android.purebilibili.core.plugin.feed.mergeCachedFeedItems
@@ -229,7 +230,7 @@ fun SubscriptionFeedPage(
         cachedBodies = cache.fullBodies
         val enabledIds = loadedSources.map { it.id }.toSet()
         items = mergeCachedFeedItems(cache.items, emptyList(), enabledIds)
-        val snapshot = loadFeedSources(loadedSources) { update ->
+        val snapshot = loadFeedSources(loadedSources, FeedConditionalStore.load(context)) { update ->
             val preserveOrder = listState.firstVisibleItemIndex > 0 ||
                 listState.firstVisibleItemScrollOffset > 0
             val merged = mergeCachedFeedItems(cache.items, update.items, enabledIds)
@@ -242,6 +243,10 @@ fun SubscriptionFeedPage(
         loadErrors = snapshot.errors
         runCatching { FeedReadingStore.saveItems(context, merged) }
             .onFailure { loadErrors = loadErrors + "本地缓存保存失败" }
+        if (snapshot.validators.isNotEmpty()) {
+            runCatching { FeedConditionalStore.update(context, snapshot.validators) }
+                .onFailure { loadErrors = loadErrors + "刷新状态保存失败" }
+        }
         loading = false
     }
 
