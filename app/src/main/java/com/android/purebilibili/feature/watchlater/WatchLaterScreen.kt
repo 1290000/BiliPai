@@ -1096,7 +1096,6 @@ fun WatchLaterScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = AppSpacingTokens.Medium),
-                        backdrop = watchLaterChromeBackdrop,
                     )
                 }
                 Spacer(modifier = Modifier.height(AppSpacingTokens.Small))

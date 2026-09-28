@@ -2,6 +2,7 @@
 package com.android.purebilibili.feature.home.components
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppHorizontalDivider
+import com.android.purebilibili.core.ui.components.AppSearchEntry
 
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.AppTopChromePolicy
@@ -524,11 +525,8 @@ internal fun resolveHomeTopSearchRowHorizontalPadding(
 }
 
 internal fun resolveHomeTopSearchPillHeight(
-    @Suppress("UNUSED_PARAMETER") chromePolicy: AppTopChromePolicy,
-): Dp {
-    // 两主题统一：与头像、设置按钮共用同一控件高度（36dp），不再跟随主题 primaryHeightDp。
-    return resolveHomeTopEdgeControlHeight()
-}
+    chromePolicy: AppTopChromePolicy,
+): Dp = chromePolicy.compactChromeSpec.primaryHeightDp.dp
 
 internal fun resolveHomeTopSearchContentHorizontalPadding(
     chromePolicy: AppTopChromePolicy,
@@ -1536,9 +1534,7 @@ fun HomeHeader(
         )
     }
     val edgeButtonShape = resolveHomeTopEdgeButtonShape(topChromePolicy)
-    val searchContainerShape = resolveHomeTopSearchContainerShape(topChromePolicy)
     val topActionIcons = resolveHomeTopActionIcons(semanticVisualPolicy.effectiveIconFamily)
-    val searchIcon = topActionIcons.search
     val topRightAction = homeSettings?.homeTopRightAction ?: HomeTopRightAction.SETTINGS
     val topRightActionIcon = if (topRightAction == HomeTopRightAction.INBOX) {
         topActionIcons.inbox
@@ -1589,9 +1585,6 @@ fun HomeHeader(
         isLiquidGlassEnabled = searchLiquidGlassEnabled,
         isProgressiveTopBlurEnabled = progressiveTopBlurEnabled,
     )
-    val isSearchGlassEnabled = searchChromeMaterialMode == TopTabMaterialMode.LIQUID_GLASS
-    val isSearchBlurEnabled = searchChromeMaterialMode != TopTabMaterialMode.PLAIN
-
     //  读取当前模糊强度以确定背景透明度
     val blurIntensity = currentUnifiedBlurIntensity()
     val backgroundAlpha = resolveHomeHeaderSurfaceAlpha(
@@ -1701,44 +1694,6 @@ fun HomeHeader(
             outlineVariantColor = outlineVariantColor
         )
     }
-    val rawSearchPillColors = tuneHomeTopGlassColors(
-        colors = rememberHomeGlassPillColors(
-            glassEnabled = isSearchGlassEnabled,
-            blurEnabled = isSearchBlurEnabled,
-            emphasized = true,
-            baseColor = AppSurfaceTokens.cardContainer()
-        ),
-        isLightMode = isLightMode,
-        emphasized = true
-    )
-    val searchPillColors = remember(
-        rawSearchPillColors,
-        isSearchGlassEnabled,
-        isSearchBlurEnabled,
-        blurIntensity,
-        usesNativeContainerTreatment,
-        usesTonalContainerTreatment,
-    ) {
-        val resolved = if (!isSearchGlassEnabled && isSearchBlurEnabled) {
-            resolveHomeTopBlurContainerColors(
-                colors = rawSearchPillColors,
-                surfaceColor = surfaceColor,
-                blurIntensity = blurIntensity
-            )
-        } else {
-            rawSearchPillColors
-        }
-        resolveHomeTopContainerColors(
-            usesNativeContainerTreatment = usesNativeContainerTreatment,
-            usesTonalContainerTreatment = usesTonalContainerTreatment,
-            emphasized = true,
-            blurEnabled = !isSearchGlassEnabled && isSearchBlurEnabled,
-            fallbackColors = resolved,
-            surfaceContainerColor = surfaceContainerColor,
-            surfaceContainerHighColor = surfaceContainerHighColor,
-            outlineVariantColor = outlineVariantColor
-        )
-    }
     val rawTabChromeColors = tuneHomeTopGlassColors(
         colors = rememberHomeGlassChromeColors(
             glassEnabled = effectiveTabMaterialMode == TopTabMaterialMode.LIQUID_GLASS,
@@ -1757,13 +1712,6 @@ fun HomeHeader(
         } else {
             rawTabChromeColors
         }
-    }
-    val searchPillStyle = remember(isSearchGlassEnabled, isSearchBlurEnabled) {
-        resolveHomeGlassPillStyle(
-            glassEnabled = isSearchGlassEnabled,
-            blurEnabled = isSearchBlurEnabled,
-            emphasized = true
-        )
     }
     val tabChromeStyle = remember(effectiveTabMaterialMode, enableTopTabSecondaryBlur) {
         resolveHomeGlassChromeStyle(
@@ -2597,199 +2545,16 @@ fun HomeHeader(
 
                             Spacer(modifier = Modifier.width(resolveHomeTopEdgeControlGap(topChromePolicy)))
 
-                            val isTablet =
-                                com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
-                            val stableSearchContentColor = if (usesNativeContainerTreatment) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else if (isLightMode) {
-                                topForegroundColor
-                            } else {
-                                OpticalContrastPalette.Highlight.copy(alpha = 0.96f)
-                            }
-                            val adaptiveSearchReadabilityEnabled = isSearchGlassEnabled &&
-                                liquidGlassTuning.readabilityMode ==
-                                com.android.purebilibili.core.store.LiquidGlassReadabilityMode.ADAPTIVE
-                            val adaptiveSearchReadabilityState =
-                                rememberLiquidGlassAdaptiveReadabilityState(
-                                    enabled = adaptiveSearchReadabilityEnabled,
-                                )
-                            val searchContentColor = rememberLiquidGlassAdaptiveContentColor(
-                                stableColor = stableSearchContentColor,
-                                state = adaptiveSearchReadabilityState,
-                                enabled = adaptiveSearchReadabilityEnabled,
-                            )
-                            Box(
+                            AppSearchEntry(
+                                onClick = {
+                                    haptic(HapticType.LIGHT)
+                                    onSearchClick()
+                                },
+                                placeholder = "搜索视频、UP主...",
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(resolveHomeTopSearchPillHeight(topChromePolicy))
-                                    .trackLiquidGlassAdaptiveReadability(
-                                        state = adaptiveSearchReadabilityState,
-                                        enabled = adaptiveSearchReadabilityEnabled,
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val searchPillContent: @Composable () -> Unit = {
-                                    HomeTopSearchPillContent(
-                                        searchIcon = searchIcon,
-                                        contentColor = searchContentColor,
-                                        textFontSize = if (usesNativeContainerTreatment) {
-                                            if (isTablet) {
-                                                MaterialTheme.typography.bodyMedium.fontSize
-                                            } else {
-                                                MaterialTheme.typography.labelMedium.fontSize
-                                            }
-                                        } else {
-                                            if (isTablet) {
-                                                MaterialTheme.typography.bodyLarge.fontSize
-                                            } else {
-                                                MaterialTheme.typography.bodyMedium.fontSize
-                                            }
-                                        },
-                                        iconTextGap = resolveHomeTopSearchIconTextGap(topChromePolicy)
-                                    )
-                                }
-                                val searchClickInteractionSource = remember { MutableInteractionSource() }
-                                val defaultSearchSurfaceColor = if (useUnifiedTopPanel) {
-                                    resolveHomeTopUnifiedSearchContainerColor(
-                                        isLightMode = isLightMode,
-                                        renderMode = searchChromeRenderMode
-                                    )
-                                } else {
-                                    searchPillColors.containerColor
-                                }
-                                val skinSearchSurfaceColor = resolveHomeSkinSearchSurfaceColor(
-                                    defaultSurfaceColor = defaultSearchSurfaceColor,
-                                    skinTint = uiSkinDecoration?.searchCapsuleTint,
-                                    useUnifiedTopPanel = useUnifiedTopPanel
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .widthIn(max = AppSpacingTokens.TripleExtraLarge * 13 + AppSpacingTokens.Large)
-                                        .fillMaxWidth()
-                                        .height(resolveHomeTopSearchPillHeight(topChromePolicy))
-                                        .then(
-                                            // drawBackdrop owns the glass shape. Pre-clipping the
-                                            // BiliPai lens cuts its sampled rim into a bright line.
-                                            if (useBottomBarMatchedTopControls) {
-                                                Modifier
-                                            } else {
-                                                Modifier.clip(searchContainerShape)
-                                            }
-                                        )
-                                        .then(
-                                            if (useBottomBarMatchedTopControls) {
-                                                Modifier.homeTopBottomBarMatchedSurface(
-                                                    renderMode = searchChromeRenderMode,
-                                                    shape = searchContainerShape,
-                                                    hazeState = hazeState,
-                                                    miuixBackdrop = miuixBackdrop,
-                                                    liquidGlassStyle = liquidStyle,
-                                                    liquidGlassTuning = liquidGlassTuning,
-                                                    liquidGlassPreset = bottomBarLiquidGlassPreset,
-                                                    motionTier = motionTier,
-                                                    isTransitionRunning = topChromeMotionPolicy.isTransitionRunning,
-                                                    forceLowBlurBudget = forceLowBlurBudget,
-                                                    // Search and the top dock intentionally share the same
-                                                    // full liquid-glass rendering path.
-                                                    drawShellLens = true,
-                                                    shellLensIntensity = resolveFloatingDockGeometryScale(
-                                                        resolveHomeTopSearchPillHeight(topChromePolicy).value
-                                                    ),
-                                                    isScrolling = topChromeMotionPolicy.isScrolling
-                                                )
-                                            } else {
-                                                Modifier.homeTopChromeSurface(
-                                                    renderMode = searchChromeRenderMode,
-                                                    shape = searchContainerShape,
-                                                    surfaceColor = skinSearchSurfaceColor,
-                                                    hazeState = hazeState,
-
-                                                    miuixBackdrop = miuixBackdrop,
-
-                                                    liquidStyle = liquidStyle,
-                                                    liquidGlassTuning = liquidGlassTuning,
-                                                    liquidGlassPreset = bottomBarLiquidGlassPreset,
-                                                    motionTier = motionTier,
-                                                    isScrolling = topChromeMotionPolicy.isScrolling,
-                                                    isTransitionRunning = topChromeMotionPolicy.isTransitionRunning,
-                                                    forceLowBlurBudget = forceLowBlurBudget,
-                                                    preferFlatGlass = resolveHomeTopWideChromePreferFlatGlass(
-                                                        searchChromeRenderMode
-                                                    ),
-                                                    darkThemeWhiteOverlayMultiplier = resolveHomeTopSearchDarkWhiteOverlayMultiplier(
-                                                        isLightMode = isLightMode
-                                                    )
-                                                )
-                                            }
-                                        )
-                                        .border(
-                                            width = AppSpacingTokens.Micro * 0.4f,
-                                            color = if (useBottomBarMatchedTopControls) {
-                                                Color.Transparent
-                                            } else if (useUnifiedTopPanel) {
-                                                resolveHomeTopUnifiedSearchBorderColor(
-                                                    isLightMode = isLightMode,
-                                                    renderMode = searchChromeRenderMode
-                                                )
-                                            } else {
-                                                searchPillColors.borderColor
-                                            },
-                                            shape = searchContainerShape
-                                        )
-                                        .clickable(
-                                            interactionSource = searchClickInteractionSource,
-                                            indication = null
-                                        ) {
-                                            haptic(HapticType.LIGHT)
-                                            onSearchClick()
-                                        }
-                                        .padding(horizontal = resolveHomeTopSearchContentHorizontalPadding(topChromePolicy)),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    uiSkinDecoration?.searchCapsuleImagePath
-                                        ?.takeIf { it.isNotBlank() }
-                                        ?.let { searchCapsuleImagePath ->
-                                            AsyncImage(
-                                                model = File(searchCapsuleImagePath),
-                                                contentDescription = null,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .matchParentSize()
-                                                    .clip(searchContainerShape)
-                                                    .alpha(0.52f)
-                                                    .clearAndSetSemantics {}
-                                            )
-                                        }
-                                    if (
-                                        shouldDrawHomeTopSearchLegacyHighlight(
-                                            presentation = topChromePolicy.tabPresentation,
-                                            useUnifiedTopPanel = useUnifiedTopPanel,
-                                            renderMode = searchChromeRenderMode,
-                                            refractionOverlayAlpha = 0f
-                                        )
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(AppSpacingTokens.Medium + AppSpacingTokens.Micro)
-                                                .align(Alignment.TopCenter)
-                                                .background(
-                                                    Brush.verticalGradient(
-                                                        colors = listOf(
-                                                            resolveHomeTopChromeHighlightOverlayColor(
-                                                                baseColor = searchPillColors.highlightColor,
-                                                                renderMode = topChromeRenderMode,
-                                                                softenWideChrome = true
-                                                            ),
-                                                            Color.Transparent
-                                                        )
-                                                    )
-                                            )
-                                        )
-                                    }
-                                    searchPillContent()
-                                }
-                            }
+                                    .widthIn(max = AppSpacingTokens.TripleExtraLarge * 13 + AppSpacingTokens.Large),
+                            )
 
                             Spacer(modifier = Modifier.width(resolveHomeTopEdgeControlGap(topChromePolicy)))
 
