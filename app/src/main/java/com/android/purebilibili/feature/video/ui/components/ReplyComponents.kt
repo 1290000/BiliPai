@@ -14,6 +14,7 @@ import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
@@ -1368,7 +1369,7 @@ fun ReplyItemView(
     val collapseHatedBody = isHated && !hatedBodyExpanded
     var hatePromptHandled by remember(item.rpid) { mutableStateOf(false) }
     // 与仓库既有回弹手感一致（bouncyClickable 等使用的同组弹簧参数）
-    val hateCollapseSpring = spring(
+    val hateCollapseSpring: SpringSpec<Float> = spring(
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMedium
     )
