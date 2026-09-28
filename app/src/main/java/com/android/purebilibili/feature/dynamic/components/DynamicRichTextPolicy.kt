@@ -269,7 +269,11 @@ internal fun mergeDynamicRichTextMetadataIntoText(
 
     val result = mutableListOf<RichTextNode>()
     var cursor = 0
-    actionableNodes.forEach { node ->
+    // Detail nodes and preview metadata can be appended in different orders. Follow the
+    // actual paragraph order so a later mention cannot advance past an earlier one.
+    actionableNodes.sortedBy { node ->
+        findDynamicRichTextNodeMatch(text, node, 0)?.start ?: Int.MAX_VALUE
+    }.forEach { node ->
         val match = findDynamicRichTextNodeMatch(text, node, cursor) ?: return@forEach
         val token = match.token
         val start = match.start

@@ -685,7 +685,9 @@ data class SpaceDynamicAuthor(
     val face: String = "",
     val pub_time: String = "",
     val pub_ts: Long = 0,
-    val pub_location_text: String = ""
+    val pub_location_text: String = "",
+    val official_verify: DynamicOfficialVerify? = null,
+    val vip: DynamicVipInfo? = null
 )
 
 @kotlinx.serialization.Serializable
