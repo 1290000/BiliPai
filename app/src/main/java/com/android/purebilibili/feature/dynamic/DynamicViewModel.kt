@@ -1605,6 +1605,58 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun hateComment(rpid: Long, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
+        if (rpid <= 0L) return
+        val current = _comments.value.firstNotNullOfOrNull { reply ->
+            findDynamicComment(reply, rpid)
+        } ?: _subReplyState.value.items.firstOrNull { it.rpid == rpid }
+            ?: _subReplyState.value.rootReply?.takeIf { it.rpid == rpid }
+            ?: return
+        val target = _selectedCommentTarget.value
+        if (target == null) {
+            onResult(false, "无法确定评论参数")
+            return
+        }
+        val toHated = !isDynamicCommentHated(current)
+        _comments.value = applyDynamicCommentHateInList(_comments.value, rpid, toHated)
+        val subState = _subReplyState.value
+        _subReplyState.value = subState.copy(
+            rootReply = subState.rootReply?.let { root ->
+                if (root.rpid == rpid) applyDynamicCommentHate(root, toHated) else root
+            },
+            items = applyDynamicCommentHateInList(subState.items, rpid, toHated).toImmutableList(),
+        )
+        viewModelScope.launch {
+            CommentRepository.hateCommentForSubject(
+                oid = target.oid,
+                type = target.type,
+                rpid = rpid,
+                hate = toHated,
+            ).fold(
+                onSuccess = { onResult(true, if (toHated) "点踩成功" else "已取消点踩") },
+                onFailure = { error ->
+                    _comments.value = replaceDynamicCommentInList(_comments.value, current)
+                    val rollback = _subReplyState.value
+                    _subReplyState.value = rollback.copy(
+                        rootReply = rollback.rootReply?.let { root ->
+                            if (root.rpid == rpid) current else root
+                        },
+                        items = replaceDynamicCommentInList(rollback.items, current).toImmutableList(),
+                    )
+                    onResult(false, error.message ?: "点踩失败")
+                },
+            )
+        }
+    }
+
+    private fun findDynamicComment(
+        reply: com.android.purebilibili.data.model.response.ReplyItem,
+        rpid: Long,
+    ): com.android.purebilibili.data.model.response.ReplyItem? {
+        if (reply.rpid == rpid) return reply
+        return reply.replies.orEmpty().firstNotNullOfOrNull { findDynamicComment(it, rpid) }
+    }
+
     fun deleteDynamicComment(rpid: Long, onResult: (Boolean, String) -> Unit) {
         val target = _selectedCommentTarget.value
         if (target == null || rpid <= 0L) {

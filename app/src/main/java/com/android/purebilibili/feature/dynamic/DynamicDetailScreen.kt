@@ -434,6 +434,11 @@ fun DynamicDetailScreen(
                         onViewReplies = { reply -> interactionViewModel.openSubReply(reply) },
                         onReply = { reply -> interactionViewModel.startCommentReply(reply) },
                         onLike = { reply -> interactionViewModel.likeComment(reply.rpid) },
+                        onHate = { reply ->
+                            interactionViewModel.hateComment(reply.rpid) { _, message ->
+                                android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         dynamicAuthorMid = state.item.modules.module_author?.mid ?: 0L,
                         currentUserMid = com.android.purebilibili.core.store.TokenManager.midCache,
                         onDelete = { reply ->
@@ -676,6 +681,11 @@ fun DynamicDetailScreen(
                         interactionViewModel.startCommentReply(reply)
                     },
                     onCommentLike = { rpid -> interactionViewModel.likeComment(rpid) },
+                    onCommentHate = { rpid ->
+                        interactionViewModel.hateComment(rpid) { _, message ->
+                            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     currentMid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L,
                     onDeleteComment = { rpid ->
                         interactionViewModel.deleteDynamicComment(rpid) { _, message ->

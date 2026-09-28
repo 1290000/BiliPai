@@ -176,6 +176,11 @@ fun DynamicCommentOverlayHost(
             onViewReplies = { reply -> viewModel.openSubReply(reply) },
             onReply = { reply -> viewModel.startCommentReply(reply) },
             onLike = { reply -> viewModel.likeComment(reply.rpid) },
+            onHate = { reply ->
+                viewModel.hateComment(reply.rpid) { _, message ->
+                    if (!inspectionMode) android.widget.Toast.makeText(toastContext, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            },
             dynamicAuthorMid = dynamicItem?.modules?.module_author?.mid ?: 0L,
             currentUserMid = TokenManager.midCache,
             onDelete = { reply ->
@@ -202,6 +207,11 @@ fun DynamicCommentOverlayHost(
             onLoadMoreSubReplies = { viewModel.loadMoreSubReplies() },
             onSubReplySortModeChange = { viewModel.setSubReplySortMode(it) },
             onThreadCommentLike = { rpid -> viewModel.likeComment(rpid) },
+            onThreadCommentHate = { rpid ->
+                viewModel.hateComment(rpid) { _, message ->
+                    if (!inspectionMode) android.widget.Toast.makeText(toastContext, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            },
             onThreadCommentDelete = { rpid ->
                 viewModel.deleteDynamicComment(rpid) { _, message ->
                     if (!inspectionMode) {
@@ -237,6 +247,7 @@ fun DynamicCommentSheet(
     onViewReplies: (ReplyItem) -> Unit = {},
     onReply: (ReplyItem) -> Unit = {},
     onLike: (ReplyItem) -> Unit = {},
+    onHate: (ReplyItem) -> Unit = {},
     dynamicAuthorMid: Long = 0L,
     currentUserMid: Long? = null,
     onDelete: (ReplyItem) -> Unit = {},
@@ -251,6 +262,7 @@ fun DynamicCommentSheet(
     onLoadMoreSubReplies: () -> Unit = {},
     onSubReplySortModeChange: (SubReplySortMode) -> Unit = {},
     onThreadCommentLike: (Long) -> Unit = {},
+    onThreadCommentHate: (Long) -> Unit = {},
     onThreadCommentDelete: (Long) -> Unit = {},
     onThreadCommentReport: (Long, Int) -> Unit = { _, _ -> },
 ) {
@@ -533,6 +545,8 @@ fun DynamicCommentSheet(
                                 onReplyClick = { onReply(reply) },
                                 onLikeClick = { onLike(reply) },
                                 isLiked = isDynamicCommentLiked(reply),
+                                onHateClick = { onHate(reply) },
+                                isHated = reply.action == 2,
                                 onDeleteClick = { onDelete(reply) },
                                 onReportClick = { reason -> onReport(reply, reason) },
                                 canToggleTop = dynamicAuthorMid > 0L,
@@ -610,6 +624,7 @@ fun DynamicCommentSheet(
                                 currentMid = currentUserMid ?: 0L,
                                 onDeleteComment = onThreadCommentDelete,
                                 onCommentLike = onThreadCommentLike,
+                                onCommentHate = onThreadCommentHate,
                                 onReportComment = onThreadCommentReport,
                                 likedComments = likedThreadComments,
                                 onAvatarClick = { mid -> mid.toLongOrNull()?.let(onUserClick) },
@@ -754,6 +769,7 @@ fun LazyListScope.dynamicInlineCommentItems(
     onViewReplies: (ReplyItem) -> Unit,
     onReply: (ReplyItem) -> Unit = {},
     onLike: (ReplyItem) -> Unit = {},
+    onHate: (ReplyItem) -> Unit = {},
     dynamicAuthorMid: Long = 0L,
     currentUserMid: Long? = null,
     onDelete: (ReplyItem) -> Unit = {},
@@ -789,6 +805,8 @@ fun LazyListScope.dynamicInlineCommentItems(
                 onReplyClick = { onReply(reply) },
                 onLikeClick = { onLike(reply) },
                 isLiked = isDynamicCommentLiked(reply),
+                onHateClick = { onHate(reply) },
+                isHated = reply.action == 2,
                 onDeleteClick = { onDelete(reply) },
                 onReportClick = { reason -> onReport(reply, reason) },
                 canToggleTop = dynamicAuthorMid > 0L,
