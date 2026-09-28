@@ -3491,7 +3491,7 @@ fun AppNavigation(
                                 }
                             )
                         BiliPaiNavEntryContentRole.INBOX ->
-                            com.android.purebilibili.feature.message.InboxScreen(
+                            com.android.purebilibili.feature.message.MessageCenterScreen(
                                 onBack = { performSystemBackAction() },
                                 onTopItemClick = { destination ->
                                     when (destination) {
@@ -3505,9 +3505,13 @@ fun AppNavigation(
                                             pushNavigation3Key(BiliPaiNavKey.SystemNotice)
                                     }
                                 },
-                                onSessionClick = { talkerId, sessionType, userName ->
+                                onOpenSessionFullScreen = { talkerId, sessionType, userName ->
                                     pushNavigation3Key(BiliPaiNavKey.Chat(talkerId, sessionType, userName))
-                                }
+                                },
+                                onNavigateToVideo = { bvid ->
+                                    navigateToVideoInNavigation3(bvid, 0L, "")
+                                },
+                                onOpenBilibiliLink = ::openBilibiliLinkInNavigation3
                             )
                         BiliPaiNavEntryContentRole.REPLY_ME ->
                             com.android.purebilibili.feature.message.feed.ReplyMeScreen(
