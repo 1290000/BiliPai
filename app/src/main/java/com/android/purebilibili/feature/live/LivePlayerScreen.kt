@@ -386,10 +386,10 @@ fun LivePlayerScreen(
     val showChatToggle = remember(liveLayoutMode) {
         shouldShowLiveChatToggle(liveLayoutMode)
     }
-    val showSplitChatPanel = remember(liveLayoutMode) {
+    val showSplitChatPanel = remember(liveLayoutMode, isInteractionPanelVisible) {
         shouldShowLiveSplitChatPanel(
             layoutMode = liveLayoutMode,
-            isInteractionPanelVisible = true
+            isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
     val splitChatPanelWidthDp = remember(configuration.screenWidthDp) {

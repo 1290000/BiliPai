@@ -115,9 +115,10 @@ fun resolveLiveRoomLayoutMode(
 fun shouldShowLiveChatToggle(
     layoutMode: LiveRoomLayoutMode
 ): Boolean {
-    // LandscapeSplit keeps the desktop-style right chat column always on.
+    // LandscapeSplit 的聊天列改为跟随用户开关，需提供切换按钮。
     return layoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay ||
-        layoutMode == LiveRoomLayoutMode.LandscapeOverlay
+        layoutMode == LiveRoomLayoutMode.LandscapeOverlay ||
+        layoutMode == LiveRoomLayoutMode.LandscapeSplit
 }
 
 fun defaultLiveInteractionPanelVisible(): Boolean = false
