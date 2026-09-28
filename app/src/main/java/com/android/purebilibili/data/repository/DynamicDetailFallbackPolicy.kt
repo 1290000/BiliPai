@@ -323,7 +323,9 @@ internal fun mergeDynamicDetailRichTextNodes(
 private fun containsDynamicRichTextMetadata(node: RichTextNode): Boolean {
     val type = node.type.removePrefix("RICH_TEXT_NODE_TYPE_")
     return when {
-        type.equals("AT", ignoreCase = true) -> node.rid?.toLongOrNull()?.let { it > 0L } == true
+        // The preview can highlight AT nodes without rid; space feeds may provide only
+        // jump_url, and a missing user target still has a visible mention style.
+        type.equals("AT", ignoreCase = true) -> node.text.isNotBlank() || node.orig_text.isNotBlank()
         type.equals("EMOJI", ignoreCase = true) -> node.emoji?.let { emoji ->
             emoji.icon_url.isNotBlank() || emoji.webp_url.isNotBlank() || emoji.gif_url.isNotBlank()
         } == true
