@@ -2351,9 +2351,7 @@ fun AppNavigation(
                                     pushNavigation3Route(ScreenRoutes.Category.createRoute(tid, name))
                                 },
                                 onFavoriteClick = { pushNavigation3Route(ScreenRoutes.Favorite.route) },
-                                onLikedVideosClick = { upMid, upName ->
-                                    pushNavigation3Route(ScreenRoutes.LikedVideos.createRoute(upMid, upName))
-                                },
+                                onLikedVideosClick = { pushNavigation3Route(ScreenRoutes.LikedVideos.route) },
                                 onLiveListClick = { pushNavigation3Route(ScreenRoutes.LiveList.route) },
                                 onLiveSearchClick = { pushNavigation3Key(BiliPaiNavKey.LiveSearch) },
                                 onLiveAreaClick = { pushNavigation3Key(BiliPaiNavKey.LiveArea) },
