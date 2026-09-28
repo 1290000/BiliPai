@@ -621,13 +621,9 @@ class ReplyComponentsPolicyTest {
     }
 
     @Test
-    fun `shouldEnableRichCommentSelection enables in-place selection mode`() {
-        assertTrue(
-            shouldEnableRichCommentSelection(
-                hasRenderableEmotes = true,
-                hasInteractiveAnnotations = true
-            )
-        )
+    fun `shouldEnableRichCommentSelection skips selection container when links need taps`() {
+        // SelectionContainer 在存在选区时会消费点击清除选区，吞掉 @/链接点击；
+        // 有交互注解时必须关闭划选容器，复制走长按操作面板。
         assertTrue(
             shouldEnableRichCommentSelection(
                 hasRenderableEmotes = true,
@@ -637,13 +633,19 @@ class ReplyComponentsPolicyTest {
         assertTrue(
             shouldEnableRichCommentSelection(
                 hasRenderableEmotes = false,
+                hasInteractiveAnnotations = false
+            )
+        )
+        assertTrue(
+            !shouldEnableRichCommentSelection(
+                hasRenderableEmotes = true,
                 hasInteractiveAnnotations = true
             )
         )
         assertTrue(
-            shouldEnableRichCommentSelection(
+            !shouldEnableRichCommentSelection(
                 hasRenderableEmotes = false,
-                hasInteractiveAnnotations = false
+                hasInteractiveAnnotations = true
             )
         )
     }

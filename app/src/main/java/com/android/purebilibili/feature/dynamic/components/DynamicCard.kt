@@ -68,7 +68,7 @@ import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.core.util.BilibiliNavigationTarget
 import com.android.purebilibili.core.util.BilibiliNavigationTargetParser
-import androidx.compose.foundation.text.selection.SelectionContainer
+
 import com.android.purebilibili.core.ui.common.TextSelectionBottomSheet
 import com.android.purebilibili.core.ui.common.TextSelectionPolicy
 import com.android.purebilibili.core.ui.common.detectTapWithSelectionFriendly
@@ -2278,8 +2278,9 @@ fun RichTextContent(
     var showTextSelectionSheet by remember(copyText) { mutableStateOf(false) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-    SelectionContainer {
-        AppText(
+    // 动态正文始终带可交互注解（@/链接/话题/投票）：SelectionContainer 会在存在
+    // 选区时消费后续点击清除选区，吞掉 @/链接点击。复制走长按操作面板。
+    AppText(
             text = annotatedText,
             inlineContent = inlineContent,
             fontSize = fontSize,
@@ -2495,7 +2496,6 @@ fun RichTextContent(
                 }
             }
         )
-    }
 
     if (showTextSelectionSheet) {
         TextSelectionBottomSheet(

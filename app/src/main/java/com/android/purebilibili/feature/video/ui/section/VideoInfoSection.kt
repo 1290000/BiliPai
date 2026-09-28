@@ -741,8 +741,20 @@ fun VideoTitleWithDesc(
                 } else {
                     Modifier
                 }
-                // [新增] 使用 SelectionContainer 支持滑动复制
-                SelectionContainer {
+                // 有链接注解时关闭 SelectionContainer：存在选区时它会消费点击清除
+                // 选区，吞掉链接点击；划选复制仅在无链接的纯文本简介上开启。
+                if (onDescriptionUrlClick == null) {
+                    SelectionContainer {
+                        AppText(
+                            text = descriptionText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            onTextLayout = { descriptionTextLayout = it },
+                            modifier = (if (animateLayout) Modifier.animateContentSize() else Modifier)
+                                .then(descriptionModifier)
+                        )
+                    }
+                } else {
                     AppText(
                         text = descriptionText,
                         style = MaterialTheme.typography.bodySmall,

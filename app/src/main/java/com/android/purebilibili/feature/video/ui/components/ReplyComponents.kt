@@ -294,10 +294,17 @@ internal fun collectRenderableEmoteKeys(
         .toSet()
 }
 
+/**
+ * 是否挂载 SelectionContainer。
+ *
+ * 有可交互注解（@/链接/话题/投票/时间戳）时必须关闭划选：SelectionContainer
+ * 在存在选区（长按复制后）会消费后续点击来清除选区，把注解点击静默吞掉；
+ * 长按复制走条目级操作面板，不依赖划选容器。
+ */
 internal fun shouldEnableRichCommentSelection(
     hasRenderableEmotes: Boolean = false,
     hasInteractiveAnnotations: Boolean = false
-): Boolean = true
+): Boolean = !hasInteractiveAnnotations
 
 // 纯 Text 标签渲染成本低；滚动/播放期间保持稳定显示，对齐底栏 dragFloor 不因 motion 切换可见性。
 @Suppress("UNUSED_PARAMETER")
@@ -2171,8 +2178,7 @@ fun RichCommentText(
 
     val content: @Composable () -> Unit = {
         //  使用 Text + pointerInput 实现带表情的可点击文本
-        var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-        val textModifier = if (hasTapHandler) {
+        var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }        val textModifier = if (hasTapHandler) {
             Modifier.pointerInput(annotatedString, text, onPlainTextClick) {
                 detectTapWithSelectionFriendly { offset ->
                     textLayoutResult?.let { layoutResult ->
@@ -2246,7 +2252,11 @@ fun RichCommentText(
         )
     }
 
-    SelectionContainer {
+    if (selectionEnabled) {
+        SelectionContainer {
+            content()
+        }
+    } else {
         content()
     }
 
