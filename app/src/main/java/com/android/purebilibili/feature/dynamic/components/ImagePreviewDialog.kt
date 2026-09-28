@@ -543,9 +543,11 @@ private fun ImagePreviewOverlayContent(
             )
             
             //  计算容器位置和大小
-            // 如果切走了或者没有源矩形，则全屏显示（仅淡入淡出）
-            // 有缩略图源矩形时始终做尺寸落位，保证返回大小匹配预览格。
-            val shouldUseRectAnim = sourceRect != null
+            // 只有当前页仍是最初点击的图片、且画廊停稳时，来源矩形才代表当前图片。
+            // 切到其他页或正滑动时关闭，改用淡出回退，避免把错图飞回原缩略图。
+            val shouldUseRectAnim = sourceRect != null &&
+                pagerState.currentPage == initialIndex &&
+                !pagerState.isScrollInProgress
             val transitionFrame = resolveImagePreviewTransitionFrame(
                 rawProgress = rawProgress,
                 hasSourceRect = shouldUseRectAnim,
