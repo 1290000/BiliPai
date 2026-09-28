@@ -84,7 +84,13 @@ fun MiniPlayerOverlay(
     miniPlayerManager: MiniPlayerManager,
     onExpandClick: () -> Unit,
     onPictureInPictureClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * 系统 PIP 期间保持本 overlay 挂载但渲染空占位：视频 surface 让位给专用
+     * PIP 渲染面，同时 AnimatedVisibility 不经历 exit/enter，退出 PIP 时
+     * 迷你播放器不再重放飞入动画。
+     */
+    suppressContentForPip: Boolean = false,
 ) {
     val clearIcon = rememberAppClearIcon()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -425,7 +431,7 @@ fun MiniPlayerOverlay(
         exit = exitTransition,
             modifier = modifier.zIndex(100f)
     ) {
-        if (isStashed) {
+        if (isStashed && !suppressContentForPip) {
             // [新增] 贴边隐藏的小胶囊视图
             StashedMiniPlayerView(
                 modifier = Modifier
@@ -454,6 +460,9 @@ fun MiniPlayerOverlay(
                     )
                 }
             )
+        } else if (suppressContentForPip) {
+            // PIP 占位：保持组合与可见状态，不渲染视频 surface 和控件。
+            Box(modifier = Modifier.fillMaxSize())
         } else {
             // 正常播放器视图
             val miniPlayerCornerRadius = shellVisual.cardCornerRadiusDp.dp

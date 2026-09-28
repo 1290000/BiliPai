@@ -1723,10 +1723,14 @@ open class MainActivity : AppCompatActivity() {
                             )
                         }
                     }
-                    //  小窗播放器覆盖层 (非 PiP 模式下显示)
-                    if (playbackOverlayState.showMiniPlayerOverlay) {
+                    //  小窗播放器覆盖层 (非 PiP 模式下显示；PIP 期间保持挂载但内容
+                    //  为空占位，避免退出 PIP 时重放飞入动画)
+                    if (playbackOverlayState.showMiniPlayerOverlay ||
+                        playbackOverlayState.showDedicatedPipPlayer
+                    ) {
                         MiniPlayerOverlay(
                             miniPlayerManager = miniPlayerManager,
+                            suppressContentForPip = playbackOverlayState.showDedicatedPipPlayer,
                             onPictureInPictureClick = if (
                                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                                 miniPlayerManager.shouldEnterPip()
