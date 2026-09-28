@@ -1332,6 +1332,13 @@ private fun SpaceContent(
         }
     }
 
+    // 吸顶 Tab 行在窗口根坐标系中的底边，用于把投稿悬浮工具条 dock 在它正下方
+    // （推算 chromeTopInset+高度会双算/漏算 chrome，导致悬浮条压到封面上）。
+    // 声明须在根 Box 之前：其 onGloballyPositioned 回调要写入这些状态。
+    var pinnedTabsRootBottomPx by remember { mutableStateOf(0f) }
+    // 网格容器在根坐标系中的顶边（悬浮条的父容器），用于换算相对 padding。
+    var gridContainerRootTopPx by remember { mutableStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1340,11 +1347,6 @@ private fun SpaceContent(
             .onGloballyPositioned { gridContainerRootTopPx = it.boundsInRoot().top }
     ) {
         val density = LocalDensity.current
-        // 吸顶 Tab 行在窗口根坐标系中的底边，用于把投稿悬浮工具条 dock 在它正下方
-        // （推算 chromeTopInset+高度会双算/漏算 chrome，导致悬浮条压到封面上）。
-        var pinnedTabsRootBottomPx by remember { mutableStateOf(0f) }
-        // 网格容器在根坐标系中的顶边（悬浮条的父容器），用于换算相对 padding。
-        var gridContainerRootTopPx by remember { mutableStateOf(0f) }
         // [重构] 折叠进度：header 是 index 0，滚动偏移驱动 header 内容上移淡出（视差折叠）。
         // 折叠范围用 dp 换算，避免固定像素在不同 density 下曲线不一致
         val headerCollapseRangePx = with(density) { 320.dp.toPx() }
