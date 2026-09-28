@@ -1034,6 +1034,9 @@ fun SearchScreen(
         globalWallpaperVisible = globalWallpaperVisible,
         useHeaderBlur = shouldUseSearchTopBarBlur
     )
+    val searchChromeSurface = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
+        AppSurfaceTokens.groupedListContainer()
+    )
     val emptyStateCopy = remember(state.emptyStateReason, state.searchType) {
         if (state.emptyStateReason == SearchEmptyStateReason.NONE) {
             null
@@ -1153,12 +1156,11 @@ fun SearchScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .globalWallpaperAwareBackground()
                 .then(
                     if (searchUsesSolidChrome) {
-                        Modifier.background(AppSurfaceTokens.groupedListContainer())
+                        Modifier.background(searchChromeSurface)
                     } else {
-                        Modifier
+                        Modifier.globalWallpaperAwareBackground()
                     }
                 )
                 .padding(padding)
@@ -1190,9 +1192,6 @@ fun SearchScreen(
                     containerColor = Color.Transparent,
                     contentWindowInsets = WindowInsets(0, 0, 0, 0),
                     topBar = {
-                        val searchChromeSurface = com.android.purebilibili.core.ui.globalWallpaperAwareChromeColor(
-                            AppSurfaceTokens.groupedListContainer()
-                        )
                         BiliPaiImmersiveTopBar(
                             backdrop = searchChromeBackdrop,
                             enabled = immersiveSearchChrome,
@@ -1423,7 +1422,6 @@ fun SearchScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(searchChromeSource?.modifier ?: Modifier)
-                        .globalWallpaperAwareBackground()
                                 .verticalPriorityHorizontalPagerSwipe(
                                     state = searchPagerState,
                                     enabled = true,
