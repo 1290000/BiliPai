@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.video.ui.components
 
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.getLinkAnnotations
 androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.android.purebilibili.data.model.response.ReplyMember

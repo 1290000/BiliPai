@@ -1,6 +1,7 @@
 package com.android.purebilibili.feature.dynamic.components
 
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.getLinkAnnotations
 androidx.compose.ui.graphics.Color
 import com.android.purebilibili.data.model.response.DynamicDesc
 import com.android.purebilibili.data.model.response.RichTextNode
