@@ -37,7 +37,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.android.purebilibili.core.ui.AppShapes
@@ -154,58 +153,57 @@ fun <T> AppSingleChoicePreference(
             },
             iconTint = iconTint,
             showChevron = enabled,
-        )
-        if (useWindowMenu) {
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-                // 锚点 Box 是整行满宽；默认 start 对齐会让菜单贴窗口边缘，
-                // 与行内容（16dp 起）脱节。偏移到行文字起始处，符合 M3 菜单
-                // 与锚点内容对齐的预期。
-                offset = DpOffset(
-                    rememberAdaptiveListRowVisualSpec().insideHorizontalPaddingDp.dp,
-                    0.dp,
-                ),
-            ) {
-                options.forEach { option ->
-                    val selected = option.value == selectedValue
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(
-                                    text = option.label,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                                option.description?.let { description ->
-                                    Text(
-                                        text = description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        },
-                        leadingIcon = if (selected) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            if (shouldDispatchAppChoiceSelection(selectedValue, option.value)) {
-                                onValueChange(option.value)
-                            }
-                        },
-                    )
+            // 跟随弹出的菜单锚定在行尾部（值区域）：点击的是行尾的当前值，
+            // 菜单在其下方展开，符合 M3「菜单锚定触发元素」的规范。
+            trailingContent = if (useWindowMenu) {
+                {
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        options.forEach { option ->
+                            val selected = option.value == selectedValue
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = option.label,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                        )
+                                        option.description?.let { description ->
+                                            Text(
+                                                text = description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                },
+                                leadingIcon = if (selected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    if (shouldDispatchAppChoiceSelection(selectedValue, option.value)) {
+                                        onValueChange(option.value)
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
-            }
-        }
+            } else {
+                null
+            },
+        )
     }
 
     if (dialogVisible) {
