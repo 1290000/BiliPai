@@ -3,7 +3,8 @@ package com.android.purebilibili.feature.space
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.NetworkModule
-import com.android.purebilibili.data.model.response.SpaceUpowerRankItemimport kotlinx.coroutines.CancellationException
+import com.android.purebilibili.data.model.response.SpaceUpowerRankItem
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
