@@ -2151,7 +2151,9 @@ fun RichCommentText(
     // 长按/划选/条目点击不再与 @、链接竞争。
     val linkListener = remember(onUrlClick, onUserClick, onTopicClick, onVoteClick, onTimestampClick) {
         LinkInteractionListener { link ->
-            when (val action = resolveRichCommentLinkAction((link as LinkAnnotation.Clickable).tag)) {
+            val tag = (link as LinkAnnotation.Clickable).tag
+            com.android.purebilibili.core.util.Logger.d("RichCommentText", "link tapped tag=\$tag")
+            when (val action = resolveRichCommentLinkAction(tag)) {
                 is RichCommentLinkAction.Url -> onUrlClick?.invoke(action.url)
                 is RichCommentLinkAction.User -> onUserClick?.invoke(action.mid)
                 is RichCommentLinkAction.Topic -> onTopicClick?.invoke(action.topic)

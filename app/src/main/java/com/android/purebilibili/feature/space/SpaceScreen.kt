@@ -4310,8 +4310,16 @@ private fun SpaceAudioListItem(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(6.dp))
+            // song/upper 对他人空间的播放统计常为 0：显示「0播放」是噪音，
+            // 只有时长；有真实播放数时才带前缀。
+            val audioPlayCount =
+                (audio.statistic?.play ?: audio.play_count.toLong()).coerceAtLeast(0L)
             AppText(
-                text = "${FormatUtils.formatStat((audio.statistic?.play ?: audio.play_count.toLong()).coerceAtLeast(0L))}播放 · ${FormatUtils.formatDuration(audio.duration)}",
+                text = if (audioPlayCount > 0L) {
+                    "${FormatUtils.formatStat(audioPlayCount)}播放 · ${FormatUtils.formatDuration(audio.duration)}"
+                } else {
+                    FormatUtils.formatDuration(audio.duration)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

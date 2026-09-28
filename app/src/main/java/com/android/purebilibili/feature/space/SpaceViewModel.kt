@@ -1992,7 +1992,12 @@ class SpaceViewModel(
                         result.data?.totalSize ?: 0,
                         allItems.size,
                     )
-                    val hasMore = dedupedNew.isNotEmpty() && allItems.size < totalCount
+                    // song/upper 的 totalSize 可能缺失（coerce 成 0），此时退化为
+                    // 「整页填满则还有更多」启发式，避免只加载第一页。
+                    val hasMore = dedupedNew.isNotEmpty() && (
+                        allItems.size < totalCount ||
+                            dedupedNew.size >= SPACE_AUDIO_PAGE_SIZE_CONST
+                        )
 
                     _uiState.value = currentState.copy(
                         audios = allItems,
@@ -2461,3 +2466,6 @@ class SpaceViewModel(
     }
 
 }
+
+/** song/upper 接口请求页大小（ApiClient.getSpaceAudioList ps=30）。 */
+private const val SPACE_AUDIO_PAGE_SIZE_CONST = 30
