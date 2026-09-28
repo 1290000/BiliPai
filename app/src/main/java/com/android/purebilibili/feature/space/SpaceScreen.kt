@@ -2556,6 +2556,7 @@ private fun SpaceHeader(
     relationStat: RelationStatData?,
     upStat: UpStatData?,
     collapseFraction: Float,
+    bannerScrollOffsetPx: Float = 0f,
     onFollowClick: () -> Unit,
     onMessageClick: () -> Unit,
     onFollowingClick: () -> Unit,
@@ -2636,6 +2637,14 @@ private fun SpaceHeader(
         val bannerTotalHeightDp = bannerMetrics.heightDp.dp
         val heroHeight = bannerMetrics.heroHeightDp.dp
         val avatarTopPadding = (heroHeight - avatarBannerOverlap).coerceAtLeast(0.dp)
+        // 视差余量 = 背景图向上溢出窗口的量（chromeTopInset）。平移钳在该范围内，
+        // 图片永远不会滑出窗口顶部露底；效果为背景以约 1/4 速率跟随滚动。
+        val bannerParallaxTranslationPx = with(LocalDensity.current) {
+            val maxTranslationPx = chromeTopInset.coerceAtLeast(0.dp).roundToPx().toFloat()
+            (bannerScrollOffsetPx * 0.75f).coerceIn(0f, maxTranslationPx)
+        }
+        // 头部内容（头像/统计/按钮/信息区）随滚动渐隐，对齐 PiliPlus 的 _FlexibleSpaceHeaderOpacity。
+        val headerContentAlpha = 1f - collapseFraction
 
         Column(
             modifier = Modifier
@@ -2653,6 +2662,7 @@ private fun SpaceHeader(
                     .fillMaxWidth()
                     .imagePreviewSourceBounds(topPhotoRect)
                     .alpha(if (topPhotoHidden) 0f else 1f)
+                    .graphicsLayer { translationY = bannerParallaxTranslationPx }
                     .layout { measurable, constraints ->
                         val horizontalInsetPx = outerPadding.coerceAtLeast(0.dp).roundToPx()
                         val topInsetPx = chromeTopInset.coerceAtLeast(0.dp).roundToPx()
@@ -2702,6 +2712,7 @@ private fun SpaceHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer { alpha = headerContentAlpha }
                     .padding(top = avatarTopPadding, start = 4.dp, end = 0.dp),
                 verticalAlignment = Alignment.Top
             ) {
@@ -2779,6 +2790,7 @@ private fun SpaceHeader(
                         onLiveClick = onLiveClick,
                         modifier = Modifier
                             .weight(1f)
+                            .graphicsLayer { alpha = headerContentAlpha }
                             .padding(top = avatarBannerOverlap),
                     )
                     Spacer(modifier = Modifier.width(24.dp))
@@ -2843,6 +2855,7 @@ private fun SpaceHeader(
                 onLiveClick = onLiveClick,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer { alpha = headerContentAlpha }
                     .padding(start = 4.dp, end = 0.dp, top = 10.dp, bottom = 8.dp),
             )
         }
