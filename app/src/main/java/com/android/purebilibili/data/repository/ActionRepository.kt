@@ -783,8 +783,12 @@ object ActionRepository {
                     return@withContext Result.failure(Exception("请先登录"))
                 }
 
+                val csrf = TokenManager.csrfCache ?: ""
+                if (csrf.isEmpty()) {
+                    return@withContext Result.failure(Exception("请先登录"))
+                }
                 val dislikeAction = if (dislike) 0 else 1
-                val response = api.dislikeVideo(aid = aid, dislike = dislikeAction)
+                val response = api.dislikeVideo(aid = aid, dislike = dislikeAction, csrf = csrf)
                 com.android.purebilibili.core.util.Logger.d("ActionRepository", " dislikeVideo: aid=$aid, dislike=$dislike, code=${response.code}")
 
                 when {
