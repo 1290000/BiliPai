@@ -42,6 +42,7 @@ internal fun SettingsSearchBarSection(
         onQueryChange = onQueryChange,
         onSearch = onSearch,
         placeholder = placeholder,
+        backdrop = com.android.purebilibili.feature.settings.ui.LocalSettingsPageBackdrop.current,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
     )
 }

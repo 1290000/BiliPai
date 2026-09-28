@@ -222,6 +222,7 @@ fun SkinCatalogScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
             AppLiquidAwareSearchField(
+                backdrop = com.android.purebilibili.feature.settings.ui.LocalSettingsPageBackdrop.current,
                 query = state.searchQuery,
                 onQueryChange = stateHolder::setSearchQuery,
                 placeholder = "搜索装扮名称",

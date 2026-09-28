@@ -48,20 +48,20 @@ class AdaptiveListComponentPolicyTest {
     }
 
     @Test
-    fun `miuix style should use denser list row spacing`() {
+    fun `miuix style should align list row spacing with miuix inside margin default`() {
         val spec = resolveAdaptiveListRowVisualSpec(AppUiStyle.MIUIX)
 
         assertEquals(16, spec.insideHorizontalPaddingDp)
-        assertEquals(14, spec.insideVerticalPaddingDp)
+        assertEquals(16, spec.insideVerticalPaddingDp)
         assertEquals(14, spec.trailingIconSizeDp)
         assertEquals(6, spec.trailingSpacingDp)
     }
 
     @Test
-    fun `material3 style should keep roomier shared list row spacing`() {
+    fun `material3 style should align list row spacing with md3 list item padding`() {
         val spec = resolveAdaptiveListRowVisualSpec(AppUiStyle.MATERIAL3)
 
-        assertEquals(18, spec.insideHorizontalPaddingDp)
+        assertEquals(16, spec.insideHorizontalPaddingDp)
         assertEquals(16, spec.insideVerticalPaddingDp)
         assertEquals(16, spec.trailingIconSizeDp)
         assertEquals(8, spec.trailingSpacingDp)

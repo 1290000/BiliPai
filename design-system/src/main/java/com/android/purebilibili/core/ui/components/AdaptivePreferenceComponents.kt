@@ -200,17 +200,19 @@ internal fun resolveAdaptiveListRowVisualSpec(
     liquidGlassEnabled: Boolean = true,
 ): AdaptiveListRowVisualSpec {
     val chromeTokens = resolveAndroidNativeChromeTokens(uiStyle)
+    // 两种预设统一到各自官方规格的最小公分母：Miuix BasicComponentDefaults.InsideMargin
+    // 与 M3 ListItem 默认水平内边距均为 16dp，避免出现"自成一派"的第三方间距。
     return if (uiStyle == AppUiStyle.MIUIX) {
         AdaptiveListRowVisualSpec(
             insideHorizontalPaddingDp = 16,
-            insideVerticalPaddingDp = 14,
+            insideVerticalPaddingDp = 16,
             trailingIconSizeDp = 14,
             trailingSpacingDp = 6,
             minTouchTargetHeightDp = 48
         )
     } else {
         AdaptiveListRowVisualSpec(
-            insideHorizontalPaddingDp = 18,
+            insideHorizontalPaddingDp = 16,
             insideVerticalPaddingDp = 16,
             trailingIconSizeDp = 16,
             trailingSpacingDp = 8,
