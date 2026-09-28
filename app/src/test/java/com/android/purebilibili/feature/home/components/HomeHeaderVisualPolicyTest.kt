@@ -1960,11 +1960,15 @@ class HomeHeaderVisualPolicyTest {
     }
 
     @Test
-    fun `home header search entry uses shared native component`() {
+    fun `home header search entry keeps native input over glass`() {
         val headerSource = loadSource("app/src/main/java/com/android/purebilibili/feature/home/components/HomeHeader.kt")
-        val searchEntrySource = headerSource.substringAfter("AppSearchEntry(").substringBefore("val topRightActionButtonSize")
+        val searchEntrySource = headerSource.substringAfter("BottomBarMatchedReusableLiquidDock(")
+            .substringBefore("val topRightActionButtonSize")
 
+        assertTrue(searchEntrySource.contains("AppSearchEntry("))
         assertTrue(searchEntrySource.contains("onSearchClick()"))
+        assertTrue(searchEntrySource.contains("searchChromeMaterialMode == TopTabMaterialMode.LIQUID_GLASS"))
+        assertTrue(searchEntrySource.contains("Color.Transparent"))
         assertFalse(searchEntrySource.contains("homeTopChromeSurface("))
     }
 

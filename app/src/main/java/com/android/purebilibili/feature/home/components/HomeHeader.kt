@@ -2545,16 +2545,36 @@ fun HomeHeader(
 
                             Spacer(modifier = Modifier.width(resolveHomeTopEdgeControlGap(topChromePolicy)))
 
-                            AppSearchEntry(
-                                onClick = {
-                                    haptic(HapticType.LIGHT)
-                                    onSearchClick()
-                                },
-                                placeholder = "搜索视频、UP主...",
+                            BottomBarMatchedReusableLiquidDock(
+                                shape = CircleShape,
                                 modifier = Modifier
                                     .weight(1f)
                                     .widthIn(max = AppSpacingTokens.TripleExtraLarge * 13 + AppSpacingTokens.Large),
-                            )
+                                backdrop = miuixBackdrop,
+                                reuseEnabled = true,
+                                liquidGlassEffectsEnabled =
+                                    searchChromeMaterialMode == TopTabMaterialMode.LIQUID_GLASS,
+                                useNeutralLiquidContainer = true,
+                                drawShellLens = true,
+                                shellLensIntensity = resolveFloatingDockGeometryScale(
+                                    resolveHomeTopSearchPillHeight(topChromePolicy).value
+                                ),
+                                isScrollInProgressProvider = { topChromeMotionPolicy.isScrolling },
+                            ) { liquidChromeActive ->
+                                AppSearchEntry(
+                                    onClick = {
+                                        haptic(HapticType.LIGHT)
+                                        onSearchClick()
+                                    },
+                                    placeholder = "搜索视频、UP主...",
+                                    containerColor = if (liquidChromeActive) {
+                                        Color.Transparent
+                                    } else {
+                                        Color.Unspecified
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
 
                             Spacer(modifier = Modifier.width(resolveHomeTopEdgeControlGap(topChromePolicy)))
 

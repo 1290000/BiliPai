@@ -6,13 +6,15 @@ import kotlin.test.assertTrue
 
 class AppLiquidAwareSearchFieldStructureTest {
     @Test
-    fun `search wrapper delegates directly to native theme field`() {
+    fun `liquid search keeps native input above the shared glass surface`() {
         val source = File(
             "app/src/main/java/com/android/purebilibili/core/ui/components/AppLiquidAwareSearchField.kt"
         ).readText()
 
         assertTrue(source.contains("AppSearchField("))
-        assertTrue(!source.contains("BottomBarMatchedReusableLiquidDock("))
+        assertTrue(source.contains("BottomBarMatchedReusableLiquidDock("))
+        assertTrue(source.contains("containerColor = if (liquidChromeActive)"))
+        assertTrue(source.contains("Color.Transparent"))
         assertTrue(source.contains("leadingIconHorizontalOffset: Dp = 0.dp"))
         assertTrue(source.contains("leadingIconHorizontalOffset = leadingIconHorizontalOffset"))
     }
