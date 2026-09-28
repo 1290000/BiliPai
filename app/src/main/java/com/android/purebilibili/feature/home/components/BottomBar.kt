@@ -148,6 +148,8 @@ import com.android.purebilibili.core.theme.iOSRed
 import com.android.purebilibili.core.theme.BottomBarColors  // 统一底栏颜色配置
 import com.android.purebilibili.core.theme.BottomBarColorPalette  // 调色板
 import com.android.purebilibili.core.theme.LocalCornerRadiusScale
+import com.android.purebilibili.core.theme.AppUiStyle
+import com.android.purebilibili.core.theme.LocalAppUiStyle
 
 import kotlinx.coroutines.launch  //  延迟导航
 import com.android.purebilibili.feature.home.LocalHomeScrollOffset
@@ -187,6 +189,8 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop as miuixLayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop as rememberMiuixLayerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.material3.LocalTextStyle as MaterialLocalTextStyle
 import top.yukonga.miuix.kmp.basic.NavigationBarDefaults as MiuixNavigationBarDefaults
 private val iosIndicatorSpecular: MiuixHighlight = MiuixHighlight(
     width = AppSpacingTokens.Micro / 2,
@@ -1281,6 +1285,11 @@ internal data class BottomBarSkinContentColors(
     val labelScrimColor: Color = Color.Transparent,
     val labelScrimAlpha: Float = 0f
 )
+
+internal fun resolveFloatingBottomBarLabelColor(
+    contentColor: Color,
+    hasSkinArtwork: Boolean,
+): Color = if (hasSkinArtwork) OpticalContrastPalette.Highlight else contentColor
 
 internal fun resolveBottomBarSkinContentColors(
     selectedColor: Color,
@@ -4002,6 +4011,7 @@ private fun BiliPaiFloatingBottomBarChrome(
                                         dynamicUnreadCount = dynamicUnreadCount,
                                         labelScrimColor = skinContentColors.labelScrimColor,
                                         labelScrimAlpha = skinContentColors.labelScrimAlpha,
+                                        hasSkinArtwork = !uiSkinDecoration?.bottomTrimImagePath.isNullOrBlank(),
                                         reminderBadgeText = reminderBadgeText
                                     )
                                 }
@@ -4026,6 +4036,7 @@ private fun BiliPaiFloatingBottomBarChrome(
                                         dynamicUnreadCount = 0,
                                         labelScrimColor = skinContentColors.labelScrimColor,
                                         labelScrimAlpha = skinContentColors.labelScrimAlpha,
+                                        hasSkinArtwork = !uiSkinDecoration?.bottomTrimImagePath.isNullOrBlank(),
                                         reminderBadgeText = null
                                     )
                                 }
@@ -4228,6 +4239,7 @@ private fun ColumnScope.FloatingBottomBarTabVisual(
     dynamicUnreadCount: Int,
     labelScrimColor: Color,
     labelScrimAlpha: Float,
+    hasSkinArtwork: Boolean,
     reminderBadgeText: String?
 ) {
     val localColor = LocalFloatingBottomBarContentColor.current
@@ -4300,7 +4312,8 @@ private fun ColumnScope.FloatingBottomBarTabVisual(
     if (showText) {
         AppText(
             text = label,
-            color = contentColor,
+            // The trim bitmap can be much darker than its manifest tint.
+            color = resolveFloatingBottomBarLabelColor(contentColor, hasSkinArtwork),
             fontSize = resolveFloatingDockLabelFontSize(
                 showIcon = showIcon,
                 showText = showText,
@@ -4310,6 +4323,19 @@ private fun ColumnScope.FloatingBottomBarTabVisual(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
+            style = (if (LocalAppUiStyle.current == AppUiStyle.MIUIX) {
+                MiuixTheme.textStyles.main
+            } else {
+                MaterialLocalTextStyle.current
+            }).let { baseStyle ->
+                if (hasSkinArtwork) baseStyle.copy(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = OpticalContrastPalette.Shadow.copy(alpha = 0.9f),
+                        offset = Offset(0f, 1f),
+                        blurRadius = 3f,
+                    )
+                ) else baseStyle
+            },
             modifier = Modifier.bottomBarSkinLabelScrim(
                 color = labelScrimColor,
                 alpha = if (skinIconPath != null) labelScrimAlpha else 0f

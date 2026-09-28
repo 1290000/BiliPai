@@ -2606,6 +2606,7 @@ fun HomeHeader(
                             val topRightActionButtonSize = resolveHomeTopSettingsButtonSize(topChromePolicy)
                             val topRightActionContentBackdrop = rememberMiuixLayerBackdrop()
                             val exportTopRightActionThroughGlass =
+                                !hasIllustratedHeader &&
                                 shouldExportHomeTopActionIconThroughLiquidGlass(
                                     usesMatchedTopControls = useBottomBarMatchedTopControls,
                                     renderMode = searchChromeRenderMode,
@@ -2635,7 +2636,9 @@ fun HomeHeader(
                                         AppIcon(
                                             imageVector = topRightActionIcon,
                                             contentDescription = null,
-                                            tint = if (isLightMode) {
+                                            tint = if (hasIllustratedHeader) {
+                                                OpticalContrastPalette.Highlight
+                                            } else if (isLightMode) {
                                                 topForegroundColor
                                             } else {
                                                 topForegroundColor.copy(alpha = topActionIconAlpha)
@@ -2651,14 +2654,25 @@ fun HomeHeader(
                                         .align(Alignment.CenterStart)
                                         .size(topRightActionButtonSize)
                                         .then(
-                                            if (useBottomBarMatchedTopControls) {
+                                            if (useBottomBarMatchedTopControls && !hasIllustratedHeader) {
                                                 Modifier
                                             } else {
                                                 Modifier.clip(edgeButtonShape)
                                             }
                                         )
                                         .then(
-                                            if (useBottomBarMatchedTopControls) {
+                                            if (hasIllustratedHeader) {
+                                                Modifier
+                                                    .background(
+                                                        OpticalContrastPalette.Highlight.copy(alpha = 0.16f),
+                                                        edgeButtonShape,
+                                                    )
+                                                    .border(
+                                                        AppSpacingTokens.Micro * 0.4f,
+                                                        OpticalContrastPalette.Highlight.copy(alpha = 0.24f),
+                                                        edgeButtonShape,
+                                                    )
+                                            } else if (useBottomBarMatchedTopControls) {
                                                 Modifier.homeTopBottomBarMatchedSurface(
                                                     renderMode = searchChromeRenderMode,
                                                     shape = edgeButtonShape,
@@ -2749,7 +2763,9 @@ fun HomeHeader(
                                         AppIcon(
                                             topRightActionIcon,
                                             contentDescription = null,
-                                            tint = if (isLightMode) {
+                                            tint = if (hasIllustratedHeader) {
+                                                OpticalContrastPalette.Highlight
+                                            } else if (isLightMode) {
                                                 topForegroundColor
                                             } else {
                                                 topForegroundColor.copy(alpha = topActionIconAlpha)
