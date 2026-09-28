@@ -587,9 +587,8 @@ private fun ImagePreviewOverlayContent(
                 visualProgress = transitionFrame.visualProgress,
                 transitionEnabled = true,
                 maxBlurRadiusPx = maxBlurRadiusPx,
-                // Returning should stay optically sharp while the image morphs back
-                // into its source rect. Blur made the source image look unfocused.
-                blurEnabled = !isDismissing && backProgress <= 0f,
+                // Keep the image crisp for both the thumbnail-to-viewer flight and return.
+                blurEnabled = false,
             )
             val backdropAlpha = if (isDismissing) {
                 resolveImagePreviewDismissBackdropAlpha(
