@@ -71,6 +71,8 @@ import com.android.purebilibili.core.util.BilibiliNavigationTargetParser
 
 import com.android.purebilibili.core.ui.common.TextSelectionBottomSheet
 import com.android.purebilibili.core.ui.common.TextSelectionPolicy
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import com.android.purebilibili.core.ui.common.detectTapWithSelectionFriendly
 import com.android.purebilibili.core.ui.rememberAppMoreIcon
 import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
@@ -2237,7 +2239,29 @@ fun RichTextContent(
     }
     val primaryColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onSurface
-    val richText = remember(desc, primaryColor, textColor, catalogEmoteMap, extraEmoteUrlMap) {
+    // 原生链接分发：BasicText 在 Text 内部处理 LinkAnnotation 点击，不再依赖
+    // 外层 pointerInput 查表，与划选/卡片长按不再竞争。每次组合重建 dispatch
+    // 闭包以捕获最新回调，并作为 remember key 同步重建富文本。
+    val dispatchDynamicLink: (String) -> Unit = { payload ->
+        dispatchDynamicRichTextLinkPayload(
+            payload = payload,
+            context = context,
+            uriHandler = uriHandler,
+            scope = scope,
+            onUserClick = onUserClick,
+            onVoteClick = onVoteClick,
+            onTopicClick = onTopicClick,
+            onTopicKeywordClick = onTopicKeywordClick,
+            onVideoClick = onVideoClick,
+            onDynamicDetailClick = onDynamicDetailClick,
+            onBangumiClick = onBangumiClick,
+            onArticleClick = onArticleClick,
+            onLiveClick = onLiveClick,
+            onMusicClick = onMusicClick,
+            onLinkClick = onLinkClick,
+        )
+    }
+    val richText = remember(desc, primaryColor, textColor, catalogEmoteMap, extraEmoteUrlMap, dispatchDynamicLink) {
         buildDynamicRichText(
             desc = desc,
             primaryColor = primaryColor,
@@ -2245,6 +2269,9 @@ fun RichTextContent(
             extraEmoteUrlMap = buildMap {
                 putAll(catalogEmoteMap)
                 putAll(extraEmoteUrlMap)
+            },
+            linkListener = LinkInteractionListener { link ->
+                dispatchDynamicLink((link as LinkAnnotation.Clickable).tag)
             }
         )
     }
@@ -2276,226 +2303,30 @@ fun RichTextContent(
         richNodeText.ifBlank { desc.text }.trim()
     }
     var showTextSelectionSheet by remember(copyText) { mutableStateOf(false) }
-    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-    // 动态正文始终带可交互注解（@/链接/话题/投票）：SelectionContainer 会在存在
-    // 选区时消费后续点击清除选区，吞掉 @/链接点击。复制走长按操作面板。
-    AppText(
-            text = annotatedText,
-            inlineContent = inlineContent,
-            fontSize = fontSize,
-            fontWeight = fontWeight,
-            lineHeight = lineHeight,
-            maxLines = maxLines,
-            overflow = overflow,
-            color = textColor,
-            onTextLayout = { textLayoutResult = it },
-            modifier = modifier.pointerInput(
-                copyText,
-                annotatedText,
-                onUserClick,
-                onVoteClick,
-                onTopicClick,
-                onBlankTap,
-                onVideoClick,
-                onDynamicDetailClick,
-                onBangumiClick,
-                onArticleClick,
-                onLiveClick,
-                onMusicClick,
-                onLinkClick,
-            ) {
-                detectTapWithSelectionFriendly { offset ->
-                    val layoutResult = textLayoutResult ?: return@detectTapWithSelectionFriendly
-                    val position = layoutResult.getOffsetForPosition(offset)
-                    val searchStart = maxOf(0, position - 1)
-                    val searchEnd = minOf(annotatedText.length, position + 1)
-
-                    annotatedText.getStringAnnotations(
-                        tag = DYNAMIC_RICH_TEXT_USER_TAG,
-                        start = searchStart,
-                        end = searchEnd
-                    ).firstOrNull()?.let { annotation ->
-                        annotation.item.toLongOrNull()
-                            ?.takeIf { it > 0L }
-                            ?.let(onUserClick)
-                        return@detectTapWithSelectionFriendly
-                    }
-
-                    annotatedText.getStringAnnotations(
-                        tag = DYNAMIC_RICH_TEXT_VOTE_TAG,
-                        start = searchStart,
-                        end = searchEnd
-                    ).firstOrNull()?.item
-                        ?.toLongOrNull()
-                        ?.takeIf { it > 0L }
-                        ?.let { voteId ->
-                            onVoteClick(voteId)
-                            return@detectTapWithSelectionFriendly
-                        }
-
-                    // 带 topicId 的话题标签优先跳转话题详情页，而不是关键词搜索。
-                    annotatedText.getStringAnnotations(
-                        tag = DYNAMIC_RICH_TEXT_TOPIC_TAG,
-                        start = searchStart,
-                        end = searchEnd
-                    ).firstOrNull()?.item
-                        ?.toLongOrNull()
-                        ?.takeIf { it > 0L }
-                        ?.let { topicId ->
-                            onTopicClick(topicId)
-                            return@detectTapWithSelectionFriendly
-                        }
-
-                    // 无 topicId 的话题（纯 #关键词# 或链接搜索）才回落到关键词搜索。
-                    annotatedText.getStringAnnotations(
-                        tag = DYNAMIC_RICH_TEXT_TOPIC_KEYWORD_TAG,
-                        start = searchStart,
-                        end = searchEnd
-                    ).firstOrNull()?.item?.takeIf { it.isNotBlank() }?.let { keyword ->
-                        if (onTopicKeywordClick != null) {
-                            onTopicKeywordClick(keyword)
-                            return@detectTapWithSelectionFriendly
-                        }
-                        val searchUrl = "bilibili://search?keyword=" + java.net.URLEncoder.encode(keyword, java.nio.charset.StandardCharsets.UTF_8.name())
-                        if (onLinkClick != null) {
-                            onLinkClick(searchUrl)
-                        } else {
-                            val inAppIntent = android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse(searchUrl)
-                            ).setPackage(context.packageName)
-                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                            val launched = runCatching { context.startActivity(inAppIntent) }.isSuccess
-                            if (!launched) {
-                                openDynamicRichTextLinkExternally(context, searchUrl, uriHandler)
-                            }
-                        }
-                        return@detectTapWithSelectionFriendly
-                    }
-
-                    val urlAnnotation = annotatedText.getStringAnnotations(
-                        tag = DYNAMIC_RICH_TEXT_URL_TAG,
-                        start = searchStart,
-                        end = searchEnd
-                    ).firstOrNull()
-
-                    if (urlAnnotation != null) {
-                        val rawUrl = urlAnnotation.item
-                        scope.launch {
-                            val target = BilibiliNavigationTargetParser.parse(rawUrl)
-                                ?: if (rawUrl.contains("b23.tv", ignoreCase = true)) {
-                                    BilibiliNavigationTargetParser.resolve(rawUrl)
-                                } else null
-                            if (target != null) {
-                                val handled = when (target) {
-                                    is BilibiliNavigationTarget.Dynamic -> {
-                                        if (onDynamicDetailClick != null) {
-                                            onDynamicDetailClick(target.dynamicId)
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.Video -> {
-                                        if (onVideoClick != null) {
-                                            onVideoClick(target.videoId)
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.Space -> {
-                                        if (target.mid > 0L) {
-                                            onUserClick(target.mid)
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.BangumiSeason -> {
-                                        if (onBangumiClick != null) {
-                                            onBangumiClick(target.seasonId, target.mediaId)
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.BangumiEpisode -> {
-                                        if (onBangumiClick != null) {
-                                            onBangumiClick(0L, target.epId)
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.Article -> {
-                                        if (onArticleClick != null) {
-                                            onArticleClick(target.articleId, "")
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.Live -> {
-                                        if (onLiveClick != null) {
-                                            onLiveClick(target.roomId, "", "")
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.Music -> {
-                                        val auSid = target.musicId.removePrefix("au").removePrefix("AU").toLongOrNull()
-                                        if (auSid != null && onMusicClick != null) {
-                                            onMusicClick(auSid)
-                                            true
-                                        } else false
-                                    }
-                                    is BilibiliNavigationTarget.Search -> {
-                                        if (onTopicKeywordClick != null) {
-                                            onTopicKeywordClick(target.keyword)
-                                            true
-                                        } else {
-                                            val searchUrl = "bilibili://search?keyword=" + java.net.URLEncoder.encode(target.keyword, java.nio.charset.StandardCharsets.UTF_8.name())
-                                            val inAppIntent = android.content.Intent(
-                                                android.content.Intent.ACTION_VIEW,
-                                                android.net.Uri.parse(searchUrl)
-                                            ).setPackage(context.packageName)
-                                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            runCatching { context.startActivity(inAppIntent) }.isSuccess
-                                        }
-                                    }
-                                }
-                                if (handled) return@launch
-                            }
-
-                            if (onLinkClick != null) {
-                                onLinkClick(rawUrl)
-                            } else {
-                                when (resolveDynamicRichTextOpenMode(rawUrl)) {
-                                    DynamicRichTextOpenMode.IN_APP -> {
-                                        val inAppIntent = android.content.Intent(
-                                            android.content.Intent.ACTION_VIEW,
-                                            android.net.Uri.parse(rawUrl)
-                                        ).setPackage(context.packageName)
-                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        val launchedInApp = runCatching {
-                                            context.startActivity(inAppIntent)
-                                        }.isSuccess
-                                        if (!launchedInApp) {
-                                            openDynamicRichTextLinkExternally(
-                                                context,
-                                                rawUrl,
-                                                uriHandler
-                                            )
-                                        }
-                                    }
-                                    DynamicRichTextOpenMode.EXTERNAL -> {
-                                        openDynamicRichTextLinkExternally(
-                                            context,
-                                            rawUrl,
-                                            uriHandler
-                                        )
-                                    }
-                                    null -> Unit
-                                }
-                            }
-                        }
-                        return@detectTapWithSelectionFriendly
-                    }
-
-                    // 非 @ / 链接：交给外层（例如转发卡片打开原动态）
-                    onBlankTap?.invoke()
-                }
+    // 动态正文始终带可交互注解（@/链接/话题/投票），由 BasicText 内部原生链接
+    // 手势分发；复制走长按操作面板，无需 SelectionContainer。空白区域点击由
+    // 外层轻触兜底（链接点击会消费 up，本检测器不会触发）。
+    val blankTapModifier = if (onBlankTap != null) {
+        Modifier.pointerInput(annotatedText, onBlankTap) {
+            detectTapWithSelectionFriendly { _ ->
+                onBlankTap.invoke()
             }
-        )
+        }
+    } else {
+        Modifier
+    }
+    AppText(
+        text = annotatedText,
+        inlineContent = inlineContent,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        lineHeight = lineHeight,
+        maxLines = maxLines,
+        overflow = overflow,
+        color = textColor,
+        modifier = modifier.then(blankTapModifier)
+    )
 
     if (showTextSelectionSheet) {
         TextSelectionBottomSheet(
@@ -2503,6 +2334,170 @@ fun RichTextContent(
             title = "选择动态内容",
             onDismiss = { showTextSelectionSheet = false }
         )
+    }
+}
+
+/**
+ * 原生链接点击的集中分发：payload 由 [resolveDynamicRichTextLinkAction] 解析，
+ * 链接载荷复用旧的 BilibiliNavigationTargetParser 路由（in-app 优先，外部兜底）。
+ */
+private fun dispatchDynamicRichTextLinkPayload(
+    payload: String,
+    context: android.content.Context,
+    uriHandler: androidx.compose.ui.platform.UriHandler,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onUserClick: ((Long) -> Unit)?,
+    onVoteClick: ((Long) -> Unit)?,
+    onTopicClick: ((Long) -> Unit)?,
+    onTopicKeywordClick: ((String) -> Unit)?,
+    onVideoClick: ((String) -> Unit)?,
+    onDynamicDetailClick: ((String) -> Unit)?,
+    onBangumiClick: ((Long, Long) -> Unit)?,
+    onArticleClick: ((Long, String) -> Unit)?,
+    onLiveClick: ((Long, String, String) -> Unit)?,
+    onMusicClick: ((Long) -> Unit)?,
+    onLinkClick: ((String) -> Unit)?,
+) {
+    when (val action = resolveDynamicRichTextLinkAction(payload)) {
+        is DynamicRichTextLinkAction.User ->
+            onUserClick?.invoke(action.mid)
+        is DynamicRichTextLinkAction.Vote ->
+            onVoteClick?.invoke(action.voteId)
+        is DynamicRichTextLinkAction.TopicId ->
+            onTopicClick?.invoke(action.topicId)
+        is DynamicRichTextLinkAction.TopicKeyword -> {
+            val keyword = action.keyword
+            if (onTopicKeywordClick != null) {
+                onTopicKeywordClick(keyword)
+            } else {
+                val searchUrl = "bilibili://search?keyword=" +
+                    java.net.URLEncoder.encode(keyword, java.nio.charset.StandardCharsets.UTF_8.name())
+                if (onLinkClick != null) {
+                    onLinkClick(searchUrl)
+                } else {
+                    val inAppIntent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(searchUrl)
+                    ).setPackage(context.packageName)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val launched = runCatching { context.startActivity(inAppIntent) }.isSuccess
+                    if (!launched) {
+                        openDynamicRichTextLinkExternally(context, searchUrl, uriHandler)
+                    }
+                }
+            }
+        }
+        is DynamicRichTextLinkAction.Url -> {
+            val rawUrl = action.url
+            scope.launch {
+                val target = BilibiliNavigationTargetParser.parse(rawUrl)
+                    ?: if (rawUrl.contains("b23.tv", ignoreCase = true)) {
+                        BilibiliNavigationTargetParser.resolve(rawUrl)
+                    } else null
+                if (target != null) {
+                    val handled = when (target) {
+                        is BilibiliNavigationTarget.Dynamic -> {
+                            if (onDynamicDetailClick != null) {
+                                onDynamicDetailClick(target.dynamicId)
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.Video -> {
+                            if (onVideoClick != null) {
+                                onVideoClick(target.videoId)
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.Space -> {
+                            if (target.mid > 0L) {
+                                onUserClick?.invoke(target.mid)
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.BangumiSeason -> {
+                            if (onBangumiClick != null) {
+                                onBangumiClick(target.seasonId, target.mediaId)
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.BangumiEpisode -> {
+                            if (onBangumiClick != null) {
+                                onBangumiClick(0L, target.epId)
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.Article -> {
+                            if (onArticleClick != null) {
+                                onArticleClick(target.articleId, "")
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.Live -> {
+                            if (onLiveClick != null) {
+                                onLiveClick(target.roomId, "", "")
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.Music -> {
+                            val auSid = target.musicId.removePrefix("au").removePrefix("AU").toLongOrNull()
+                            if (auSid != null && onMusicClick != null) {
+                                onMusicClick(auSid)
+                                true
+                            } else false
+                        }
+                        is BilibiliNavigationTarget.Search -> {
+                            if (onTopicKeywordClick != null) {
+                                onTopicKeywordClick(target.keyword)
+                                true
+                            } else {
+                                val searchUrl = "bilibili://search?keyword=" +
+                                    java.net.URLEncoder.encode(target.keyword, java.nio.charset.StandardCharsets.UTF_8.name())
+                                val inAppIntent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(searchUrl)
+                                ).setPackage(context.packageName)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                runCatching { context.startActivity(inAppIntent) }.isSuccess
+                            }
+                        }
+                    }
+                    if (handled) return@launch
+                }
+
+                if (onLinkClick != null) {
+                    onLinkClick(rawUrl)
+                } else {
+                    when (resolveDynamicRichTextOpenMode(rawUrl)) {
+                        DynamicRichTextOpenMode.IN_APP -> {
+                            val inAppIntent = android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(rawUrl)
+                            ).setPackage(context.packageName)
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            val launchedInApp = runCatching {
+                                context.startActivity(inAppIntent)
+                            }.isSuccess
+                            if (!launchedInApp) {
+                                openDynamicRichTextLinkExternally(
+                                    context,
+                                    rawUrl,
+                                    uriHandler
+                                )
+                            }
+                        }
+                        DynamicRichTextOpenMode.EXTERNAL -> {
+                            openDynamicRichTextLinkExternally(
+                                context,
+                                rawUrl,
+                                uriHandler
+                            )
+                        }
+                        null -> Unit
+                    }
+                }
+            }
+        }
+        null -> Unit
     }
 }
 
