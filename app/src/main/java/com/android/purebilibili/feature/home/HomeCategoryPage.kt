@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.staggeredgrid.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.android.purebilibili.core.ui.components.AppCard
 import com.android.purebilibili.core.ui.components.AppCardDefaults
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
@@ -61,6 +63,7 @@ import com.android.purebilibili.feature.home.components.cards.StoryVideoCard
 import androidx.compose.ui.Alignment
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.yield
+import kotlinx.coroutines.launch
 
 internal fun resolveHomeCategoryVideoGridKey(
     video: VideoItem,
@@ -113,6 +116,28 @@ internal fun resolveHomeFeedAlignedRows(
             rowStart = rowEndExclusive
         }
     }
+}
+
+internal fun resolveHomeOldContentGridItemIndex(
+    anchorVideoIndex: Int,
+    itemCount: Int,
+    columns: Int,
+    showFullVideoCardContent: Boolean,
+    dividerIndex: Int?,
+    headerItemCount: Int,
+): Int? {
+    if (anchorVideoIndex !in 0 until itemCount) return null
+    val safeDividerIndex = dividerIndex?.takeIf { it in 1 until itemCount }
+    val contentItemIndex = if (showFullVideoCardContent) {
+        anchorVideoIndex
+    } else {
+        resolveHomeFeedAlignedRows(itemCount, columns, safeDividerIndex)
+            .indexOfFirst { anchorVideoIndex in it }
+            .takeIf { it >= 0 }
+            ?: return null
+    }
+    val dividerItemBeforeAnchor = safeDividerIndex != null && anchorVideoIndex >= safeDividerIndex
+    return headerItemCount + contentItemIndex + if (dividerItemBeforeAnchor) 1 else 0
 }
 
 internal fun resolveHomeHeroCarouselDedupKey(video: VideoItem): String {
@@ -302,6 +327,39 @@ internal fun HomeCategoryPageContent(
     val videoGridKeys = remember(visibleGridVideos) {
         resolveHomeCategoryVideoGridKeys(visibleGridVideos)
     }
+    val oldContentVideoIndex = oldContentAnchorBvid?.let { anchor ->
+        visibleGridVideos.indexOfFirst { it.bvid == anchor }.takeIf { it >= 0 }
+    } ?: oldContentStartIndex
+    val oldContentDividerIndex = oldContentAnchorBvid?.let { anchor ->
+        visibleGridVideos.indexOfFirst { it.bvid == anchor }.takeIf { it > 0 }
+    } ?: oldContentStartIndex?.takeIf { it > 0 && it < visibleGridVideos.size }
+    val oldContentGridItemIndex = remember(
+        category,
+        visibleGridVideos,
+        gridColumns,
+        showFullVideoCardContent,
+        oldContentVideoIndex,
+        oldContentDividerIndex,
+        showHeroCarousel,
+        todayWatchEnabled,
+    ) {
+        if (category != HomeCategory.RECOMMEND) {
+            null
+        } else {
+            oldContentVideoIndex?.let { videoIndex ->
+                resolveHomeOldContentGridItemIndex(
+                    anchorVideoIndex = videoIndex,
+                    itemCount = visibleGridVideos.size,
+                    columns = gridColumns,
+                    showFullVideoCardContent = showFullVideoCardContent,
+                    dividerIndex = oldContentDividerIndex,
+                    headerItemCount = (if (showHeroCarousel) 1 else 0) +
+                        (if (todayWatchEnabled) 1 else 0),
+                )
+            }
+        }
+    }
+    val oldContentLocatorScope = rememberCoroutineScope()
 
     val renderVideoCard: @Composable (Int, VideoItem, Modifier) -> Unit = { index, video, itemModifier ->
         val isDynamicDetailCard = video.dynamicId.isNotBlank() &&
@@ -638,6 +696,32 @@ internal fun HomeCategoryPageContent(
             Box(modifier = Modifier.fillMaxWidth().height(AppSpacingTokens.Large + AppSpacingTokens.ExtraSmall))
         }
         }
+        }
+        AnimatedVisibility(
+            visible = category == HomeCategory.RECOMMEND && oldContentGridItemIndex != null,
+            enter = fadeIn() + scaleIn(initialScale = 0.92f),
+            exit = fadeOut() + scaleOut(targetScale = 0.92f),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = AppSpacingTokens.Large,
+                    bottom = contentPadding.calculateBottomPadding() + AppSpacingTokens.Medium,
+                ),
+        ) {
+            Button(
+                onClick = {
+                    oldContentGridItemIndex?.let { targetIndex ->
+                        oldContentLocatorScope.launch {
+                            gridState.animateScrollToItem(targetIndex)
+                        }
+                    }
+                },
+                modifier = Modifier.heightIn(min = 48.dp),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                AppText("定位上次刷新")
+            }
         }
     }
 }
@@ -1074,7 +1158,7 @@ private fun OldContentDivider() {
             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)
         )
         AppText(
-            text = "以下是上次最新的视频",
+            text = "上次刷新到这里",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = AppSpacingTokens.Small + AppSpacingTokens.Micro)
