@@ -1234,14 +1234,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 refreshingCategory = refreshingCategory,
                 snapshot = _undoSnapshot
             )
+            val stateRefreshKey = System.currentTimeMillis()
             _uiState.value = _uiState.value.copy(
-                refreshKey = System.currentTimeMillis(),
+                refreshKey = stateRefreshKey,
                 refreshMessage = refreshMessage,
                 refreshNewItemsCount = newItemsCount,
-                refreshNewItemsKey = if (newItemsCount != null) System.currentTimeMillis() else _uiState.value.refreshNewItemsKey,
+                refreshNewItemsKey = if (newItemsCount != null) stateRefreshKey else _uiState.value.refreshNewItemsKey,
                 recommendOldContentAnchorBvid = newAnchor,
                 recommendOldContentStartIndex = newBoundary,
-                recommendOldContentRevealKey = if (refreshingCategory == HomeCategory.RECOMMEND) 0L else _uiState.value.recommendOldContentRevealKey,
+                // 对齐 PiliPlus：刷新完成横幅即在列表中就位（它本身位于新旧内容分界，
+                // 只有滑到那里才可见），不再依赖下滑触发的 reveal 检测。
+                recommendOldContentRevealKey = if (
+                    refreshingCategory == HomeCategory.RECOMMEND && newAnchor != null && (newItemsCount ?: 0) > 0
+                ) {
+                    stateRefreshKey
+                } else if (refreshingCategory == HomeCategory.RECOMMEND) {
+                    0L
+                } else {
+                    _uiState.value.recommendOldContentRevealKey
+                },
                 //  刷新成功且是推荐分类时标记可撤销
                 undoAvailable = undoAvailable
             )
