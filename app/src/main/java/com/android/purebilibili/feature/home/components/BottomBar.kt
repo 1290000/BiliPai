@@ -2301,7 +2301,7 @@ fun FrostedBottomBar(
                 itemLabels = itemLabels,
                 onToggleSidebar = effectiveToggleSidebar,
                 dynamicUnreadCount = dynamicUnreadCount,
-                isFloating = isFloating || uiSkinDecoration.usesIllustratedNavigation(isTablet),
+                isFloating = isFloating,
                 isTablet = isTablet,
                 labelMode = labelMode,
                 blurEnabled = hazeState != null,
@@ -2335,7 +2335,7 @@ fun FrostedBottomBar(
                 itemLabels = itemLabels,
                 onToggleSidebar = effectiveToggleSidebar,
                 dynamicUnreadCount = dynamicUnreadCount,
-                isFloating = isFloating || uiSkinDecoration.usesIllustratedNavigation(isTablet),
+                isFloating = isFloating,
                 isTablet = isTablet,
                 labelMode = labelMode,
                 blurEnabled = hazeState != null,
@@ -3673,23 +3673,6 @@ private fun BiliPaiFloatingBottomBarChrome(
     isPagerScrollInProgressProvider: () -> Boolean = { false },
     uiSkinDecoration: BottomBarUiSkinDecoration? = null
 ) {
-    if (uiSkinDecoration.usesIllustratedNavigation(isTablet) && uiSkinDecoration != null) {
-        IllustratedSkinBottomBar(
-            decoration = uiSkinDecoration,
-            currentItem = currentItem,
-            visibleItems = visibleItems,
-            itemLabels = itemLabels,
-            dynamicUnreadCount = dynamicUnreadCount,
-            showIcon = showIcon,
-            showText = showText,
-            includeNavigationInset = !embeddedDock,
-            onItemClick = { item ->
-                performMaterialBottomBarTap(haptic = haptic, onClick = { onItemClick(item) })
-            },
-            modifier = modifier,
-        )
-        return
-    }
     // BiliPai 对齐：材质/动效由 FloatingBottomBar 三层结构承担；
     // 本函数仅编排 BiliPai 特性（search / skin / badge / tablet sidebar）。
     val isDarkTheme = resolveBottomBarDarkTheme(AppSurfaceTokens.background())

@@ -26,6 +26,17 @@ import org.junit.Test
 
 class HomeHeaderVisualPolicyTest {
     @Test
+    fun `illustrated top tab labels draw over their skin background`() {
+        val source = File("src/main/java/com/android/purebilibili/feature/home/components/HomeHeader.kt")
+            .readText()
+        val tabs = source.substringAfter("val topTabsContent: @Composable (Dp) -> Unit =")
+            .substringBefore("    BoxWithConstraints(")
+
+        assertTrue(tabs.indexOf("topTabBackgroundImagePath?.let") < tabs.indexOf("HomeTopTabChrome("))
+        assertTrue(tabs.contains("containerZIndex = if (hasIllustratedHeader || useUnifiedTopPanel) 0f else -1f"))
+    }
+
+    @Test
     fun `legacy top tabs require liquid glass and floating bottom bar both disabled`() {
         assertTrue(
             shouldUseLegacyHomeTopTabs(

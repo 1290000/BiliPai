@@ -2084,7 +2084,8 @@ fun HomeHeader(
                 currentTabHeight = currentTabHeight,
                 tabAlpha = tabAlpha,
                 tabContentAlpha = tabContentAlpha,
-                containerZIndex = if (useUnifiedTopPanel) 0f else -1f,
+                // The illustrated tab background is a sibling behind this chrome.
+                containerZIndex = if (hasIllustratedHeader || useUnifiedTopPanel) 0f else -1f,
                 // 分栏 dock 最大宽度 = 顶部三控件合计宽度，保证左右对齐。
                 maxDockWidth = maxDockWidth,
                 tabHorizontalPadding = if (embedTopTabsInUnifiedPanel) {
