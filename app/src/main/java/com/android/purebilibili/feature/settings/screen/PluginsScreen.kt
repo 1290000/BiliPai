@@ -1798,7 +1798,7 @@ fun PluginsContent(
                     }
                     UiSkinImagePreviewGrid(items = imagePreviewItems)
                     AppText(
-                        text = "宿主只保存资源和启用记录，不执行代码；可替换首页皮肤图标和装饰层，不替换底栏液态玻璃链路。",
+                        text = "皮肤只包含图片和配色，不执行代码。完整插画皮肤使用通栏底栏；其他皮肤沿用当前底栏样式。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
