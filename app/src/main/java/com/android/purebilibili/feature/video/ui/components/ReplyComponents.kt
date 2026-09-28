@@ -1361,6 +1361,9 @@ fun ReplyItemView(
     val canTranslate = item.replyControl?.translationSwitch == 2
     var translatedMessage by remember(item.rpid) { mutableStateOf<String?>(null) }
     var isTranslating by remember(item.rpid) { mutableStateOf(false) }
+    // [新增] 点踩折叠：已点踩的评论正文收起为一行，点击展开；取消点踩自动恢复
+    var hatedBodyExpanded by remember(item.rpid, isHated) { mutableStateOf(false) }
+    val collapseHatedBody = isHated && !hatedBodyExpanded
     val displayMessage = remember(translatedMessage, item.content.message) {
         translatedMessage ?: item.content.message
     }
@@ -1594,6 +1597,19 @@ fun ReplyItemView(
                         .fillMaxWidth()
                         .padding(start = startPadding)
                 ) {
+                    if (collapseHatedBody) {
+                        AppText(
+                            text = "已点踩的评论 · 点击展开",
+                            fontSize = VideoCommentTypographyTokens.body,
+                            color = appearance.secondaryTextColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { hatedBodyExpanded = true }
+                                .padding(vertical = 2.dp)
+                        )
+                    } else {
                     ReplyMessageText(
                         text = displayMessage,
                         fontSize = VideoCommentTypographyTokens.body,
@@ -1634,6 +1650,7 @@ fun ReplyItemView(
                                 )
                             }
                         )
+                    }
                     }
 
                     // Footer Actions
