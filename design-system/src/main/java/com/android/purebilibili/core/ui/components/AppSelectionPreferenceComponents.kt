@@ -230,7 +230,6 @@ fun <T> AppSingleChoiceDialog(
     val layoutPolicy = remember { resolveAppContentDialogLayoutPolicy(maxWidthDp = 420) }
     // Dialog 使用独立平台窗口；在进入窗口子组合前固定应用主题色，避免其默认色
     // 在“系统深色 + 应用手动浅色”时从窗口配置重新跟随系统。
-    val dialogContainerColor = AppSurfaceTokens.cardContainer()
     val dialogContentColor = MaterialTheme.colorScheme.onSurface
     val dialogSecondaryContentColor = MaterialTheme.colorScheme.onSurfaceVariant
     Dialog(
@@ -245,8 +244,9 @@ fun <T> AppSingleChoiceDialog(
                 .appContentDialogWidth(policy = layoutPolicy, wrapHeight = false)
                 .heightIn(max = maxDialogHeight),
             shape = AppShapes.container(ContainerLevel.Dialog),
-            containerColor = dialogContainerColor,
-            tonalElevation = 6.dp,
+            // 层级用更高一档容器色表达，不用 tonalElevation：elevation 会把
+            // surfaceTint 混进容器色，自定义亮种子下弹窗会被染成过饱和色。
+            containerColor = AppSurfaceTokens.surfaceContainerHigh(),
         ) {
             Column(modifier = Modifier.padding(vertical = 12.dp)) {
                 Text(
@@ -392,8 +392,8 @@ fun AppSliderDialog(
                 ),
             ),
             shape = AppShapes.container(ContainerLevel.Dialog),
-            containerColor = AppSurfaceTokens.cardContainer(),
-            tonalElevation = 6.dp,
+            // 与 AppSingleChoiceDialog 一致：容器色表达层级，不用 tonalElevation tint。
+            containerColor = AppSurfaceTokens.surfaceContainerHigh(),
         ) {
             Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
                 Text(

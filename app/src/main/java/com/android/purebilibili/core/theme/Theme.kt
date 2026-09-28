@@ -538,26 +538,6 @@ private fun createLightColorScheme(primaryColor: Color) = lightColorScheme(
 private val DarkColorScheme = createDarkColorScheme(iOSSystemBlue)
 private val LightColorScheme = createLightColorScheme(iOSSystemBlue)
 
-/**
- * Align a MaterialKolor-generated scheme with the user-picked seed.
- *
- * Official wallpaper MD3 keeps HCT tone-mapped roles (Switch / FilterChip / buttons).
- * Custom seed previously forced the raw hex into [ColorScheme.primary], which made
- * bright seeds produce black onPrimary and neon tracks in light mode — while wallpaper
- * dynamic color (no force-align) looked correct.
- *
- * MaterialKolor already maps [themePrimaryColor] into proper primary / onPrimary /
- * primaryContainer roles. Only stamp the seed onto [ColorScheme.surfaceTint] so brand
- * identity remains without breaking control colors.
- */
-internal fun alignStaticColorSchemeWithThemePrimary(
-    scheme: ColorScheme,
-    themePrimaryColor: Color,
-    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean
-): ColorScheme {
-    return scheme.copy(surfaceTint = themePrimaryColor)
-}
-
 @Composable
 @Suppress("DEPRECATION") // Broadcast is retained as an OEM fallback for wallpaper palette delivery.
 private fun rememberSystemWallpaperRefreshToken(
@@ -770,11 +750,10 @@ internal fun createBiliPaiStyleColorScheme(
     )
 
     val readableScheme = enforceDynamicTextContrast(scheme)
-    return alignStaticColorSchemeWithThemePrimary(
-        scheme = readableScheme,
-        themePrimaryColor = seedColor,
-        darkTheme = darkTheme
-    )
+    // 不再把原始种子 hex 盖进 surfaceTint：tonal elevation 表面（弹窗、菜单等）
+    // 会把 surfaceTint 混入容器色，未调和的亮种子会将其染成过饱和色。保留
+    // materialkolor 原生调和的 surfaceTint，与壁纸取色路径行为一致。
+    return readableScheme
 }
 
 @Composable
