@@ -1058,9 +1058,9 @@ fun PluginsContent(
                                 )
                                 AppText(
                                     text = if (isUiSkinPackageLoading) {
-                                        "正在读取 .bpskin…"
+                                        "正在读取皮肤及所需资源…"
                                     } else {
-                                        "选择 .bpskin、主题目录 ZIP 或装扮 _package.zip，只保存资源和启用记录"
+                                        "支持 .bpskin、主题 ZIP 和装扮 JSON；缺少的远程资源将联网下载"
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
