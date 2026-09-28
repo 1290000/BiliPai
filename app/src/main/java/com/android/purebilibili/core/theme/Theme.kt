@@ -73,7 +73,8 @@ private fun createDarkColorScheme(primaryColor: Color) = darkColorScheme(
     onSurfaceVariant = TextSecondaryDark,
     surfaceContainer = DarkSurfaceElevated, // iOS System Gray 5 (Dark)
     outline = iOSSystemGray3Dark,
-    outlineVariant = iOSSystemGray4Dark
+    outlineVariant = iOSSystemGray4Dark,
+    surfaceTint = Color.Transparent
 )
 
 private fun createAmoledDarkColorScheme(primaryColor: Color) = darkColorScheme(
@@ -91,7 +92,8 @@ private fun createAmoledDarkColorScheme(primaryColor: Color) = darkColorScheme(
     onSurfaceVariant = TextSecondaryDark,
     surfaceContainer = Color(0xFF090909),
     outline = Color(0xFF262626),
-    outlineVariant = Color(0xFF1A1A1A)
+    outlineVariant = Color(0xFF1A1A1A),
+    surfaceTint = Color.Transparent
 )
 
 internal fun resolveEffectiveDynamicColorEnabled(
@@ -531,7 +533,8 @@ private fun createLightColorScheme(primaryColor: Color) = lightColorScheme(
     onSurfaceVariant = TextSecondary,
     surfaceContainer = iOSSystemGray5, // iOS System Gray 5 (Light)
     outline = iOSSystemGray3,
-    outlineVariant = iOSSystemGray4
+    outlineVariant = iOSSystemGray4,
+    surfaceTint = Color.Transparent
 )
 
 // 保留默认配色作为后备 (使用 iOS 系统蓝)
@@ -637,7 +640,9 @@ internal fun createMiuixAlignedColorScheme(
                 surfaceContainerHigh = Color(0xFF1A1A1A),
                 surfaceContainerHighest = Color(0xFF242424),
                 outline = Color(0xFF48484A),
-                outlineVariant = Color(0xFF262626)
+                outlineVariant = Color(0xFF262626),
+                // 显式透明：tonal elevation 表面不得被未调和的种子 primary 染色
+                surfaceTint = Color.Transparent
             )
         } else {
             darkColorScheme(
@@ -657,7 +662,8 @@ internal fun createMiuixAlignedColorScheme(
                 surfaceContainerHigh = Color(0xFF2C2C2E),
                 surfaceContainerHighest = Color(0xFF383838),
                 outline = Color(0xFF48484A),
-                outlineVariant = Color(0xFF3A3A3C)
+                outlineVariant = Color(0xFF3A3A3C),
+                surfaceTint = Color.Transparent
             )
         }
     } else {
@@ -678,7 +684,8 @@ internal fun createMiuixAlignedColorScheme(
             surfaceContainerHigh = Color(0xFFE8E8E8),
             surfaceContainerHighest = Color(0xFFE5E5EA),
             outline = Color(0xFFD1D1D6),
-            outlineVariant = Color(0xFFE5E5EA)
+            outlineVariant = Color(0xFFE5E5EA),
+            surfaceTint = Color.Transparent
         )
     }
 }
