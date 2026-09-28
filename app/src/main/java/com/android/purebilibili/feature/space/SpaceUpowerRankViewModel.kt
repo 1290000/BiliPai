@@ -3,8 +3,7 @@ package com.android.purebilibili.feature.space
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.NetworkModule
-import com.android.purebilibili.data.model.response.SpaceUpowerRankItem
-import kotlinx.coroutines.CancellationException
+import com.android.purebilibili.data.model.response.SpaceUpowerRankItemimport kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -59,8 +58,39 @@ class SpaceUpowerRankViewModel(
         load()
     }
 
-    private fun load() {
-        viewModelScope.launch {
+    /** App 端 elec 充电用户列表回退：与空间头部"N人为TA充电"同源。 */
+    private suspend fun fetchElecFallback(): Pair<List<SpaceUpowerRankItem>, Long>? {
+        return runCatching {
+            val params = mapOf(
+                "vmid" to upMid.toString(),
+                "build" to "8430300",
+                "mobi_app" to "android",
+                "platform" to "android",
+                "channel" to "master",
+                "s_locale" to "zh_CN",
+                "c_locale" to "zh_CN",
+                "appkey" to com.android.purebilibili.core.network.AppSignUtils.ANDROID_APP_KEY,
+                "ts" to com.android.purebilibili.core.network.AppSignUtils.getTimestamp().toString(),
+            )
+            val response = NetworkModule.spaceApi.getAppSpaceSupporters(
+                com.android.purebilibili.core.network.AppSignUtils.signForAndroidApi(params)
+            )
+            val elec = response.data?.elec
+            if (response.code != 0 || elec == null || elec.total <= 0L) return@runCatching null
+            elec.list.map { user ->
+                SpaceUpowerRankItem(
+                    mid = user.mid,
+                    nickname = user.uname,
+                    avatar = user.avatar.ifBlank { user.face },
+                    day = 0,
+                )
+            }.takeIf { it.isNotEmpty() }?.let { it to elec.total }
+        }.onFailure {
+            android.util.Log.d("SpaceUpowerRank", "elec fallback failed: ${it.message}")
+        }.getOrNull()
+    }
+
+    private fun load() {        viewModelScope.launch {
             val selectedType = _uiState.value.selectedPrivilegeType
             try {
                 val params = buildMap {
@@ -79,6 +109,20 @@ class SpaceUpowerRankViewModel(
                         error = response.message.ifBlank { "获取充电排行失败" },
                     )
                     return@launch
+                }
+                // 部分 UP（upower_state=3 等）web 排行接口为空但 App 端 elec 有数据，
+                // 头部" N人为TA充电"正是来自 elec.total。此时回退用 elec 列表渲染。
+                if (data.rankInfo.isEmpty() && data.levelInfo.isEmpty()) {
+                    val fallback = fetchElecFallback()
+                    if (fallback != null) {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = null,
+                            items = fallback.first,
+                            totalCount = fallback.second,
+                        )
+                        return@launch
+                    }
                 }
                 val levelTabs = if (!hasResolvedTabs && selectedType == null && data.levelInfo.size > 1) {
                     hasResolvedTabs = true

@@ -202,11 +202,14 @@ private fun SpaceUpowerRankRow(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
-        AppText(
-            text = "${days}天",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // elec 回退数据没有充电天数，隐藏天数标签
+        if (days > 0) {
+            AppText(
+                text = "${days}天",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
