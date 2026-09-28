@@ -1,6 +1,5 @@
 package com.android.purebilibili.feature.home
 import com.android.purebilibili.core.ui.components.videoListItemModifier
-import com.android.purebilibili.core.ui.components.AppHorizontalDivider
 import com.android.purebilibili.core.ui.components.FeedVerticalStaggeredGrid
 
 import com.android.purebilibili.core.theme.AppUiStyle
@@ -22,6 +21,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.android.purebilibili.core.ui.components.AppCard
 import com.android.purebilibili.core.ui.components.AppCardDefaults
@@ -36,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.store.HomeDurationStyle
 import com.android.purebilibili.core.store.HomeFeedCardStyle
@@ -1146,27 +1148,33 @@ private fun WaterfallReveal(
 
 @Composable
 private fun OldContentDivider() {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = AppSpacingTokens.Medium, vertical = AppSpacingTokens.ExtraSmall + AppSpacingTokens.Micro),
-        verticalAlignment = Alignment.CenterVertically
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        tonalElevation = 1.dp,
     ) {
-        AppHorizontalDivider(
-            modifier = Modifier.weight(1f),
-            thickness = AppSpacingTokens.Micro / 4,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)
-        )
-        AppText(
-            text = "上次刷新到这里",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = AppSpacingTokens.Small + AppSpacingTokens.Micro)
-        )
-        AppHorizontalDivider(
-            modifier = Modifier.weight(1f),
-            thickness = AppSpacingTokens.Micro / 4,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppSpacingTokens.Medium, vertical = AppSpacingTokens.Small),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            AppText(
+                text = "上次刷新到这里",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+            AppText(
+                text = "以下是之前的内容",
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
