@@ -841,17 +841,20 @@ private fun ImagePreviewOverlayContent(
                                 }
                             )
                         }
-
-                        ZoomableImage(
-                            model = ImageRequest.Builder(context)
+                        val previewRequest = remember(context, imageUrl, decodeSize, placeholderCacheKey) {
+                            ImageRequest.Builder(context)
                                 .data(imageUrl)
                                 // 预览必须采样解码，避免超大原图超过 Canvas 单位图绘制上限。
                                 .size(decodeSize.widthPx, decodeSize.heightPx)
                                 .placeholderMemoryCacheKey(placeholderCacheKey)
                                 .httpHeaders(NetworkHeaders.Builder().set("Referer", "https://www.bilibili.com/").build())
-                                // 退出 morph 时关闭 crossfade，避免尺寸变化触发二次淡入发黏。
-                                .crossfade(!isDismissing)
-                                .build(),
+                                // 进出场由画廊自身的 morph 控制，图片请求不能随退出状态重建。
+                                .crossfade(false)
+                                .build()
+                        }
+
+                        ZoomableImage(
+                            model = previewRequest,
                             contentDescription = null,
                             imageLoader = gifImageLoader,  //  使用 GIF 加载器
                             modifier = Modifier.fillMaxSize(),
