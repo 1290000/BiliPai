@@ -15,7 +15,7 @@ class FloatingBottomBarGeometryTest {
     }
 
     @Test
-    fun `home top label modes share the bottom dock resting indicator geometry`() {
+    fun `home top label modes keep a flat pill inside each tab slot`() {
         // 0: icon + label, 1: icon only, 2: label only. Use the actual dock width policy.
         for (mode in listOf(0, 1, 2)) {
             val width = resolveHomeTopTabFloatingDockWidth(393.dp, 5, mode)
@@ -23,11 +23,8 @@ class FloatingBottomBarGeometryTest {
             val height = resolveFloatingDockIndicatorHeightDp(
                 52f, slot, FloatingBottomBarGeometryMode.TopNavigation, 56f,
             )
-            val bottomDockHeight = resolveFloatingDockIndicatorHeightDp(
-                52f, slot, FloatingBottomBarGeometryMode.Dock, 56f,
-            )
-            assertEquals(bottomDockHeight, height, 0.001f, "label mode $mode")
-            assertEquals(4f, (64f - height) / 2f, 0.001f, "label mode $mode")
+            assertEquals(minOf(52f, slot / FLOATING_DOCK_MIN_INDICATOR_ASPECT), height, 0.001f, "label mode $mode")
+            assertTrue(slot / height >= FLOATING_DOCK_MIN_INDICATOR_ASPECT)
         }
     }
 

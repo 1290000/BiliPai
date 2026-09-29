@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -394,9 +395,9 @@ private fun TimelineSection(
             selectedValue = state.range,
             onSelectionChange = onRangeSelected,
             minTabWidth = timelineRangeMinWidth,
-            scrollable = true,
+            scrollable = false,
             miuixBackdrop = tabBackdrop,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.wrapContentWidth(Alignment.CenterHorizontally),
         )
         when {
             state.isLoading && state.days.isEmpty() -> BangumiTimelineSkeleton()

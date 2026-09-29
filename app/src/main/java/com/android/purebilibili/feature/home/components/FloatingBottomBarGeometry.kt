@@ -238,10 +238,9 @@ internal fun resolveFloatingDockIndicatorHeightDp(
         val insetHeight = shellHeightDp?.let { (it - 4f).coerceAtLeast(0f) }
             ?: requestedHeightDp
         return if (geometryMode == FloatingBottomBarGeometryMode.TopNavigation) {
-            // Home top tabs share the bottom dock's resting pill geometry. Keeping the
-            // 4dp vertical inset avoids a narrow-slot aspect cap making the top indicator
-            // shorter and more rounded than its bottom-bar counterpart.
-            min(requestedHeightDp, insetHeight)
+            // Keep the home top indicator capsule-shaped within narrow tab slots, while
+            // preserving the same minimum pill aspect used by the floating bottom dock.
+            min(min(requestedHeightDp, insetHeight), tabWidthDp / FLOATING_DOCK_MIN_INDICATOR_ASPECT)
         } else {
             resolveSegmentedControlIndicatorHeightDp(tabWidthDp, insetHeight)
         }
