@@ -1370,9 +1370,15 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
 
     private fun updateSponsorVideoLabel(segments: List<com.android.purebilibili.data.model.response.SponsorSegment>) {
         val label = segments.resolveSponsorVideoLabel()
-        val current = _uiState.value as? VideoPlaybackUiState.Success ?: return
-        if (current.sponsorVideoLabel == label) return
-        _uiState.value = current.copy(sponsorVideoLabel = label)
+        // 原子 RMW：label 写入慢（插件网络返回后），与其它 uiState 更新交错时
+        // 先读后写的 copy 会互相覆盖，表现为徽标概率性丢失。
+        _uiState.update { current ->
+            if (current is VideoPlaybackUiState.Success && current.sponsorVideoLabel != label) {
+                current.copy(sponsorVideoLabel = label)
+            } else {
+                current
+            }
+        }
     }
     val uiState = _uiState.asStateFlow()
 
@@ -7751,6 +7757,11 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                                 _sponsorProgressMarkers.value = emptyList()
                                 sponsorContributionRequest = null
                                 _sponsorContributionUiState.value = SponsorContributionUiState()
+                                // 插件注册与配置恢复是异步的；冷启动快速进视频时插件列表
+                                // 可能尚未就绪，onVideoLoad 会被跳过且不会重试（恰饭徽标丢失）。
+                                kotlinx.coroutines.withTimeoutOrNull(3_000L) {
+                                    PluginManager.awaitPluginReady(com.android.purebilibili.feature.plugin.SPONSOR_BLOCK_PLUGIN_ID)
+                                }
                                 PluginManager.getEnabledPlayerPlugins().forEach { plugin ->
                                     try {
                                         plugin.onVideoLoad(loadedBvid, loadedCid)
@@ -7781,6 +7792,17 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
             while (true) {
                 val plugins = PluginManager.getEnabledPlayerPlugins()
                 refreshSponsorContributionAvailability(plugins)
+                // 标签自愈：若首次写入时 uiState 瞬时不是 Success（重试/切换）或被
+                // 并发更新覆盖，这里用插件已加载的片段补写，对齐 PiliPlus 的
+                // "数据到达即写入 RxString" 语义。
+                plugins.forEach { plugin ->
+                    if (plugin is com.android.purebilibili.feature.plugin.SponsorBlockPlugin) {
+                        val segments = plugin.getSegments()
+                        if (segments.isNotEmpty()) {
+                            updateSponsorVideoLabel(segments)
+                        }
+                    }
+                }
                 if (plugins.none { it is com.android.purebilibili.feature.plugin.SponsorBlockPlugin } &&
                     _sponsorProgressMarkers.value.isNotEmpty()
                 ) {
