@@ -30,3 +30,9 @@
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# R8 优化 bug 规避（AGP 9.3.1）：合并/优化后的 HeightInLinesModifierKt 在 ART 上
+# 校验失败（VerifyError: Low-half Constant unexpected as arg to if-eqz/if-nez），
+# 经 WorkManager Operation$State / GMS cast 初始化链触发启动即崩。
+# keep 该类使其退出类合并与相关优化路径；若 R8 升级修复后可移除。
+-keep class androidx.compose.foundation.text.HeightInLinesModifierKt { *; }
