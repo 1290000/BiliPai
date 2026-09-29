@@ -1825,6 +1825,27 @@ internal fun VideoDetailScreenStateHolder(
             initialValue = false,
             lifecycle = lifecycleOwner.lifecycle
         )
+    val rotationResolver = context.applicationContext.contentResolver
+    var systemAutoRotateEnabled by remember(rotationResolver) {
+        mutableStateOf(
+            Settings.System.getInt(rotationResolver, Settings.System.ACCELEROMETER_ROTATION, 0) != 0
+        )
+    }
+    DisposableEffect(rotationResolver) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                systemAutoRotateEnabled = Settings.System.getInt(
+                    rotationResolver, Settings.System.ACCELEROMETER_ROTATION, 0
+                ) != 0
+            }
+        }
+        rotationResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.ACCELEROMETER_ROTATION), false, observer
+        )
+        observer.onChange(false)
+        onDispose { rotationResolver.unregisterContentObserver(observer) }
+    }
+    val sensorAutoRotateEnabled = autoRotateEnabled && systemAutoRotateEnabled
     val cardAnimationEnabled by com.android.purebilibili.core.store.SettingsManager
         .getCardAnimationEnabled(context).collectAsStateWithLifecycle(
             initialValue = true,
@@ -2518,6 +2539,7 @@ internal fun VideoDetailScreenStateHolder(
 
     LaunchedEffect(
         autoRotateEnabled,
+        systemAutoRotateEnabled,
         fullscreenMode,
         useTabletLayout,
         isOrientationDrivenFullscreen,
@@ -2536,7 +2558,7 @@ internal fun VideoDetailScreenStateHolder(
         if (isFullscreenPlayerLocked) return@LaunchedEffect
         if (usesInWindowFullscreen) return@LaunchedEffect
         val requestedOrientation = resolvePhoneVideoRequestedOrientation(
-            autoRotateEnabled = autoRotateEnabled,
+            autoRotateEnabled = sensorAutoRotateEnabled,
             fullscreenMode = fullscreenMode,
             isCompactDevice = orientationPolicyDevice,
             isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
@@ -2581,6 +2603,7 @@ internal fun VideoDetailScreenStateHolder(
 
     LaunchedEffect(
         autoRotateEnabled,
+        systemAutoRotateEnabled,
         isFullscreenMode,
         orientationPolicyDevice,
         isOrientationDrivenFullscreen,
@@ -2597,8 +2620,10 @@ internal fun VideoDetailScreenStateHolder(
             lastPhoneAutoRotatePortraitAppliedAtMs = null
             return@LaunchedEffect
         }
-        if (!shouldObservePhoneAutoRotate(
-                autoRotateEnabled = autoRotateEnabled,
+        if (!systemAutoRotateEnabled ||
+            (!sensorAutoRotateEnabled && !displayContext.isFoldableCoverWindow) ||
+            !shouldObservePhoneAutoRotate(
+                autoRotateEnabled = sensorAutoRotateEnabled,
                 isCompactDevice = orientationPolicyDevice,
                 isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
                 fullscreenMode = fullscreenMode,
@@ -2618,6 +2643,7 @@ internal fun VideoDetailScreenStateHolder(
     DisposableEffect(
         activity,
         autoRotateEnabled,
+        systemAutoRotateEnabled,
         isFullscreenMode,
         fullscreenMode,
         useTabletLayout,
@@ -2635,8 +2661,10 @@ internal fun VideoDetailScreenStateHolder(
         if (
             hostActivity == null ||
             isFullscreenPlayerLocked ||
+            !systemAutoRotateEnabled ||
+            (!sensorAutoRotateEnabled && !displayContext.isFoldableCoverWindow) ||
             !shouldObservePhoneAutoRotate(
-                autoRotateEnabled = autoRotateEnabled,
+                autoRotateEnabled = sensorAutoRotateEnabled,
                 isCompactDevice = orientationPolicyDevice,
                 isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
                 fullscreenMode = fullscreenMode,
@@ -2660,7 +2688,7 @@ internal fun VideoDetailScreenStateHolder(
                     }
                     return
                 }
-                if (!autoRotateEnabled && !isFullscreenMode) return
+                if (!sensorAutoRotateEnabled && !isFullscreenMode) return
                 val isCurrentlyLandscape =
                     hostActivity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
                 val targetOrientation = resolvePhoneAutoRotateRequestedOrientation(
@@ -2671,7 +2699,7 @@ internal fun VideoDetailScreenStateHolder(
                     // Wait for one physical landscape observation before allowing the sensor
                     // to treat portrait as an explicit rotate-back gesture.
                     allowPortraitTransitions = shouldAllowPhoneSensorPortraitTransition(
-                        autoRotateEnabled = autoRotateEnabled,
+                        autoRotateEnabled = sensorAutoRotateEnabled,
                         manualFullscreenRequested = userRequestedFullscreen,
                     ),
                 )

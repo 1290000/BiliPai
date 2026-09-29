@@ -711,7 +711,7 @@ internal fun resolvePhoneVideoRequestedOrientation(
             else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
-    return if (isFullscreenMode || manualFullscreenRequested) {
+    return if (manualFullscreenRequested) {
         val fullscreenOrientation = resolvePhoneFullscreenEnterOrientation(
             fullscreenMode = fullscreenMode,
             isVerticalVideo = isVerticalVideo,
@@ -723,7 +723,8 @@ internal fun resolvePhoneVideoRequestedOrientation(
             autoRotateEnabled = autoRotateEnabled
         )
     } else {
-        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        // System rotation can now enter and leave landscape fullscreen on its own.
+        ActivityInfo.SCREEN_ORIENTATION_USER
     }
 }
 
