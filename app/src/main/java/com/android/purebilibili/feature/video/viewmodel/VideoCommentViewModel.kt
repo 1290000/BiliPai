@@ -339,7 +339,8 @@ class VideoCommentViewModel : ViewModel() {
                 page = pageToLoad, 
                 ps = 20,
                 mode = currentState.sortMode.apiMode,
-                paginationOffset = currentState.grpcNextOffset
+                paginationOffset = currentState.grpcNextOffset,
+                fallbackOnMissingLocation = requestSubject.type == 1,
             )
 
             result.onSuccess { data ->

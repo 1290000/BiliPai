@@ -1565,6 +1565,21 @@ private fun PlaybackInteractionSettingsSection(
             iconTint = com.android.purebilibili.core.theme.iOSBlue
         )
         AppPreferenceDivider()
+
+        AppListItem(
+            headlineContent = { AppText("评论 IP 属地") },
+            supportingContent = {
+                AppText("无需开启；B站返回属地时会在评论时间旁自动显示。部分评论没有属地数据。")
+            },
+            leadingContent = {
+                AppIcon(
+                    rememberMaterialSymbol(R.drawable.ms_info_24),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            },
+        )
+        AppPreferenceDivider()
         AppSwitchPreference(
             icon = rememberSettingsSemanticIcon(SettingsIconRole.INTERACTION_COMMENT),
             title = "视频详情显示评论数",
