@@ -2178,8 +2178,7 @@ fun AppNavigation(
                                                 realtimeBlurEnabledProvider = {
                                                     shouldUseRealtimeVideoCardTransitionBackgroundBlur(
                                                         source = backgroundSource,
-                                                        realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled ||
-                                                            appNavigationSettings.miuixTransitionBlurEnabled,
+                                                        realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
                                                     )
                                                 },
                                                 scaleReductionProvider = {
@@ -2199,8 +2198,7 @@ fun AppNavigation(
                                                 realtimeBlurEnabledProvider = {
                                                     shouldUseRealtimeVideoCardTransitionBackgroundBlur(
                                                         source = backgroundSource,
-                                                        realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled ||
-                                                            appNavigationSettings.miuixTransitionBlurEnabled,
+                                                        realtimeBlurEnabled = videoTransitionRealtimeBlurEnabled,
                                                     )
                                                 },
                                                 scaleReductionProvider = {

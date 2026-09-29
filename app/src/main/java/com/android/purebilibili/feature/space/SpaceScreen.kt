@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.android.purebilibili.feature.home.homeFeedPinchZoom
 import com.android.purebilibili.feature.home.resolveHomeFeedPinchColumnBounds
+import com.android.purebilibili.feature.home.resolveHomeFeedStoredColumnCount
+import com.android.purebilibili.feature.home.isCompactHomeFeedScreen
 import com.android.purebilibili.feature.home.GridPinchColumnHudPill
 import com.android.purebilibili.core.ui.components.AppLiquidGlassBackToTopButton
 import com.android.purebilibili.core.ui.rememberBackToTopButtonEnabled
@@ -1381,7 +1383,11 @@ private fun SpaceContent(
         // 使用 360dp 的可读宽度，避免在展开屏上被媒体卡片的紧密列数压窄。
         val preferredGridColumns = resolveSpaceContentGridColumnCount(
             widthDp = windowWidthDp,
-            fixedColumnCount = homeSettings.gridColumnCount,
+            fixedColumnCount = resolveHomeFeedStoredColumnCount(
+                widthSizeClass = windowSizeClass.widthSizeClass,
+                compactColumnCount = homeSettings.gridColumnCountCompact,
+                defaultColumnCount = homeSettings.gridColumnCount,
+            ),
             cardWidthPreset = homeSettings.homeFeedCardWidthPreset,
             contentMaxWidthDp = adaptiveLayoutSpec.contentMaxWidthDp,
             widthSizeClass = windowSizeClass.widthSizeClass,
@@ -1403,7 +1409,7 @@ private fun SpaceContent(
                 contentWidthDp = windowWidthDp,
             )
         }
-        LaunchedEffect(homeSettings.gridColumnCount) {
+        LaunchedEffect(homeSettings.gridColumnCount, homeSettings.gridColumnCountCompact) {
             interactiveColumns = null
         }
         val spaceFeedCardLayout = resolveHomeFeedCardLayout(
@@ -1430,7 +1436,11 @@ private fun SpaceContent(
                     },
                     onGestureEnd = { finalColumns ->
                         coroutineScope.launch {
-                            SettingsManager.setGridColumnCount(context, finalColumns)
+                            if (isCompactHomeFeedScreen(windowSizeClass.widthSizeClass)) {
+                                SettingsManager.setGridColumnCountCompact(context, finalColumns)
+                            } else {
+                                SettingsManager.setGridColumnCount(context, finalColumns)
+                            }
                         }
                         pinchPillDismissJob?.cancel()
                         pinchPillDismissJob = coroutineScope.launch {

@@ -1841,7 +1841,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                 delay(minutes * 60 * 1000L)
                 
                 // 定时结束
-                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
                     exoPlayer?.pause()
                     toast("⏰ 定时结束，已暂停播放")
                     _sleepTimerMinutes.value = null
@@ -4461,7 +4461,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                 "VideoPlaybackViewModel",
                 "Recorded not interested feedback: bvid=${current.info.bvid}, mid=${current.info.owner.mid}"
             )
-            withContext(Dispatchers.Main) {
+            withContext(Dispatchers.Main.immediate) {
                 toast("已减少此类推荐")
             }
         }
@@ -5244,7 +5244,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                 com.android.purebilibili.core.store.TokenManager.isVipCache = true
             }
 
-            withContext(Dispatchers.Main) {
+            withContext(Dispatchers.Main.immediate) {
                 _uiState.update { state ->
                     val success = state as? VideoPlaybackUiState.Success ?: return@update state
                     if (success.info.bvid != bvid) return@update state

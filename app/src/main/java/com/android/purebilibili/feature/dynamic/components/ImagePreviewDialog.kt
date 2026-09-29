@@ -527,7 +527,7 @@ private fun ImagePreviewOverlayContent(
             scope.launch {
                 val success = saveImageToGallery(context, imageUrl)
                 isSaving = false
-                withContext(Dispatchers.Main) {
+                withContext(Dispatchers.Main.immediate) {
                     handleImageSaveResult(success)
                 }
             }
@@ -544,7 +544,7 @@ private fun ImagePreviewOverlayContent(
             scope.launch {
                 val success = saveMotionPhotoToGallery(context, imageUrl, videoUrl)
                 isSaving = false
-                withContext(Dispatchers.Main) {
+                withContext(Dispatchers.Main.immediate) {
                     handleImageSaveResult(success, successMessage = "实况照片已保存到相册")
                 }
             }
@@ -561,7 +561,7 @@ private fun ImagePreviewOverlayContent(
             scope.launch {
                 val success = saveLivePhotoVideoToGallery(context, videoUrl)
                 isSaving = false
-                withContext(Dispatchers.Main) {
+                withContext(Dispatchers.Main.immediate) {
                     handleImageSaveResult(success, successMessage = "实况视频已保存到相册")
                 }
             }
@@ -579,7 +579,7 @@ private fun ImagePreviewOverlayContent(
             scope.launch {
                 val success = urls.map { saveImageToGallery(context, it) }.all { it }
                 isSaving = false
-                withContext(Dispatchers.Main) { handleImageSaveResult(success) }
+                withContext(Dispatchers.Main.immediate) { handleImageSaveResult(success) }
             }
         } else {
             pendingSaveAction = { requestSaveAllImages() }
@@ -593,7 +593,7 @@ private fun ImagePreviewOverlayContent(
         scope.launch {
             val success = shareImageFromPreview(context, imageUrl)
             isSharing = false
-            withContext(Dispatchers.Main) {
+            withContext(Dispatchers.Main.immediate) {
                 handleImageShareResult(success)
             }
         }
@@ -2111,7 +2111,7 @@ suspend fun shareImageFromPreview(context: Context, imageUrl: String): Boolean {
         createImagePreviewShareFile(context, normalizedUrl, mimeType)
     } ?: return false
 
-    return withContext(Dispatchers.Main) {
+    return withContext(Dispatchers.Main.immediate) {
         try {
             val uri = FileProvider.getUriForFile(
                 context,
