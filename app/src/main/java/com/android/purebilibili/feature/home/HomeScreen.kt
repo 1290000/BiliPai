@@ -171,7 +171,6 @@ import com.android.purebilibili.core.ui.motion.AppMotionTokens
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
 import com.android.purebilibili.core.ui.performance.TrackJankStateFlag
 import com.android.purebilibili.core.ui.performance.TrackJankStateValue
-import com.android.purebilibili.core.util.animateScrollToTop
 import coil3.imageLoader
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
@@ -558,9 +557,9 @@ fun HomeScreen(
 
                         if (!isAtTop) {
                             val listState = requireNotNull(gridState)
-                            listState.animateScrollToTop(
-                                fast = request != HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH,
-                            )
+                            // 底栏/重选回顶直达：单次 scrollToItem 是原子操作，
+                            // 无两段式 preJump+animate 的中间态，任何距离都不掉帧。
+                            listState.scrollToItem(0)
                         }
                         val shouldRefresh = request == HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH ||
                             (request == HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH && isAtTop)
@@ -1440,8 +1439,9 @@ fun HomeScreen(
                         if (isAtTop) {
                             viewModel.refresh()
                         } else {
+                            // 直达到顶，避免两段式回顶的硬跳+小动画顿挫。
                             val listState = requireNotNull(gridState)
-                            listState.animateScrollToTop(fast = true)
+                            listState.scrollToItem(0)
                         }
                     }
                 }
@@ -2680,7 +2680,7 @@ fun HomeScreen(
             onStatusBarDoubleTap = {
                 coroutineScope.launch {
                     withHomeScrollToTopLock {
-                        activeGridState?.animateScrollToTop()
+                        activeGridState?.scrollToItem(0)
                     }
                 }
             },
