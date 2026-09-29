@@ -152,7 +152,7 @@ private class CounterScaledCornerShape(
                     right = size.width,
                     bottom = size.height
                 ),
-                corners = androidx.compose.ui.geometry.CornerRadius(horizontalPx, verticalPx)
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(horizontalPx, verticalPx)
             )
         )
     }
