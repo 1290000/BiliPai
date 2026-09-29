@@ -2837,7 +2837,8 @@ private fun SpaceHeader(
                 // 右侧操作区：上层数据统计，下层关注/私信按钮
                 Column(
                     modifier = Modifier
-                        .weight(if (useExpandedLayout) 0.8f else 1f, fill = !useExpandedLayout)
+                        // 横屏切到展开布局时也要占住分配的宽度，避免按钮区按零宽测量。
+                        .weight(if (useExpandedLayout) 0.8f else 1f)
                         .widthIn(max = 480.dp)
                         .padding(top = (avatarBannerOverlap + actionsTopMargin).coerceAtLeast(0.dp)),
                     verticalArrangement = Arrangement.spacedBy(5.dp)
