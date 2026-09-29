@@ -221,14 +221,19 @@ private object ImagePreviewOverlayController {
     fun show(request: ImagePreviewOverlayRequest) {
         val activeSourceRect = request.activeSourceRect ?: _preparedSourceRect.value
         _request.value = request.copy(activeSourceRect = activeSourceRect)
-        _activeSourceRect.value = activeSourceRect
+        // 不在这里发布 activeSourceRect：Dialog 窗口要晚 1-2 帧才画出第一帧，
+        // 若提交时立刻隐藏源缩略图，窗口出现前会露出一个"洞"（感知为顿挫）。
+        // 发布动作延迟到 overlay 首次组合的 SideEffect（同帧绘制，无缝衔接）。
         _preparedSourceRect.value = null
     }
 
     fun updateActiveSourceRect(token: Long, sourceRect: androidx.compose.ui.geometry.Rect?) {
         val current = _request.value ?: return
-        if (current.token == token && current.activeSourceRect != sourceRect) {
+        if (current.token != token) return
+        if (current.activeSourceRect != sourceRect) {
             _request.value = current.copy(activeSourceRect = sourceRect)
+        }
+        if (_activeSourceRect.value != sourceRect) {
             _activeSourceRect.value = sourceRect
         }
     }
@@ -302,7 +307,14 @@ fun ImagePreviewOverlayHost(
                 // The image itself already performs the return morph. The platform Dialog
                 // window animation would scale it a second time when the window is removed.
                 ((dialogView.parent as? DialogWindowProvider) ?: (dialogView as? DialogWindowProvider))
-                    ?.window?.setWindowAnimations(0)
+                    ?.window?.let { window ->
+                        window.setWindowAnimations(0)
+                        // 平台 Dialog 默认 FLAG_DIM_BEHIND 会在窗口挂上时把整个屏幕压暗、
+                        // 关闭时瞬间变亮；画廊自带进度 scrim，这层额外 dim 表现为点击
+                        // 放大/返回时的变暗闪烁，必须清掉。
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                        window.setDimAmount(0f)
+                    }
             }
             ImagePreviewOverlayContent(
                 images = request.images,
