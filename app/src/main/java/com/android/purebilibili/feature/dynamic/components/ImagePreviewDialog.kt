@@ -145,8 +145,13 @@ private class CounterScaledCornerShape(
         val horizontalPx = with(density) { horizontalDp.dp.toPx() }
         val verticalPx = with(density) { verticalDp.dp.toPx() }
         return androidx.compose.ui.graphics.Outline.Rounded(
-            androidx.compose.ui.graphics.RoundRect(
-                rect = size.toRect(),
+            androidx.compose.ui.geometry.RoundRect(
+                rect = androidx.compose.ui.geometry.Rect(
+                    left = 0f,
+                    top = 0f,
+                    right = size.width,
+                    bottom = size.height
+                ),
                 corners = androidx.compose.ui.geometry.CornerRadius(horizontalPx, verticalPx)
             )
         )
