@@ -178,11 +178,14 @@ private fun DrawGridImage(
             }
             .clickable(enabled = !sourceHidden) {
                 val rect = imageRectRef.value
+                val anchor = rect?.let {
+                    ImagePreviewSourceAnchor(it, cornerRadius.value, galleryRects.toMap())
+                }
+                if (onImagePreviewClick != null) {
+                    prepareImagePreviewSourceTransition(anchor?.rect)
+                }
                 onImageClick(index, rect)
-                onImagePreviewClick?.invoke(
-                    index,
-                    rect?.let { ImagePreviewSourceAnchor(it, cornerRadius.value, galleryRects.toMap()) }
-                )
+                onImagePreviewClick?.invoke(index, anchor)
             },
         contentAlignment = Alignment.Center
     ) {

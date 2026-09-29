@@ -99,6 +99,7 @@ import com.android.purebilibili.core.util.PickGalleryVisualMedia
 import com.android.purebilibili.feature.home.UserState
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.isImagePreviewSourceHidden
+import com.android.purebilibili.feature.dynamic.components.prepareImagePreviewSourceTransition
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.core.ui.AppAlertDialog
 import com.android.purebilibili.core.ui.resolveAppContentDialogLayoutPolicy
@@ -2843,7 +2844,10 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
                     }
                     .then(
                         if (clickableBvid == null && imageUrls.isNotEmpty()) {
-                            Modifier.clickable { selectedImageIndex = 0 }
+                            Modifier.clickable {
+                                prepareImagePreviewSourceTransition(sourceRect)
+                                selectedImageIndex = 0
+                            }
                         } else {
                             Modifier
                         }

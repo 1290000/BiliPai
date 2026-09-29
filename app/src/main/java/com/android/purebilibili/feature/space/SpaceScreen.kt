@@ -239,6 +239,7 @@ import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.isImagePreviewSourceHidden
 import com.android.purebilibili.feature.dynamic.components.imagePreviewSourceBounds
 import com.android.purebilibili.feature.dynamic.components.rememberImagePreviewSourceRect
+import com.android.purebilibili.feature.dynamic.components.prepareImagePreviewSourceTransition
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
 import com.android.purebilibili.feature.list.VideoProgressDisplayState
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
@@ -739,10 +740,12 @@ fun SpaceScreen(
                             onMemberGuardClick = onMemberGuardClick
                                 ?: { m, _, _ -> onWebClick("https://space.bilibili.com/$m", "大航海") },
                             onTopPhotoClick = { rect ->
+                                prepareImagePreviewSourceTransition(rect)
                                 topPhotoSourceRect = rect
                                 showTopPhotoPreview = true
                             },
                             onAvatarClick = { rect ->
+                                prepareImagePreviewSourceTransition(rect)
                                 avatarSourceRect = rect
                                 showAvatarPreview = true
                             },

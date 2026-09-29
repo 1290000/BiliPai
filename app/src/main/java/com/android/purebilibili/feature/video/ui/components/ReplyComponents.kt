@@ -82,6 +82,7 @@ import com.android.purebilibili.data.repository.VideoRepository
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.dynamic.components.isImagePreviewSourceHidden
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewSourceAnchor
+import com.android.purebilibili.feature.dynamic.components.prepareImagePreviewSourceTransition
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextPlacement
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewCommentContext
 import com.android.purebilibili.feature.dynamic.components.ImageDecodeTarget
@@ -2949,16 +2950,18 @@ fun CommentPictures(
                         imageRect?.let { galleryRects[0] = it }
                     }
                     .clickable(enabled = !sourceHidden) {
+                        val anchor = imageRect?.let {
+                            ImagePreviewSourceAnchor(
+                                it,
+                                singleImageCornerDp,
+                                galleryRects = galleryRects.toMap()
+                            )
+                        }
+                        prepareImagePreviewSourceTransition(anchor?.rect)
                         onImageClick(
                             imageUrls,
                             0,
-                            imageRect?.let {
-                                ImagePreviewSourceAnchor(
-                                    it,
-                                    singleImageCornerDp,
-                                    galleryRects = galleryRects.toMap()
-                                )
-                            }
+                            anchor
                         )
                     }
             ) {
@@ -3004,16 +3007,18 @@ fun CommentPictures(
                                         imageRect?.let { galleryRects[globalIndex] = it }
                                     }
                                     .clickable(enabled = !sourceHidden) {
+                                        val anchor = imageRect?.let {
+                                            ImagePreviewSourceAnchor(
+                                                it,
+                                                gridImageCornerDp,
+                                                galleryRects = galleryRects.toMap()
+                                            )
+                                        }
+                                        prepareImagePreviewSourceTransition(anchor?.rect)
                                         onImageClick(
                                             imageUrls,
                                             globalIndex,
-                                            imageRect?.let {
-                                                ImagePreviewSourceAnchor(
-                                                    it,
-                                                    gridImageCornerDp,
-                                                    galleryRects = galleryRects.toMap()
-                                                )
-                                            }
+                                            anchor
                                         )
                                     },
                                 contentAlignment = Alignment.Center

@@ -170,23 +170,37 @@ private data class ImagePreviewOverlayRequest(
 @Composable
 fun isImagePreviewSourceHidden(bounds: androidx.compose.ui.geometry.Rect?): Boolean {
     if (bounds == null) return false
-    val request by ImagePreviewOverlayController.request.collectAsStateWithLifecycle()
-    val sourceRect = request?.activeSourceRect ?: return false
+    val activeSourceRect by ImagePreviewOverlayController.activeSourceRect.collectAsStateWithLifecycle()
+    val sourceRect = activeSourceRect ?: return false
     return sourceRect.inflate(8f).contains(bounds.center)
+}
+
+internal fun prepareImagePreviewSourceTransition(
+    sourceRect: androidx.compose.ui.geometry.Rect?,
+) {
+    ImagePreviewOverlayController.prepareSourceTransition(sourceRect)
 }
 
 private object ImagePreviewOverlayController {
     private val _request = MutableStateFlow<ImagePreviewOverlayRequest?>(null)
+    private val _activeSourceRect = MutableStateFlow<androidx.compose.ui.geometry.Rect?>(null)
     val request = _request.asStateFlow()
+    val activeSourceRect = _activeSourceRect.asStateFlow()
+
+    fun prepareSourceTransition(sourceRect: androidx.compose.ui.geometry.Rect?) {
+        _activeSourceRect.value = sourceRect
+    }
 
     fun show(request: ImagePreviewOverlayRequest) {
         _request.value = request
+        _activeSourceRect.value = request.activeSourceRect
     }
 
     fun updateActiveSourceRect(token: Long, sourceRect: androidx.compose.ui.geometry.Rect?) {
         val current = _request.value ?: return
         if (current.token == token && current.activeSourceRect != sourceRect) {
             _request.value = current.copy(activeSourceRect = sourceRect)
+            _activeSourceRect.value = sourceRect
         }
     }
 
@@ -194,6 +208,7 @@ private object ImagePreviewOverlayController {
         val current = _request.value ?: return
         if (token == null || current.token == token) {
             _request.value = null
+            _activeSourceRect.value = null
         }
     }
 }
@@ -214,7 +229,7 @@ fun ImagePreviewDialog(
     val latestOnDismiss by rememberUpdatedState(onDismiss)
     val requestToken = remember(images, initialIndex, sourceRect, sourceRects, sourceCornerRadiusDp, livePhotoVideos) { System.nanoTime() }
 
-    LaunchedEffect(requestToken) {
+    DisposableEffect(requestToken) {
         ImagePreviewOverlayController.show(
             ImagePreviewOverlayRequest(
                 token = requestToken,
@@ -230,9 +245,6 @@ fun ImagePreviewDialog(
                 onDismiss = { latestOnDismiss() }
             )
         )
-    }
-
-    DisposableEffect(requestToken) {
         onDispose {
             ImagePreviewOverlayController.dismiss(requestToken)
         }
@@ -409,7 +421,7 @@ private fun ImagePreviewOverlayContent(
     fun sourceRectForPage(page: Int): androidx.compose.ui.geometry.Rect? =
         sourceRect.takeIf { page == initialIndex } ?: sourceRects[page]
 
-    LaunchedEffect(pagerState.currentPage, sourceRects, sourceRect, initialIndex, requestToken) {
+    SideEffect {
         ImagePreviewOverlayController.updateActiveSourceRect(
             token = requestToken,
             sourceRect = sourceRectForPage(pagerState.currentPage)

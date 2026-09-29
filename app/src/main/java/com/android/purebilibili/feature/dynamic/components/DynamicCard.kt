@@ -1416,13 +1416,15 @@ fun DynamicCardV2(
                                         .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
                                         .clickable(enabled = currentImageIndex in previewImages.indices) {
                                             fullContentSelectedImageIndex = currentImageIndex
-                                            thumbnailSourceAnchor = expandedImageSourceRect.value?.let {
+                                            val anchor = expandedImageSourceRect.value?.let {
                                                 ImagePreviewSourceAnchor(
                                                     rect = it,
                                                     cornerRadiusDp = opusExpandedImageCornerRadiusDp,
                                                     galleryRects = opusExpandedSourceRects.toMap(),
                                                 )
                                             }
+                                            prepareImagePreviewSourceTransition(anchor?.rect)
+                                            thumbnailSourceAnchor = anchor
                                         },
                                     contentScale = ContentScale.FillWidth
                                 )
@@ -1544,13 +1546,15 @@ fun DynamicCardV2(
                                 .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
                                 .clickable {
                                     selectedImageIndex = index
-                                    sourceAnchor = expandedImageSourceRect.value?.let {
+                                    val anchor = expandedImageSourceRect.value?.let {
                                         ImagePreviewSourceAnchor(
                                             rect = it,
                                             cornerRadiusDp = opusExpandedImageCornerRadiusDp,
                                             galleryRects = opusExpandedSourceRects.toMap(),
                                         )
                                     }
+                                    prepareImagePreviewSourceTransition(anchor?.rect)
+                                    sourceAnchor = anchor
                                 },
                             contentScale = ContentScale.FillWidth,
                         )
