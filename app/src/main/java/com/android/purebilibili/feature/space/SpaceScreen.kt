@@ -2840,8 +2840,7 @@ private fun SpaceHeader(
                 // 右侧操作区：上层数据统计，下层关注/私信按钮
                 Column(
                     modifier = Modifier
-                        // 横屏切到展开布局时也要占住分配的宽度，避免按钮区按零宽测量。
-                        .weight(if (useExpandedLayout) 0.8f else 1f)
+                        .weight(if (useExpandedLayout) 0.8f else 1f, fill = !useExpandedLayout)
                         .widthIn(max = 480.dp)
                         .padding(top = (avatarBannerOverlap + actionsTopMargin).coerceAtLeast(0.dp)),
                     verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -2929,8 +2928,9 @@ private fun SpaceHeaderIdentityInfo(
     modifier: Modifier = Modifier,
 ) {
     // 信息区：名字 + 等级 + VIP 标识。
-    SelectionContainer {
-        Column(modifier = modifier) {
+    // Row 的 weight 要传给 SelectionContainer 的顶层布局，不能只挂在其内部 Column。
+    SelectionContainer(modifier = modifier) {
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
