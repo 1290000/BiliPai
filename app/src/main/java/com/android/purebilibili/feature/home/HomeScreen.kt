@@ -2262,7 +2262,9 @@ fun HomeScreen(
                               ) {
                               if (category != HomeCategory.POPULAR && categoryState.isLoading && categoryState.videos.isEmpty() && categoryState.liveRooms.isEmpty()) {
                                   // Loading Skeleton per page
-                                  val skeletonPulse = rememberHomeFeedSkeletonPulse()
+                                  // [性能优化] 脉冲 state 只包进 provider,值在骨架卡 draw 阶段读取,
+                                  // 骨架期间屏幕级组合作用域不再逐帧失效。
+                                  val skeletonPulseState = rememberHomeFeedSkeletonPulseState()
                                   LazyVerticalStaggeredGrid(
                                       columns = StaggeredGridCells.Fixed(effectiveGridColumns),
                                       contentPadding = PaddingValues(
@@ -2284,7 +2286,7 @@ fun HomeScreen(
                                               span = StaggeredGridItemSpan.FullLine
                                           ) {
                                               HomeFeedHeroCarouselSkeleton(
-                                                  pulse = skeletonPulse
+                                                  pulse = { skeletonPulseState.value }
                                               )
                                           }
                                       }
@@ -2296,7 +2298,7 @@ fun HomeScreen(
                                          contentType = { "home_feed_skeleton_card" }
                                      ) {
                                          HomeFeedSkeletonCard(
-                                             pulse = skeletonPulse,
+                                             pulse = { skeletonPulseState.value },
                                              wallpaperTintEnabled = homeWallpaperBackdropAppearance.visible,
                                              wallpaperEffectMode = homeSettings.homeWallpaperEffectMode,
                                              isDataSaverActive = isDataSaverActive,
