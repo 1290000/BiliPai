@@ -1035,7 +1035,7 @@ class VideoDetailLayoutModePolicyTest {
                 manualPortraitHoldActive = true
             )
         )
-        assertFalse(
+        assertTrue(
             shouldObservePhoneAutoRotate(
                 autoRotateEnabled = false,
                 isCompactDevice = true,

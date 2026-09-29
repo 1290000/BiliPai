@@ -2621,7 +2621,8 @@ internal fun VideoDetailScreenStateHolder(
             return@LaunchedEffect
         }
         if (!systemAutoRotateEnabled ||
-            (!sensorAutoRotateEnabled && !displayContext.isFoldableCoverWindow) ||
+            (!sensorAutoRotateEnabled && !displayContext.isFoldableCoverWindow &&
+                !manualPortraitHoldActive) ||
             !shouldObservePhoneAutoRotate(
                 autoRotateEnabled = sensorAutoRotateEnabled,
                 isCompactDevice = orientationPolicyDevice,
@@ -2662,7 +2663,8 @@ internal fun VideoDetailScreenStateHolder(
             hostActivity == null ||
             isFullscreenPlayerLocked ||
             !systemAutoRotateEnabled ||
-            (!sensorAutoRotateEnabled && !displayContext.isFoldableCoverWindow) ||
+            (!sensorAutoRotateEnabled && !displayContext.isFoldableCoverWindow &&
+                !manualPortraitHoldActive) ||
             !shouldObservePhoneAutoRotate(
                 autoRotateEnabled = sensorAutoRotateEnabled,
                 isCompactDevice = orientationPolicyDevice,
