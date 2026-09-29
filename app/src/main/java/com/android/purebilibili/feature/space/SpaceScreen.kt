@@ -335,6 +335,8 @@ fun SpaceScreen(
     }
 
     val currentSuccessState = uiState as? SpaceUiState.Success
+    val showTabletSpaceFollowAction =
+        com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTabletDevice
     var contributionVideoLayoutMode by rememberSaveable(mid) {
         mutableStateOf(defaultSpaceContributionVideoLayoutMode())
     }
@@ -488,7 +490,8 @@ fun SpaceScreen(
                     ),
                     actions = {
                         currentSuccessState?.userInfo?.takeIf {
-                            it.mid > 0L && it.mid != com.android.purebilibili.core.store.TokenManager.midCache
+                            showTabletSpaceFollowAction && it.mid > 0L &&
+                                it.mid != com.android.purebilibili.core.store.TokenManager.midCache
                         }?.let { userInfo ->
                             AppTextButton(
                                 onClick = viewModel::toggleFollow,
