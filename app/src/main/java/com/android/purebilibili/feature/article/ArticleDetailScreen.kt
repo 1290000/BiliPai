@@ -239,7 +239,11 @@ private fun ArticleDetailContent(
         .onGloballyPositioned { coordinates ->
             bannerSourceRect = coordinates.boundsInWindow()
         }
-        .clickable(enabled = previewImages.isNotEmpty()) {
+        .clickable(
+            interactionSource = null,
+            indication = null,
+            enabled = previewImages.isNotEmpty(),
+        ) {
             prepareImagePreviewSourceTransition(bannerSourceRect)
             imagePreviewRequest = ArticleImagePreviewRequest(
                 images = previewImages,
@@ -467,7 +471,7 @@ private fun ArticleDetailContent(
                             .onGloballyPositioned { coordinates ->
                                 bodyImageSourceRects[index] = coordinates.boundsInWindow()
                             }
-                            .clickable {
+                            .clickable(interactionSource = null, indication = null) {
                                 val payload = resolveArticleImagePreviewPayload(
                                     blocks = article.blocks,
                                     tappedBlockIndex = index

@@ -2949,7 +2949,11 @@ fun CommentPictures(
                         imageRect = coordinates.boundsInWindow()
                         imageRect?.let { galleryRects[0] = it }
                     }
-                    .clickable(enabled = !sourceHidden) {
+                    .clickable(
+                        interactionSource = null,
+                        indication = null,
+                        enabled = !sourceHidden,
+                    ) {
                         val anchor = imageRect?.let {
                             ImagePreviewSourceAnchor(
                                 it,
@@ -3006,7 +3010,11 @@ fun CommentPictures(
                                         imageRect = coordinates.boundsInWindow()
                                         imageRect?.let { galleryRects[globalIndex] = it }
                                     }
-                                    .clickable(enabled = !sourceHidden) {
+                                    .clickable(
+                                        interactionSource = null,
+                                        indication = null,
+                                        enabled = !sourceHidden,
+                                    ) {
                                         val anchor = imageRect?.let {
                                             ImagePreviewSourceAnchor(
                                                 it,

@@ -2844,7 +2844,7 @@ private fun ProfileDynamicMajorContent(item: SpaceDynamicItem, onVideoClick: (St
                     }
                     .then(
                         if (clickableBvid == null && imageUrls.isNotEmpty()) {
-                            Modifier.clickable {
+                            Modifier.clickable(interactionSource = null, indication = null) {
                                 prepareImagePreviewSourceTransition(sourceRect)
                                 selectedImageIndex = 0
                             }

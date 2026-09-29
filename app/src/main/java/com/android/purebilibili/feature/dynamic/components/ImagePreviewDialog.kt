@@ -106,7 +106,6 @@ import com.android.purebilibili.core.ui.rememberAppDownloadIcon
 import com.android.purebilibili.core.ui.rememberAppVisibilityOffIcon
 import com.android.purebilibili.core.ui.rememberAppVisibilityOnIcon
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
-import com.android.purebilibili.core.ui.motion.continuityTween
 import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
 import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.motion.interactiveSnapSpring
@@ -630,12 +629,10 @@ private fun ImagePreviewOverlayContent(
             }
 
             LaunchedEffect(Unit) {
-                val openMotion = imagePreviewDismissMotion()
                 animateTrigger.snapTo(0f)
-                // 进场与退场同系 Continuity，一镜对称。
                 animateTrigger.animateTo(
                     targetValue = 1f,
-                    animationSpec = continuityTween(durationMillis = openMotion.openDurationMillis)
+                    animationSpec = imagePreviewOpenTween()
                 )
             }
 
@@ -657,10 +654,10 @@ private fun ImagePreviewOverlayContent(
                     verticalDismissOffsetYPx = 0f
                     verticalDismissSnapAnim.snapTo(0f)
                     val dismissMotion = imagePreviewDismissMotion()
-                    // 单段 morph：几何线性 + Continuity 速度曲线，无 overshoot / spring 二次落点。
+                    // PiliPlus Hero reverse uses a 300ms route transition back to its source.
                     animateTrigger.animateTo(
                         targetValue = dismissMotion.settleTarget,
-                        animationSpec = continuityTween(
+                        animationSpec = imagePreviewCloseTween(
                             durationMillis = dismissMotion.collapseDurationMillis
                         )
                     )
@@ -733,44 +730,49 @@ private fun ImagePreviewOverlayContent(
             )
             
             // 2. 内容层 (缩放位移)
-            val contentModifier = if (isDismissing && shouldUseRectAnim && dismissRectFrame != null) {
-                Modifier
-                    .offset(
-                        x = with(density) { dismissRectFrame.rect.left.toDp() },
-                        y = with(density) { dismissRectFrame.rect.top.toDp() }
-                    )
-                    .size(
-                        width = with(density) { dismissRectFrame.rect.width.toDp() },
-                        height = with(density) { dismissRectFrame.rect.height.toDp() }
-                    )
-                    .graphicsLayer {
-                        shape = RoundedCornerShape(presentedCornerRadiusDp.dp)
-                        clip = true
-                        alpha = visualFrame.contentAlpha
-                        renderEffect = blurEffectCache.resolve(visualFrame.blurRadiusPx)
+            // Keep the page measured at its final viewport size. The Hero-style flight is
+            // a render-layer transform, so each animation frame avoids remeasuring the pager
+            // and decoding/layout work beneath it.
+            val contentModifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha = visualFrame.contentAlpha
+                    renderEffect = blurEffectCache.resolve(visualFrame.blurRadiusPx)
+
+                    val dismissRect = dismissRectFrame?.rect.takeIf {
+                        isDismissing && shouldUseRectAnim
                     }
-            } else {
-                Modifier
-                    .offset(x = currentLeft, y = currentTop)
-                    .size(width = currentWidth, height = currentHeight)
-                    .graphicsLayer {
-                        shape = RoundedCornerShape(presentedCornerRadiusDp.dp)
+                    if (dismissRect != null) {
+                        scaleX = (dismissRect.width / size.width).coerceAtLeast(0.01f)
+                        scaleY = (dismissRect.height / size.height).coerceAtLeast(0.01f)
+                        translationX = dismissRect.left
+                        translationY = dismissRect.top
+                        val minScale = minOf(scaleX, scaleY).coerceAtLeast(0.01f)
+                        shape = RoundedCornerShape((presentedCornerRadiusDp / minScale).dp)
                         clip = true
-                        alpha = visualFrame.contentAlpha
-                        renderEffect = blurEffectCache.resolve(visualFrame.blurRadiusPx)
-                        if (!shouldUseRectAnim) {
-                            scaleX = transitionFrame.fallbackScale
-                            scaleY = transitionFrame.fallbackScale
-                        }
+                        transformOrigin = TransformOrigin.TopStart
+                    } else if (shouldUseRectAnim) {
+                        scaleX = (currentWidth.toPx() / size.width).coerceAtLeast(0.01f)
+                        scaleY = (currentHeight.toPx() / size.height).coerceAtLeast(0.01f)
+                        translationX = currentLeft.toPx()
+                        translationY = currentTop.toPx() + if (isDismissing) 0f else verticalDismissOffsetYPx
+                        val minScale = minOf(scaleX, scaleY).coerceAtLeast(0.01f)
+                        shape = RoundedCornerShape((presentedCornerRadiusDp / minScale).dp)
+                        clip = true
+                        transformOrigin = TransformOrigin.TopStart
+                    } else {
+                        scaleX = transitionFrame.fallbackScale
+                        scaleY = transitionFrame.fallbackScale
                         if (!isDismissing) {
                             translationY = verticalDismissOffsetYPx
-                            val dragScale = verticalDragFrame.scale
-                            scaleX *= dragScale
-                            scaleY *= dragScale
-                            transformOrigin = TransformOrigin.Center
+                            scaleX *= verticalDragFrame.scale
+                            scaleY *= verticalDragFrame.scale
                         }
+                        shape = RoundedCornerShape(presentedCornerRadiusDp.dp)
+                        clip = true
+                        transformOrigin = TransformOrigin.Center
                     }
-            }
+                }
 
             Box(
                  modifier = contentModifier

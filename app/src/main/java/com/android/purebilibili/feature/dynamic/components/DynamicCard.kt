@@ -1414,7 +1414,11 @@ fun DynamicCardV2(
                                             pageIndex = currentImageIndex,
                                         )
                                         .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
-                                        .clickable(enabled = currentImageIndex in previewImages.indices) {
+                                        .clickable(
+                                            interactionSource = null,
+                                            indication = null,
+                                            enabled = currentImageIndex in previewImages.indices,
+                                        ) {
                                             fullContentSelectedImageIndex = currentImageIndex
                                             val anchor = expandedImageSourceRect.value?.let {
                                                 ImagePreviewSourceAnchor(
@@ -1544,7 +1548,7 @@ fun DynamicCardV2(
                                     pageIndex = index,
                                 )
                                 .alpha(if (isImagePreviewSourceHidden(expandedImageSourceRect.value)) 0f else 1f)
-                                .clickable {
+                                .clickable(interactionSource = null, indication = null) {
                                     selectedImageIndex = index
                                     val anchor = expandedImageSourceRect.value?.let {
                                         ImagePreviewSourceAnchor(

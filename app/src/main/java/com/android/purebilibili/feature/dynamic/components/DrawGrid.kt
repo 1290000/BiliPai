@@ -176,7 +176,11 @@ private fun DrawGridImage(
                 imageRectRef.value = coordinates.boundsInWindow()
                 galleryRects[index] = imageRectRef.value!!
             }
-            .clickable(enabled = !sourceHidden) {
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                enabled = !sourceHidden,
+            ) {
                 val rect = imageRectRef.value
                 val anchor = rect?.let {
                     ImagePreviewSourceAnchor(it, cornerRadius.value, galleryRects.toMap())

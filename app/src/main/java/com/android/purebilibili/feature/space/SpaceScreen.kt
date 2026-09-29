@@ -2722,6 +2722,8 @@ private fun SpaceHeader(
                     }
                     .align(Alignment.TopCenter)
                     .clickable(
+                        interactionSource = null,
+                        indication = null,
                         enabled = skinSpaceBackgroundPaths.isEmpty() &&
                             (shouldEnableSpaceTopPhotoPreview(topPhotoUrl) || userInfo.topImages.isNotEmpty()),
                         onClick = { onTopPhotoClick(topPhotoRect.value) }
@@ -2776,7 +2778,11 @@ private fun SpaceHeader(
                         .size(avatarSize)
                         .imagePreviewSourceBounds(avatarRect)
                         .alpha(if (avatarHidden) 0f else 1f)
-                        .clickable(enabled = avatarPreviewEnabled && !avatarHidden) { onAvatarClick(avatarRect.value) }
+                        .clickable(
+                            interactionSource = null,
+                            indication = null,
+                            enabled = avatarPreviewEnabled && !avatarHidden,
+                        ) { onAvatarClick(avatarRect.value) }
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)

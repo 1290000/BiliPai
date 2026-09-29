@@ -913,7 +913,11 @@ private fun FeedArticleImage(
                 .onGloballyPositioned { coordinates ->
                     galleryRects[pageIndex] = coordinates.boundsInWindow()
                 }
-                .clickable(enabled = !sourceHidden) {
+                .clickable(
+                    interactionSource = null,
+                    indication = null,
+                    enabled = !sourceHidden,
+                ) {
                     prepareImagePreviewSourceTransition(sourceRect.value)
                     onClick(sourceRect.value)
                 },
