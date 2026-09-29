@@ -21,6 +21,7 @@ import com.android.purebilibili.core.ui.rememberContentCardSurfaceSpec
 
 import com.android.purebilibili.core.ui.OpticalContrastPalette
 import com.android.purebilibili.feature.home.HomeVisualPalette
+import com.android.purebilibili.feature.home.resolveHomeTopSearchRowMetrics
 
 import android.os.Build
 import androidx.compose.foundation.background

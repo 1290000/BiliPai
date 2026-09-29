@@ -20,7 +20,7 @@ internal fun resolveHomeTopSearchRowMetrics(
     return if (searchLivesInTopChrome) {
         HomeTopSearchRowMetrics(configuredHeight, configuredTabsSpacing)
     } else {
-        HomeTopSearchRowMetrics(Dp.Zero, Dp.Zero)
+        HomeTopSearchRowMetrics(0.dp, 0.dp)
     }
 }
 
