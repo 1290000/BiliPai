@@ -750,7 +750,7 @@ private fun ImagePreviewOverlayContent(
                         val minScale = minOf(scaleX, scaleY).coerceAtLeast(0.01f)
                         shape = RoundedCornerShape((presentedCornerRadiusDp / minScale).dp)
                         clip = true
-                        transformOrigin = TransformOrigin.TopStart
+                        transformOrigin = TransformOrigin(0f, 0f)
                     } else if (shouldUseRectAnim) {
                         scaleX = (currentWidth.toPx() / size.width).coerceAtLeast(0.01f)
                         scaleY = (currentHeight.toPx() / size.height).coerceAtLeast(0.01f)
@@ -759,7 +759,7 @@ private fun ImagePreviewOverlayContent(
                         val minScale = minOf(scaleX, scaleY).coerceAtLeast(0.01f)
                         shape = RoundedCornerShape((presentedCornerRadiusDp / minScale).dp)
                         clip = true
-                        transformOrigin = TransformOrigin.TopStart
+                        transformOrigin = TransformOrigin(0f, 0f)
                     } else {
                         scaleX = transitionFrame.fallbackScale
                         scaleY = transitionFrame.fallbackScale
