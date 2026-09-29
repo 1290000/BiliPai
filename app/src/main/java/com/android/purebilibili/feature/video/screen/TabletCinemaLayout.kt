@@ -1371,6 +1371,14 @@ private fun CinemaCommentsPane(
                     .layerBackdrop(commentChromeBackdrop),
                 contentPadding = PaddingValues(bottom = 112.dp)
             ) {
+            commentState.voteCard?.let { card ->
+                item(key = "curtain_vote_${card.voteId}") {
+                    com.android.purebilibili.feature.video.ui.components.VideoCommentVoteCard(
+                        card = card,
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    )
+                }
+            }
             items(
                 items = commentState.replies,
                 key = { "curtain_reply_${it.rpid}" },

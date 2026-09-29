@@ -1071,6 +1071,14 @@ internal fun TabletSecondaryContent(
                                     bottom = 104.dp,
                                 )
                             ) {
+                            commentState.voteCard?.let { card ->
+                                item(key = "tablet_vote_${card.voteId}") {
+                                    VideoCommentVoteCard(
+                                        card = card,
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    )
+                                }
+                            }
                             items(
                                 items = commentState.replies,
                                 key = { "reply_${it.rpid}" },
