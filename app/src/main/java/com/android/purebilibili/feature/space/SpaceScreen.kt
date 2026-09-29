@@ -487,6 +487,22 @@ fun SpaceScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                     actions = {
+                        currentSuccessState?.userInfo?.takeIf {
+                            it.mid > 0L && it.mid != com.android.purebilibili.core.store.TokenManager.midCache
+                        }?.let { userInfo ->
+                            AppTextButton(
+                                onClick = viewModel::toggleFollow,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                AppText(
+                                    resolveSpaceFollowActionLabel(
+                                        isOwner = false,
+                                        relationStatus = userInfo.relationStatus,
+                                        isFollowed = userInfo.isFollowed,
+                                    )
+                                )
+                            }
+                        }
                         if (canSearch) {
                             AppIconButton(onClick = { viewModel.setSearchMode(!isSearchMode) }) {
                                 AppIcon(
@@ -4937,7 +4953,7 @@ private fun SpaceHeaderRelationActions(
                 ),
                 modifier = Modifier
                     .width(46.dp)
-                    .height(36.dp)
+                    .heightIn(min = 48.dp)
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -4965,7 +4981,7 @@ private fun SpaceHeaderRelationActions(
             } else null,
             modifier = Modifier
                 .weight(1f)
-                .height(36.dp)
+                .heightIn(min = 48.dp)
         ) {
             Row(
                 modifier = Modifier

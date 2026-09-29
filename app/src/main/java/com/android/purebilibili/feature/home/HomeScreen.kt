@@ -2766,6 +2766,14 @@ fun HomeScreen(
 
         //  [新增] 刷新撤销悬浮按钮（右下角，5秒后自动消失）
         val undoVisible = undoAvailable && currentCategory == HomeCategory.RECOMMEND
+        val oldContentLocatorVisible = shouldShowRecommendOldContentDivider(
+            currentCategory = currentCategory,
+            refreshNewItemsKey = refreshNewItemsKey,
+            revealedRefreshKey = recommendOldContentRevealKey,
+            anchorBvid = recommendOldContentAnchorBvid,
+            oldContentStartIndex = recommendOldContentStartIndex,
+            refreshTipVisible = homeSettings.homeRefreshTipVisible,
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -2782,7 +2790,11 @@ fun HomeScreen(
                     animationSpec = tween(overlayMotionSpec.undoFabSlideDurationMillis),
                     targetOffsetY = { it }
                 ),
-                modifier = Modifier.padding(end = AppSpacingTokens.Large, bottom = homeListBottomPadding + AppSpacingTokens.Small)
+                modifier = Modifier.padding(
+                    end = AppSpacingTokens.Large,
+                    bottom = homeListBottomPadding + AppSpacingTokens.Small +
+                        if (oldContentLocatorVisible) 56.dp else 0.dp,
+                )
             ) {
             AppButton(
                 onClick = { viewModel.undoRefresh() },
