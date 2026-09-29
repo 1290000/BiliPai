@@ -840,7 +840,7 @@ fun VideoPlayerOverlay(
             } ?: debugInfo.lastLoadError
         )
     }
-    val panelFrameRateLabel = rememberPanelFrameRateOverrideLabel()
+    val panelFrameRateLabel = rememberPanelFrameRateLabel()
     val debugRows = remember(effectiveDebugInfo, panelFrameRateLabel) {
         resolvePlaybackDebugRows(effectiveDebugInfo)
             .plus(DebugStatRow("Panel rate", panelFrameRateLabel))

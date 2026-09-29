@@ -3,10 +3,8 @@ package com.android.purebilibili.core.ui.performance
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.os.Build
-import android.view.Display
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -15,16 +13,18 @@ import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /**
- * 面板实际刷新率覆盖的标签策略与订阅钩子（诊断用）。
+ * 面板实际刷新率的标签策略与采样钩子（诊断用）。
  *
- * LTPO 设备上系统会在应用投票之上叠加覆盖档（省电/温控/用户偏好），
- * [Display.OnFrameRateOverrideListener] 报告的就是这一层覆盖；
- * 覆盖为空表示按应用投票档位运行，标签留空（调试浮层隐藏该行）。
+ * LTPO 设备的系统覆盖监听（OnFrameRateOverrideListener）不在公开 SDK 内，
+ * 这里退而采样 [android.view.Display.getMode] 的当前刷新率：它反映的是
+ * SurfaceFlinger 实际切到的档位，足以区分"停在 60"与"已上 120"。
+ * 轮询仅在组合存活（调试浮层可见）期间进行。
  */
-internal fun resolvePanelFrameRateOverrideLabel(overrideFrameRate: Float?): String {
-    val rate = overrideFrameRate ?: return ""
+internal fun resolvePanelFrameRateOverrideLabel(refreshRate: Float?): String {
+    val rate = refreshRate ?: return ""
     if (rate <= 0f) return ""
     val rounded = rate.roundToInt().toFloat()
     val rateText = if (abs(rate - rounded) < 0.05f) {
@@ -32,7 +32,7 @@ internal fun resolvePanelFrameRateOverrideLabel(overrideFrameRate: Float?): Stri
     } else {
         String.format(Locale.US, "%.1f", rate)
     }
-    return "$rateText Hz（系统覆盖）"
+    return "$rateText Hz（面板）"
 }
 
 private fun Context.findActivity(): Activity? {
@@ -44,24 +44,27 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
+private const val PANEL_FRAME_RATE_SAMPLE_INTERVAL_MS = 500L
+
 @Composable
-internal fun rememberPanelFrameRateOverrideLabel(): String {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return ""
+internal fun rememberPanelFrameRateLabel(): String {
     val activity = LocalContext.current.findActivity()
-    var overrideFrameRate by remember { mutableFloatStateOf(Float.NaN) }
-    DisposableEffect(activity) {
-        val display: Display = activity?.display ?: return@DisposableEffect onDispose { }
-        val listener = object : Display.OnFrameRateOverrideListener {
-            override fun onFrameRateOverride(overrides: Array<out Display.FrameRateOverride>) {
-                overrideFrameRate = overrides.firstOrNull()?.frameRate ?: Float.NaN
-            }
-        }
-        // 回调可能来自 binder 线程；snapshot state 写入线程安全。
-        display.registerFrameRateOverrideListener({ it.run() }, listener)
-        onDispose {
-            display.unregisterFrameRateOverrideListener(listener)
+    var refreshRate by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(activity) {
+        while (true) {
+            refreshRate = resolvePanelDisplayRefreshRate(activity)
+            delay(PANEL_FRAME_RATE_SAMPLE_INTERVAL_MS)
         }
     }
-    val override = overrideFrameRate
-    return if (override.isNaN()) "" else resolvePanelFrameRateOverrideLabel(override)
+    return resolvePanelFrameRateOverrideLabel(refreshRate.takeIf { it > 0f })
+}
+
+private fun resolvePanelDisplayRefreshRate(activity: Activity?): Float {
+    if (activity == null) return 0f
+    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        activity.display?.mode?.refreshRate ?: 0f
+    } else {
+        @Suppress("DEPRECATION")
+        activity.windowManager.defaultDisplay?.mode?.refreshRate ?: 0f
+    }
 }
