@@ -168,15 +168,9 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
 
         //  [关键] 必须在 super.onCreate() 之前设置！
         // 这样系统在初始化时就能读取到正确的夜间模式配置
-        // 新用户默认设置必须先于主题读取应用，避免首屏短暂显示旧默认值。
-        // 仅首次运行（标记缺失）才同步等待应用内置默认值；其余启动只做一次标记
-        // 读取，不再 parked 主线程等待 IO 派发。
-        if (!SettingsShareService.hasBundledDefaultMarker(this)) {
-            runBlocking(Dispatchers.IO) {
-                SettingsShareService(this@PureApplication)
-                    .applyBundledDefaultIfNeeded()
-            }
-        }
+        // 新用户内置默认值不再阻塞主线程:profile 不含 theme_mode/语言键,
+        // applyThemePreference 不依赖它;应用动作移入 initializeNormalRuntime 的
+        // 后台协程,并与首页视觉默认值迁移串行,保证内置 profile 先落地。
         applyThemePreference()
         
         super.onCreate()
@@ -201,12 +195,18 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
 
         // 启动即确保首页视觉默认值生效：底栏悬浮 + 液态玻璃 + 顶部模糊
         // 冷启动路径不阻塞主线程，迁移改为后台执行。
+        // 首次运行的内置默认 profile 在同一协程内先于该迁移应用（串行），
+        // 保证最终生效的是内置 profile 的取值,与旧的同步路径语义一致。
         if (PureApplicationRuntimeConfig.shouldBlockStartupForHomeVisualDefaultsMigration()) {
             runBlocking(Dispatchers.IO) {
+                SettingsShareService(this@PureApplication)
+                    .applyBundledDefaultIfNeeded()
                 SettingsManager.ensureHomeVisualDefaults(this@PureApplication)
             }
         } else {
             AppScope.ioScope.launch {
+                SettingsShareService(this@PureApplication)
+                    .applyBundledDefaultIfNeeded()
                 SettingsManager.ensureHomeVisualDefaults(this@PureApplication)
             }
         }
