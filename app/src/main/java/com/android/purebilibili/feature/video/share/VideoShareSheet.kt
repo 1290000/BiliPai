@@ -83,6 +83,7 @@ internal fun VideoShareSheet(
     val shareScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var sharingTarget by remember { mutableStateOf<VideoShareTarget?>(null) }
+    var showFollowingPicker by remember { mutableStateOf(false) }
     var shareStyle by remember { mutableStateOf(VideoShareStyle.LINK) }
     val neutralIconBackground = MaterialTheme.colorScheme.surfaceContainerHighest
     val neutralIconContent = MaterialTheme.colorScheme.onSurface
@@ -93,6 +94,14 @@ internal fun VideoShareSheet(
         )
     }
     val items = listOf(
+        VideoShareSheetItem(
+            target = VideoShareTarget.BILIBILI_FRIENDS,
+            label = "B 站好友",
+            iconText = "B",
+            iconVector = null,
+            backgroundColor = Color(0xFFFB7299),
+            contentColor = Color.White,
+        ),
         VideoShareSheetItem(
             target = VideoShareTarget.WECHAT,
             label = "微信",
@@ -126,6 +135,17 @@ internal fun VideoShareSheet(
             contentColor = neutralIconContent
         )
     )
+
+    if (showFollowingPicker) {
+        VideoShareToFollowingDialog(
+            payload = payload,
+            onDismiss = onDismiss,
+            onSuccess = { count ->
+                Toast.makeText(context, "已发送给 $count 位 B 站好友", Toast.LENGTH_SHORT).show()
+            },
+        )
+        return
+    }
 
     AppModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -185,6 +205,13 @@ internal fun VideoShareSheet(
                         item = item,
                         onClick = {
                             when (item.target) {
+                                VideoShareTarget.BILIBILI_FRIENDS -> {
+                                    if (sharingTarget != null) return@VideoShareSheetItemView
+                                    shareScope.launch {
+                                        hideVideoShareSheet(sheetState)
+                                        showFollowingPicker = true
+                                    }
+                                }
                                 VideoShareTarget.WECHAT,
                                 VideoShareTarget.QQ -> {
                                     val packageName = item.target.packageName ?: return@VideoShareSheetItemView
