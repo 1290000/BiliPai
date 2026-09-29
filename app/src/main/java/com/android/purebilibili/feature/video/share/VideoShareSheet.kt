@@ -57,6 +57,7 @@ import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.feature.home.components.BottomBarLiquidSegmentedControl
 import com.android.purebilibili.core.ui.common.copyPlainTextToClipboard
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
@@ -84,8 +85,13 @@ internal fun VideoShareSheet(
     val context = LocalContext.current
     val shareScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val isLandscape = isLandscapeVideoShare()
+    val sheetBounce = rememberVideoShareSheetBounce(sheetState, isLandscape)
     var sharingTarget by remember { mutableStateOf<VideoShareTarget?>(null) }
+    var switchingSheet by remember { mutableStateOf(false) }
     var showFollowingPicker by remember { mutableStateOf(false) }
+    var showMoreTargets by remember { mutableStateOf(false) }
+    var moreShareMedia by remember { mutableStateOf<VideoShareCoverFile?>(null) }
     var shareStyle by remember { mutableStateOf(VideoShareStyle.LINK) }
     val neutralIconBackground = MaterialTheme.colorScheme.surfaceContainerHighest
     val neutralIconContent = MaterialTheme.colorScheme.onSurface
@@ -148,10 +154,33 @@ internal fun VideoShareSheet(
         )
         return
     }
+    if (showMoreTargets) {
+        VideoShareMoreTargetsSheet(
+            shareMedia = moreShareMedia,
+            onDismiss = onDismiss,
+            onTargetClick = { target ->
+                context.startTargetedVideoShare(
+                    payload = payload,
+                    packageName = target.packageName,
+                    appName = target.label,
+                    shareMedia = moreShareMedia,
+                    preferredActivityClassName = target.activityClassName,
+                )
+                onDismiss()
+            },
+            onSystemChooserClick = {
+                context.startMoreVideoShare(payload, moreShareMedia)
+                onDismiss()
+            },
+        )
+        return
+    }
 
     AppModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!switchingSheet && sharingTarget == null) onDismiss() },
         modifier = modifier,
+        presentationOverride = videoSharePresentation(isLandscape),
+        sheetSurfaceModifier = sheetBounce,
         sheetState = sheetState,
         dragHandle = null
     ) {
@@ -209,6 +238,7 @@ internal fun VideoShareSheet(
                             when (item.target) {
                                 VideoShareTarget.BILIBILI_FRIENDS -> {
                                     if (sharingTarget != null) return@VideoShareSheetItemView
+                                    switchingSheet = true
                                     shareScope.launch {
                                         hideVideoShareSheet(sheetState)
                                         showFollowingPicker = true
@@ -252,6 +282,7 @@ internal fun VideoShareSheet(
                                     if (sharingTarget != null) return@VideoShareSheetItemView
                                     sharingTarget = item.target
                                     shareScope.launch {
+                                        var openedLocalTargets = false
                                         try {
                                             val shareMedia = prepareVideoShareMedia(
                                                 context = context,
@@ -260,13 +291,16 @@ internal fun VideoShareSheet(
                                                 progressMessage = "正在生成分享卡片",
                                             )
                                             hideVideoShareSheet(sheetState)
-                                            context.startMoreVideoShare(
-                                                payload = payload,
-                                                shareMedia = shareMedia,
-                                            )
+                                            if (isLandscape) {
+                                                moreShareMedia = shareMedia
+                                                showMoreTargets = true
+                                                openedLocalTargets = true
+                                            } else {
+                                                context.startMoreVideoShare(payload, shareMedia)
+                                            }
                                         } finally {
                                             sharingTarget = null
-                                            onDismiss()
+                                            if (!openedLocalTargets) onDismiss()
                                         }
                                     }
                                 }
@@ -381,13 +415,17 @@ private fun VideoShareSheetItemView(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-private suspend fun hideVideoShareSheet(
+internal suspend fun hideVideoShareSheet(
     sheetState: androidx.compose.material3.SheetState
 ) {
-    runCatching {
+    try {
         if (sheetState.isVisible) {
             sheetState.hide()
         }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        // A disappearing host can make hide fail; the caller still completes its action.
     }
 }
 
@@ -418,10 +456,11 @@ private fun Context.startTargetedVideoShare(
     packageName: String,
     appName: String,
     shareMedia: VideoShareCoverFile?,
+    preferredActivityClassName: String? = null,
 ) {
     try {
         val mimeType = shareMedia?.mimeType ?: "text/plain"
-        val activityClassName = resolveShareActivityClassName(
+        val activityClassName = preferredActivityClassName ?: resolveShareActivityClassName(
             packageName = packageName,
             mimeType = mimeType,
         )

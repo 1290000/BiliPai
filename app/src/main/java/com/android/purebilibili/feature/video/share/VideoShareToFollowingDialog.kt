@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +52,9 @@ internal fun VideoShareToFollowingDialog(
 ) {
     val selfMid = TokenManager.midCache?.takeIf { it > 0L }
     val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val isLandscape = isLandscapeVideoShare()
+    val sheetBounce = rememberVideoShareSheetBounce(sheetState, isLandscape)
     var followings by remember(payload.bvid) { mutableStateOf<List<FollowingUser>>(emptyList()) }
     var selectedIds by remember(payload.bvid) { mutableStateOf<Set<Long>>(emptySet()) }
     var searchQuery by remember(payload.bvid) { mutableStateOf("") }
@@ -105,7 +109,12 @@ internal fun VideoShareToFollowingDialog(
     val recipients = remember(selectedIds, followings, selfMid) {
         resolveVideoShareRecipientIds(selectedIds, followings, selfMid ?: 0L)
     }
-    AppModalBottomSheet(onDismissRequest = { if (!sending) onDismiss() }) {
+    AppModalBottomSheet(
+        onDismissRequest = { if (!sending) onDismiss() },
+        sheetState = sheetState,
+        presentationOverride = videoSharePresentation(isLandscape),
+        sheetSurfaceModifier = sheetBounce,
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(
                 horizontal = AppSpacingTokens.Large,
