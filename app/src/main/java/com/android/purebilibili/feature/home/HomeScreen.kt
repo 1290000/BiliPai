@@ -351,6 +351,8 @@ fun HomeScreen(
         mutableStateOf<com.android.purebilibili.feature.video.share.VideoSharePayload?>(null)
     }
     val coroutineScope = rememberCoroutineScope() // 用于双击回顶动画
+    var homeBackToTopSquishActive by remember { mutableStateOf(false) }
+    var homeBackToTopSquishGeneration by remember { mutableIntStateOf(0) }
     val headerSettleMotionSpec = AppMotionTokens.emphasizedSpec<Float>()
     val globalScrollOffset = LocalHomeScrollOffset.current
     val globalFeedScrollInProgress = LocalHomeFeedScrollInProgress.current
@@ -379,6 +381,18 @@ fun HomeScreen(
         topTabsAutoCollapsedByScroll = false
         setHeaderOffsetImmediate(0f)
         globalScrollOffset.floatValue = 0f
+    }
+
+    fun triggerHomeBackToTopCardSquish() {
+        val generation = homeBackToTopSquishGeneration + 1
+        homeBackToTopSquishGeneration = generation
+        homeBackToTopSquishActive = true
+        coroutineScope.launch {
+            delay(105L)
+            if (homeBackToTopSquishGeneration == generation) {
+                homeBackToTopSquishActive = false
+            }
+        }
     }
 
     fun animateHeaderOffsetTo(targetValue: Float) {
@@ -560,6 +574,7 @@ fun HomeScreen(
                             // 底栏/重选回顶直达：单次 scrollToItem 是原子操作，
                             // 无两段式 preJump+animate 的中间态，任何距离都不掉帧。
                             listState.scrollToItem(0)
+                            triggerHomeBackToTopCardSquish()
                         }
                         val shouldRefresh = request == HomeScrollRequest.SCROLL_TO_TOP_AND_REFRESH ||
                             (request == HomeScrollRequest.SCROLL_TO_TOP_OR_REFRESH && isAtTop)
@@ -2390,6 +2405,8 @@ fun HomeScreen(
                                      // 刷新数据换位时不再同时启动整屏卡片 placement spring。
                                      cardAnimationEnabled = cardAnimationEnabled && !isPageRefreshing,
                                      cardMotionTier = cardMotionTier,
+                                     backToTopSquishActive = homeBackToTopSquishActive &&
+                                         category == latestHomeScrollCategory,
                                      cardTransitionEnabled = cardTransitionEnabled,
                                      isReturningFromVideoDetail = isReturningFromVideoDetail,
                                      isQuickReturningFromVideoDetail = isQuickReturningFromVideoDetail,
