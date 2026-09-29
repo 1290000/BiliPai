@@ -416,7 +416,7 @@ private fun ImagePreviewOverlayContent(
         )
     }
 
-    // 已通过「查看原图」切换为全分辨率加载的页（按页索引记录）。
+    // 已通过「查看原图」切换为高分辨率安全采样的页（按页索引记录）。
     var originalQualityPages by remember { mutableStateOf(setOf<Int>()) }
 
     LaunchedEffect(pagerState.currentPage) {
