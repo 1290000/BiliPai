@@ -2440,6 +2440,7 @@ fun HomeScreen(
                                      } else {
                                          null
                                      },
+                                     oldContentLocatorRefreshKey = refreshNewItemsKey,
                                      onOldContentDividerClick = {
                                          coroutineScope.launch {
                                              contentGridState.animateScrollToItem(0)

@@ -217,6 +217,7 @@ internal fun HomeCategoryPageContent(
     onGetPreviewUrl: suspend (String, Long) -> String? = { _, _ -> null },
     oldContentAnchorBvid: String? = null,
     oldContentStartIndex: Int? = null,
+    oldContentLocatorRefreshKey: Long = 0L,
     onOldContentDividerClick: () -> Unit = {},
     todayWatchEnabled: Boolean = false,
     todayWatchMode: TodayWatchMode = TodayWatchMode.RELAX,
@@ -363,6 +364,9 @@ internal fun HomeCategoryPageContent(
         }
     }
     val oldContentLocatorScope = rememberCoroutineScope()
+    var oldContentLocatorDismissed by remember(oldContentLocatorRefreshKey) {
+        mutableStateOf(false)
+    }
 
     val renderVideoCard: @Composable (Int, VideoItem, Modifier) -> Unit = { index, video, itemModifier ->
         val isDynamicDetailCard = video.dynamicId.isNotBlank() &&
@@ -701,7 +705,9 @@ internal fun HomeCategoryPageContent(
         }
         }
         AnimatedVisibility(
-            visible = category == HomeCategory.RECOMMEND && oldContentGridItemIndex != null,
+            visible = category == HomeCategory.RECOMMEND &&
+                oldContentGridItemIndex != null &&
+                !oldContentLocatorDismissed,
             enter = fadeIn() + scaleIn(initialScale = 0.92f),
             exit = fadeOut() + scaleOut(targetScale = 0.92f),
             modifier = Modifier
@@ -713,6 +719,7 @@ internal fun HomeCategoryPageContent(
         ) {
             Button(
                 onClick = {
+                    oldContentLocatorDismissed = true
                     oldContentGridItemIndex?.let { targetIndex ->
                         oldContentLocatorScope.launch {
                             gridState.animateScrollToItem(targetIndex)
