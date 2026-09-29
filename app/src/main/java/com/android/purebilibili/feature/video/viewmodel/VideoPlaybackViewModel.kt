@@ -5005,26 +5005,17 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
         return withContext(Dispatchers.IO) {
             runCatching {
                 selectedUris.mapIndexed { index, uri ->
-                    val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
-                        stream.readBytes()
-                    } ?: error("无法读取图片文件")
-
-                    if (bytes.isEmpty()) {
-                        error("图片内容为空")
-                    }
-                    if (bytes.size > 15 * 1024 * 1024) {
-                        error("图片过大（单张最大 15MB）")
-                    }
-
                     val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
                     val fileName = queryDisplayName(context, uri)
                         ?: "comment_${System.currentTimeMillis()}_${index + 1}.jpg"
 
+                    // 流式上传:空/15MB 校验在 CommentRepository 内完成,不再整文件读入内存。
                     val uploadResult = com.android.purebilibili.data.repository.CommentRepository
                         .uploadCommentImage(
                             fileName = fileName,
                             mimeType = mimeType,
-                            bytes = bytes
+                            resolver = context.contentResolver,
+                            uri = uri
                         )
                     uploadResult.getOrElse { throw it }
                 }
