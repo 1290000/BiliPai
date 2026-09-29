@@ -21,8 +21,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.graphics.RenderEffect
-import android.graphics.Shader
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -53,10 +51,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RenderEffect as ComposeRenderEffect
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -129,22 +126,6 @@ internal const val IMAGE_PREVIEW_COMMENT_PANEL_TAG = "image_preview_comment_pane
 internal const val IMAGE_PREVIEW_ORIGINAL_CHIP_TAG = "image_preview_original_chip"
 internal const val IMAGE_PREVIEW_PAGE_INDICATOR_TAG = "image_preview_page_indicator"
 private const val IMAGE_PREVIEW_SHARE_CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L
-
-private class ImagePreviewBlurEffectCache {
-    private val effects = mutableMapOf<Int, ComposeRenderEffect>()
-
-    fun resolve(radiusPx: Float): ComposeRenderEffect? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || radiusPx <= 0.01f) return null
-        val radiusKey = radiusPx.toInt().coerceAtLeast(1)
-        return effects.getOrPut(radiusKey) {
-            RenderEffect.createBlurEffect(
-                radiusKey.toFloat(),
-                radiusKey.toFloat(),
-                Shader.TileMode.CLAMP,
-            ).asComposeRenderEffect()
-        }
-    }
-}
 
 private data class ImagePreviewOverlayRequest(
     val token: Long,
@@ -358,7 +339,9 @@ private fun ImagePreviewOverlayContent(
     //  动画状态控制
     // 0f = 关闭/初始状态 (at sourceRect), 1f = 打开状态 (Fullscreen)
     val animateTrigger = remember { androidx.compose.animation.core.Animatable(0f) }
-    val blurEffectCache = remember { ImagePreviewBlurEffectCache() }
+    val previewContentReady by remember(animateTrigger) {
+        derivedStateOf { animateTrigger.value >= 0.85f }
+    }
     val backEventState = rememberNavigationEventState(NavigationEventInfo.None)
     val predictiveBackGestureEnabled = LocalPredictiveBackGestureEnabled.current
     val backProgress = if (predictiveBackGestureEnabled) {
@@ -373,6 +356,7 @@ private fun ImagePreviewOverlayContent(
     var dismissBackdropStartAlpha by remember { mutableFloatStateOf(1f) }
     var currentImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var dismissImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var dismissStartProgress by remember { mutableFloatStateOf(1f) }
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
     var isVerticalDismissDragging by remember { mutableStateOf(false) }
     val longPressSaveEnabled by SettingsManager.getImagePreviewLongPressSaveEnabled(context)
@@ -554,10 +538,7 @@ private fun ImagePreviewOverlayContent(
             val fullHeight = constraints.maxHeight
             val fullWidthPx = with(density) { fullWidth.toPx() }
             val fullHeightPx = with(density) { fullHeight.toPx() }
-            val maxBlurRadiusPx = with(density) {
-                (AppSpacingTokens.Large + AppSpacingTokens.Micro).toPx()
-            }
-            
+
             // 手势 scrub 期间画面由 backProgress 驱动；transitionState 离开 InProgress 的
             // 瞬间 backProgress 归零而 animateTrigger 仍为 1f，若直接回落会让画面先跳回
             // 全屏再重新飞出（双重回弹）。记住最后一帧 scrub 值，在此过渡窗口内保持。
@@ -568,57 +549,18 @@ private fun ImagePreviewOverlayContent(
                     lastScrubRawProgress = 1f - backProgress
                 }
             }
-            val rawProgress = when {
+
+            // Read frame-rate state inside the graphics/draw modifier blocks below. This keeps
+            // the pager and its image subtree out of composition on every animation frame.
+            fun currentTransitionProgress(): Float = when {
                 isDismissing || backRecovering -> animateTrigger.value
                 backProgress > 0f -> 1f - backProgress
                 lastScrubRawProgress < 1f -> lastScrubRawProgress
                 else -> animateTrigger.value
             }
-            val verticalDragFrame = resolveImagePreviewVerticalDragFrame(
-                dragOffsetYPx = verticalDismissOffsetYPx,
-                containerHeightPx = fullHeightPx
-            )
-            
-            //  计算容器位置和大小
-            // 按当前页查找同一画廊中的缩略图。没有可见来源，或仍在翻页时则淡出回退。
+
             val currentSourceRect = sourceRectForPage(pagerState.currentPage)
             val shouldUseRectAnim = currentSourceRect != null && !pagerState.isScrollInProgress
-            val transitionFrame = resolveImagePreviewTransitionFrame(
-                rawProgress = rawProgress,
-                hasSourceRect = shouldUseRectAnim,
-                sourceCornerRadiusDp = sourceCornerRadiusDp
-            )
-            val presentedCornerRadiusDp = resolveImagePreviewPresentedCornerRadiusDp(
-                visualProgress = transitionFrame.visualProgress,
-                verticalDragProgress = if (isDismissing) 0f else verticalDragFrame.progress,
-                hasSourceRect = shouldUseRectAnim,
-                sourceCornerRadiusDp = sourceCornerRadiusDp
-            )
-            val visualFrame = resolveImagePreviewVisualFrame(
-                visualProgress = transitionFrame.visualProgress,
-                transitionEnabled = true,
-                maxBlurRadiusPx = maxBlurRadiusPx,
-                // Keep the image crisp for both the thumbnail-to-viewer flight and return.
-                blurEnabled = false,
-            )
-            val backdropAlpha = if (isDismissing) {
-                resolveImagePreviewDismissBackdropAlpha(
-                    visualProgress = transitionFrame.visualProgress,
-                    startAlpha = dismissBackdropStartAlpha,
-                )
-            } else {
-                visualFrame.backdropAlpha * verticalDragFrame.backdropAlphaMultiplier
-            }
-            val dismissRectFrame = resolveImagePreviewDismissRectFrame(
-                transitionProgress = transitionFrame.layoutProgress,
-                sourceRect = if (shouldUseRectAnim && isDismissing) currentSourceRect else null,
-                displayedImageRect = if (shouldUseRectAnim && isDismissing) dismissImageDisplayRect else null
-            )
-            
-            val targetLeft = AppSpacingTokens.None
-            val targetTop = AppSpacingTokens.None
-            val targetWidth = fullWidth
-            val targetHeight = fullHeight
             val previewSurfaceRect = remember(constraints.maxWidth, constraints.maxHeight) {
                 androidx.compose.ui.geometry.Rect(
                     left = 0f,
@@ -626,6 +568,27 @@ private fun ImagePreviewOverlayContent(
                     right = with(density) { constraints.maxWidth.toPx() },
                     bottom = with(density) { constraints.maxHeight.toPx() }
                 )
+            }
+
+            fun currentFlightRect(progress: Float): androidx.compose.ui.geometry.Rect? {
+                if (!shouldUseRectAnim) return null
+                val source = currentSourceRect ?: return null
+                return if (isDismissing) {
+                    val start = dismissImageDisplayRect ?: previewSurfaceRect
+                    val normalizedProgress = (progress / dismissStartProgress.coerceAtLeast(0.001f))
+                        .coerceIn(0f, 1f)
+                    resolveImagePreviewDismissRectFrame(
+                        transitionProgress = normalizedProgress,
+                        sourceRect = source,
+                        displayedImageRect = start
+                    )?.rect
+                } else {
+                    resolveImagePreviewOpenRect(
+                        transitionProgress = progress,
+                        sourceRect = source,
+                        previewSurfaceRect = previewSurfaceRect
+                    )
+                }
             }
 
             LaunchedEffect(Unit) {
@@ -637,16 +600,15 @@ private fun ImagePreviewOverlayContent(
             }
 
             fun triggerDismiss(
-                startRect: androidx.compose.ui.geometry.Rect? = resolveImagePreviewDismissStartRect(
-                    previewSurfaceRect = previewSurfaceRect,
-                    displayedImageRect = currentImageDisplayRect,
-                    // 从真实显示图区域飞回缩略图，黑边不参与 morph，观感更干净。
-                    preferPreviewSurface = false
-                ),
+                startRect: androidx.compose.ui.geometry.Rect? = null,
                 backdropStartAlpha: Float = 1f,
             ) {
                 if (isDismissing) return
+                val startProgress = currentTransitionProgress().coerceIn(0f, 1f)
+                dismissStartProgress = startProgress
                 dismissImageDisplayRect = startRect
+                    ?: currentFlightRect(startProgress)
+                    ?: previewSurfaceRect
                 dismissBackdropStartAlpha = backdropStartAlpha.coerceIn(0f, 1f)
                 isVerticalDismissDragging = false
                 isDismissing = true
@@ -699,29 +661,27 @@ private fun ImagePreviewOverlayContent(
                 },
             )
             
-            val (currentLeft, currentTop, currentWidth, currentHeight) = if (shouldUseRectAnim) {
-                val source = currentSourceRect!!
-                val sourceLeft = with(density) { source.left.toDp() }
-                val sourceTop = with(density) { source.top.toDp() }
-                val sourceWidth = with(density) { source.width.toDp() }
-                val sourceHeight = with(density) { source.height.toDp() }
-                
-                val l = androidx.compose.ui.unit.lerp(sourceLeft, targetLeft, transitionFrame.layoutProgress)
-                val t = androidx.compose.ui.unit.lerp(sourceTop, targetTop, transitionFrame.layoutProgress)
-                val w = androidx.compose.ui.unit.lerp(sourceWidth, targetWidth, transitionFrame.layoutProgress)
-                val h = androidx.compose.ui.unit.lerp(sourceHeight, targetHeight, transitionFrame.layoutProgress)
-                
-                Quad(l, t, w, h)
-            } else {
-                Quad(AppSpacingTokens.None, AppSpacingTokens.None, fullWidth, fullHeight)
-            }
-            
             // 1. 背景层 (淡入淡出)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .testTag(IMAGE_PREVIEW_BACKDROP_TAG)
-                    .background(MediaContrastPalette.Scrim.copy(alpha = backdropAlpha))
+                    .drawBehind {
+                        val progress = currentTransitionProgress().coerceIn(0f, 1f)
+                        val dragFrame = resolveImagePreviewVerticalDragFrame(
+                            dragOffsetYPx = verticalDismissOffsetYPx,
+                            containerHeightPx = fullHeightPx
+                        )
+                        val alpha = if (isDismissing) {
+                            resolveImagePreviewDismissBackdropAlpha(
+                                visualProgress = progress,
+                                startAlpha = dismissBackdropStartAlpha
+                            )
+                        } else {
+                            progress * dragFrame.backdropAlphaMultiplier
+                        }
+                        drawRect(MediaContrastPalette.Scrim.copy(alpha = alpha))
+                    }
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = { triggerDismiss() }
@@ -730,45 +690,48 @@ private fun ImagePreviewOverlayContent(
             )
             
             // 2. 内容层 (缩放位移)
-            // Keep the page measured at its final viewport size. The Hero-style flight is
-            // a render-layer transform, so each animation frame avoids remeasuring the pager
-            // and decoding/layout work beneath it.
+            // Keep the page measured at viewport size. The outer layer animates the clipping
+            // rect, while the pager layer counters non-uniform rect scaling so image pixels
+            // retain their aspect ratio throughout the Hero flight.
             val contentModifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    alpha = visualFrame.contentAlpha
-                    renderEffect = blurEffectCache.resolve(visualFrame.blurRadiusPx)
-
-                    val dismissRect = dismissRectFrame?.rect.takeIf {
-                        isDismissing && shouldUseRectAnim
-                    }
-                    if (dismissRect != null) {
-                        scaleX = (dismissRect.width / size.width).coerceAtLeast(0.01f)
-                        scaleY = (dismissRect.height / size.height).coerceAtLeast(0.01f)
-                        translationX = dismissRect.left
-                        translationY = dismissRect.top
-                        val minScale = minOf(scaleX, scaleY).coerceAtLeast(0.01f)
-                        shape = RoundedCornerShape((presentedCornerRadiusDp / minScale).dp)
+                    val progress = currentTransitionProgress().coerceIn(0f, 1f)
+                    val flightRect = currentFlightRect(progress)
+                    val dragFrame = resolveImagePreviewVerticalDragFrame(
+                        dragOffsetYPx = verticalDismissOffsetYPx,
+                        containerHeightPx = fullHeightPx
+                    )
+                    val presentedCornerRadius = resolveImagePreviewPresentedCornerRadiusDp(
+                        visualProgress = progress,
+                        verticalDragProgress = if (isDismissing) 0f else dragFrame.progress,
+                        hasSourceRect = shouldUseRectAnim,
+                        sourceCornerRadiusDp = sourceCornerRadiusDp
+                    )
+                    if (flightRect != null) {
+                        val baseScaleX = (flightRect.width / size.width).coerceAtLeast(0.01f)
+                        val baseScaleY = (flightRect.height / size.height).coerceAtLeast(0.01f)
+                        val dragScale = if (isDismissing) 1f else dragFrame.scale
+                        scaleX = baseScaleX * dragScale
+                        scaleY = baseScaleY * dragScale
+                        translationX = (flightRect.left + flightRect.right - size.width) / 2f
+                        translationY = (flightRect.top + flightRect.bottom - size.height) / 2f +
+                            if (isDismissing) 0f else verticalDismissOffsetYPx
+                        val minScale = (minOf(baseScaleX, baseScaleY) * dragScale).coerceAtLeast(0.01f)
+                        shape = RoundedCornerShape((presentedCornerRadius / minScale).dp)
                         clip = true
-                        transformOrigin = TransformOrigin(0f, 0f)
-                    } else if (shouldUseRectAnim) {
-                        scaleX = (currentWidth.toPx() / size.width).coerceAtLeast(0.01f)
-                        scaleY = (currentHeight.toPx() / size.height).coerceAtLeast(0.01f)
-                        translationX = currentLeft.toPx()
-                        translationY = currentTop.toPx() + if (isDismissing) 0f else verticalDismissOffsetYPx
-                        val minScale = minOf(scaleX, scaleY).coerceAtLeast(0.01f)
-                        shape = RoundedCornerShape((presentedCornerRadiusDp / minScale).dp)
-                        clip = true
-                        transformOrigin = TransformOrigin(0f, 0f)
+                        transformOrigin = TransformOrigin.Center
                     } else {
-                        scaleX = transitionFrame.fallbackScale
-                        scaleY = transitionFrame.fallbackScale
-                        if (!isDismissing) {
-                            translationY = verticalDismissOffsetYPx
-                            scaleX *= verticalDragFrame.scale
-                            scaleY *= verticalDragFrame.scale
-                        }
-                        shape = RoundedCornerShape(presentedCornerRadiusDp.dp)
+                        val fallbackScale = resolveImagePreviewTransitionFrame(
+                            rawProgress = progress,
+                            hasSourceRect = false,
+                            sourceCornerRadiusDp = sourceCornerRadiusDp
+                        ).fallbackScale * if (isDismissing) 1f else dragFrame.scale
+                        scaleX = fallbackScale
+                        scaleY = fallbackScale
+                        translationX = 0f
+                        translationY = if (isDismissing) 0f else verticalDismissOffsetYPx
+                        shape = RoundedCornerShape(presentedCornerRadius.dp)
                         clip = true
                         transformOrigin = TransformOrigin.Center
                     }
@@ -780,7 +743,48 @@ private fun ImagePreviewOverlayContent(
                 //  使用 HorizontalPager 实现滑动切换 + 3D立体动画
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val flightRect = currentFlightRect(currentTransitionProgress())
+                            if (flightRect != null) {
+                                val baseScaleX = (flightRect.width / size.width).coerceAtLeast(0.01f)
+                                val baseScaleY = (flightRect.height / size.height).coerceAtLeast(0.01f)
+                                val sourceFillScale = currentSourceRect
+                                    ?.let { source ->
+                                        currentImageDisplayRect
+                                            ?.takeIf { it.width > 0f && it.height > 0f }
+                                            ?.let { displayed ->
+                                                maxOf(
+                                                    source.width / displayed.width,
+                                                    source.height / displayed.height
+                                                )
+                                            }
+                                    }
+                                    ?: maxOf(baseScaleX, baseScaleY)
+                                val imageScale = sourceFillScale +
+                                    (1f - sourceFillScale) * currentTransitionProgress().coerceIn(0f, 1f)
+                                scaleX = imageScale / baseScaleX
+                                scaleY = imageScale / baseScaleY
+                                val imageRect = currentImageDisplayRect
+                                if (imageRect != null) {
+                                    val remainingFlight = 1f - currentTransitionProgress().coerceIn(0f, 1f)
+                                    val viewportCenterX = (previewSurfaceRect.left + previewSurfaceRect.right) / 2f
+                                    val viewportCenterY = (previewSurfaceRect.top + previewSurfaceRect.bottom) / 2f
+                                    translationX = -scaleX * (imageRect.center.x - viewportCenterX) * remainingFlight
+                                    translationY = -scaleY * (imageRect.center.y - viewportCenterY) * remainingFlight
+                                } else {
+                                    translationX = 0f
+                                    translationY = 0f
+                                }
+                                transformOrigin = TransformOrigin.Center
+                            } else {
+                                scaleX = 1f
+                                scaleY = 1f
+                                translationX = 0f
+                                translationY = 0f
+                            }
+                        },
                     beyondViewportPageCount = 1,  // 预加载相邻页面
                     userScrollEnabled = !isVerticalDismissDragging &&
                         !isDismissing &&
@@ -788,8 +792,6 @@ private fun ImagePreviewOverlayContent(
                     key = { images.getOrElse(it) { "" } }
                 ) { page ->
                     // 所有图片默认平面横滑，可由同一个设置启用轻量 3D。
-                    val apply3D = transitionFrame.visualProgress > 0.92f
-
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -801,7 +803,7 @@ private fun ImagePreviewOverlayContent(
                                 // 放进 graphicsLayer lambda 后只触发重绘，不触发重组。
                                 val pageOffset =
                                     (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                if (apply3D && gallery3dPageEnabled) {
+                                if (currentTransitionProgress() > 0.92f && gallery3dPageEnabled) {
                                     val transform = resolveImagePreviewGalleryPageTransform(
                                         pageOffsetFraction = pageOffset,
                                         containerWidthPx = fullWidthPx
@@ -816,6 +818,13 @@ private fun ImagePreviewOverlayContent(
                                     scaleX = transform.scale
                                     scaleY = transform.scale
                                     alpha = transform.alpha
+                                } else {
+                                    rotationY = 0f
+                                    translationX = 0f
+                                    scaleX = 1f
+                                    scaleY = 1f
+                                    alpha = 1f
+                                    transformOrigin = TransformOrigin.Center
                                 }
                             }
                             .pointerInput(Unit) {
@@ -894,10 +903,16 @@ private fun ImagePreviewOverlayContent(
                             onVerticalDismissDragEnd = {
                                 if (page == pagerState.currentPage && !isDismissing && isVerticalDismissDragging) {
                                     isVerticalDismissDragging = false
+                                    val dragFrame = resolveImagePreviewVerticalDragFrame(
+                                        dragOffsetYPx = verticalDismissOffsetYPx,
+                                        containerHeightPx = fullHeightPx
+                                    )
                                     val draggedRect = resolveImagePreviewDraggedDisplayRect(
-                                        displayedImageRect = currentImageDisplayRect,
+                                        displayedImageRect = currentFlightRect(
+                                            currentTransitionProgress()
+                                        ) ?: previewSurfaceRect,
                                         translationYPx = verticalDismissOffsetYPx,
-                                        scale = verticalDragFrame.scale
+                                        scale = dragFrame.scale
                                     )
                                     when (
                                         resolveImagePreviewVerticalDismissDecision(
@@ -907,7 +922,7 @@ private fun ImagePreviewOverlayContent(
                                     ) {
                                         ImagePreviewVerticalDismissDecision.DISMISS -> triggerDismiss(
                                             startRect = draggedRect,
-                                            backdropStartAlpha = verticalDragFrame.backdropAlphaMultiplier,
+                                            backdropStartAlpha = dragFrame.backdropAlphaMultiplier,
                                         )
                                         ImagePreviewVerticalDismissDecision.SNAP_BACK -> {
                                             scope.launch {
@@ -974,12 +989,17 @@ private fun ImagePreviewOverlayContent(
                             pageIndex = page,
                             livePhotoVideos = livePhotoVideos
                         )
+                        val livePhotoProgressReady = if (backProgress > 0f) {
+                            1f - backProgress >= 0.85f
+                        } else {
+                            previewContentReady
+                        }
                         if (
                             !liveVideoUrl.isNullOrBlank() &&
                             isLivePhotoEnabled &&
                             page == pagerState.currentPage &&
                             !isDismissing &&
-                            transitionFrame.visualProgress >= 0.85f && activeZoomScale <= 1.05f
+                            livePhotoProgressReady && activeZoomScale <= 1.05f
                         ) {
                             LivePhotoPlayback(
                                 videoUrl = liveVideoUrl,
@@ -1020,14 +1040,15 @@ private fun ImagePreviewOverlayContent(
             }
             
             // 3. UI 覆盖层 - 退出时先于图片清掉 chrome，只剩干净一镜 morph
-            val chromeAlpha = resolveImagePreviewChromeAlpha(
-                visualProgress = transitionFrame.visualProgress,
-                isDismissing = isDismissing
-            )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = chromeAlpha }
+                    .graphicsLayer {
+                        alpha = resolveImagePreviewChromeAlpha(
+                            visualProgress = currentTransitionProgress(),
+                            isDismissing = isDismissing
+                        )
+                    }
             ) {
                 val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
                 val overlayPadding = resolveImagePreviewOverlayPadding(
@@ -1919,9 +1940,6 @@ private fun ImagePreviewCommentActionButton(
         )
     }
 }
-
-// 辅助数据类
-data class Quad(val left: androidx.compose.ui.unit.Dp, val top: androidx.compose.ui.unit.Dp, val width: androidx.compose.ui.unit.Dp, val height: androidx.compose.ui.unit.Dp)
 
 /**
  *  规范化图片 URL

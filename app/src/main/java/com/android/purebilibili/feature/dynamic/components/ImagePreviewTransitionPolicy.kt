@@ -289,6 +289,22 @@ internal fun resolveImagePreviewDismissRectFrame(
     )
 }
 
+/** Source thumbnail to the full preview surface, preserving a rect flight for image clipping. */
+internal fun resolveImagePreviewOpenRect(
+    transitionProgress: Float,
+    sourceRect: Rect?,
+    previewSurfaceRect: Rect?
+): Rect? {
+    if (sourceRect == null || previewSurfaceRect == null) return null
+    val progress = transitionProgress.coerceIn(0f, 1f)
+    return Rect(
+        left = lerpFloat(sourceRect.left, previewSurfaceRect.left, progress),
+        top = lerpFloat(sourceRect.top, previewSurfaceRect.top, progress),
+        right = lerpFloat(sourceRect.right, previewSurfaceRect.right, progress),
+        bottom = lerpFloat(sourceRect.bottom, previewSurfaceRect.bottom, progress)
+    )
+}
+
 internal fun resolveImagePreviewDismissStartRect(
     previewSurfaceRect: Rect?,
     displayedImageRect: Rect?,
