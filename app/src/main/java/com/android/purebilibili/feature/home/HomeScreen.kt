@@ -2793,7 +2793,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(
                     end = AppSpacingTokens.Large,
                     bottom = homeListBottomPadding + AppSpacingTokens.Small +
-                        if (oldContentLocatorVisible) 56.dp else 0.dp,
+                        if (oldContentLocatorVisible) 64.dp else 0.dp,
                 )
             ) {
             AppButton(
