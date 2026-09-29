@@ -5,6 +5,8 @@ import com.android.purebilibili.feature.dynamic.components.DynamicDisplayMode
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.network.DynamicDeleteRequest
@@ -22,6 +24,7 @@ import com.android.purebilibili.data.model.response.LiveRoom
 import com.android.purebilibili.data.model.response.ReplyData
 import com.android.purebilibili.data.model.response.ReplyInteractionData
 import com.android.purebilibili.data.model.response.ReplyItem
+import com.android.purebilibili.data.model.response.ReplyPicture
 import com.android.purebilibili.data.repository.ActionRepository
 import com.android.purebilibili.data.repository.BlockedUpRepository
 import com.android.purebilibili.data.repository.CommentRepository
@@ -1520,7 +1523,12 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         _commentReplyTarget.value = null
     }
 
-    fun postComment(dynamicId: String, message: String, onResult: (Boolean, String) -> Unit) {
+    fun postComment(
+        dynamicId: String,
+        message: String,
+        imageUris: List<Uri> = emptyList(),
+        onResult: (Boolean, String) -> Unit,
+    ) {
         viewModelScope.launch {
             try {
                 val csrf = com.android.purebilibili.core.store.TokenManager.csrfCache
@@ -1540,12 +1548,22 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
                 val replyTarget = _commentReplyTarget.value
+                if (message.isBlank() && imageUris.isEmpty()) {
+                    onResult(false, "请输入评论内容")
+                    return@launch
+                }
+                if (replyTarget != null && imageUris.isNotEmpty()) {
+                    onResult(false, "回复暂不支持图片")
+                    return@launch
+                }
+                val pictures = uploadCommentPictures(imageUris)
                 val response = CommentRepository.addCommentForSubject(
                     oid = target.oid,
                     type = target.type,
                     message = message,
                     root = replyTarget?.rootRpid ?: 0L,
-                    parent = replyTarget?.parentRpid ?: 0L
+                    parent = replyTarget?.parentRpid ?: 0L,
+                    pictures = pictures,
                 )
                 if (response.isSuccess) {
                     _commentReplyTarget.value = null
@@ -1554,11 +1572,35 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 } else {
                     onResult(false, response.exceptionOrNull()?.message ?: "评论失败")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 onResult(false, e.message ?: "网络错误")
             }
         }
     }
+
+    private suspend fun uploadCommentPictures(imageUris: List<Uri>): List<ReplyPicture> =
+        withContext(Dispatchers.IO) {
+            require(imageUris.size <= 9) { "最多选择 9 张图片" }
+            imageUris.mapIndexed { index, uri ->
+                val bytes = appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("无法读取图片文件")
+                require(bytes.isNotEmpty()) { "图片内容为空" }
+                require(bytes.size <= 15 * 1024 * 1024) { "图片过大（单张最大 15MB）" }
+                val fileName = appContext.contentResolver.query(
+                    uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+                )?.use { cursor ->
+                    val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+                } ?: "comment_${System.currentTimeMillis()}_${index + 1}.jpg"
+                CommentRepository.uploadCommentImage(
+                    fileName = fileName,
+                    mimeType = appContext.contentResolver.getType(uri) ?: "image/jpeg",
+                    bytes = bytes,
+                ).getOrElse { throw it }
+            }
+        }
 
     fun likeComment(rpid: Long, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
         if (rpid <= 0L) return

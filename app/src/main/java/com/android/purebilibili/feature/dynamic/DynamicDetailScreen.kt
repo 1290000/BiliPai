@@ -468,9 +468,10 @@ fun DynamicDetailScreen(
                 }
                 val commentComposer: @Composable (Modifier) -> Unit = { modifier ->
                     DynamicInlineCommentComposer(
-                        onPostComment = { message ->
-                            interactionViewModel.postComment(state.item.id_str, message) { _, toastMessage ->
+                        onPostComment = { message, images, onResult ->
+                            interactionViewModel.postComment(state.item.id_str, message, images) { success, toastMessage ->
                                 android.widget.Toast.makeText(context, toastMessage, android.widget.Toast.LENGTH_SHORT).show()
+                                onResult(success)
                             }
                         },
                         replyTargetUname = commentReplyTarget?.uname,
