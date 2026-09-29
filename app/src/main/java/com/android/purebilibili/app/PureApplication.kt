@@ -21,6 +21,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.StrictMode
+import androidx.compose.foundation.ComposeFoundationFlags
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.profileinstaller.ProfileInstaller
 import com.android.purebilibili.BuildConfig
 import coil3.ImageLoader
@@ -143,8 +145,14 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
             .also { _imageLoader = it }  // 保存引用
     }
     
+    @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate() {
         instance = this
+
+        // Compose 1.13's staggered-grid cache-window prefetch can assign an invalid lane
+        // after rapid scroll-to-top and subsequent scrolling. Keep the established prefetcher
+        // until the upstream cache-window path is safe for this feed.
+        ComposeFoundationFlags.isUsingCacheWindowInStaggeredGrids = false
 
         // Install the local crash path before theme, StrictMode, or any other startup work. This
         // ensures even an early initialization exception has a private snapshot for feedback.
