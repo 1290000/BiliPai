@@ -17,6 +17,7 @@ import com.android.purebilibili.core.ui.MediaContrastPalette
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 
+import android.animation.ValueAnimator
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -24,6 +25,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.view.Window
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -40,6 +42,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Material Icons
 import androidx.compose.material3.*
@@ -126,6 +129,18 @@ internal const val IMAGE_PREVIEW_COMMENT_PANEL_TAG = "image_preview_comment_pane
 internal const val IMAGE_PREVIEW_ORIGINAL_CHIP_TAG = "image_preview_original_chip"
 internal const val IMAGE_PREVIEW_PAGE_INDICATOR_TAG = "image_preview_page_indicator"
 private const val IMAGE_PREVIEW_SHARE_CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L
+
+/** 导航栏颜色用短动画过渡，替代进出场瞬间的硬切。Android 15+ 强制透明时自动短路。 */
+private fun animateWindowNavigationBarColor(window: Window?, targetColor: Int, durationMillis: Long = 180L) {
+    if (window == null) return
+    val from = window.navigationBarColor
+    if (from == targetColor) return
+    ValueAnimator.ofArgb(from, targetColor).apply {
+        this.duration = durationMillis
+        addUpdateListener { setWindowNavigationBarColor(window, it.animatedValue as Int) }
+        start()
+    }
+}
 
 private data class ImagePreviewOverlayRequest(
     val token: Long,
@@ -333,22 +348,19 @@ private fun ImagePreviewOverlayContent(
     //  保存原始导航栏颜色
     val originalNavBarColor = remember { window?.navigationBarColor ?: android.graphics.Color.BLACK }
     
-    //  进入时设置沉浸式导航栏（透明黑色），退出时恢复
+    //  进入时动画过渡到沉浸式导航栏（透明黑色），退出时动画恢复，避免颜色瞬间跳变
     DisposableEffect(Unit) {
-        window?.let { setWindowNavigationBarColor(it, Color.Transparent.toArgb()) }
+        animateWindowNavigationBarColor(window, Color.Transparent.toArgb())
         insetsController?.isAppearanceLightNavigationBars = false
-        
+
         onDispose {
-            window?.let { setWindowNavigationBarColor(it, originalNavBarColor) }
+            animateWindowNavigationBarColor(window, originalNavBarColor)
         }
     }
     
     //  动画状态控制
     // 0f = 关闭/初始状态 (at sourceRect), 1f = 打开状态 (Fullscreen)
     val animateTrigger = remember { androidx.compose.animation.core.Animatable(0f) }
-    val previewContentReady by remember(animateTrigger) {
-        derivedStateOf { animateTrigger.value >= 0.85f }
-    }
     val backEventState = rememberNavigationEventState(NavigationEventInfo.None)
     val predictiveBackGestureEnabled = LocalPredictiveBackGestureEnabled.current
     val backProgress = if (predictiveBackGestureEnabled) {
@@ -362,6 +374,8 @@ private fun ImagePreviewOverlayContent(
     var isDismissing by remember { mutableStateOf(false) }
     var dismissBackdropStartAlpha by remember { mutableFloatStateOf(1f) }
     var currentImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    // 打开飞行期间冻结首帧展示 rect，Coil 布局/缩放更新不再中途改变 counter-scale 基准。
+    var flightAnchorDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var dismissImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var dismissStartProgress by remember { mutableFloatStateOf(1f) }
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
@@ -427,6 +441,7 @@ private fun ImagePreviewOverlayContent(
             isVerticalDismissDragging = false
             verticalDismissOffsetYPx = 0f
             verticalDismissSnapAnim.snapTo(0f)
+            flightAnchorDisplayRect = null
         }
     }
     
@@ -609,6 +624,7 @@ private fun ImagePreviewOverlayContent(
             fun triggerDismiss(
                 startRect: androidx.compose.ui.geometry.Rect? = null,
                 backdropStartAlpha: Float = 1f,
+                initialVelocityY: Float = 0f,
             ) {
                 if (isDismissing) return
                 val startProgress = currentTransitionProgress().coerceIn(0f, 1f)
@@ -623,12 +639,12 @@ private fun ImagePreviewOverlayContent(
                     verticalDismissOffsetYPx = 0f
                     verticalDismissSnapAnim.snapTo(0f)
                     val dismissMotion = imagePreviewDismissMotion()
-                    // PiliPlus Hero reverse uses a 300ms route transition back to its source.
+                    // 临界阻尼 spring 回位：起步可携带手势松手速度，落地自带减速。
+                    // 进度向 0 收敛，竖滑方向的速度在进度空间取反号以延续手势动量。
                     animateTrigger.animateTo(
                         targetValue = dismissMotion.settleTarget,
-                        animationSpec = imagePreviewCloseTween(
-                            durationMillis = dismissMotion.collapseDurationMillis
-                        )
+                        animationSpec = imagePreviewCloseSpring(),
+                        initialVelocity = clampImagePreviewDismissVelocity(-initialVelocityY),
                     )
                     // Keep the final Hero frame in the Dialog for one display frame so
                     // the source list can become visible before this window is removed.
@@ -708,6 +724,11 @@ private fun ImagePreviewOverlayContent(
                 .graphicsLayer {
                     val progress = currentTransitionProgress().coerceIn(0f, 1f)
                     val flightRect = currentFlightRect(progress)
+                    alpha = resolveImagePreviewDismissContentAlpha(
+                        hasRectFlight = flightRect != null,
+                        isDismissing = isDismissing,
+                        visualProgress = progress
+                    )
                     val dragFrame = resolveImagePreviewVerticalDragFrame(
                         dragOffsetYPx = verticalDismissOffsetYPx,
                         containerHeightPx = fullHeightPx
@@ -727,8 +748,14 @@ private fun ImagePreviewOverlayContent(
                         translationX = (flightRect.left + flightRect.right - size.width) / 2f
                         translationY = (flightRect.top + flightRect.bottom - size.height) / 2f +
                             if (isDismissing) 0f else verticalDismissOffsetYPx
-                        val minScale = (minOf(baseScaleX, baseScaleY) * dragScale).coerceAtLeast(0.01f)
-                        shape = RoundedCornerShape((presentedCornerRadius / minScale).dp)
+                        val cornerRadii = resolveImagePreviewCounterScaledCornerRadii(
+                            cornerRadiusDp = presentedCornerRadius,
+                            scaleX = baseScaleX * dragScale,
+                            scaleY = baseScaleY * dragScale
+                        )
+                        shape = RoundedCornerShape(
+                            CornerSize(cornerRadii.horizontalDp.dp, cornerRadii.verticalDp.dp)
+                        )
                         clip = true
                         transformOrigin = TransformOrigin.Center
                     } else {
@@ -776,7 +803,11 @@ private fun ImagePreviewOverlayContent(
                                     (1f - sourceFillScale) * currentTransitionProgress().coerceIn(0f, 1f)
                                 scaleX = imageScale / baseScaleX
                                 scaleY = imageScale / baseScaleY
-                                val imageRect = currentImageDisplayRect
+                                val imageRect = if (isDismissing) {
+                                    currentImageDisplayRect
+                                } else {
+                                    flightAnchorDisplayRect ?: currentImageDisplayRect
+                                }
                                 if (imageRect != null) {
                                     val remainingFlight = 1f - currentTransitionProgress().coerceIn(0f, 1f)
                                     val viewportCenterX = (previewSurfaceRect.left + previewSurfaceRect.right) / 2f
@@ -813,21 +844,27 @@ private fun ImagePreviewOverlayContent(
                                 // 放进 graphicsLayer lambda 后只触发重绘，不触发重组。
                                 val pageOffset =
                                     (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-                                if (currentTransitionProgress() > 0.92f && gallery3dPageEnabled) {
+                                // 3D 强度随进度平滑进入，替代 >0.92 硬阈值开关的尾段跳变。
+                                val gallery3dBlend = if (gallery3dPageEnabled) {
+                                    resolveImagePreviewGallery3DBlend(currentTransitionProgress())
+                                } else {
+                                    0f
+                                }
+                                if (gallery3dBlend > 0f) {
                                     val transform = resolveImagePreviewGalleryPageTransform(
                                         pageOffsetFraction = pageOffset,
                                         containerWidthPx = fullWidthPx
                                     )
-                                    rotationY = transform.rotationY
-                                    translationX = transform.translationXPx
+                                    rotationY = transform.rotationY * gallery3dBlend
+                                    translationX = transform.translationXPx * gallery3dBlend
                                     cameraDistance = 16f * density.density
                                     transformOrigin = TransformOrigin(
                                         pivotFractionX = transform.pivotFractionX,
                                         pivotFractionY = 0.5f
                                     )
-                                    scaleX = transform.scale
-                                    scaleY = transform.scale
-                                    alpha = transform.alpha
+                                    scaleX = 1f + (transform.scale - 1f) * gallery3dBlend
+                                    scaleY = 1f + (transform.scale - 1f) * gallery3dBlend
+                                    alpha = 1f + (transform.alpha - 1f) * gallery3dBlend
                                 } else {
                                     rotationY = 0f
                                     translationX = 0f
@@ -888,6 +925,9 @@ private fun ImagePreviewOverlayContent(
                             },
                             onDisplayRectChange = { rect ->
                                 if (!isDismissing && page == pagerState.currentPage) {
+                                    if (flightAnchorDisplayRect == null) {
+                                        flightAnchorDisplayRect = rect
+                                    }
                                     currentImageDisplayRect = rect
                                 }
                             },
@@ -902,7 +942,7 @@ private fun ImagePreviewOverlayContent(
                                     verticalDismissOffsetYPx += dragDelta
                                 }
                             },
-                            onVerticalDismissDragEnd = {
+                            onVerticalDismissDragEnd = { releaseVelocityY ->
                                 if (page == pagerState.currentPage && !isDismissing && isVerticalDismissDragging) {
                                     isVerticalDismissDragging = false
                                     val dragFrame = resolveImagePreviewVerticalDragFrame(
@@ -925,6 +965,7 @@ private fun ImagePreviewOverlayContent(
                                         ImagePreviewVerticalDismissDecision.DISMISS -> triggerDismiss(
                                             startRect = draggedRect,
                                             backdropStartAlpha = dragFrame.backdropAlphaMultiplier,
+                                            initialVelocityY = releaseVelocityY,
                                         )
                                         ImagePreviewVerticalDismissDecision.SNAP_BACK -> {
                                             scope.launch {
@@ -991,10 +1032,13 @@ private fun ImagePreviewOverlayContent(
                             pageIndex = page,
                             livePhotoVideos = livePhotoVideos
                         )
-                        val livePhotoProgressReady = if (backProgress > 0f) {
-                            1f - backProgress >= 0.85f
-                        } else {
-                            previewContentReady
+                        // 实况照片按进度平滑淡入；0.7 前不合成，避免飞行早期白白挂播放器。
+                        // 门限用 derivedStateOf 供组合期判断，alpha 在 graphicsLayer 内逐帧读取，不触发重组。
+                        val livePhotoProgressReady by remember {
+                            derivedStateOf {
+                                val progress = if (backProgress > 0f) 1f - backProgress else animateTrigger.value
+                                progress >= 0.7f
+                            }
                         }
                         if (
                             !liveVideoUrl.isNullOrBlank() &&
@@ -1005,7 +1049,13 @@ private fun ImagePreviewOverlayContent(
                         ) {
                             LivePhotoPlayback(
                                 videoUrl = liveVideoUrl,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        alpha = resolveImagePreviewLivePhotoAlpha(
+                                            if (backProgress > 0f) 1f - backProgress else currentTransitionProgress()
+                                        )
+                                    },
                                 isPlaying = isLivePhotoPlaying,
                                 isMuted = isLivePhotoMuted,
                                 playerRef = { livePhotoPlayer = it },

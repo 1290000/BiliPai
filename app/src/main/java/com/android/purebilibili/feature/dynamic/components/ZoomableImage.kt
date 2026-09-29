@@ -50,7 +50,7 @@ fun ZoomableImage(
     onDisplayRectChange: (Rect?) -> Unit = {},
     onVerticalDismissDragStart: () -> Unit = {},
     onVerticalDismissDrag: (Float) -> Unit = {},
-    onVerticalDismissDragEnd: () -> Unit = {},
+    onVerticalDismissDragEnd: (Float) -> Unit = {},
     onVerticalDismissDragCancel: () -> Unit = {},
     onExtremeAspectRatioDetected: () -> Unit = {},
     onLongPress: () -> Unit = {},
@@ -160,6 +160,9 @@ fun ZoomableImage(
                     var gestureMode = ZoomableImageGestureMode.UNDECIDED
                     var verticalDismissStarted = false
                     var gestureCanceled = false
+                    // 竖滑松手速度（px/s）：EMA 平滑瞬时速度，供回位动画延续手势动量。
+                    var lastVerticalDragTimeMs = 0L
+                    var verticalDragVelocityY = 0f
                     
                     awaitFirstDown(requireUnconsumed = false)
                     
@@ -208,6 +211,16 @@ fun ZoomableImage(
                                     if (panChange.y != 0f) {
                                         onVerticalDismissDrag(panChange.y)
                                     }
+                                    val moveTimeMs = event.changes.firstOrNull()?.uptimeMillis ?: 0L
+                                    if (lastVerticalDragTimeMs != 0L && moveTimeMs > lastVerticalDragTimeMs) {
+                                        val instantVelocityY = panChange.y / (moveTimeMs - lastVerticalDragTimeMs) * 1000f
+                                        verticalDragVelocityY = if (verticalDragVelocityY == 0f) {
+                                            instantVelocityY
+                                        } else {
+                                            verticalDragVelocityY * 0.6f + instantVelocityY * 0.4f
+                                        }
+                                    }
+                                    lastVerticalDragTimeMs = moveTimeMs
                                     event.changes.forEach {
                                         if (it.position != it.previousPosition) {
                                             it.consume()
@@ -274,7 +287,7 @@ fun ZoomableImage(
                         if (gestureCanceled) {
                             onVerticalDismissDragCancel()
                         } else {
-                            onVerticalDismissDragEnd()
+                            onVerticalDismissDragEnd(verticalDragVelocityY)
                         }
                     }
                 }
