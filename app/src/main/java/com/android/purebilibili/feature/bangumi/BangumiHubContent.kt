@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -387,18 +386,22 @@ private fun TimelineSection(
         } else {
             104.dp
         }
-        AppThemeAdaptiveTabRow(
-            indicatorPresentation = AppTabRowIndicatorPresentation.TONAL_PILL,
-            options = BangumiTimelineRange.entries.map { range ->
-                AppSegmentOption(range, range.label)
-            },
-            selectedValue = state.range,
-            onSelectionChange = onRangeSelected,
-            minTabWidth = timelineRangeMinWidth,
-            scrollable = false,
-            miuixBackdrop = tabBackdrop,
-            modifier = Modifier.wrapContentWidth(Alignment.CenterHorizontally),
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            AppThemeAdaptiveTabRow(
+                indicatorPresentation = AppTabRowIndicatorPresentation.TONAL_PILL,
+                options = BangumiTimelineRange.entries.map { range ->
+                    AppSegmentOption(range, range.label)
+                },
+                selectedValue = state.range,
+                onSelectionChange = onRangeSelected,
+                minTabWidth = timelineRangeMinWidth,
+                scrollable = false,
+                miuixBackdrop = tabBackdrop,
+            )
+        }
         when {
             state.isLoading && state.days.isEmpty() -> BangumiTimelineSkeleton()
             state.error != null && state.days.isEmpty() -> InlineError(state.error, onRetry)
