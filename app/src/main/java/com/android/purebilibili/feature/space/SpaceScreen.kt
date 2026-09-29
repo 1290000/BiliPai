@@ -335,8 +335,9 @@ fun SpaceScreen(
     }
 
     val currentSuccessState = uiState as? SpaceUiState.Success
-    val showTabletSpaceFollowAction =
-        com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTabletDevice
+    // Match the expanded space header, including unfolded foldables whose window grows at runtime.
+    val showExpandedSpaceFollowAction =
+        com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
     var contributionVideoLayoutMode by rememberSaveable(mid) {
         mutableStateOf(defaultSpaceContributionVideoLayoutMode())
     }
@@ -490,7 +491,7 @@ fun SpaceScreen(
                     ),
                     actions = {
                         currentSuccessState?.userInfo?.takeIf {
-                            showTabletSpaceFollowAction && it.mid > 0L &&
+                            showExpandedSpaceFollowAction && it.mid > 0L &&
                                 it.mid != com.android.purebilibili.core.store.TokenManager.midCache
                         }?.let { userInfo ->
                             AppTextButton(
