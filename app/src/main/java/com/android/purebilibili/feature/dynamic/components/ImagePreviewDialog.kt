@@ -246,6 +246,18 @@ private object ImagePreviewOverlayController {
             _preparedSourceRect.value = null
         }
     }
+
+    /**
+     * 回位落位后的交接第一步：在 Dialog 仍显示 Hero 末帧时先恢复源缩略图，
+     * 网格在其下方完成一帧重绘后再移除窗口。若把 request 清空与恢复缩略图
+     * 合在同一次状态变更，两个窗口的重绘帧不对齐，落点会漏出一帧空档（闪一下）。
+     */
+    fun revealSourceBeforeRemoval(token: Long) {
+        val current = _request.value ?: return
+        if (current.token == token && _activeSourceRect.value != null) {
+            _activeSourceRect.value = null
+        }
+    }
 }
 
 @Composable
@@ -688,6 +700,10 @@ private fun ImagePreviewOverlayContent(
                     )
                     // Keep the final Hero frame in the Dialog for one display frame so
                     // the source list can become visible before this window is removed.
+                    withFrameNanos { }
+                    // 交接两步走：先恢复源缩略图（Hero 末帧仍覆盖落点），让网格先重绘，
+                    // 再移除 Dialog 窗口，消除落位处两窗口重绘错帧的闪烁。
+                    ImagePreviewOverlayController.revealSourceBeforeRemoval(requestToken)
                     withFrameNanos { }
                     onDismiss()
                 }
