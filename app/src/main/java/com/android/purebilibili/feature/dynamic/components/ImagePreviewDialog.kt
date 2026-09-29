@@ -42,7 +42,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 //  Material Icons
 import androidx.compose.material3.*
@@ -129,6 +128,30 @@ internal const val IMAGE_PREVIEW_COMMENT_PANEL_TAG = "image_preview_comment_pane
 internal const val IMAGE_PREVIEW_ORIGINAL_CHIP_TAG = "image_preview_original_chip"
 internal const val IMAGE_PREVIEW_PAGE_INDICATOR_TAG = "image_preview_page_indicator"
 private const val IMAGE_PREVIEW_SHARE_CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L
+
+/**
+ * 按轴分别给出水平/垂直圆角的轮廓，抵消 graphicsLayer 非均匀缩放造成的椭圆拉伸。
+ * 圆角值逐帧变化，Outline 在 createOutline 内按当帧 px 生成。
+ */
+private class CounterScaledCornerShape(
+    private val horizontalDp: Float,
+    private val verticalDp: Float
+) : androidx.compose.ui.graphics.Shape {
+    override fun createOutline(
+        size: androidx.compose.ui.geometry.Size,
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+        density: androidx.compose.ui.unit.Density
+    ): androidx.compose.ui.graphics.Outline {
+        val horizontalPx = with(density) { horizontalDp.dp.toPx() }
+        val verticalPx = with(density) { verticalDp.dp.toPx() }
+        return androidx.compose.ui.graphics.Outline.Rounded(
+            androidx.compose.ui.graphics.RoundRect(
+                rect = size.toRect(),
+                corners = androidx.compose.ui.geometry.CornerRadius(horizontalPx, verticalPx)
+            )
+        )
+    }
+}
 
 /** 导航栏颜色用短动画过渡，替代进出场瞬间的硬切。Android 15+ 强制透明时自动短路。 */
 private fun animateWindowNavigationBarColor(window: Window?, targetColor: Int, durationMillis: Long = 180L) {
@@ -753,9 +776,7 @@ private fun ImagePreviewOverlayContent(
                             scaleX = baseScaleX * dragScale,
                             scaleY = baseScaleY * dragScale
                         )
-                        shape = RoundedCornerShape(
-                            CornerSize(cornerRadii.horizontalDp.dp, cornerRadii.verticalDp.dp)
-                        )
+                        shape = CounterScaledCornerShape(cornerRadii.horizontalDp, cornerRadii.verticalDp)
                         clip = true
                         transformOrigin = TransformOrigin.Center
                     } else {
