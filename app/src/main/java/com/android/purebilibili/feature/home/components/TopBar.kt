@@ -1546,7 +1546,9 @@ private fun LightweightHomeTopTabs(
         }
         val topTabMotionVelocityPxPerSecondState = remember(density, itemWidth) {
             derivedStateOf {
-                topTabMotionVelocityItemsPerSecondState.value * itemWidth.toPx()
+                topTabMotionVelocityItemsPerSecondState.value * with(density) {
+                    itemWidth.toPx()
+                }
             }
         }
         val topTabIndicatorInteractionSource = remember { MutableInteractionSource() }
@@ -2375,8 +2377,8 @@ private fun BoxScope.LightweightTopTabIndicatorOverlay(
             Modifier.draggable(
                 state = indicatorDraggableState,
                 orientation = Orientation.Horizontal,
-                onDragStarted = onIndicatorDragStarted,
-                onDragStopped = onIndicatorDragStopped,
+                onDragStarted = { _ -> onIndicatorDragStarted() },
+                onDragStopped = { _ -> onIndicatorDragStopped() },
             )
         } else {
             Modifier
