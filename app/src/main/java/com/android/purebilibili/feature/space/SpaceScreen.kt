@@ -4949,7 +4949,7 @@ private fun SpaceHeaderRelationActions(
         if (!isOwner) {
             AppSurface(
                 onClick = onMessageClick,
-                shape = RoundedCornerShape(18.dp),
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 border = BorderStroke(
                     1.dp,
@@ -4975,7 +4975,7 @@ private fun SpaceHeaderRelationActions(
 
         AppSurface(
             onClick = onFollowClick,
-            shape = RoundedCornerShape(18.dp),
+            shape = CircleShape,
             color = followButtonColors.backgroundColor,
             border = if (isFollowed && !isOwner) {
                 BorderStroke(
