@@ -240,6 +240,7 @@ import com.android.purebilibili.feature.dynamic.components.isImagePreviewSourceH
 import com.android.purebilibili.feature.dynamic.components.imagePreviewSourceBounds
 import com.android.purebilibili.feature.dynamic.components.rememberImagePreviewSourceRect
 import com.android.purebilibili.feature.dynamic.components.prepareImagePreviewSourceTransition
+import com.android.purebilibili.feature.dynamic.components.resolveImagePreviewPlaceholderCacheKey
 import com.android.purebilibili.feature.dynamic.components.RepostDialog
 import com.android.purebilibili.feature.list.VideoProgressDisplayState
 import com.android.purebilibili.feature.video.controller.PlaybackProgressManager
@@ -2787,7 +2788,8 @@ private fun SpaceHeader(
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(FormatUtils.buildSizedImageUrl(userInfo.face, width = 320, height = 320))
-                            .crossfade(true)
+                            .memoryCacheKey(resolveImagePreviewPlaceholderCacheKey(userInfo.face) ?: userInfo.face)
+                            .crossfade(false)
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
@@ -5106,7 +5108,8 @@ private fun SpaceHeaderBanner(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(item.header)
-                        .crossfade(true)
+                        .memoryCacheKey(resolveImagePreviewPlaceholderCacheKey(item.header) ?: item.header)
+                        .crossfade(false)
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
@@ -5143,7 +5146,8 @@ private fun SpaceHeaderBanner(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(item.header)
-                    .crossfade(true)
+                    .memoryCacheKey(resolveImagePreviewPlaceholderCacheKey(item.header) ?: item.header)
+                    .crossfade(false)
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
@@ -5164,7 +5168,10 @@ private fun SpaceHeaderBanner(
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(fallbackTopPhotoUrl)
-                .crossfade(true)
+                .memoryCacheKey(
+                    resolveImagePreviewPlaceholderCacheKey(fallbackTopPhotoUrl) ?: fallbackTopPhotoUrl
+                )
+                .crossfade(false)
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,

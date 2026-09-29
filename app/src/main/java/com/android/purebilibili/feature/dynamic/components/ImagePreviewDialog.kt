@@ -164,16 +164,22 @@ internal fun prepareImagePreviewSourceTransition(
 private object ImagePreviewOverlayController {
     private val _request = MutableStateFlow<ImagePreviewOverlayRequest?>(null)
     private val _activeSourceRect = MutableStateFlow<androidx.compose.ui.geometry.Rect?>(null)
+    private val _preparedSourceRect = MutableStateFlow<androidx.compose.ui.geometry.Rect?>(null)
     val request = _request.asStateFlow()
     val activeSourceRect = _activeSourceRect.asStateFlow()
 
     fun prepareSourceTransition(sourceRect: androidx.compose.ui.geometry.Rect?) {
-        _activeSourceRect.value = sourceRect
+        // Stage the anchor without hiding the source yet. The source stays painted until
+        // the preview request is committed, avoiding a blank frame between the click and
+        // the first Dialog composition.
+        _preparedSourceRect.value = sourceRect
     }
 
     fun show(request: ImagePreviewOverlayRequest) {
-        _request.value = request
-        _activeSourceRect.value = request.activeSourceRect
+        val activeSourceRect = request.activeSourceRect ?: _preparedSourceRect.value
+        _request.value = request.copy(activeSourceRect = activeSourceRect)
+        _activeSourceRect.value = activeSourceRect
+        _preparedSourceRect.value = null
     }
 
     fun updateActiveSourceRect(token: Long, sourceRect: androidx.compose.ui.geometry.Rect?) {
@@ -189,6 +195,7 @@ private object ImagePreviewOverlayController {
         if (token == null || current.token == token) {
             _request.value = null
             _activeSourceRect.value = null
+            _preparedSourceRect.value = null
         }
     }
 }
@@ -623,6 +630,9 @@ private fun ImagePreviewOverlayContent(
                             durationMillis = dismissMotion.collapseDurationMillis
                         )
                     )
+                    // Keep the final Hero frame in the Dialog for one display frame so
+                    // the source list can become visible before this window is removed.
+                    withFrameNanos { }
                     onDismiss()
                 }
             }
@@ -845,15 +855,7 @@ private fun ImagePreviewOverlayContent(
                         // 原图下载前内容层只剩黑底。把网格已加载的缩略图 URL 设为
                         // placeholderMemoryCacheKey，morph 期间立即垫图，杜绝「先黑后图」。
                         val placeholderCacheKey = remember(images.getOrNull(page)) {
-                            images.getOrNull(page)?.trim()?.let { raw ->
-                                when {
-                                    raw.startsWith("https://") -> raw
-                                    raw.startsWith("http://") -> raw.replace("http://", "https://")
-                                    raw.startsWith("//") -> "https:$raw"
-                                    raw.isNotEmpty() -> "https://$raw"
-                                    else -> ""
-                                }
-                            }.orEmpty().takeIf { it.isNotEmpty() }
+                            resolveImagePreviewPlaceholderCacheKey(images.getOrNull(page).orEmpty())
                         }
                         val decodeSize = remember(page, imageUrl, page in originalQualityPages) {
                             resolveImageDecodeSize(
@@ -1962,6 +1964,19 @@ internal fun normalizeImageUrl(rawSrc: String): String {
     }
     
     return result
+}
+
+/** Stable cache identity shared by a source thumbnail and its preview placeholder. */
+internal fun resolveImagePreviewPlaceholderCacheKey(rawSrc: String): String? {
+    val trimmed = rawSrc.trim()
+    val normalized = when {
+        trimmed.startsWith("https://") -> trimmed
+        trimmed.startsWith("http://") -> trimmed.replace("http://", "https://")
+        trimmed.startsWith("//") -> "https:$trimmed"
+        trimmed.isNotEmpty() -> "https://$trimmed"
+        else -> ""
+    }
+    return normalized.takeIf { it.isNotEmpty() }
 }
 
 internal fun resolveImageShareMimeType(imageUrl: String): String {
