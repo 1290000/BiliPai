@@ -335,9 +335,6 @@ fun SpaceScreen(
     }
 
     val currentSuccessState = uiState as? SpaceUiState.Success
-    // Match the expanded space header, including unfolded foldables whose window grows at runtime.
-    val showExpandedSpaceFollowAction =
-        com.android.purebilibili.core.util.LocalWindowSizeClass.current.isTablet
     var contributionVideoLayoutMode by rememberSaveable(mid) {
         mutableStateOf(defaultSpaceContributionVideoLayoutMode())
     }
@@ -490,23 +487,6 @@ fun SpaceScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                     actions = {
-                        currentSuccessState?.userInfo?.takeIf {
-                            showExpandedSpaceFollowAction && it.mid > 0L &&
-                                it.mid != com.android.purebilibili.core.store.TokenManager.midCache
-                        }?.let { userInfo ->
-                            AppTextButton(
-                                onClick = viewModel::toggleFollow,
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            ) {
-                                AppText(
-                                    resolveSpaceFollowActionLabel(
-                                        isOwner = false,
-                                        relationStatus = userInfo.relationStatus,
-                                        isFollowed = userInfo.isFollowed,
-                                    )
-                                )
-                            }
-                        }
                         if (canSearch) {
                             AppIconButton(onClick = { viewModel.setSearchMode(!isSearchMode) }) {
                                 AppIcon(
@@ -4949,7 +4929,7 @@ private fun SpaceHeaderRelationActions(
         if (!isOwner) {
             AppSurface(
                 onClick = onMessageClick,
-                shape = CircleShape,
+                shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 border = BorderStroke(
                     1.dp,
@@ -4957,7 +4937,7 @@ private fun SpaceHeaderRelationActions(
                 ),
                 modifier = Modifier
                     .width(46.dp)
-                    .heightIn(min = 48.dp)
+                    .height(36.dp)
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -4975,7 +4955,7 @@ private fun SpaceHeaderRelationActions(
 
         AppSurface(
             onClick = onFollowClick,
-            shape = CircleShape,
+            shape = RoundedCornerShape(18.dp),
             color = followButtonColors.backgroundColor,
             border = if (isFollowed && !isOwner) {
                 BorderStroke(
@@ -4985,7 +4965,7 @@ private fun SpaceHeaderRelationActions(
             } else null,
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 48.dp)
+                .height(36.dp)
         ) {
             Row(
                 modifier = Modifier
