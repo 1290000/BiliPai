@@ -1295,7 +1295,7 @@ fun PortraitVideoPager(
     // 组合页流程可能早于解析完成触发并被占位守卫挡下,这里负责补发。
     // 用户手动切档时 currentPlayingBvid 非空,不会误触。
     LaunchedEffect(portraitSelectedQuality) {
-        if (portraitSelectedQuality <= 0 || currentPlayingBvid.isNotBlank() || pageItems.isEmpty()) {
+        if (portraitSelectedQuality <= 0 || !currentPlayingBvid.isNullOrBlank() || pageItems.isEmpty()) {
             return@LaunchedEffect
         }
         val initialPage = pagerState.currentPage
