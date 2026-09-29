@@ -156,6 +156,11 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
             return
         }
         Logger.init(this)
+        // 预热启动任务(wbi_key_restore)要在主线程同步读的 SP 文件:
+        // IO 线程提前触发磁盘加载,主线程执行恢复时通常已命中内存缓存。
+        AppScope.ioScope.launch {
+            com.android.purebilibili.core.network.WbiKeyManager.prewarmStorage(this@PureApplication)
+        }
         // 系统退出 Trace 的读取与脱敏可能很慢，不能阻塞 Application.onCreate。
         AppScope.ioScope.launch {
             com.android.purebilibili.core.performance.Android17Diagnostics
