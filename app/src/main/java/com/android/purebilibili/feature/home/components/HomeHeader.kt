@@ -1794,11 +1794,13 @@ fun HomeHeader(
     
     val hideTopTabs = homeSettings?.hideTopTabs == true
     val bottomBarSearchEnabled = homeSettings?.isBottomBarSearchEnabled == true && !hideTopTabs
-    val searchBarHeightDp = if (bottomBarSearchEnabled) {
-        AppSpacingTokens.None
-    } else {
-        resolveHomeTopSearchBarHeight(topChromePolicy)
-    }
+    val topSearchMetrics = resolveHomeTopSearchRowMetrics(
+        configuredHeight = resolveHomeTopSearchBarHeight(topChromePolicy),
+        configuredTabsSpacing = resolveHomeTopSearchToTabsSpacing(topChromePolicy),
+        bottomBarSearchEnabled = homeSettings?.isBottomBarSearchEnabled == true,
+        hideTopTabs = hideTopTabs,
+    )
+    val searchBarHeightDp = topSearchMetrics.height
     val topTabLabelMode = homeSettings?.topTabLabelMode
         ?: com.android.purebilibili.core.store.SettingsManager.TopTabLabelMode.TEXT_ONLY
     val tabRowHeightDp = if (hideTopTabs) {
@@ -1902,7 +1904,7 @@ fun HomeHeader(
         chromePolicy = topChromePolicy,
         collapsedIntoStatusBar = integratedCollapsedTopBar
     )
-    val searchToTabsSpacing = resolveHomeTopSearchToTabsSpacing(topChromePolicy)
+    val searchToTabsSpacing = topSearchMetrics.tabsSpacing
     val currentSearchToTabsSpacing = searchToTabsSpacing * searchContentRevealFraction
     val currentUnifiedDividerBottomSpacing = AppSpacingTokens.ExtraSmall * searchContentRevealFraction
 

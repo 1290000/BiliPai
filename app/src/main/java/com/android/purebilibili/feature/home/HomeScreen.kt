@@ -1632,7 +1632,14 @@ fun HomeScreen(
     val homeTopPresetStyle = remember(topChromePolicy, homeSettings.topTabLabelMode) {
         resolveHomeTopPresetStyle(topChromePolicy, homeSettings.topTabLabelMode)
     }
-    val searchBarHeightDp = homeTopPresetStyle.searchBarHeight
+    val homeTopSearchMetrics = resolveHomeTopSearchRowMetrics(
+        configuredHeight = homeTopPresetStyle.searchBarHeight,
+        configuredTabsSpacing = homeTopPresetStyle.searchToTabsSpacing,
+        bottomBarSearchEnabled = homeSettings.isBottomBarSearchEnabled,
+        hideTopTabs = effectiveHomeSettings.hideTopTabs,
+    )
+    val searchBarHeightDp = homeTopSearchMetrics.height
+    val searchToTabsSpacingDp = homeTopSearchMetrics.tabsSpacing
     val tabRowHeightDp = resolveEffectiveHomeTabRowHeight(
         hideTopTabs = effectiveHomeSettings.hideTopTabs,
         defaultTabRowHeight = if (topTabStyle.floating) {
@@ -1642,7 +1649,7 @@ fun HomeScreen(
         }
     )
     val searchCollapseDistanceDp = searchBarHeightDp +
-        (if (effectiveHomeSettings.hideTopTabs) AppSpacingTokens.None else homeTopPresetStyle.searchToTabsSpacing) +
+        (if (effectiveHomeSettings.hideTopTabs) AppSpacingTokens.None else searchToTabsSpacingDp) +
         homeTopPresetStyle.searchCollapseExtraSpacing
     val floatingDockLift = if (effectiveHomeSettings.hideTopTabs) {
         AppSpacingTokens.None
@@ -1655,7 +1662,7 @@ fun HomeScreen(
         searchBarHeight = searchBarHeightDp,
         tabRowHeight = tabRowHeightDp,
         unifiedPanelInnerPadding = homeTopPresetStyle.unifiedPanelInnerPadding,
-        searchToTabsSpacing = homeTopPresetStyle.searchToTabsSpacing
+        searchToTabsSpacing = searchToTabsSpacingDp
     )
     // Android 12 (and older) may extend the legacy blur/glass fallback below its
     // measured bounds by a few pixels. Reserve a small safety gap so the first
