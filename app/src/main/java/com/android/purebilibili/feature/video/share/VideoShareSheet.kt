@@ -27,9 +27,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.People
 import com.android.purebilibili.core.ui.components.AppIcon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.rememberModalBottomSheetState
 import com.android.purebilibili.core.ui.components.AppText
 import androidx.compose.runtime.Composable
@@ -97,10 +99,10 @@ internal fun VideoShareSheet(
         VideoShareSheetItem(
             target = VideoShareTarget.BILIBILI_FRIENDS,
             label = "B 站好友",
-            iconText = "B",
-            iconVector = null,
-            backgroundColor = Color(0xFFFB7299),
-            contentColor = Color.White,
+            iconText = null,
+            iconVector = Icons.Outlined.People,
+            backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
         VideoShareSheetItem(
             target = VideoShareTarget.WECHAT,
@@ -305,7 +307,7 @@ private data class VideoShareSheetItem(
     val iconText: String?,
     val iconVector: ImageVector?,
     val backgroundColor: Color,
-    val contentColor: Color
+    val contentColor: Color,
 )
 
 @Composable
@@ -344,12 +346,21 @@ private fun VideoShareSheetItemView(
                     modifier = Modifier.size(58.dp),
                 )
             } else if (item.iconVector != null) {
-                AppIcon(
-                    imageVector = item.iconVector,
-                    contentDescription = item.label,
-                    modifier = Modifier.size(28.dp),
-                    tint = item.contentColor
-                )
+                if (item.target == VideoShareTarget.BILIBILI_FRIENDS) {
+                    Icon(
+                        imageVector = item.iconVector,
+                        contentDescription = item.label,
+                        modifier = Modifier.size(28.dp),
+                        tint = item.contentColor,
+                    )
+                } else {
+                    AppIcon(
+                        imageVector = item.iconVector,
+                        contentDescription = item.label,
+                        modifier = Modifier.size(28.dp),
+                        tint = item.contentColor,
+                    )
+                }
             } else {
                 AppText(
                     text = item.iconText.orEmpty(),
