@@ -6,7 +6,7 @@ import com.android.purebilibili.core.ui.components.AppHorizontalDivider
 import com.android.purebilibili.core.ui.components.AppDropdownMenu
 import com.android.purebilibili.core.ui.components.AppDropdownMenuItem
 import com.android.purebilibili.core.ui.isMiuixNonGlassEnabled
-import com.android.purebilibili.core.ui.performance.rememberPanelFrameRateOverrideLabel
+import com.android.purebilibili.core.ui.performance.rememberPanelFrameRateLabel
 
 import android.content.ClipData
 import android.content.Context
