@@ -2972,6 +2972,10 @@ fun CommentPictures(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(imageUrls[0])
+                        // Preview uses this exact URL as its placeholder cache key. Keep
+                        // the thumbnail cache identity independent of its decode size so
+                        // the hero flight can paint the already-visible source immediately.
+                        .memoryCacheKey(imageUrls[0])
                         .size(thumbnailDecodeSize.widthPx, thumbnailDecodeSize.heightPx)
                         .httpHeaders(NetworkHeaders.Builder().set("Referer", "https://www.bilibili.com/").build())  //  必需
                         .crossfade(true)
@@ -3034,6 +3038,10 @@ fun CommentPictures(
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(imageUrls[globalIndex])
+                                        // Match ImagePreviewDialog's placeholder key; the
+                                        // thumbnail and fullscreen requests use different
+                                        // decode sizes but must share the source image entry.
+                                        .memoryCacheKey(imageUrls[globalIndex])
                                         .size(thumbnailDecodeSize.widthPx, thumbnailDecodeSize.heightPx)
                                         .httpHeaders(NetworkHeaders.Builder().set("Referer", "https://www.bilibili.com/").build())  //  必需
                                         .crossfade(true)
