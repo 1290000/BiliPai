@@ -1405,6 +1405,13 @@ private fun CreatorTeamMemberChip(
     onFollowToggle: () -> Unit,
     onClick: () -> Unit
 ) {
+    val followDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val followVisualPolicy = remember(isFollowing, followDarkTheme) {
+        resolveVideoFollowVisualPolicy(
+            isFollowing = isFollowing,
+            darkTheme = followDarkTheme,
+        )
+    }
     val officialBadge = remember(member.official) {
         resolveOfficialVerifyBadgeFromRole(
             type = member.official.type,
@@ -1482,26 +1489,24 @@ private fun CreatorTeamMemberChip(
             Spacer(modifier = Modifier.width(8.dp))
             AppSurface(
                 onClick = onFollowToggle,
-                color = if (isFollowing) {
-                    MaterialTheme.colorScheme.surfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.primary
+                color = when (followVisualPolicy.detailButtonTone) {
+                    FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
+                    FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
                 },
-                // Match the visible corner radius of the standard 28dp follow action.
-                // This surface keeps a 48dp touch target, so reusing its large shape
-                // token made the compact label look circular.
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.heightIn(min = 48.dp)
+                shape = VideoDetailShapes.action(),
+                modifier = Modifier
+                    .widthIn(min = 64.dp)
+                    .heightIn(min = 48.dp)
             ) {
                 AppText(
                     text = if (isFollowing) "已关注" else "关注",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isFollowing) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onPrimary
+                    style = MaterialTheme.typography.labelMedium,
+                    color = when (followVisualPolicy.detailTextTone) {
+                        FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
+                        FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
                     },
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
         }
