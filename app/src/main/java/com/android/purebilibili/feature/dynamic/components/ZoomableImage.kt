@@ -54,7 +54,8 @@ fun ZoomableImage(
     onVerticalDismissDragCancel: () -> Unit = {},
     onExtremeAspectRatioDetected: () -> Unit = {},
     onLongPress: () -> Unit = {},
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    resetZoomTrigger: Int = 0
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -90,6 +91,32 @@ fun ZoomableImage(
         onDisplayRectChange(resolveDisplayedRectOrNull())
     }
     
+    // 外部触发的缩放复位(放大态退出预回弹):把 scale/offset 动画回 fit。
+    // 逐帧写状态,宿主可经 onZoomChange 观察 activeZoomScale 到达 1。
+    LaunchedEffect(resetZoomTrigger) {
+        if (resetZoomTrigger <= 0 || scale <= 1f) return@LaunchedEffect
+        val startScale = scale
+        val startOffsetX = offsetX
+        val startOffsetY = offsetY
+        val resetAnim = androidx.compose.animation.core.Animatable(0f)
+        resetAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = 1f,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+            )
+        ) { value, _ ->
+            scale = startScale + (1f - startScale) * value
+            offsetX = startOffsetX * (1f - value)
+            offsetY = startOffsetY * (1f - value)
+            onZoomChange(scale)
+        }
+        scale = 1f
+        offsetX = 0f
+        offsetY = 0f
+        onZoomChange(1f)
+    }
+
     // 双击放大逻辑
     fun onDoubleTap(tapOffset: Offset) {
         if (scale > 1f) {

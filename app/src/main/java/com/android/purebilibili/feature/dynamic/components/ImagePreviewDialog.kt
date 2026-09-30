@@ -77,8 +77,10 @@ import coil3.request.SuccessResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import android.app.Activity
 import android.content.ClipData
@@ -429,8 +431,13 @@ private fun ImagePreviewOverlayContent(
     // 打开飞行期间冻结首帧展示 rect，Coil 布局/缩放更新不再中途改变 counter-scale 基准。
     var flightAnchorDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var dismissImageDisplayRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    // 关闭起飞时冻结源缩略图 rect: dismiss 窗口内不再跟读 currentSourceRect,
+    // 防止动画中途目标改道(切页/新页无 rect 时 flight 中断退化成淡出)。
+    var dismissSourceRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var dismissStartProgress by remember { mutableFloatStateOf(1f) }
     var activeZoomScale by remember { mutableFloatStateOf(1f) }
+    // 放大态退出: 先把 ZoomableImage 子层缩放回弹到 fit,再开始飞回。
+    var zoomResetTrigger by remember { mutableIntStateOf(0) }
     var isVerticalDismissDragging by remember { mutableStateOf(false) }
     val longPressSaveEnabled by SettingsManager.getImagePreviewLongPressSaveEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
@@ -478,6 +485,9 @@ private fun ImagePreviewOverlayContent(
         sourceRect.takeIf { page == initialIndex } ?: sourceRects[page]
 
     SideEffect {
+        // dismiss 期间源缩略图隐藏区即将被 revealSourceBeforeRemoval 交接,
+        // 不再跟翻页更新,避免隐藏区错位。
+        if (isDismissing) return@SideEffect
         ImagePreviewOverlayController.updateActiveSourceRect(
             token = requestToken,
             sourceRect = sourceRectForPage(pagerState.currentPage)
@@ -618,6 +628,9 @@ private fun ImagePreviewOverlayContent(
             // 全屏再重新飞出（双重回弹）。记住最后一帧 scrub 值，在此过渡窗口内保持。
             var lastScrubRawProgress by remember { mutableFloatStateOf(1f) }
             var backRecovering by remember { mutableStateOf(false) }
+            // 恢复动画的所有权纪元:被新 scrub/dismiss 接管后,旧协程 finally 里的
+            // 状态复位全部作废,防止晚到的写覆盖当前手势进度。
+            var backRecoverEpoch by remember { mutableIntStateOf(0) }
             SideEffect {
                 if (backProgress > 0f) {
                     lastScrubRawProgress = 1f - backProgress
@@ -645,8 +658,11 @@ private fun ImagePreviewOverlayContent(
             }
 
             fun currentFlightRect(progress: Float): androidx.compose.ui.geometry.Rect? {
-                if (!shouldUseRectAnim) return null
-                val source = currentSourceRect ?: return null
+                if (!shouldUseRectAnim && !isDismissing) return null
+                // dismiss 起飞时已冻结源 rect,动画中途不再跟读(防切页改道)。
+                val source = dismissSourceRect
+                    ?: currentSourceRect
+                    ?: return null
                 return if (isDismissing) {
                     val start = dismissImageDisplayRect ?: previewSurfaceRect
                     val normalizedProgress = (progress / dismissStartProgress.coerceAtLeast(0.001f))
@@ -679,13 +695,34 @@ private fun ImagePreviewOverlayContent(
                 initialVelocityY: Float = 0f,
             ) {
                 if (isDismissing) return
+                if (activeZoomScale > 1.01f) {
+                    // 放大态退出:先让 ZoomableImage 子层回弹到 fit(同时更新 activeZoomScale),
+                    // 再从 fit rect 起飞。直接飞会让外层 morph 与子层放大叠加,
+                    // 落点与画面内容错位、窗口移除时内容跳变。
+                    zoomResetTrigger += 1
+                    scope.launch {
+                        withTimeoutOrNull(450L) {
+                            androidx.compose.runtime.snapshotFlow { activeZoomScale }
+                                .first { it <= 1.01f }
+                        }
+                        triggerDismiss(
+                            startRect = null,
+                            backdropStartAlpha = backdropStartAlpha,
+                            initialVelocityY = 0f,
+                        )
+                    }
+                    return
+                }
                 val startProgress = currentTransitionProgress().coerceIn(0f, 1f)
                 dismissStartProgress = startProgress
                 dismissImageDisplayRect = startRect
                     ?: currentFlightRect(startProgress)
                     ?: previewSurfaceRect
+                dismissSourceRect = currentSourceRect
                 dismissBackdropStartAlpha = backdropStartAlpha.coerceIn(0f, 1f)
                 isVerticalDismissDragging = false
+                backRecoverEpoch += 1
+                backRecovering = false
                 isDismissing = true
                 scope.launch {
                     verticalDismissOffsetYPx = 0f
@@ -720,28 +757,50 @@ private fun ImagePreviewOverlayContent(
                     if (!isDismissing) {
                         scope.launch {
                             if (isDismissing) return@launch
+                            backRecoverEpoch += 1
+                            val epoch = backRecoverEpoch
                             backRecovering = true
-                            val dismissMotion = imagePreviewDismissMotion()
-                            animateTrigger.snapTo(lastScrubRawProgress)
-                            animateTrigger.animateTo(
-                                targetValue = 1f,
-                                animationSpec = emphasizedEnterTween(
-                                    durationMillis = dismissMotion.cancelRecoverDurationMillis
-                                ),
-                            )
-                            lastScrubRawProgress = 1f
-                            backRecovering = false
+                            try {
+                                val dismissMotion = imagePreviewDismissMotion()
+                                animateTrigger.snapTo(lastScrubRawProgress)
+                                animateTrigger.animateTo(
+                                    targetValue = 1f,
+                                    animationSpec = emphasizedEnterTween(
+                                        durationMillis = dismissMotion.cancelRecoverDurationMillis
+                                    ),
+                                )
+                            } finally {
+                                // animateTo 被新的 dismiss / scrub 动画取消时(CancellationException)
+                                // 也必须复位,否则 currentTransitionProgress 的读口残留
+                                // backRecovering=true,后续 scrub 进度错乱、画面跳变。
+                                // 纪元不匹配说明已被接管,状态由接管方负责。
+                                if (backRecoverEpoch == epoch) {
+                                    backRecovering = false
+                                    lastScrubRawProgress = animateTrigger.value.coerceIn(0f, 1f)
+                                }
+                            }
                         }
                     }
                 },
                 onBackCompleted = {
                     scope.launch {
                         if (isDismissing) return@launch
+                        backRecovering = false
                         animateTrigger.snapTo(lastScrubRawProgress)
                         triggerDismiss()
                     }
                 },
             )
+
+            // 新一轮预测返回 scrub 开始时立即交还进度读口:
+            // 恢复动画若还在跑,backProgress 分支必须优先,否则恢复动画与手势双驱动跳变。
+            // 纪元 +1 使被接管协程的 finally 复位全部作废。
+            LaunchedEffect(backProgress) {
+                if (backProgress > 0f && backRecovering) {
+                    backRecoverEpoch += 1
+                    backRecovering = false
+                }
+            }
             
             // 1. 背景层 (淡入淡出)
             Box(
@@ -974,6 +1033,7 @@ private fun ImagePreviewOverlayContent(
                             contentDescription = null,
                             imageLoader = gifImageLoader,  //  使用 GIF 加载器
                             modifier = Modifier.fillMaxSize(),
+                            resetZoomTrigger = zoomResetTrigger,
                             onZoomChange = {
                                 activeZoomScale = it
                             },
