@@ -780,7 +780,14 @@ fun VideoTitleWithDesc(
                 honorName = honor.honorName,
                 descContent = honor.desc?.content,
                 weeklyRecommendNum = honor.weeklyRecommendNum
-            )?.let { text -> honor to text }
+            )?.let { text ->
+                val jumpUrl = resolveVideoHonorJumpUrl(
+                    type = honor.type,
+                    honorUrl = honor.honorUrl,
+                    weeklyRecommendNum = honor.weeklyRecommendNum
+                ) ?: return@mapNotNull null
+                Triple(honor, text, jumpUrl)
+            }
         }
         if (honorChips.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
@@ -788,11 +795,10 @@ fun VideoTitleWithDesc(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                honorChips.forEach { (honor, text) ->
+                honorChips.forEach { (honor, text, jumpUrl) ->
                     VideoHonorChip(
                         text = text,
-                        onClick = honor.honorUrl.takeIf { it.isNotBlank() }
-                            ?.let { url -> { onDescriptionUrlClick?.invoke(url) } }
+                        onClick = { onDescriptionUrlClick?.invoke(jumpUrl) }
                     )
                 }
             }
@@ -1307,6 +1313,7 @@ fun UpInfoSection(
             if (shouldShowCreatorTeamSection(info)) {
                 CreatorTeamSection(
                     staff = info.staff,
+                    ownerMid = info.owner.mid,
                     onMemberClick = onUpClick
                 )
             }
@@ -1317,9 +1324,27 @@ fun UpInfoSection(
 @Composable
 private fun CreatorTeamSection(
     staff: List<VideoStaff>,
+    ownerMid: Long,
     onMemberClick: (Long) -> Unit
 ) {
     if (staff.isEmpty()) return
+    // 每个成员的关注状态:null=查询中;经 followStateChanges 与全局动作同步。
+    val followStates = remember(staff) { mutableStateMapOf<Long, Boolean>() }
+    LaunchedEffect(staff) {
+        staff.filter { it.mid > 0L && it.mid != ownerMid }.forEach { member ->
+            followStates[member.mid] =
+                com.android.purebilibili.data.repository.ActionRepository
+                    .checkFollowStatus(member.mid)
+        }
+    }
+    LaunchedEffect(Unit) {
+        com.android.purebilibili.data.repository.ActionRepository.followStateChanges.collect { change ->
+            if (followStates.containsKey(change.mid)) {
+                followStates[change.mid] = change.isFollowing
+            }
+        }
+    }
+    val scope = rememberCoroutineScope()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1352,6 +1377,17 @@ private fun CreatorTeamSection(
             staff.forEach { member ->
                 CreatorTeamMemberChip(
                     member = member,
+                    showFollow = member.mid > 0L && member.mid != ownerMid,
+                    isFollowing = followStates[member.mid] ?: false,
+                    onFollowToggle = {
+                        scope.launch {
+                            val target = !(followStates[member.mid] ?: false)
+                            val ok = com.android.purebilibili.data.repository.ActionRepository
+                                .followUser(member.mid, target)
+                                .getOrDefault(false)
+                            if (ok) followStates[member.mid] = target
+                        }
+                    },
                     onClick = { onMemberClick(member.mid) }
                 )
             }
@@ -1362,6 +1398,9 @@ private fun CreatorTeamSection(
 @Composable
 private fun CreatorTeamMemberChip(
     member: VideoStaff,
+    showFollow: Boolean,
+    isFollowing: Boolean,
+    onFollowToggle: () -> Unit,
     onClick: () -> Unit
 ) {
     val officialBadge = remember(member.official) {
@@ -1434,6 +1473,30 @@ private fun CreatorTeamMemberChip(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (showFollow) {
+            Spacer(modifier = Modifier.width(8.dp))
+            AppSurface(
+                onClick = onFollowToggle,
+                color = if (isFollowing) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                shape = VideoDetailShapes.action(),
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) {
+                AppText(
+                    text = if (isFollowing) "已关注" else "关注",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isFollowing) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onPrimary
+                    },
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
         }

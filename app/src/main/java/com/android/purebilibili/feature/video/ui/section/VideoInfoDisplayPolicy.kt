@@ -199,3 +199,22 @@ internal fun resolveVideoHonorChipText(
         else -> null
     }
 }
+
+/**
+ * 荣誉徽标跳转链接:接口未下发 honor_url 时按 type 兜底到对应榜单页。
+ */
+internal fun resolveVideoHonorJumpUrl(
+    type: Int,
+    honorUrl: String,
+    weeklyRecommendNum: Int
+): String? {
+    honorUrl.takeIf { it.isNotBlank() }?.let { return it }
+    return when (type) {
+        1 -> "https://www.bilibili.com/v/popular/all"
+        2 -> "https://www.bilibili.com/v/popular/weekly" +
+            (weeklyRecommendNum.takeIf { it > 0 }?.let { "?number=$it" } ?: "")
+        3 -> "https://www.bilibili.com/v/popular/rank/all"
+        4 -> "https://www.bilibili.com/v/popular"
+        else -> null
+    }
+}
