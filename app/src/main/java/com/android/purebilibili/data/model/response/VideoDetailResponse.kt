@@ -82,7 +82,9 @@ data class VideoArgueInfo(
 data class VideoDetailRights(
     val elec: Int = 0,
     @SerialName("is_cooperation")
-    val isCooperation: Int = 0
+    val isCooperation: Int = 0,
+    @SerialName("no_reprint")
+    val noReprint: Int = 0
 )
 
 @Serializable

@@ -105,10 +105,13 @@ fun ZoomableImage(
                 dampingRatio = 1f,
                 stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
             )
-        ) { value ->
-            scale = startScale + (1f - startScale) * value
-            offsetX = startOffsetX * (1f - value)
-            offsetY = startOffsetY * (1f - value)
+        ) {
+            // 本项目 Compose 版本的 animateTo block 是 Animatable 接收者 lambda,
+            // value 即 this.value(当前动画值 0f..1f)。
+            val progress = value
+            scale = startScale + (1f - startScale) * progress
+            offsetX = startOffsetX * (1f - progress)
+            offsetY = startOffsetY * (1f - progress)
             onZoomChange(scale)
         }
         scale = 1f

@@ -718,11 +718,21 @@ fun VideoTitleWithDesc(
             )
         }
 
-        // UP 主视频声明(PiliPlus argue_msg):简介区上方常显小字,如"虚构演绎,请勿过度解读"
+        // UP 主视频声明(PiliPlus argue_msg)+ 禁止转载(rights.no_reprint):
+        // 简介区上方常显小字,AI 生成/虚构演绎等声明文本由 UP 设置原样下发。
         val argueMsg = info.argueInfo?.argueMsg.orEmpty()
-        if (argueMsgShown && argueMsg.isNotBlank()) {
+        val noReprint = info.rights.noReprint == 1
+        if (argueMsgShown && (argueMsg.isNotBlank() || noReprint)) {
             Spacer(Modifier.height(6.dp))
-            VideoArgueMsgRow(argueMsg = argueMsg)
+            if (argueMsg.isNotBlank()) {
+                VideoArgueMsgRow(argueMsg = argueMsg)
+            }
+            if (argueMsg.isNotBlank() && noReprint) {
+                Spacer(Modifier.height(4.dp))
+            }
+            if (noReprint) {
+                VideoArgueMsgRow(argueMsg = "未经作者授权，请勿转载")
+            }
         }
 
         //  Description - 默认隐藏，展开后显示
