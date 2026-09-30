@@ -216,9 +216,9 @@ fun BottomBarSettingsContent(
         .getNavigationIconCrossScaleEnabled(context)
         .collectAsStateWithLifecycle(initialValue = false)
     val bottomBarSearchEnabled by SettingsManager.getBottomBarSearchEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val linkedDockMergeOnScrollEnabled by SettingsManager.getLinkedDockMergeOnScrollEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
-        .collectAsStateWithLifecycle(initialValue = false)
     val listScopedSearchEnabled by SettingsManager.getListScopedSearchEnabled(context)
         .collectAsStateWithLifecycle(initialValue = false)
     val isLargeScreenCapable = windowSizeClass.isTabletDevice ||
