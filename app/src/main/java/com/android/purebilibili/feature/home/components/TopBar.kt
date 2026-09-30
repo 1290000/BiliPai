@@ -1533,26 +1533,32 @@ private fun LightweightHomeTopTabs(
                 )
             }
         }
-        // 速度在 derivedStateOf 内逐帧重算并更新跟踪器；空闲时无读取即无重算，
-        // 与原 SideEffect 方案在静止时的行为一致。
-        val topTabVelocityPositionTracker = remember { mutableFloatStateOf(Float.NaN) }
-        val topTabVelocityTimeTracker = remember { mutableLongStateOf(0L) }
+        // 速度跟踪器必须是普通可变字段而非 snapshot state：derivedStateOf 的
+        // 计算体既读又写它们，若为 state 会自失效形成重组死循环（静止时全局
+        // 锁 120Hz）。作为纯记忆字段写入不触发任何失效，仅位置 state 变化
+        // 才重算，空闲时无读取即无开销。
+        val topTabVelocityTracker = remember {
+            object {
+                var previousPosition = Float.NaN
+                var previousNanos = 0L
+            }
+        }
         val topTabMotionVelocityItemsPerSecondState = remember {
             derivedStateOf {
                 val position = topTabIndicatorPositionState.value
                 val now = System.nanoTime()
-                val previousPosition = topTabVelocityPositionTracker.floatValue
+                val previousPosition = topTabVelocityTracker.previousPosition
                 val velocity = if (previousPosition.isNaN()) {
                     0f
                 } else {
                     resolveTopTabPagerVelocityItemsPerSecond(
                         currentPosition = position,
                         previousPosition = previousPosition,
-                        elapsedNanos = (now - topTabVelocityTimeTracker.longValue).coerceAtLeast(1L)
+                        elapsedNanos = (now - topTabVelocityTracker.previousNanos).coerceAtLeast(1L)
                     )
                 }
-                topTabVelocityPositionTracker.floatValue = position
-                topTabVelocityTimeTracker.longValue = now
+                topTabVelocityTracker.previousPosition = position
+                topTabVelocityTracker.previousNanos = now
                 velocity
             }
         }
