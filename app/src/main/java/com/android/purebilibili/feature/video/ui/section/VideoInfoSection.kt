@@ -790,7 +790,8 @@ fun VideoTitleWithDesc(
             }
         }
         if (honorChips.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
+            // 紧跟统计行/徽标区:上方无徽标时收紧到 3dp,避免与播放量行隔离太远。
+            Spacer(Modifier.height(if (videoBadges.isNotEmpty()) 6.dp else 3.dp))
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
