@@ -752,11 +752,18 @@ internal fun resolveIosTopTabRowHeight(
 ): Dp {
     val iconAndText = normalizeTopTabLabelMode(labelMode) == 0
     return if (isFloatingStyle) {
-        if (iconAndText) 60.dp else AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Small
+        if (iconAndText) 52.dp else AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.ExtraSmall
     } else {
-        if (iconAndText) 56.dp else AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.ExtraSmall
+        if (iconAndText) 48.dp else AppSpacingTokens.DoubleExtraLarge
     }
 }
+
+/**
+ * 顶部 dock 专用壳高：此前直接复用底栏 64dp 壳（按纯图标调校），顶部塞入
+ * 图标+双行文案后整体偏大。独立收缩一档，底栏不受影响。
+ */
+internal fun resolveHomeTopDockShellHeight(isFloatingStyle: Boolean): Dp =
+    if (isFloatingStyle) 52.dp else 48.dp
 
 internal fun resolveIosTopTabActionButtonSize(isFloatingStyle: Boolean): Dp =
     if (isFloatingStyle) AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.ExtraSmall else AppSpacingTokens.DoubleExtraLarge
@@ -1109,7 +1116,7 @@ private fun LightweightHomeTopTabs(
     )
     val topTabMotionSpec = remember { resolveSegmentedControlMotionSpec() }
     val baseRowHeight = if (useFloatingBottomBarDock) {
-        resolveBiliPaiBottomBarDockHeight(searchExpanded = false)
+        resolveHomeTopDockShellHeight(isFloatingStyle)
     } else if (skinPlainStyle) {
         resolveHomeSkinTopTabRowHeight()
     } else when (effectivePresentation) {
@@ -1276,7 +1283,7 @@ private fun LightweightHomeTopTabs(
             effectiveMaxDockWidth
         }
         if (useFloatingBottomBarDock) {
-            val floatingDockHeight = resolveBiliPaiBottomBarDockHeight(searchExpanded = false)
+            val floatingDockHeight = resolveHomeTopDockShellHeight(isFloatingStyle)
             val floatingDockWidth = resolveHomeTopTabFloatingDockWidth(
                 containerWidth = effectiveMaxDockWidth.dp,
                 itemCount = categories.size,

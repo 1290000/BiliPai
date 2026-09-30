@@ -556,7 +556,7 @@ internal fun resolveHomeTopEdgeButtonShape(
 
 /**
  * 顶部行统一控件高度：头像、搜索胶囊、设置按钮共用（36dp），两主题一致。
- * 与下方分栏 tab 行（36/40dp）保持同一视觉尺度。
+ * 与下方分栏 tab 行（32/36dp）保持同一视觉尺度。
  */
 internal fun resolveHomeTopEdgeControlHeight(): Dp =
     AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.ExtraSmall
