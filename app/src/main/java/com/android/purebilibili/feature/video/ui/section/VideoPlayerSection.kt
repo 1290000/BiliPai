@@ -4014,6 +4014,16 @@ private fun VideoPlayerSectionContent(
         hasSurfaceRevealSettled = true
     }
     val isSurfaceRevealSettling = hasStartedSmoothReveal && !hasSurfaceRevealSettled
+    // 揭开叠化窗口内给垫底封面轻微降饱和（不动亮度），视频接管后随落定恢复，
+    // 让混合窗口读作「同一画面渐渐活过来」而不是两张图的叠化。
+    val coverRevealPolishProgress by animateFloatAsState(
+        targetValue = if (isSurfaceRevealSettling) 0f else 1f,
+        animationSpec = tween(revealMotionSpec.surfaceRevealDurationMillis),
+        label = "coverRevealPolish",
+    )
+    val coverRevealColorFilter = remember(coverRevealPolishProgress) {
+        resolveVideoPlayerCoverRevealColorFilter(coverRevealPolishProgress)
+    }
     val holdEntryCoverUnderlay = shouldHoldEntryCoverUnderlay(
         isFirstFrameRendered = isFirstFrameRendered,
         forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation,
@@ -4241,6 +4251,7 @@ private fun VideoPlayerSectionContent(
                             VideoPlayerCoverContentScaleMode.Crop -> ContentScale.Crop
                             VideoPlayerCoverContentScaleMode.Fit -> ContentScale.Fit
                         },
+                        colorFilter = coverRevealColorFilter,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
