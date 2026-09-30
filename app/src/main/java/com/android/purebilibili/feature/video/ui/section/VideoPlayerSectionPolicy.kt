@@ -40,6 +40,9 @@ private const val VIDEO_PLAYER_COVER_FADE_EXIT_DURATION_MILLIS = 300
 private const val VIDEO_PLAYER_COVER_REVEAL_HOLD_DELAY_MILLIS = 96
 private const val VIDEO_PLAYER_SURFACE_REVEAL_DURATION_MILLIS = 220
 private const val VIDEO_PLAYER_SURFACE_REVEAL_INITIAL_SCALE = 0.985f
+// 揭开动画结束后再延迟一小段才允许移除封面垫底，吸收 animateFloatAsState
+// 晚一帧启动的相位差，确保移除瞬间视频 surface 已完全不透明。
+private const val VIDEO_PLAYER_COVER_REVEAL_SETTLE_BUFFER_MILLIS = 48
 private const val LONG_PRESS_SPEED_TAP_SUPPRESSION_WINDOW_MS = 450L
 private const val LONG_PRESS_SPEED_UNLOCK_HOLD_MS = 1_000L
 
@@ -1167,13 +1170,15 @@ internal fun shouldShowCoverImage(
     isFirstFrameRendered: Boolean,
     forceCoverDuringReturnAnimation: Boolean,
     shouldKeepCoverForManualStart: Boolean,
-    hasStartedSmoothReveal: Boolean
+    hasStartedSmoothReveal: Boolean,
+    isSurfaceRevealSettling: Boolean = false
 ): Boolean {
     return shouldHoldEntryCoverUnderlay(
         isFirstFrameRendered = isFirstFrameRendered,
         forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation,
         shouldKeepCoverForManualStart = shouldKeepCoverForManualStart,
         hasStartedSmoothReveal = hasStartedSmoothReveal,
+        isSurfaceRevealSettling = isSurfaceRevealSettling,
     )
 }
 
@@ -1213,17 +1218,33 @@ internal fun resolveVideoPlayerCoverLayerZIndex(
 /**
  * 即播进场 / CoverFirst / 返回：封面作为不透明垫底，直到首帧揭示或手动起播。
  * 垫底期间禁止淡入淡出与 Coil crossfade，避免 Hero morph 透出黑底。
+ *
+ * [isSurfaceRevealSettling] = 揭开已开始但播放器 surface 尚未淡入完成。此窗口内封面必须
+ * 继续保持不透明：视频是在封面**之上**淡入的，若封面同步淡出，两层半透明叠加会透出
+ * 下方黑底，产生「先变暗再亮起」的亮度凹陷。正确时序是封面全程垫住，等视频完全不透明
+ * 后再无声移除（此时移除不可见）。
  */
 internal fun shouldHoldEntryCoverUnderlay(
     isFirstFrameRendered: Boolean,
     forceCoverDuringReturnAnimation: Boolean,
     shouldKeepCoverForManualStart: Boolean,
     hasStartedSmoothReveal: Boolean,
+    isSurfaceRevealSettling: Boolean = false,
 ): Boolean {
-    return forceCoverDuringReturnAnimation ||
-        shouldKeepCoverForManualStart ||
-        !isFirstFrameRendered ||
-        !hasStartedSmoothReveal
+    if (forceCoverDuringReturnAnimation || shouldKeepCoverForManualStart) return true
+    if (!isFirstFrameRendered) return true
+    return isSurfaceRevealSettling || !hasStartedSmoothReveal
+}
+
+/**
+ * 揭开动画完全落定（视频 surface 不透明）后才移除封面垫底的等待时长。
+ * [surfaceRevealDurationMillis] 之上叠加少量缓冲，吸收动画晚一帧启动的相位差。
+ */
+internal fun resolveVideoPlayerCoverRevealSettleDelayMillis(
+    surfaceRevealDurationMillis: Int,
+): Long {
+    val duration = surfaceRevealDurationMillis.coerceAtLeast(0)
+    return (duration + VIDEO_PLAYER_COVER_REVEAL_SETTLE_BUFFER_MILLIS).toLong()
 }
 
 internal data class VideoPlayerCoverBootstrapState(

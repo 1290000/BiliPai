@@ -3585,6 +3585,11 @@ private fun VideoPlayerSectionContent(
         var hasStartedSmoothReveal by remember(bvid) {
             mutableStateOf(coverBootstrapState.hasStartedSmoothReveal)
         }
+        // 揭开动画是否已完全落定（视频 surface 不透明）。落定前封面保持不透明垫底，
+        // 落定后移除封面是不可见操作；全屏切换 bootstrap 直接以揭开态进场，无需垫底窗口。
+        var hasSurfaceRevealSettled by remember(bvid) {
+            mutableStateOf(coverBootstrapState.hasStartedSmoothReveal)
+        }
         val revealMotionSpec = remember {
             resolveVideoPlayerRevealMotionSpec()
         }
@@ -3994,17 +3999,34 @@ private fun VideoPlayerSectionContent(
             android.util.Log.d("VideoPlayerCover", "✨ Smooth cover reveal committed for bvid=$bvid")
         }
     }
+    // 揭开动画落定前封面保持不透明垫底；落定后再移除（此时视频已完全盖住封面，移除不可见）。
+    LaunchedEffect(bvid, hasStartedSmoothReveal) {
+        if (!hasStartedSmoothReveal) {
+            hasSurfaceRevealSettled = false
+            return@LaunchedEffect
+        }
+        if (hasSurfaceRevealSettled) return@LaunchedEffect
+        delay(
+            resolveVideoPlayerCoverRevealSettleDelayMillis(
+                revealMotionSpec.surfaceRevealDurationMillis
+            )
+        )
+        hasSurfaceRevealSettled = true
+    }
+    val isSurfaceRevealSettling = hasStartedSmoothReveal && !hasSurfaceRevealSettled
     val holdEntryCoverUnderlay = shouldHoldEntryCoverUnderlay(
         isFirstFrameRendered = isFirstFrameRendered,
         forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation,
         shouldKeepCoverForManualStart = keepCoverForManualStart,
         hasStartedSmoothReveal = hasStartedSmoothReveal,
+        isSurfaceRevealSettling = isSurfaceRevealSettling,
     )
     val showCover = shouldShowCoverImage(
         isFirstFrameRendered = isFirstFrameRendered,
         forceCoverDuringReturnAnimation = forceCoverDuringReturnAnimation,
         shouldKeepCoverForManualStart = keepCoverForManualStart,
-        hasStartedSmoothReveal = hasStartedSmoothReveal
+        hasStartedSmoothReveal = hasStartedSmoothReveal,
+        isSurfaceRevealSettling = isSurfaceRevealSettling,
     )
     val manualStartPlayButtonLayoutSpec = remember {
         resolveManualStartPlayButtonLayoutSpec()

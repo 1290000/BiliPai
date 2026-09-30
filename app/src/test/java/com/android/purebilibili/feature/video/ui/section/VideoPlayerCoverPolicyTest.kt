@@ -229,6 +229,48 @@ class VideoPlayerCoverPolicyTest {
     }
 
     @Test
+    fun surfaceRevealSettling_keepsOpaqueCoverUnderlayUntilVideoIsOpaque() {
+        // 揭开进行中（视频 surface 淡入未完成）封面必须保持不透明垫底：
+        // 视频在封面之上淡入，封面同步淡出会让两层半透明叠加透出黑底（亮度凹陷）。
+        assertTrue(
+            shouldHoldEntryCoverUnderlay(
+                isFirstFrameRendered = true,
+                forceCoverDuringReturnAnimation = false,
+                shouldKeepCoverForManualStart = false,
+                hasStartedSmoothReveal = true,
+                isSurfaceRevealSettling = true,
+            )
+        )
+        assertTrue(
+            shouldShowCoverImage(
+                isFirstFrameRendered = true,
+                forceCoverDuringReturnAnimation = false,
+                shouldKeepCoverForManualStart = false,
+                hasStartedSmoothReveal = true,
+                isSurfaceRevealSettling = true,
+            )
+        )
+        // 揭开完全落定后移除垫底（视频已完全不透明，移除不可见）。
+        assertFalse(
+            shouldHoldEntryCoverUnderlay(
+                isFirstFrameRendered = true,
+                forceCoverDuringReturnAnimation = false,
+                shouldKeepCoverForManualStart = false,
+                hasStartedSmoothReveal = true,
+                isSurfaceRevealSettling = false,
+            )
+        )
+    }
+
+    @Test
+    fun coverRevealSettleDelay_coversSurfaceRevealPlusBuffer() {
+        val delay = resolveVideoPlayerCoverRevealSettleDelayMillis(
+            surfaceRevealDurationMillis = 220
+        )
+        assertTrue(delay > 220L, "settle delay must outlast the surface reveal fade, got $delay")
+    }
+
+    @Test
     fun autoPlayEnabled_neverUsesManualStartCoverUnderlay() {
         // 自动播放：即便尚未 playWhenReady、进度为 0，也不得进 manual-start 垫封面，
         // 否则会 INVISIBLE surface / 卡住揭开，合集换片或重进详情整页一直封面。
