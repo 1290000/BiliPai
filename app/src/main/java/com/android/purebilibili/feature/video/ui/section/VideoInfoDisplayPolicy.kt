@@ -201,20 +201,19 @@ internal fun resolveVideoHonorChipText(
 }
 
 /**
- * 荣誉徽标跳转链接:接口未下发 honor_url 时按 type 兜底到对应榜单页。
+ * 荣誉徽标跳转链接:一律走 bilibili://popular 内部 scheme,
+ * 由链接路由映射到首页热门区对应子分类的原生 feed,不进 Web。
  */
 internal fun resolveVideoHonorJumpUrl(
     type: Int,
     honorUrl: String,
     weeklyRecommendNum: Int
 ): String? {
-    honorUrl.takeIf { it.isNotBlank() }?.let { return it }
     return when (type) {
-        1 -> "https://www.bilibili.com/v/popular/all"
-        2 -> "https://www.bilibili.com/v/popular/weekly" +
-            (weeklyRecommendNum.takeIf { it > 0 }?.let { "?number=$it" } ?: "")
-        3 -> "https://www.bilibili.com/v/popular/rank/all"
-        4 -> "https://www.bilibili.com/v/popular"
-        else -> null
+        1 -> "bilibili://popular/all"
+        2 -> "bilibili://popular/weekly"
+        3 -> "bilibili://popular/rank"
+        4 -> "bilibili://popular/comprehensive"
+        else -> honorUrl.takeIf { it.isNotBlank() }
     }
 }
