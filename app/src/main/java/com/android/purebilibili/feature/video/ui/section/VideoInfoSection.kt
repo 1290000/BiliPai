@@ -1487,7 +1487,10 @@ private fun CreatorTeamMemberChip(
                 } else {
                     MaterialTheme.colorScheme.primary
                 },
-                shape = VideoDetailShapes.action(),
+                // Match the visible corner radius of the standard 28dp follow action.
+                // This surface keeps a 48dp touch target, so reusing its large shape
+                // token made the compact label look circular.
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.heightIn(min = 48.dp)
             ) {
                 AppText(
