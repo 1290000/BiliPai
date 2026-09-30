@@ -394,6 +394,9 @@ fun VideoTitleWithDesc(
     val defaultExpanded by com.android.purebilibili.core.store.SettingsManager
         .getVideoInfoDefaultExpanded(context)
         .collectAsStateWithLifecycle(initialValue = false)
+    val argueMsgShown by com.android.purebilibili.core.store.SettingsManager
+        .getVideoArgueMsgShown(context)
+        .collectAsStateWithLifecycle(initialValue = true)
     var expanded by remember(info.bvid, info.desc, videoTags.size, defaultExpanded) {
         mutableStateOf(
             resolveVideoInfoInitialExpandedState(
@@ -715,6 +718,13 @@ fun VideoTitleWithDesc(
             )
         }
 
+        // UP 主视频声明(PiliPlus argue_msg):简介区上方常显小字,如"虚构演绎,请勿过度解读"
+        val argueMsg = info.argueInfo?.argueMsg.orEmpty()
+        if (argueMsgShown && argueMsg.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            VideoArgueMsgRow(argueMsg = argueMsg)
+        }
+
         //  Description - 默认隐藏，展开后显示
         androidx.compose.animation.AnimatedVisibility(
             visible = expanded && info.desc.isNotBlank(),
@@ -816,6 +826,30 @@ private fun VideoDetailBadgeChip(
         label = text,
         emphasized = emphasized,
     )
+}
+
+/**
+ * UP 主视频声明行(PiliPlus argue_msg 样式):
+ * error_outline 小图标 + 12sp 次要色文本,如"虚构演绎,请勿过度解读"。
+ */
+@Composable
+private fun VideoArgueMsgRow(argueMsg: String) {
+    Row(
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+    ) {
+        androidx.compose.material3.Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(13.dp)
+        )
+        AppText(
+            text = argueMsg,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 /**

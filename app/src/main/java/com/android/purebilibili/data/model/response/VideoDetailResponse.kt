@@ -60,11 +60,23 @@ data class ViewInfo(
     @SerialName("is_upower_preview")
     val isUpowerPreview: Boolean = false,
     @SerialName("is_upower_exclusive_with_qa")
-    val isUpowerExclusiveWithQa: Boolean = false
+    val isUpowerExclusiveWithQa: Boolean = false,
+    @SerialName("argue_info")
+    val argueInfo: VideoArgueInfo? = null
 ) {
     val isCooperation: Boolean
         get() = rights.isCooperation == 1 || staff.isNotEmpty()
 }
+
+/**
+ * UP 主设置的视频声明（如"虚构演绎,请勿过度解读"）。
+ * 对齐 PiliPlus ArgueInfo:仅 argue_msg 一个有效字段。
+ */
+@Serializable
+data class VideoArgueInfo(
+    @SerialName("argue_msg")
+    val argueMsg: String = ""
+)
 
 @Serializable
 data class VideoDetailRights(
