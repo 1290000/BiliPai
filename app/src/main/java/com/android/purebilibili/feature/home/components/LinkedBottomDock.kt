@@ -36,6 +36,11 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.android.purebilibili.core.ui.components.AppIcon
+import androidx.compose.animation.core.EaseInCubic
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.ui.graphics.TransformOrigin
+import com.android.purebilibili.core.ui.motion.emphasizedEnterTween
+import com.android.purebilibili.core.ui.motion.emphasizedExitTween
 import com.android.purebilibili.core.ui.motion.iosMorphTween
 import com.android.purebilibili.core.ui.motion.rememberSystemReduceMotion
 import com.android.purebilibili.feature.audio.screen.AUDIO_NOW_PLAYING_PRESENCE_ENTER_SLIDE_DP
@@ -182,9 +187,17 @@ internal fun LinkedBottomDock(
     }
     val reduceMotion = rememberSystemReduceMotion()
     val transition = updateTransition(targetState = phase, label = "linkedBottomDock")
+    // 合体与解体使用方向感知曲线：收拢走 emphasized-exit（中段加速的压缩感），
+    // 展开走 emphasized-enter（快起缓收的弹开感），比对称 easeInOut 更有方向性。
     val merge = transition.animateFloat(
         transitionSpec = {
-            if (reduceMotion) snap() else iosMorphTween(LINKED_DOCK_MERGE_DURATION_MILLIS)
+            if (reduceMotion) {
+                snap()
+            } else if (targetState == LinkedDockPhase.Expanded) {
+                emphasizedEnterTween(LINKED_DOCK_MERGE_DURATION_MILLIS + 20)
+            } else {
+                emphasizedExitTween(LINKED_DOCK_MERGE_DURATION_MILLIS)
+            }
         },
         label = "dockMerge",
     ) { if (it == LinkedDockPhase.Expanded) 0f else 1f }
@@ -332,7 +345,16 @@ internal fun LinkedBottomDock(
                             with(density) { navWidth.toDp() },
                             with(density) { barHeight.toDp() },
                         )
-                        .graphicsLayer { alpha = (1f - merge.value * 3f).coerceIn(0f, 1f) }
+                        .graphicsLayer {
+                            // 退出窗口（前 34%）ease-in 淡出；全程向左侧圆钮方向
+                            // 轻微收拢缩放，读作"并入圆钮"而非原地溶解。
+                            val exitProgress = (merge.value / 0.34f).coerceIn(0f, 1f)
+                            alpha = 1f - EaseInCubic.transform(exitProgress)
+                            val collapse = EaseOutCubic.transform(merge.value)
+                            scaleX = 1f - 0.10f * collapse
+                            scaleY = 1f - 0.10f * collapse
+                            transformOrigin = TransformOrigin(0f, 0.5f)
+                        }
                         .pointerInput(phase) {
                             if (phase != LinkedDockPhase.Expanded) {
                                 awaitPointerEventScope {
@@ -361,7 +383,15 @@ internal fun LinkedBottomDock(
                         with(density) { button.toDp() },
                         with(density) { controlHeight.toDp() },
                     )
-                    .graphicsLayer { alpha = (merge.value * 2f).coerceIn(0f, 1f) }
+                    .graphicsLayer {
+                        // 进入窗口（前 50%）ease-out 淡入并从 92% 缩放弹出，落定干净无过冲。
+                        val enterProgress = (merge.value / 0.5f).coerceIn(0f, 1f)
+                        val eased = EaseOutCubic.transform(enterProgress)
+                        alpha = eased
+                        val scale = 0.92f + 0.08f * eased
+                        scaleX = scale
+                        scaleY = scale
+                    }
                     .then(
                         if (phase != LinkedDockPhase.Expanded) {
                             Modifier.clickable(role = Role.Button) { expand() }
