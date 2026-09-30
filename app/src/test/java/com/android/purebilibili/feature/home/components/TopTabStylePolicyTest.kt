@@ -593,8 +593,11 @@ class TopTabStylePolicyTest {
         // Must match compact chrome track (HomeTopPresetStyle 36/40) or labels clip to "...".
         assertEquals(36.dp, resolveIosTopTabRowHeight(isFloatingStyle = false))
         assertEquals(40.dp, resolveIosTopTabRowHeight(isFloatingStyle = true))
-        assertEquals(44.dp, resolveIosTopTabActionButtonSize(isFloatingStyle = false))
-        assertEquals(22.dp, resolveIosTopTabActionIconSize(isFloatingStyle = false))
+        // 侧钮缩小一档，给五个标签与扁圆指示器让出宽度。
+        assertEquals(32.dp, resolveIosTopTabActionButtonSize(isFloatingStyle = false))
+        assertEquals(20.dp, resolveIosTopTabActionIconSize(isFloatingStyle = false))
+        assertEquals(36.dp, resolveIosTopTabActionButtonSize(isFloatingStyle = true))
+        assertEquals(20.dp, resolveIosTopTabActionIconSize(isFloatingStyle = true))
     }
 
     @Test

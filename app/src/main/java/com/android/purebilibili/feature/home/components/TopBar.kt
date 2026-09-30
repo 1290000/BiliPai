@@ -192,15 +192,15 @@ internal fun resolveTopTabDockEndInsetDp(
 /**
  * 顶部 Tab 的视觉背景保持 30dp 高；36dp 行高留出上下各 3dp 的呼吸空间。
  */
+/**
+ * 顶部胶囊指示器与底栏共用同一枚扁圆（50% 圆角）形状：液态玻璃、Miuix 非
+ * 玻璃、MD3 dock 胶囊全部一致，仅皮肤平铺与 MD3 原生下划线走各自路径。
+ */
 internal fun resolveTopTabIndicatorShape(
     showIcon: Boolean,
     showText: Boolean,
     isMiuixNonGlass: Boolean = false,
-): Shape = when {
-    isMiuixNonGlass -> RoundedCornerShape(8.dp)
-    showIcon && showText -> RoundedCornerShape(12.dp)
-    else -> resolveSharedBottomBarCapsuleShape()
-}
+): Shape = resolveSharedBottomBarCapsuleShape()
 
 /**
  * Resolves the vertical center offset (in Dp) of the MD3 native underline indicator
@@ -238,6 +238,8 @@ internal fun resolveTopTabDockIndicatorWidthDp(
 }
 
 /** Interpolates liquid capsule width between adjacent tab labels during pager motion. */
+internal const val TOP_TAB_INDICATOR_CONTENT_PADDING_DP = 14f
+
 internal fun resolveTopTabInterpolatedIndicatorWidthDp(
     position: Float,
     itemWidthDp: Float,
@@ -250,9 +252,10 @@ internal fun resolveTopTabInterpolatedIndicatorWidthDp(
     val clamped = position.coerceIn(0f, contentWidthsDp.lastIndex.toFloat())
     val start = clamped.toInt()
     val end = (start + 1).coerceAtMost(contentWidthsDp.lastIndex)
+    // 胶囊两侧各留一圈水平内边距，才能呈现底栏同款扁圆；宽度仍受槽位上限约束。
     val contentWidth = androidx.compose.ui.util.lerp(
         contentWidthsDp[start], contentWidthsDp[end], clamped - start
-    ) + horizontalGapDp * 2f
+    ) + TOP_TAB_INDICATOR_CONTENT_PADDING_DP * 2f + horizontalGapDp * 2f
     return contentWidth.coerceIn(horizontalGapDp * 2f + 1f, slotMax)
 }
 
@@ -754,13 +757,13 @@ internal fun resolveIosTopTabRowHeight(
 }
 
 internal fun resolveIosTopTabActionButtonSize(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) AppSpacingTokens.TripleExtraLarge - AppSpacingTokens.Micro else AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Medium
+    if (isFloatingStyle) AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.ExtraSmall else AppSpacingTokens.DoubleExtraLarge
 
 internal fun resolveIosTopTabActionButtonCorner(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) AppSpacingTokens.ExtraLarge - AppSpacingTokens.Micro else AppSpacingTokens.Large + AppSpacingTokens.ExtraSmall
+    if (isFloatingStyle) AppSpacingTokens.ExtraLarge else AppSpacingTokens.Large + AppSpacingTokens.ExtraSmall
 
 internal fun resolveIosTopTabActionIconSize(isFloatingStyle: Boolean): Dp =
-    if (isFloatingStyle) AppSpacingTokens.ExtraLarge - AppSpacingTokens.Micro / 2 else AppSpacingTokens.ExtraLarge - AppSpacingTokens.Micro
+    AppSpacingTokens.ExtraLarge - AppSpacingTokens.ExtraSmall
 
 internal fun performHomeTopBarTap(
     haptic: (HapticType) -> Unit,

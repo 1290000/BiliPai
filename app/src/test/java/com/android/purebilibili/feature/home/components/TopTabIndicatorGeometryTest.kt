@@ -8,8 +8,9 @@ class TopTabIndicatorGeometryTest {
 
     @Test
     fun `liquid capsule width interpolates between adjacent labels`() {
+        // 内容宽 50 + 两侧 14dp 胶囊内边距 + 2×2dp 槽距 = 82。
         assertEquals(
-            54f,
+            82f,
             resolveTopTabInterpolatedIndicatorWidthDp(
                 position = 0.5f,
                 itemWidthDp = 100f,
