@@ -81,6 +81,7 @@ internal fun LinkedBottomDock(
     dockPhase: LinkedDockPhase? = null,
     onDockPhaseChange: ((LinkedDockPhase) -> Unit)? = null,
     isTopLevelDestination: Boolean = true,
+    mergeOnScrollDownEnabled: Boolean = true,
     animateNowPlayingPresence: Boolean = true,
     modifier: Modifier = Modifier,
     blurEnabled: Boolean = false,
@@ -123,7 +124,7 @@ internal fun LinkedBottomDock(
     val currentPhase by rememberUpdatedState(phase)
     val scrolling by rememberUpdatedState(isFeedScrollInProgress)
     val threshold = with(LocalDensity.current) { 24.dp.toPx() }
-    LaunchedEffect(currentItem, hasAudio, searchEnabled, scroll, threshold, isTopLevelDestination) {
+    LaunchedEffect(currentItem, hasAudio, searchEnabled, scroll, threshold, isTopLevelDestination, mergeOnScrollDownEnabled) {
         var previous = scroll.floatValue
         var accumulated = 0f
         snapshotFlow { scroll.floatValue to scrolling }.collect { (offset, active) ->
@@ -131,6 +132,13 @@ internal fun LinkedBottomDock(
             previous = offset
             if (!active || !isTopLevelDestination || currentPhase == LinkedDockPhase.Search) {
                 accumulated = 0f
+            } else if (!mergeOnScrollDownEnabled) {
+                // 用户选择下滑不合体：只保留向上滚动回到展开（分体）的能力。
+                accumulated = accumulateDockScroll(accumulated, delta)
+                if ((offset <= 0f && delta < 0f) || accumulated <= -threshold) {
+                    updatePhase(LinkedDockPhase.Expanded)
+                    accumulated = 0f
+                }
             } else {
                 accumulated = accumulateDockScroll(accumulated, delta)
                 if ((offset <= 0f && delta < 0f) || accumulated <= -threshold) {
