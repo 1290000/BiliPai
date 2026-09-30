@@ -718,6 +718,31 @@ fun VideoTitleWithDesc(
             )
         }
 
+        // 视频荣誉徽标(全站排行榜/每周必看/入站必刷/热门):可点击跳转对应榜单页
+        val honorChips = info.honorReply?.honor.orEmpty().mapNotNull { honor ->
+            resolveVideoHonorChipText(
+                type = honor.type,
+                honorName = honor.honorName,
+                descContent = honor.desc?.content,
+                weeklyRecommendNum = honor.weeklyRecommendNum
+            )?.let { text -> honor to text }
+        }
+        if (honorChips.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                honorChips.forEach { (honor, text) ->
+                    VideoHonorChip(
+                        text = text,
+                        onClick = honor.honorUrl.takeIf { it.isNotBlank() }
+                            ?.let { url -> { onDescriptionUrlClick?.invoke(url) } }
+                    )
+                }
+            }
+        }
+
         // UP 主视频声明(PiliPlus argue_msg)+ 禁止转载(rights.no_reprint):
         // 简介区上方常显小字,AI 生成/虚构演绎等声明文本由 UP 设置原样下发。
         val argueMsg = info.argueInfo?.argueMsg.orEmpty()
@@ -858,6 +883,30 @@ private fun VideoArgueMsgRow(argueMsg: String) {
             text = argueMsg,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * 视频荣誉徽标(全站排行榜最高第N名/每周必看等):
+ * 着色小胶囊,有跳转链接时可点击,走通用的 B 站链接路由(榜单页进应用内 Web)。
+ */
+@Composable
+private fun VideoHonorChip(
+    text: String,
+    onClick: (() -> Unit)? = null
+) {
+    androidx.compose.material3.Surface(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+    ) {
+        AppText(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }

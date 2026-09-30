@@ -62,11 +62,37 @@ data class ViewInfo(
     @SerialName("is_upower_exclusive_with_qa")
     val isUpowerExclusiveWithQa: Boolean = false,
     @SerialName("argue_info")
-    val argueInfo: VideoArgueInfo? = null
+    val argueInfo: VideoArgueInfo? = null,
+    @SerialName("honor_reply")
+    val honorReply: VideoHonorReply? = null
 ) {
     val isCooperation: Boolean
         get() = rights.isCooperation == 1 || staff.isNotEmpty()
 }
+
+/**
+ * 视频荣誉(入站必刷/每周必看/全站排行榜/热门)。
+ * desc 线上可能是数字或字符串,用 JsonPrimitive 容忍两种形态。
+ */
+@Serializable
+data class VideoHonorReply(
+    val honor: List<VideoHonor> = emptyList()
+)
+
+@Serializable
+data class VideoHonor(
+    val aid: Long = 0,
+    val type: Int = 0,
+    val desc: kotlinx.serialization.json.JsonPrimitive? = null,
+    @SerialName("weekly_recommend_num")
+    val weeklyRecommendNum: Int = 0,
+    @SerialName("honor_name")
+    val honorName: String = "",
+    @SerialName("honor_url")
+    val honorUrl: String = "",
+    @SerialName("honor_icon_url")
+    val honorIconUrl: String = ""
+)
 
 /**
  * UP 主设置的视频声明（如"虚构演绎,请勿过度解读"）。
