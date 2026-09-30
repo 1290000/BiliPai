@@ -1487,27 +1487,35 @@ private fun CreatorTeamMemberChip(
         }
         if (showFollow) {
             Spacer(modifier = Modifier.width(8.dp))
-            AppSurface(
-                onClick = onFollowToggle,
-                color = when (followVisualPolicy.detailButtonTone) {
-                    FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
-                    FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
-                },
-                shape = VideoDetailShapes.action(),
+            Box(
                 modifier = Modifier
-                    .widthIn(min = 64.dp)
                     .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button, onClick = onFollowToggle),
+                contentAlignment = Alignment.Center
             ) {
-                AppText(
-                    text = if (isFollowing) "已关注" else "关注",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = when (followVisualPolicy.detailTextTone) {
-                        FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
-                        FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
+                AppSurface(
+                    color = when (followVisualPolicy.detailButtonTone) {
+                        FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
+                        FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
                     },
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
+                    shape = VideoDetailShapes.action(),
+                    modifier = Modifier.heightIn(min = 28.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    ) {
+                        AppText(
+                            text = if (isFollowing) "已关注" else "关注",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = when (followVisualPolicy.detailTextTone) {
+                                FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
+                                FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
+                            },
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
     }
