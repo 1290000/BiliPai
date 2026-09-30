@@ -105,7 +105,7 @@ fun ZoomableImage(
                 dampingRatio = 1f,
                 stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
             )
-        ) { value, _ ->
+        ) { value ->
             scale = startScale + (1f - startScale) * value
             offsetX = startOffsetX * (1f - value)
             offsetY = startOffsetY * (1f - value)
