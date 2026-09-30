@@ -64,11 +64,23 @@ data class ViewInfo(
     @SerialName("argue_info")
     val argueInfo: VideoArgueInfo? = null,
     @SerialName("honor_reply")
-    val honorReply: VideoHonorReply? = null
+    val honorReply: VideoHonorReply? = null,
+    /** 新版简介分段:type=2 为 @提及,biz_id 是被@用户 mid,可跳空间。 */
+    @SerialName("desc_v2")
+    val descV2: List<VideoDescSegment> = emptyList()
 ) {
     val isCooperation: Boolean
         get() = rights.isCooperation == 1 || staff.isNotEmpty()
 }
+
+@Serializable
+data class VideoDescSegment(
+    @SerialName("raw_text")
+    val rawText: String = "",
+    val type: Int = 1,
+    @SerialName("biz_id")
+    val bizId: Long = 0
+)
 
 /**
  * 视频荣誉(入站必刷/每周必看/全站排行榜/热门)。
