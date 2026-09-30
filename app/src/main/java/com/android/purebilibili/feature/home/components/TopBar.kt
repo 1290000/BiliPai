@@ -172,9 +172,10 @@ internal fun resolveTopTabDockIndicatorVerticalGapDp(
     hasOuterChromeSurface: Boolean,
     isLiquidGlassReuseEnabled: Boolean = false
 ): Float {
-    val standardGap = if (hasOuterChromeSurface) 3f else 3f
+    // 与底栏一致：胶囊几乎贴满 dock 高度，上下各只留 1dp 呼吸边。
+    val standardGap = 1f
     return if (isLiquidGlassReuseEnabled) {
-        (standardGap - 1f).coerceAtLeast(1f)
+        (standardGap - 0.5f).coerceAtLeast(0.5f)
     } else {
         standardGap
     }
@@ -190,7 +191,8 @@ internal fun resolveTopTabDockEndInsetDp(
 ): Float = if (wrapContent || isFloatingStyle) 4f else 0f
 
 /**
- * 顶部 Tab 的视觉背景保持 30dp 高；36dp 行高留出上下各 3dp 的呼吸空间。
+ * 顶部胶囊指示器与底栏同规格：几乎贴满 dock 高度（上下各 1dp），宽度在内容
+ * 宽之外各留 14dp 内边距，50% 圆角呈扁圆。
  */
 /**
  * 顶部胶囊指示器与底栏共用同一枚扁圆（50% 圆角）形状：液态玻璃、Miuix 非

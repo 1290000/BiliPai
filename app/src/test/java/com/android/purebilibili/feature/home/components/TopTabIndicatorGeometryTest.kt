@@ -199,7 +199,7 @@ class TopTabIndicatorGeometryTest {
             0.01f
         )
         assertEquals(
-            3f,
+            1f,
             resolveTopTabDockIndicatorVerticalGapDp(hasOuterChromeSurface = true),
             0.01f
         )
@@ -225,7 +225,7 @@ class TopTabIndicatorGeometryTest {
             0.01f
         )
         assertEquals(
-            3f,
+            1f,
             resolveTopTabDockIndicatorVerticalGapDp(hasOuterChromeSurface = false),
             0.01f
         )
@@ -250,7 +250,8 @@ class TopTabIndicatorGeometryTest {
         )
 
         assertEquals(92f, width, 0.01f)
-        assertEquals(30f, height, 0.01f)
+        // 竖直 gap 收窄到 1dp 后，胶囊高度顶到 36 - 2×1。
+        assertEquals(34f, height, 0.01f)
     }
 
     @Test
