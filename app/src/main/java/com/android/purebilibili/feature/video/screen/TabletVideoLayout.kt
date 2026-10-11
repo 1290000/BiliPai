@@ -204,6 +204,7 @@ internal fun TabletSecondaryLiquidTabRow(
 internal fun TabletVideoLayout(
     playerState: VideoPlayerState,
     uiState: VideoPlaybackUiState,
+    detailContentState: VideoPlaybackUiState.Success? = null,
     commentState: CommentUiState,
     engagementState: VideoEngagementUiState,
     subReplyState: SubReplyUiState,
@@ -255,6 +256,7 @@ internal fun TabletVideoLayout(
     playerContent: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val adaptiveInfo = com.android.purebilibili.core.util.LocalAppWindowAdaptiveInfo.current
+    val contentState = detailContentState ?: (uiState as? VideoPlaybackUiState.Success)
     val hasHingePartition = adaptiveInfo.shouldAvoidHinge
     val layoutPosture = if (adaptiveInfo.shouldAvoidHinge) {
         when (adaptiveInfo.foldingFeature.hingeOrientation) {
@@ -467,9 +469,9 @@ internal fun TabletVideoLayout(
                 }
                 
                 // Tabletop 把简介移到铰链下方；普通平板仍在播放器下方展示。
-                if (uiState is VideoPlaybackUiState.Success && !layoutPolicy.useTabletopLayout) {
+                if (contentState != null && !layoutPolicy.useTabletopLayout) {
                     TabletVideoInfoPane(
-                        success = uiState,
+                        success = contentState,
                         engagementState = engagementState,
                         downloadProgress = downloadProgress,
                         playbackActions = playbackActions,
@@ -508,8 +510,8 @@ internal fun TabletVideoLayout(
     },
         secondaryContent = {
             // 📝 右侧：评论 / 相关推荐
-            if (uiState is VideoPlaybackUiState.Success) {
-                val success = uiState
+            if (contentState != null) {
+                val success = contentState
                 Box(modifier = Modifier.fillMaxSize()) {
                     TabletSecondaryContent(
                         success = success,
@@ -573,9 +575,9 @@ internal fun TabletVideoLayout(
         },
         tertiaryContent = if (useThreePaneLayout) {
             {
-                if (uiState is VideoPlaybackUiState.Success) {
+                if (contentState != null) {
                     TabletSecondaryContent(
-                        success = uiState,
+                        success = contentState,
                         commentState = commentState,
                         subReplyState = subReplyState,
                         playbackActions = playbackActions,
