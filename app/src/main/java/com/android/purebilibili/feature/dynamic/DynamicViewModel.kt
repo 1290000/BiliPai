@@ -161,7 +161,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     private val isPageActive: Boolean get() = pageActivity.value
     private var followStateObserverStarted: Boolean = false
 
-    private val _uiState = MutableStateFlow(DynamicUiState())
+    private val _uiState = MutableStateFlow(createDynamicStartupUiState())
     val uiState: StateFlow<DynamicUiState> = _uiState.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -201,6 +201,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
     init {
+        loadUserPreferences()
+        _uiState.value = createDynamicStartupUiState(_selectedTab.value)
         viewModelScope.launch {
             SettingsManager.getIncrementalTimelineRefresh(appContext).collect { enabled ->
                 incrementalTimelineRefreshEnabled = enabled
@@ -217,7 +219,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 if (identity == activeAccountIdentity) return@collect
                 accountScope.cancel()
                 closeCommentSheet()
-                _uiState.value = DynamicUiState(isLoading = true)
+                _uiState.value = createDynamicStartupUiState()
                 _followedUsers.value = emptyList()
                 _selectedUserId.value = null
                 _likedDynamics.value = emptySet()
@@ -251,7 +253,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 _likeOverrides.value = emptyMap()
                 likeRequestGate = DynamicLikeRequestGate()
                 _isRefreshing.value = false
-                _uiState.value = DynamicUiState()
+                loadUserPreferences()
+                _uiState.value = createDynamicStartupUiState(_selectedTab.value)
                 startupLoadsActivated = false
                 if (isPageActive) activateStartupLoads()
             }
@@ -274,9 +277,9 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun hydrateStartupData() {
-        loadUserPreferences()
         loadNotInterestedDynamicIds()
-        _uiState.value = updateDynamicTimelinePage(_uiState.value, "all") { page ->
+        val requestType = resolveDynamicFeedRequestType(_selectedTab.value)
+        _uiState.value = updateDynamicTimelinePage(_uiState.value, requestType) { page ->
             if (page.items.isEmpty()) page.copy(isLoading = true, error = null) else page
         }
         launchAccount {
