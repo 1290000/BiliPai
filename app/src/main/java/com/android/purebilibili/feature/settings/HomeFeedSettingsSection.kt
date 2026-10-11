@@ -6,6 +6,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.store.SettingsManager
+import com.android.purebilibili.core.store.home.DynamicSettingsStore
 import com.android.purebilibili.feature.dynamic.defaultDynamicTabVisibleIds
 import com.android.purebilibili.feature.dynamic.resolveDynamicVisibleTabIdsAfterToggle
 import kotlinx.coroutines.launch
@@ -26,6 +27,8 @@ internal fun HomeFeedSettingsSection() {
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val dynamicImagePreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
         .collectAsStateWithLifecycle(initialValue = true)
+    val dynamicCommentPreviewVisible by DynamicSettingsStore.observeCommentPreviewVisible(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val dynamicDetailImageLayout by SettingsManager.getDynamicDetailImageLayout(context)
         .collectAsStateWithLifecycle(initialValue = SettingsManager.peekDynamicDetailImageLayout(context))
     val dynamicAllTabHorizontalUserListVisible by SettingsManager
@@ -42,6 +45,7 @@ internal fun HomeFeedSettingsSection() {
         feedApiType = feedApiType,
         incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
         dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+        dynamicCommentPreviewVisible = dynamicCommentPreviewVisible,
         dynamicDetailImageLayout = dynamicDetailImageLayout,
         dynamicAllTabHorizontalUserListVisible = dynamicAllTabHorizontalUserListVisible,
         dynamicTopBarCollapseOnScroll = dynamicTopBarCollapseOnScroll,
@@ -52,6 +56,7 @@ internal fun HomeFeedSettingsSection() {
         onFeedApiTypeChange = { value -> scope.launch { SettingsManager.setFeedApiType(context, value); android.widget.Toast.makeText(context, "已切换为${value.label}，下拉刷新后生效", android.widget.Toast.LENGTH_SHORT).show() } },
         onIncrementalTimelineRefreshChange = { value -> scope.launch { SettingsManager.setIncrementalTimelineRefresh(context, value) } },
         onDynamicImagePreviewTextVisibleChange = { value -> scope.launch { SettingsManager.setDynamicImagePreviewTextVisible(context, value) } },
+        onDynamicCommentPreviewVisibleChange = { value -> scope.launch { DynamicSettingsStore.setCommentPreviewVisible(context, value) } },
         onDynamicDetailImageLayoutChange = { value -> scope.launch { SettingsManager.setDynamicDetailImageLayout(context, value) } },
         onDynamicAllTabHorizontalUserListVisibleChange = { value -> scope.launch { SettingsManager.setDynamicAllTabHorizontalUserListVisible(context, value) } },
         onDynamicTopBarCollapseOnScrollChange = { value -> scope.launch { SettingsManager.setDynamicTopBarCollapseOnScroll(context, value) } },

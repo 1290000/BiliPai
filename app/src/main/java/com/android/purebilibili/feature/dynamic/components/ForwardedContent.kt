@@ -82,7 +82,8 @@ fun ForwardedContent(
     onLiveClick: ((Long, String, String) -> Unit)? = null,
     onMusicClick: ((Long) -> Unit)? = null,
     gifImageLoader: ImageLoader,
-    defaultPreviewTextVisible: Boolean = true
+    defaultPreviewTextVisible: Boolean = true,
+    collapseWebLinks: Boolean = false,
 ) {
     val context = LocalContext.current
     val author = orig.modules.module_author
@@ -247,6 +248,7 @@ fun ForwardedContent(
         preferredDesc?.let { desc ->
             if (shouldRenderDynamicRichText(desc)) {
                 RichTextContent(
+                    collapseWebLinks = collapseWebLinks,
                     desc = desc,
                     onUserClick = onUserClick,
                     onTopicClick = onTopicClick,
