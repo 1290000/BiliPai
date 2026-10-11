@@ -321,6 +321,20 @@ internal fun shouldUseSearchSolidTopChrome(
 ): Boolean = !headerBlurRequested && !progressiveBlurRequested
 
 /** Search chrome sizes and semantic shape levels for actions and content surfaces. */
+/** Shared alignment and spacing for the search field, type tabs and order rail. */
+internal data class SearchComponentSpacingSpec(
+    val horizontalPaddingDp: Int,
+    val resultRailHorizontalPaddingDp: Int,
+    val rowVerticalPaddingDp: Int,
+    val actionGapDp: Int,
+)
+
+internal fun resolveSearchComponentSpacingSpec(uiStyle: AppUiStyle): SearchComponentSpacingSpec =
+    when (uiStyle) {
+        AppUiStyle.MATERIAL3 -> SearchComponentSpacingSpec(16, 8, 0, 12)
+        AppUiStyle.MIUIX -> SearchComponentSpacingSpec(12, 8, 0, 8)
+    }
+
 internal data class SearchChromeVisualSpec(
     val inputHeightDp: Int,
     /** Search-action hit target beside the field, using the same capsule curvature. */
@@ -1327,6 +1341,26 @@ fun SearchScreen(
                                                 liquidGlassEnabled = effectiveLiquidGlassEnabled,
                                                 miuixBackdrop = searchChromeBackdrop,
                                                 includeStatusBarPadding = false,
+                                                trailingActions = if (state.searchType == SearchType.VIDEO) {
+                                                    {
+                                                        SearchVideoFilterActions(
+                                                            singleColumn = listLayout.singleColumn,
+                                                            onLayoutToggle = listLayout.toggle,
+                                                            currentDurations = state.searchDurations,
+                                                            currentVideoTid = state.videoTid,
+                                                            currentPubTimeType = state.pubTimeType,
+                                                            currentPubBegin = state.pubBegin,
+                                                            currentPubEnd = state.pubEnd,
+                                                            miuixBackdrop = searchChromeBackdrop,
+                                                            onDurationSelect = { viewModel.setSearchDuration(it) },
+                                                            onVideoTidChange = { viewModel.setVideoTid(it) },
+                                                            onPubTimeTypeChange = { viewModel.setPubTimeType(it) },
+                                                            onCustomPubTimeRange = { begin, end ->
+                                                                viewModel.setCustomPubTimeRange(begin, end)
+                                                            }
+                                                        )
+                                                    }
+                                                } else null,
                                             )
                                             //  搜索彩蛋消息横幅
                                             val easterEggMsg = state.easterEggMessage
@@ -1392,22 +1426,9 @@ fun SearchScreen(
                                             ) {
                                                 if (state.searchType == SearchType.VIDEO) {
                                                     SearchVideoFilterBar(
-                                                        singleColumn = listLayout.singleColumn,
-                                                        onLayoutToggle = listLayout.toggle,
                                                         currentOrder = state.searchOrder,
-                                                        currentDurations = state.searchDurations,
-                                                        currentVideoTid = state.videoTid,
-                                                        currentPubTimeType = state.pubTimeType,
-                                                        currentPubBegin = state.pubBegin,
-                                                        currentPubEnd = state.pubEnd,
                                                         miuixBackdrop = searchChromeBackdrop,
                                                         onOrderChange = { viewModel.setSearchOrder(it) },
-                                                        onDurationSelect = { viewModel.setSearchDuration(it) },
-                                                        onVideoTidChange = { viewModel.setVideoTid(it) },
-                                                        onPubTimeTypeChange = { viewModel.setPubTimeType(it) },
-                                                        onCustomPubTimeRange = { begin, end ->
-                                                            viewModel.setCustomPubTimeRange(begin, end)
-                                                        }
                                                     )
                                                 } else {
                                                     SearchFilterBar(
@@ -2540,8 +2561,10 @@ fun SearchTopBar(
     liquidGlassEnabled: Boolean = false,
     miuixBackdrop: MiuixBackdrop? = null,
     includeStatusBarPadding: Boolean = true,
+    trailingActions: (@Composable RowScope.() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val componentSpacing = resolveSearchComponentSpacingSpec(LocalAppUiStyle.current)
     val topChromePolicy = rememberAppTopChromePolicy()
     val chromeSpec = remember(topChromePolicy) { resolveSearchChromeVisualSpec(topChromePolicy) }
     val inputHeightDp = rememberSearchInputHeightDp(chromeSpec.inputHeightDp)
@@ -2709,7 +2732,7 @@ fun SearchTopBar(
                 modifier = Modifier
                     .responsiveContentWidth()
                     .heightIn(min = topBarRowMinHeightDp.dp)
-                    .padding(horizontal = 12.dp, vertical = (SEARCH_TOP_BAR_VERTICAL_PADDING_DP / 2).dp)
+                    .padding(horizontal = componentSpacing.horizontalPaddingDp.dp, vertical = (SEARCH_TOP_BAR_VERTICAL_PADDING_DP / 2).dp)
                     .padding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal).asPaddingValues())
                     .then(entryMotionModifier),
                 verticalAlignment = Alignment.CenterVertically
@@ -2733,7 +2756,7 @@ fun SearchTopBar(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(componentSpacing.actionGapDp.dp))
 
                 val containerColor = if (glassActive) {
                     Color.Transparent
@@ -2770,65 +2793,69 @@ fun SearchTopBar(
 
                 Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
 
-                SearchTopBarIconButton(
-                    onClick = { onSearch(resolvedSubmitKeyword) },
-                    elasticState = submitElasticState,
-                    shape = actionShape,
-                    transformInBackdrop = glassActive,
-                    enabled = canSubmit,
-                    modifier = Modifier
-                        .size(chromeSpec.submitActionSizeDp.dp)
-                        .searchTopChromeGlass(actionShape, chromeSpec.submitActionSizeDp, submitElasticState)
-                        .then(
-                            if (glassActive) {
-                                Modifier
+                if (trailingActions != null) {
+                    trailingActions()
+                } else {
+                    SearchTopBarIconButton(
+                        onClick = { onSearch(resolvedSubmitKeyword) },
+                        elasticState = submitElasticState,
+                        shape = actionShape,
+                        transformInBackdrop = glassActive,
+                        enabled = canSubmit,
+                        modifier = Modifier
+                            .size(chromeSpec.submitActionSizeDp.dp)
+                            .searchTopChromeGlass(actionShape, chromeSpec.submitActionSizeDp, submitElasticState)
+                            .then(
+                                if (glassActive) {
+                                    Modifier
+                                } else {
+                                    Modifier
+                                        .clip(actionShape)
+                                        .background(
+                                            if (canSubmit) {
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                                            } else {
+                                                Color.Transparent
+                                            }
+                                        )
+                                }
+                            )
+                    ) {
+                        AppIcon(
+                            searchIcon,
+                            contentDescription = searchLabel,
+                            tint = if (canSubmit) {
+                                searchIconColor
                             } else {
-                                Modifier
-                                    .clip(actionShape)
-                                    .background(
-                                        if (canSubmit) {
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-                                        } else {
-                                            Color.Transparent
-                                        }
-                                    )
-                            }
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                            },
+                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
                         )
-                ) {
-                    AppIcon(
-                        searchIcon,
-                        contentDescription = searchLabel,
-                        tint = if (canSubmit) {
-                            searchIconColor
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                        },
-                        modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
-                    )
-                }
+                    }
 
-                Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
+                    Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
 
-                SearchTopBarIconButton(
-                    onClick = onClearQuery,
-                    elasticState = clearElasticState,
-                    shape = actionShape,
-                    transformInBackdrop = glassActive,
-                    enabled = query.isNotEmpty(),
-                    modifier = Modifier
-                        .size(chromeSpec.clearActionSizeDp.dp)
-                        .searchTopChromeGlass(actionShape, chromeSpec.clearActionSizeDp, clearElasticState)
-                ) {
-                    AppIcon(
-                        clearIcon,
-                        contentDescription = stringResource(R.string.common_clear),
-                        tint = if (query.isNotEmpty()) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                        },
-                        modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
-                    )
+                    SearchTopBarIconButton(
+                        onClick = onClearQuery,
+                        elasticState = clearElasticState,
+                        shape = actionShape,
+                        transformInBackdrop = glassActive,
+                        enabled = query.isNotEmpty(),
+                        modifier = Modifier
+                            .size(chromeSpec.clearActionSizeDp.dp)
+                            .searchTopChromeGlass(actionShape, chromeSpec.clearActionSizeDp, clearElasticState)
+                    ) {
+                        AppIcon(
+                            clearIcon,
+                            contentDescription = stringResource(R.string.common_clear),
+                            tint = if (query.isNotEmpty()) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                            },
+                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
+                        )
+                    }
                 }
             }
         }
@@ -3224,6 +3251,7 @@ private fun SearchResultTypeTabRow(
     onTabClick: (Int, SearchType) -> Unit,
     miuixBackdrop: MiuixBackdrop? = null,
 ) {
+    val componentSpacing = resolveSearchComponentSpacingSpec(LocalAppUiStyle.current)
     if (tabs.isEmpty()) return
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
@@ -3235,7 +3263,10 @@ private fun SearchResultTypeTabRow(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .padding(
+                horizontal = componentSpacing.resultRailHorizontalPaddingDp.dp,
+                vertical = componentSpacing.rowVerticalPaddingDp.dp,
+            ),
         contentAlignment = Alignment.CenterStart
     ) {
         val viewportWidthDp = maxWidth.value.roundToInt()
@@ -3253,8 +3284,8 @@ private fun SearchResultTypeTabRow(
         val containerHorizontalPaddingPx = with(density) { AppSpacingTokens.ExtraSmall.toPx() }
         val dragFollowEdgePaddingPx = with(density) { 12.dp.toPx() }
 
-        if (LocalAppUiStyle.current == AppUiStyle.MATERIAL3 && !LocalAppThemeConfig.current.liquidGlassEnabled) {
-            // MD3 非玻璃:PiliPlus 搜索页同款 tonal 胶囊分类行(标签自适应宽度 + Pager 跟随)。
+        if (!LocalAppThemeConfig.current.liquidGlassEnabled) {
+            // Compact non-glass categories use the active theme colors and label typography.
             // 液态玻璃开启时保持玻璃胶囊指示器,不进入本分支。
             AppTonalPillTabRow(
                 options = tabs.mapIndexed { index, type ->
@@ -3267,7 +3298,19 @@ private fun SearchResultTypeTabRow(
                     }
                 },
                 scrollable = true,
-                labelFontSize = 13.5.sp,
+                height = 40.dp,
+                selectedContainerColor = if (LocalAppUiStyle.current == AppUiStyle.MIUIX) {
+                    com.android.purebilibili.core.ui.AppSurfaceTokens.surfaceContainerHigh()
+                } else {
+                    com.android.purebilibili.core.ui.AppSurfaceTokens.primary().copy(alpha = 0.16f)
+                },
+                selectedContentColor = if (LocalAppUiStyle.current == AppUiStyle.MIUIX) {
+                    com.android.purebilibili.core.ui.AppSurfaceTokens.onSurfaceContainerHigh()
+                } else {
+                    com.android.purebilibili.core.ui.AppSurfaceTokens.primary()
+                },
+                unselectedContentColor = com.android.purebilibili.core.ui.AppSurfaceTokens.onSurfaceVariantSummary(),
+                labelFontSize = MaterialTheme.typography.labelLarge.fontSize,
                 indicatorPositionProvider = {
                     pagerState.currentPage + pagerState.currentPageOffsetFraction
                 },
@@ -3300,7 +3343,7 @@ private fun SearchResultTypeTabRow(
             itemWidth = itemWidth.takeIf { useScrollableRail },
             height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
             indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
-            labelFontSize = 13.5.sp,
+            labelFontSize = MaterialTheme.typography.labelLarge.fontSize,
             allowNativeLabelOverflow = true,
             miuixBackdrop = miuixBackdrop,
             liquidGlassEffectsEnabled = true,
