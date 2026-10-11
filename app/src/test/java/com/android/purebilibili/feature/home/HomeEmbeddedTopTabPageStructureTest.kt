@@ -26,9 +26,8 @@ class HomeEmbeddedTopTabPageStructureTest {
         val source = File("src/main/java/com/android/purebilibili/feature/live/LiveListScreen.kt").readText()
         assertTrue(source.contains("embeddedInHome: Boolean = false"))
         assertTrue(source.contains("if (!embeddedInHome)"))
-        assertTrue(source.contains("contentDescription = \"关注直播\""))
-        assertTrue(source.contains("onFollowingClick = onFollowingClick"))
-        assertTrue(source.contains("item(key = \"live_categories\", span = { GridItemSpan(maxLineSpan) })"))
+        assertTrue(source.contains("label = \"已关注\""))
+        assertTrue(source.contains("onAreaSelected(LIVE_HOME_FOLLOWED_INDEX)"))
     }
 
     @Test

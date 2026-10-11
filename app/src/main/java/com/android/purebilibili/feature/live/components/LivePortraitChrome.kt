@@ -103,14 +103,13 @@ internal fun LivePortraitChatStream(
     var isAnyMenuOpen by remember { mutableStateOf(false) }
     var userScrolledUp by remember { mutableStateOf(false) }
 
-    val latestMessages by rememberUpdatedState(messages)
     val isAtBottom by remember {
         derivedStateOf {
             val visible = listState.layoutInfo.visibleItemsInfo
-            if (visible.isEmpty() || latestMessages.isEmpty()) {
+            if (visible.isEmpty() || messages.isEmpty()) {
                 true
             } else {
-                visible.last().index >= latestMessages.lastIndex - 1
+                visible.last().index >= messages.lastIndex - 1
             }
         }
     }
@@ -808,7 +807,7 @@ internal fun LivePortraitMoreSheet(
                     modifier = Modifier.padding(bottom = AppSpacingTokens.Small),
                 )
                 AppText(
-                    text = "直播播放与互动设置",
+                    text = "轻点画面清屏或恢复，长按打开操作",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )

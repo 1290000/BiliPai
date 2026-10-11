@@ -202,7 +202,7 @@ fun DynamicTopBarWithTabs(
                 compactMiuixWhenTwoOptions = false,
                 height = liquidTabSpec.heightDp.dp,
                 indicatorHeight = liquidTabSpec.indicatorHeightDp.dp,
-                labelFontSize = com.android.purebilibili.core.ui.appTabLabelFontSize(),
+                labelFontSize = liquidTabSpec.labelFontSizeSp.sp,
                 indicatorPositionProvider = indicatorPositionProvider,
                 isScrollInProgressProvider = isScrollInProgressProvider,
                 dragSelectionEnabled = tabs.size > 1,

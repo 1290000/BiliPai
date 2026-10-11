@@ -84,7 +84,7 @@ fun DynamicCreateVoteDialog(
                         itemWidth = 66.dp,
                         height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
                         indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
-                        labelFontSize = com.android.purebilibili.core.ui.appTabLabelFontSize(),
+                        labelFontSize = 13.sp,
                         backdrop = voteChromeBackdrop,
                     )
                     AppText("有效期")
@@ -95,7 +95,7 @@ fun DynamicCreateVoteDialog(
                         itemWidth = 66.dp,
                         height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
                         indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
-                        labelFontSize = com.android.purebilibili.core.ui.appTabLabelFontSize(),
+                        labelFontSize = 13.sp,
                         backdrop = voteChromeBackdrop,
                     )
                     errorMessage?.let { AppText(it) }

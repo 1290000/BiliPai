@@ -33,7 +33,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
@@ -126,7 +125,6 @@ fun BangumiPlayerView(
     currentPageIndex: Int = 0,
     onPageSelect: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
-    features: BangumiPlayerFeatures = BangumiPlayerFeatures(),
     isFullscreen: Boolean = false,
     currentQuality: Int = 0,
     acceptQuality: List<Int> = emptyList(),
@@ -243,24 +241,18 @@ fun BangumiPlayerView(
         anime4kGlesAvailable,
         anime4kPipelineFailed,
         videoInputFormat,
-        lifecycleState,
-        features.isInPipMode,
-        features.isAudioOnly,
+        lifecycleState
     ) {
         resolveAnime4KOutputDecision(
             pluginEnabled = videoEnhancementEnabled,
             glAvailable = anime4kGlesAvailable && !anime4kPipelineFailed,
             colorTransfer = videoInputFormat?.colorInfo?.colorTransfer ?: 0,
             sampleMimeType = videoInputFormat?.sampleMimeType,
-            isInPipMode = features.isInPipMode,
-            isAudioOnly = features.isAudioOnly,
+            isInPipMode = false,
+            isAudioOnly = false,
             hostLifecycleStarted = hostLifecycleStarted
         )
     }
-    val requiresHdrSurface = com.android.purebilibili.feature.video.ui.section.requiresHdrSurfaceOutput(
-        currentQualityId = currentQuality, colorTransfer = videoInputFormat?.colorInfo?.colorTransfer ?: 0,
-    )
-    val useTextureSurface = !requiresHdrSurface && (features.isFlippedHorizontal || features.isFlippedVertical)
     val shouldUseAnime4kPipeline = anime4kOutputDecision.shouldUsePipeline
     val shouldRenderAnime4kPipeline = shouldUseAnime4kPipeline &&
         videoSizeState.first > 0 &&
@@ -270,30 +262,7 @@ fun BangumiPlayerView(
     val anime4kFrameVisible = anime4kSurfaceReady && anime4kDisplayedFirstFrame
     val videoOutputRouter = remember(exoPlayer) { VideoOutputRouter(exoPlayer) }
 
-    val immersiveStatusBarBackdropEnabled by SettingsManager.getHideVideoPageStatusBar(context)
-        .collectAsStateWithLifecycle(initialValue = SettingsManager.getHideVideoPageStatusBarSync(context))
-    var firstFrameReady by remember(exoPlayer, cid) { mutableStateOf(false) }
-    com.android.purebilibili.feature.video.ambient.BindPlayerAmbient(
-        player = exoPlayer,
-        playerView = playerViewRef,
-        identity = cid,
-        quality = currentQuality,
-        width = videoSizeState.first,
-        height = videoSizeState.second,
-        foreground = hostLifecycleStarted,
-        excluded = isFullscreen || features.isInPipMode || features.isAudioOnly,
-        hdr = com.android.purebilibili.feature.video.ui.section.requiresHdrSurfaceOutput(
-            currentQualityId = currentQuality,
-            colorTransfer = videoInputFormat?.colorInfo?.colorTransfer ?: 0,
-        ),
-        anime4k = shouldUseAnime4kPipeline,
-        transitioning = false,
-        firstFrameReady = firstFrameReady,
-        statusBar = immersiveStatusBarBackdropEnabled && !isFullscreen,
-        diagnosticLogging = false,
-    )
-
-    DisposableEffect(exoPlayer, cid) {
+    DisposableEffect(exoPlayer) {
         val analyticsListener = object : AnalyticsListener {
             override fun onVideoInputFormatChanged(
                 eventTime: AnalyticsListener.EventTime,
@@ -304,7 +273,6 @@ fun BangumiPlayerView(
             }
         }
         val playerListener = object : Player.Listener {
-            override fun onRenderedFirstFrame() { firstFrameReady = true }
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 videoSizeState = videoSize.width to videoSize.height
             }
@@ -560,49 +528,39 @@ fun BangumiPlayerView(
                     )
                 }
             }
-            // 镜像直出使用 TextureView；HDR 保留 SurfaceView 输出。
-            key(useTextureSurface) {
-                AndroidView(
-                    factory = { ctx ->
-                        android.util.Log.w("BangumiPlayer", "🎬 PlayerView FACTORY: creating new view, player=${exoPlayer.hashCode()}, isFullscreen=$isFullscreen")
-                        val baseView = if (useTextureSurface) {
-                            android.view.LayoutInflater.from(ctx).inflate(
-                                com.android.purebilibili.R.layout.view_player_texture, null, false
-                            ) as PlayerView
-                        } else PlayerView(ctx)
-                        baseView.apply {
-                            playerViewRef = this
-                            // 普通直出必须显式绑定 player，否则未启用 Anime4K 时无视频输出
-                            //（只有音频）。Anime4K 启用后由 VideoOutputRouter 主动解除本绑定并接管 surface。
-                            player = exoPlayer
-                            useController = false
-                            keepScreenOn = true
-                            resizeMode = currentAspectRatio.playerResizeMode
-                            setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                            setBackgroundColor(android.graphics.Color.BLACK)
-                        }
-                    },
-                    update = { view ->
-                        playerViewRef = view
-                        view.resizeMode = currentAspectRatio.playerResizeMode
-                        view.visibility = if (anime4kFrameVisible) View.INVISIBLE else View.VISIBLE
-                        // MediaSource/Player 变化后确保直出绑定仍与播放器同步；
-                        // Anime4K 接管期间不抢回绑定，避免与路由争抢 Surface。
-                        if (view.player !== exoPlayer && !shouldRenderAnime4kPipeline) {
-                            view.player = exoPlayer
-                        }
-                    },
-                    modifier = with(density) {
-                        Modifier.requiredSize(
-                            width = playerFrameViewport.width.toDp(),
-                            height = playerFrameViewport.height.toDp()
-                        ).graphicsLayer {
-                            scaleX = if (useTextureSurface && features.isFlippedHorizontal) -1f else 1f
-                            scaleY = if (useTextureSurface && features.isFlippedVertical) -1f else 1f
-                        }
+            // 视频输出统一交给路由，避免 PlayerView 与 Anime4K 同时争抢 Surface。
+            AndroidView(
+                factory = { ctx ->
+                    android.util.Log.w("BangumiPlayer", "🎬 PlayerView FACTORY: creating new view, player=${exoPlayer.hashCode()}, isFullscreen=$isFullscreen")
+                    PlayerView(ctx).apply {
+                        playerViewRef = this
+                        // 普通直出必须显式绑定 player，否则未启用 Anime4K 时无视频输出
+                        //（只有音频）。Anime4K 启用后由 VideoOutputRouter 主动解除本绑定并接管 surface。
+                        player = exoPlayer
+                        useController = false
+                        keepScreenOn = true
+                        resizeMode = currentAspectRatio.playerResizeMode
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                        setBackgroundColor(android.graphics.Color.BLACK)
                     }
-                )
-            }
+                },
+                update = { view ->
+                    playerViewRef = view
+                    view.resizeMode = currentAspectRatio.playerResizeMode
+                    view.visibility = if (anime4kFrameVisible) View.INVISIBLE else View.VISIBLE
+                    // MediaSource/Player 变化后确保直出绑定仍与播放器同步；
+                    // Anime4K 接管期间不抢回绑定，避免与路由争抢 Surface。
+                    if (view.player !== exoPlayer && !shouldRenderAnime4kPipeline) {
+                        view.player = exoPlayer
+                    }
+                },
+                modifier = with(density) {
+                    Modifier.requiredSize(
+                        width = playerFrameViewport.width.toDp(),
+                        height = playerFrameViewport.height.toDp()
+                    )
+                }
+            )
 
             if (shouldRenderAnime4kPipeline) {
                 AndroidView(
@@ -623,7 +581,6 @@ fun BangumiPlayerView(
                             }
                             updateConfig(anime4kConfig)
                             updateInputSize(videoSizeState.first, videoSizeState.second)
-                            updateFlip(features.isFlippedHorizontal, features.isFlippedVertical)
                             updateDisplayScaleMode(currentAspectRatio.toAnime4KDisplayScaleMode())
                             visibility = View.VISIBLE
                         }
@@ -644,7 +601,6 @@ fun BangumiPlayerView(
                         }
                         surfaceView.updateConfig(anime4kConfig)
                         surfaceView.updateInputSize(videoSizeState.first, videoSizeState.second)
-                        surfaceView.updateFlip(features.isFlippedHorizontal, features.isFlippedVertical)
                         surfaceView.updateDisplayScaleMode(currentAspectRatio.toAnime4KDisplayScaleMode())
                         surfaceView.visibility = View.VISIBLE
                     },
@@ -659,15 +615,7 @@ fun BangumiPlayerView(
         }
         
         // 弹幕层 - 使用 DanmakuRenderEngine
-        if (features.isAudioOnly) {
-            coil3.compose.AsyncImage(
-                model = com.android.purebilibili.core.util.FormatUtils.fixImageUrl(coverUrl),
-                contentDescription = "番剧封面",
-                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().background(Color.Black),
-            )
-        }
-        if (danmakuEnabled && !features.isAudioOnly && !features.isInPipMode) {
+        if (danmakuEnabled) {
             key(danmakuManager) {
                 AndroidView(
                     factory = { ctx ->
@@ -723,7 +671,7 @@ fun BangumiPlayerView(
         NextWatchOverlay(
             player = exoPlayer,
             mediaKey = "bangumi:$epId:$cid",
-            eligible = !features.isInPipMode && !showControls && !isScreenLocked && !showGestureIndicator &&
+            eligible = !showControls && !isScreenLocked && !showGestureIndicator &&
                 exoPlayer.repeatMode != androidx.media3.common.Player.REPEAT_MODE_ONE,
             resolve = {
                 pages.getOrNull(currentPageIndex + 1)?.let { next ->
@@ -742,23 +690,8 @@ fun BangumiPlayerView(
             },
         )
 
-        if (!features.isInPipMode && !features.isAudioOnly) {
-            BangumiSubtitleOverlay(exoPlayer, features.subtitle, showControls, isFullscreen, playerViewRef?.height ?: 0)
-        }
         BangumiPlayerOverlayHost(
             player = exoPlayer,
-            features = features.copy(
-                isFlippedHorizontal = features.isFlippedHorizontal && !requiresHdrSurface,
-                isFlippedVertical = features.isFlippedVertical && !requiresHdrSurface,
-                onFlipHorizontal = {
-                    if (requiresHdrSurface) onShowMessage("HDR 画面暂不支持镜像，请先切换至普通画质")
-                    else features.onFlipHorizontal()
-                },
-                onFlipVertical = {
-                    if (requiresHdrSurface) onShowMessage("HDR 画面暂不支持翻转，请先切换至普通画质")
-                    else features.onFlipVertical()
-                },
-            ),
             seasonId = seasonId,
             epId = epId,
             title = title,
@@ -770,7 +703,7 @@ fun BangumiPlayerView(
             currentVideoUrl = currentVideoUrl,
             currentAudioUrl = currentAudioUrl,
             debugInfo = debugInfo,
-            isVisible = showControls && gestureMode == BangumiGestureMode.None && !features.isInPipMode,
+            isVisible = showControls && gestureMode == BangumiGestureMode.None,
             onToggleVisible = { showControls = !showControls },
             isFullscreen = isFullscreen,
             isScreenLocked = isScreenLocked,

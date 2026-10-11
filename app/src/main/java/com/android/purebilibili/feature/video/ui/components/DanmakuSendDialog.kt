@@ -124,7 +124,6 @@ fun DanmakuSendDialog(
     initialFontSize: Int = 25,
     initialText: String = "",
     initialAttentionCommand: Boolean = false,
-    attentionCommandAvailable: Boolean = true,
     onDraftChange: (String, Boolean) -> Unit = { _, _ -> },
     onSelectionChange: (color: Int, mode: Int, fontSize: Int) -> Unit = { _, _, _ -> },
     topReservedSpace: Dp = 0.dp,
@@ -448,7 +447,7 @@ fun DanmakuSendDialog(
                             }
                         }
 
-                        if (attentionCommandAvailable) Row(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(AppShapes.container(ContainerLevel.Card))
@@ -562,7 +561,7 @@ fun DanmakuSendDialog(
                                         selectedColor,
                                         selectedMode,
                                         selectedFontSize,
-                                        attentionCommandChecked && attentionCommandAvailable
+                                        attentionCommandChecked
                                     )
                                 }
                             },

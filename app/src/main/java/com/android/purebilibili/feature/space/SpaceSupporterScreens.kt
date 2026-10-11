@@ -371,7 +371,7 @@ private fun SpaceGuardPodium(
                         Box(contentAlignment = Alignment.Center) {
                             AppText(
                                 text = (tops.indexOf(member) + 1).toString(),
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
                         }

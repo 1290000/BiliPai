@@ -62,7 +62,6 @@ data class LiveDanmakuItem(
     val isAdmin: Boolean = false,
     val guardLevel: Int = 0, // 0=none, 1=总督, 2=提督, 3=舰长
     val replyToName: String = "",
-    val replyToUid: Long = 0L,
     val isSuperChat: Boolean = false,
     val superChatId: Long = 0,
     val superChatPrice: String = "",
@@ -182,9 +181,6 @@ class LivePlayerViewModel : ViewModel() {
     private val _events = MutableSharedFlow<LivePlayerEvent>(extraBufferCapacity = 16)
     val events = _events.asSharedFlow()
 
-    private val _isSending = MutableStateFlow(false)
-    val isSending = _isSending.asStateFlow()
-    private var sendJob: kotlinx.coroutines.Job? = null
     private val _replyTarget = MutableStateFlow<LiveDanmakuItem?>(null)
     val replyTarget = _replyTarget.asStateFlow()
 
@@ -250,8 +246,6 @@ class LivePlayerViewModel : ViewModel() {
             _superChatItems.value = emptyList()
             superChatExpiryJob?.cancel()
             followJob?.cancel()
-            sendJob?.cancel()
-            _isSending.value = false
             _replyTarget.value = null
             _shieldInfo.value = null
             danmakuFilter = LiveDanmakuFilterPolicy()
@@ -891,7 +885,6 @@ class LivePlayerViewModel : ViewModel() {
                         uname = seed.uname,
                         emoticonUrl = seed.emoticonUrl,
                         replyToName = seed.replyToName,
-                        replyToUid = seed.replyToUid,
                         dmType = seed.dmType,
                         idStr = seed.idStr,
                         reportTs = seed.reportTs,
@@ -955,7 +948,7 @@ class LivePlayerViewModel : ViewModel() {
      * @param mode 弹幕模式（1=滚动，4=底部，5=顶部，默认滚动）
      */
     fun sendDanmaku(text: String, color: Int = 16777215, mode: Int = 1) {
-        if (text.isBlank() || currentRoomId == 0L || _isSending.value) return
+        if (text.isBlank() || currentRoomId == 0L) return
         val currentPermission = (_uiState.value as? LivePlayerState.Success)?.danmakuPermission
         if (currentPermission != null) {
             if (!currentPermission.canSend) {
@@ -977,58 +970,52 @@ class LivePlayerViewModel : ViewModel() {
                 return
             }
         }
-
+        
         val roomId = currentRoomId
         val reply = _replyTarget.value
-        _isSending.value = true
-        sendJob = viewModelScope.launch {
-            try {
-                val request = LiveDanmakuSendRequest(
-                    roomId = roomId,
-                    message = text,
+        viewModelScope.launch {
+            val request = LiveDanmakuSendRequest(
+                roomId = roomId,
+                message = text,
+                color = color,
+                mode = mode,
+                replyMid = reply?.uid ?: 0L,
+                replyAttr = 0,
+                replyUname = "",
+                replayDmid = reply?.idStr.orEmpty()
+            )
+            val result = LiveRepository.sendDanmaku(request)
+            result.onSuccess {
+                currentCoroutineContext().ensureActive()
+                if (currentRoomId != roomId) return@onSuccess
+                // 记录发送的弹幕（用于去重）
+                recentSentDanmaku = text
+                recentSentTime = System.currentTimeMillis()
+                if (_replyTarget.value === reply) _replyTarget.value = null
+                _events.tryEmit(LivePlayerEvent.DanmakuSent(text))
+                
+                // 发送成功，模拟一条本地弹幕立即上屏（沿用所选颜色与模式）
+                val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
+                val item = LiveDanmakuItem(
+                    text = text,
                     color = color,
                     mode = mode,
-                    replyMid = reply?.uid ?: 0L,
-                    replyAttr = 0,
-                    replyUname = "",
-                    replayDmid = reply?.idStr.orEmpty()
+                    uid = mid,
+                    uname = "我",
+                    isSelf = true,
+                    replyToName = reply?.uname.orEmpty()
                 )
-                val result = LiveRepository.sendDanmaku(request)
-                result.onSuccess {
-                    currentCoroutineContext().ensureActive()
-                    if (currentRoomId != roomId) return@onSuccess
-                    // 记录发送的弹幕（用于去重）
-                    recentSentDanmaku = text
-                    recentSentTime = System.currentTimeMillis()
-                    if (_replyTarget.value === reply) _replyTarget.value = null
-                    _events.tryEmit(LivePlayerEvent.DanmakuSent(text))
-
-                    // 发送成功，模拟一条本地弹幕立即上屏（沿用所选颜色与模式）
-                    val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
-                    val item = LiveDanmakuItem(
-                        text = text,
-                        color = color,
-                        mode = mode,
-                        uid = mid,
-                        uname = "我",
-                        isSelf = true,
-                        replyToName = reply?.uname.orEmpty(),
-                        replyToUid = reply?.uid ?: 0L
-                    )
-                    emitOwnLiveChatItem(item)
-                }.onFailure { e ->
-                    if (currentRoomId != roomId) return@onFailure
-                    android.util.Log.e("LivePlayer", "Send danmaku failed: ${e.message}")
-                    _events.tryEmit(LivePlayerEvent.Toast(e.message ?: "弹幕发送失败"))
-                }
-            } finally {
-                if (currentRoomId == roomId) _isSending.value = false
+                emitOwnLiveChatItem(item)
+            }.onFailure { e ->
+                if (currentRoomId != roomId) return@onFailure
+                android.util.Log.e("LivePlayer", "Send danmaku failed: ${e.message}")
+                _events.tryEmit(LivePlayerEvent.Toast(e.message ?: "弹幕发送失败"))
             }
         }
     }
 
     fun sendEmoticon(item: LiveEmoticonItem) {
-        if (currentRoomId == 0L || _isSending.value) return
+        if (currentRoomId == 0L) return
         val roomId = currentRoomId
         val reply = _replyTarget.value
         val request = buildLiveEmoticonSendRequest(
@@ -1037,35 +1024,29 @@ class LivePlayerViewModel : ViewModel() {
             _events.tryEmit(LivePlayerEvent.Toast(it.message ?: "表情无法发送"))
             return
         }
-        _isSending.value = true
-        sendJob = viewModelScope.launch {
-            try {
-                LiveRepository.sendDanmaku(request).onSuccess {
-                    currentCoroutineContext().ensureActive()
-                    if (currentRoomId != roomId) return@onSuccess
-                    recentSentDanmaku = item.displayText
-                    recentSentTime = System.currentTimeMillis()
-                    if (item.dmType == 0 && _replyTarget.value === reply) _replyTarget.value = null
-                    _events.tryEmit(LivePlayerEvent.EmoticonSent)
-                    val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
-                    emitOwnLiveChatItem(
-                        LiveDanmakuItem(
-                            text = item.displayText,
-                            uid = mid,
-                            uname = "我",
-                            isSelf = true,
-                            replyToName = if (item.dmType == 0) reply?.uname.orEmpty() else "",
-                            replyToUid = if (item.dmType == 0) reply?.uid ?: 0L else 0L,
-                            emoticonUrl = item.url.takeIf { item.dmType == 1 && it.isNotBlank() },
-                            dmType = item.dmType
-                        )
+        viewModelScope.launch {
+            LiveRepository.sendDanmaku(request).onSuccess {
+                currentCoroutineContext().ensureActive()
+                if (currentRoomId != roomId) return@onSuccess
+                recentSentDanmaku = item.displayText
+                recentSentTime = System.currentTimeMillis()
+                if (item.dmType == 0 && _replyTarget.value === reply) _replyTarget.value = null
+                _events.tryEmit(LivePlayerEvent.EmoticonSent)
+                val mid = com.android.purebilibili.core.store.TokenManager.midCache ?: 0L
+                emitOwnLiveChatItem(
+                    LiveDanmakuItem(
+                        text = item.displayText,
+                        uid = mid,
+                        uname = "我",
+                        isSelf = true,
+                        replyToName = if (item.dmType == 0) reply?.uname.orEmpty() else "",
+                        emoticonUrl = item.url.takeIf { item.dmType == 1 && it.isNotBlank() },
+                        dmType = item.dmType
                     )
-                }.onFailure { e ->
-                    if (currentRoomId != roomId) return@onFailure
-                    _events.tryEmit(LivePlayerEvent.Toast(e.message ?: "表情发送失败"))
-                }
-            } finally {
-                if (currentRoomId == roomId) _isSending.value = false
+                )
+            }.onFailure { e ->
+                if (currentRoomId != roomId) return@onFailure
+                _events.tryEmit(LivePlayerEvent.Toast(e.message ?: "表情发送失败"))
             }
         }
     }

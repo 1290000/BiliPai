@@ -45,7 +45,6 @@ internal data class LiveRoomCardUiModel(
     val hostName: String,
     val viewerCount: Int,
     val areaName: String,
-    val viewerText: String = "",
 )
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -143,7 +142,7 @@ internal fun LiveRoomCard(
                     )
                     Spacer(Modifier.width(AppSpacingTokens.Small))
                     AppText(
-                        text = model.viewerText.ifBlank { "${formatLiveViewerCount(model.viewerCount)}人看过" },
+                        text = "${formatLiveViewerCount(model.viewerCount)}人看过",
                         color = LiveStatusPalette.MediaContent,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFeatureSettings = AppTypographyTokens.TabularNumerals

@@ -1169,7 +1169,7 @@ fun WatchLaterScreen(
                         enabled = !isBatchMode,
                         height = watchLaterFilterChrome.heightDp.dp,
                         indicatorHeight = watchLaterFilterChrome.indicatorHeightDp.dp,
-                        labelFontSize = com.android.purebilibili.core.ui.appTabLabelFontSize(),
+                        labelFontSize = watchLaterFilterChrome.labelFontSizeSp.sp,
                         dragSelectionEnabled = watchLaterFilterChrome.dragSelectionEnabled,
                         tapPressRefractionEnabled = true,
                         modifier = Modifier

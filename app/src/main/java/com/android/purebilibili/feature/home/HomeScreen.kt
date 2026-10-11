@@ -2076,7 +2076,6 @@ fun HomeScreen(
                                     onSearchClick = onLiveSearchClick,
                                     onAreaListClick = onLiveAreaClick,
                                     onFollowingClick = onLiveFollowingClick,
-                                    onUserClick = onSpaceClick,
                                     onAreaDetailClick = onLiveAreaDetailClick,
                                     showNavigationBack = false,
                                     embeddedInHome = true,

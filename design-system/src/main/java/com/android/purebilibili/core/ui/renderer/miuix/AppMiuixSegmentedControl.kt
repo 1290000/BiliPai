@@ -440,7 +440,6 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
         AppSurfaceTokens.groupedListContainer()
     } else Color.Transparent
     val listState = rememberLazyListState()
-    val initialSelectionPositioned = remember(listState) { object { var value = false } }
     val motionEnabled = com.android.purebilibili.core.ui.LocalComponentMotionEnabled.current
     val density = LocalDensity.current
     LaunchedEffect(selectedIndex, itemWidths, motionEnabled, density) {
@@ -448,7 +447,6 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
         snapshotFlow { listState.layoutInfo.viewportSize.width to listState.layoutInfo.totalItemsCount }
             .filter { (width, count) -> width > 0 && count > 0 }
             .collectLatest {
-                val animateSelection = motionEnabled && initialSelectionPositioned.value
                 val target = selectedIndex.coerceIn(0, options.lastIndex)
                 val info = listState.layoutInfo
                 val viewportWidth = info.viewportEndOffset - info.viewportStartOffset
@@ -461,7 +459,7 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
                 val leadingSpace = ((viewportWidth - itemWidthPx) / 2).coerceAtLeast(0)
                 val item = info.visibleItemsInfo.firstOrNull { it.index == target }
                 if (item == null) {
-                    if (animateSelection) {
+                    if (motionEnabled) {
                         listState.animateScrollToItem(target, scrollOffset = -leadingSpace)
                     } else {
                         listState.scrollToItem(target, scrollOffset = -leadingSpace)
@@ -476,10 +474,9 @@ private fun <T> AppMiuixContentSizedNonGlassTabs(
                         ).toFloat()
                     }
                     if (delta != 0f) {
-                        if (animateSelection) listState.animateScrollBy(delta) else listState.scrollBy(delta)
+                        if (motionEnabled) listState.animateScrollBy(delta) else listState.scrollBy(delta)
                     }
                 }
-                initialSelectionPositioned.value = true
             }
     }
     Box(

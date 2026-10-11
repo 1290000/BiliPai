@@ -1,7 +1,5 @@
 package com.android.purebilibili.feature.live
 
-import androidx.compose.ui.graphics.Color
-
 import com.android.purebilibili.core.ui.components.AppDurationPicker
 import com.android.purebilibili.navigation.animatePagerSelection
 import com.android.purebilibili.core.ui.components.AppHorizontalDivider
@@ -52,7 +50,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -106,7 +103,7 @@ import com.android.purebilibili.feature.live.components.LiveChatInputBar
 import com.android.purebilibili.feature.video.ui.feedback.followActionAnchor
 import com.android.purebilibili.feature.live.components.LiveContributionRankSheet
 import com.android.purebilibili.feature.live.components.LiveDmBlockSheet
-import com.android.purebilibili.feature.live.components.LiveEmoticonPanel
+import com.android.purebilibili.feature.live.components.LiveEmoticonSheet
 import com.android.purebilibili.feature.live.components.LivePlayerControls
 import com.android.purebilibili.feature.live.components.LivePortraitBottomBar
 import com.android.purebilibili.feature.live.components.LivePortraitChatPreview
@@ -219,9 +216,7 @@ fun LivePlayerScreen(
     var showContributionRankSheet by remember { mutableStateOf(false) }
     var showSendDanmakuSheet by remember { mutableStateOf(false) }
     var showEmoticonSheet by remember { mutableStateOf(false) }
-    var sendColor by rememberSaveable(roomId, siteId) { mutableIntStateOf(16777215) }
-    var sendMode by rememberSaveable(roomId, siteId) { mutableIntStateOf(1) }
-    var danmakuDraft by rememberSaveable(roomId, siteId) { mutableStateOf("") }
+    var danmakuDraft by remember(roomId, siteId) { mutableStateOf("") }
     var showShareMessageSheet by remember { mutableStateOf(false) }
     var showStreamSourceSheet by remember { mutableStateOf(false) }
     var showPortraitMoreSheet by remember(roomId, siteId) { mutableStateOf(false) }
@@ -240,8 +235,6 @@ fun LivePlayerScreen(
     var wasPlaybackActiveBeforePause by remember { mutableStateOf(false) }
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     var trackSelectionBeforeAudioOnly by remember { mutableStateOf<TrackSelectionParameters?>(null) }
-    var videoScale by rememberSaveable(roomId, siteId) { mutableFloatStateOf(1f) }
-    var showVoteSheet by remember { mutableStateOf(false) }
     var videoAspectRatio by remember { mutableStateOf(VideoAspectRatio.FIT) }
     var backgroundPlaybackEnabled by remember {
         mutableStateOf(SettingsManager.getBackgroundPlaybackEnabledSync(context))
@@ -258,7 +251,6 @@ fun LivePlayerScreen(
     val superChatItems by viewModel.superChatItems.collectAsStateWithLifecycle()
     val chatHistory by viewModel.chatHistory.collectAsStateWithLifecycle()
     val replyTarget by viewModel.replyTarget.collectAsStateWithLifecycle()
-    val isSending by viewModel.isSending.collectAsStateWithLifecycle()
     val emoticonPackages by viewModel.emoticonPackages.collectAsStateWithLifecycle()
     val shieldInfo by viewModel.shieldInfo.collectAsStateWithLifecycle()
     val voteSnapshot by viewModel.voteSnapshot.collectAsStateWithLifecycle()
@@ -315,7 +307,22 @@ fun LivePlayerScreen(
         isFullscreen = isFullscreen,
     )
     val playerGesturePolicy = resolveLivePlayerGesturePolicy(liveLayoutMode)
+    LaunchedEffect(liveLayoutMode) {
+        if (!portraitPresentation.usePortraitControls) {
+            showPortraitMoreSheet = false
+            showPortraitInteractionSheet = false
+        }
+    }
+    val portraitChatPreviewCount = resolveLivePortraitChatPreviewCount(
+        configuration.screenHeightDp,
+        configuration.fontScale,
+    )
     val reduceMotion = rememberSystemReduceMotion()
+    val latestTogglePortraitClearScreen by rememberUpdatedState(newValue = {
+        val nextClearScreen = !isPortraitClearScreen
+        isPortraitClearScreen = nextClearScreen
+        if (!nextClearScreen) showPortraitPlayerControls = true
+    })
     val visibleInteractionOverlay = if (portraitPresentation.usePortraitControls) {
         portraitPresentation.showChatPreview
     } else {
@@ -328,8 +335,6 @@ fun LivePlayerScreen(
         .getDanmakuSettings(context, liveDanmakuSettingsScope)
         .collectAsStateWithLifecycle(initialValue = DanmakuSettings())
     val liveDanmakuDisplayArea = liveDanmakuSettings.displayArea
-    val liveSuperChatPanelEnabled by SettingsManager.getLiveSuperChatPanelEnabled(context)
-        .collectAsStateWithLifecycle(initialValue = true)
     val liveSuperChatFlashEnabled by SettingsManager
         .getLiveSuperChatFlashEnabled(context)
         .collectAsStateWithLifecycle(initialValue = true)
@@ -394,14 +399,18 @@ fun LivePlayerScreen(
             isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
-    val splitChatPanelWidthDp = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+    val splitChatPanelWidthDp = remember(configuration.screenWidthDp) {
         resolveLiveSplitChatPanelWidthDp(
             screenWidthDp = configuration.screenWidthDp,
-            screenHeightDp = configuration.screenHeightDp,
             contentPaddingDp = AppSpacingTokens.Medium.value.toInt() * 2,
         )
     }
-
+    val showLandscapeChatOverlay = remember(liveLayoutMode, isInteractionPanelVisible) {
+        shouldShowLiveLandscapeChatOverlay(
+            layoutMode = liveLayoutMode,
+            isInteractionPanelVisible = isInteractionPanelVisible
+        )
+    }
     val useTextureSurfaceForLivePlayer = remember(sharedTransitionScope, animatedVisibilityScope) {
         shouldUseTextureSurfaceForLivePlayer(
             hasSharedTransitionScope = sharedTransitionScope != null,
@@ -417,6 +426,9 @@ fun LivePlayerScreen(
     
     // 强制横屏切换
     fun toggleFullscreen() {
+        // 横屏聊天面板属于全屏互动层。退出全屏后清掉其展开状态，避免
+        // Activity 完成方向切换前仍按旧状态把聊天浮层带回普通直播页。
+        if (isFullscreen) isInteractionPanelVisible = false
         showPortraitMoreSheet = false
         showPortraitInteractionSheet = false
         showPortraitPlayerControls = true
@@ -986,13 +998,13 @@ fun LivePlayerScreen(
         ) {
             // Video View
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize().clipToBounds(),
-                contentAlignment = if (liveLayoutMode == LiveRoomLayoutMode.PortraitVerticalOverlay && !isFullscreen) Alignment.TopCenter else Alignment.Center
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
                 val density = LocalDensity.current
                 val viewportAspectRatio = resolveLiveViewportAspectRatio(
                     selected = videoAspectRatio,
-                    usePortraitControls = false,
+                    usePortraitControls = portraitPresentation.usePortraitControls,
                     portraitExpandEnabled = livePortraitExpandEnabled,
                 )
                 val viewportLayout = remember(maxWidth, maxHeight, viewportAspectRatio) {
@@ -1005,7 +1017,7 @@ fun LivePlayerScreen(
                     }
                 }
                 val viewportModifier = with(density) {
-                    Modifier.graphicsLayer(scaleX = videoScale, scaleY = videoScale).size(
+                    Modifier.size(
                         width = viewportLayout.width.toDp(),
                         height = viewportLayout.height.toDp()
                     )
@@ -1072,7 +1084,7 @@ fun LivePlayerScreen(
                 isPlaying = exoPlayer.playWhenReady,
                 isFullscreen = isFullscreen,
                 gesturePolicy = playerGesturePolicy,
-                usePortraitControls = false,
+                usePortraitControls = portraitPresentation.usePortraitControls,
                 isClearScreen = portraitPresentation.clearScreen,
                 onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
                 onOpenPortraitMore = {
@@ -1092,10 +1104,7 @@ fun LivePlayerScreen(
                 onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
                 // 侧边栏开关
                 isChatVisible = isInteractionPanelVisible,
-                onToggleChat = {
-                    if (isFullscreen) showPortraitInteractionSheet = true
-                    else isInteractionPanelVisible = !isInteractionPanelVisible
-                },
+                onToggleChat = { isInteractionPanelVisible = !isInteractionPanelVisible },
                 showChatToggle = showChatToggle,
                 // 弹幕开关
                 isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
@@ -1117,10 +1126,6 @@ fun LivePlayerScreen(
                 onQualityClick = { showQualityMenu = true },
                 currentSourceDesc = currentSourceDesc,
                 onSourceClick = { showStreamSourceSheet = true },
-                onOpenMore = { showPortraitMoreSheet = true },
-                videoScale = videoScale,
-                onScale = { zoom -> videoScale = (videoScale * zoom).coerceIn(0.5f, 3f) },
-                onResetScale = { videoScale = 1f },
                 showPipButton = showLivePipButton,
                 onEnterPip = { enterLivePip() },
                 showLockButton = isFullscreen,
@@ -1183,7 +1188,7 @@ fun LivePlayerScreen(
     val chatContent: @Composable (Boolean, Boolean) -> Unit = { isOverlay, showHeader ->
         LiveChatSection(
             messages = chatHistory,
-            onOpenSend = { showSendDanmakuSheet = true },
+            onSendDanmaku = { text -> viewModel.sendDanmaku(text) },
             headerTitle = "实时互动",
             supportingText = "发送弹幕和主播互动",
             isOverlay = isOverlay,
@@ -1193,7 +1198,6 @@ fun LivePlayerScreen(
             onLike = { count -> viewModel.clickLike(count) },
             onOpenEmote = {
                 showEmoticonSheet = true
-                showSendDanmakuSheet = true
             },
             onUserClick = onUserClick,
             onAtUser = { item ->
@@ -1211,33 +1215,30 @@ fun LivePlayerScreen(
             onReportDanmaku = { item ->
                 reportTarget = item
             },
-            showInputBar = false,
+            showInputBar = liveLayoutMode != LiveRoomLayoutMode.PortraitPanel,
             modifier = Modifier.fillMaxSize()
         )
     }
 
-    val interactionInput: @Composable (Boolean) -> Unit = { isOverlay ->
+    val portraitPersistentInput: @Composable () -> Unit = {
         LiveChatInputBar(
-            isOverlay = isOverlay,
+            isOverlay = false,
             isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
             onToggleDanmaku = { toggleLiveDanmaku() },
             onLike = { count -> viewModel.clickLike(count) },
-            onOpenEmote = { showEmoticonSheet = true
-                showSendDanmakuSheet = true },
-            onOpenSend = { showSendDanmakuSheet = true },
-            selectedPage = selectedInteractionTab,
-            showPageIndicator = liveSuperChatPanelEnabled,
+            onOpenEmote = { showEmoticonSheet = true },
+            onSend = { text -> viewModel.sendDanmaku(text) },
         )
     }
 
-    val interactionContent: @Composable (Boolean, Boolean) -> Unit = { isOverlay, includeFooter ->
+    val interactionContent: @Composable (Boolean) -> Unit = { isOverlay ->
         LivePrimaryInteractionPanel(
-            isOverlay = isOverlay,
             selectedTab = selectedInteractionTab,
-            showSuperChat = liveSuperChatPanelEnabled,
             onSelectedTab = { selectedInteractionTab = it },
             chatContent = { chatContent(isOverlay, false) },
-            persistentFooter = if (includeFooter) { { interactionInput(isOverlay) } } else null,
+            persistentFooter = if (liveLayoutMode == LiveRoomLayoutMode.PortraitPanel) {
+                portraitPersistentInput
+            } else null,
             superChatContent = {
                 LiveSuperChatSection(
                     items = superChatItems,
@@ -1327,7 +1328,6 @@ fun LivePlayerScreen(
             currentQualityDesc = currentQualityDesc,
             onFollowClick = { viewModel.toggleFollow() },
             onQualityClick = { showQualityMenu = true },
-            onlineRankText = roomInfo.onlineRankText,
             onOpenRank = { showContributionRankSheet = true },
             onOpenSend = { showSendDanmakuSheet = true },
             onOpenBlock = { showBlockDialog = true },
@@ -1343,7 +1343,37 @@ fun LivePlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .then(keyboardModifier)
-
+            .pointerInput(portraitPresentation.usePortraitControls) {
+                if (portraitPresentation.usePortraitControls) {
+                    var horizontalDrag = 0f
+                    var lastTriggeredDirection = 0
+                    var startedInCenter = false
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            horizontalDrag = 0f
+                            lastTriggeredDirection = 0
+                            startedInCenter = offset.x in (size.width / 3f)..(size.width * 2f / 3f) &&
+                                offset.y in (size.height * 0.2f)..(size.height * 0.8f)
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            horizontalDrag += dragAmount
+                            val threshold = size.width * 0.16f
+                            val direction = when {
+                                horizontalDrag <= -threshold -> -1
+                                horizontalDrag >= threshold -> 1
+                                else -> 0
+                            }
+                            if (startedInCenter && direction != 0 && direction != lastTriggeredDirection) {
+                                latestTogglePortraitClearScreen()
+                                lastTriggeredDirection = direction
+                                change.consume()
+                            }
+                        },
+                        onDragEnd = { startedInCenter = false },
+                        onDragCancel = { startedInCenter = false },
+                    )
+                }
+            }
     ) {
     if (hingeAdaptiveInfo.shouldAvoidHinge) {
         com.android.purebilibili.core.ui.adaptive.AppHingePaneLayout(
@@ -1355,7 +1385,7 @@ fun LivePlayerScreen(
                 }
             },
             secondaryContent = if (isInteractionPanelVisible) {
-                { LiveLandscapeChatPanel(Modifier.fillMaxSize()) { interactionContent(false, true) } }
+                { LiveLandscapeChatPanel(Modifier.fillMaxSize()) { interactionContent(false) } }
             } else null,
         )
     } else when (liveLayoutMode) {
@@ -1391,7 +1421,7 @@ fun LivePlayerScreen(
                                     .fillMaxHeight()
                                     .padding(bottom = AppSpacingTokens.Medium)
                             ) {
-                                interactionContent(false, true)
+                                interactionContent(false)
                             }
                         }
                     }
@@ -1419,36 +1449,208 @@ fun LivePlayerScreen(
                             .widthIn(max = (configuration.screenWidthDp / 2).dp)
                     )
                 }
+                if (showLandscapeChatOverlay) {
+                    val screenWidthDp = maxWidth.value.roundToInt()
+                    val screenHeightDp = maxHeight.value.roundToInt()
+                    val overlayMetrics = remember(screenWidthDp, screenHeightDp) {
+                        resolveLiveLandscapeChatOverlayMetrics(
+                            screenWidthDp = screenWidthDp,
+                            screenHeightDp = screenHeightDp
+                        )
+                    }
+                    val overlayWidthDp = remember(screenWidthDp, overlayMetrics) {
+                        resolveLiveLandscapeChatOverlayWidthDp(
+                            screenWidthDp = screenWidthDp,
+                            metrics = overlayMetrics
+                        )
+                    }
+                    val overlayHeightDp = remember(screenHeightDp, overlayMetrics) {
+                        resolveLiveLandscapeChatOverlayHeightDp(
+                            screenHeightDp = screenHeightDp,
+                            metrics = overlayMetrics
+                        )
+                    }
+                    val overlayShape = AppShapes.borderedContainer(ContainerLevel.Floating)
+                    AppSurface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(
+                                end = overlayMetrics.edgePaddingDp.dp,
+                                bottom = overlayMetrics.bottomControlReserveDp.dp
+                            )
+                            .width(overlayWidthDp.dp)
+                            .height(overlayHeightDp.dp)
+                            .clip(overlayShape)
+                            .hazeEffectCompat(
+                                state = hazeState,
+                                style = HazeMaterials.ultraThin()
+                            ),
+                        shape = overlayShape,
+                        color = roomColorTokens.baseBackgroundColor.copy(alpha = 0.28f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            AppSpacingTokens.Micro / 2f,
+                            roomColorTokens.inputOverlayColor.copy(alpha = 0.15f)
+                        )
+                    ) {
+                        LandscapeChatOverlay(
+                            danmakuFlow = viewModel.danmakuFlow,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
         }
-
         LiveRoomLayoutMode.PortraitVerticalOverlay -> {
-            Box(Modifier.fillMaxSize()) {
-                LiveRoomBackdrop(imageUrl = liveCoverForUi, modifier = Modifier.fillMaxSize())
-                Column(Modifier.fillMaxSize()) {
-                    if (portraitPresentation.showChrome) roomAppBar()
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(roomColorTokens.baseBackgroundColor)
+            ) {
+                if (liveCoverForUi.isNotBlank()) {
+                    AsyncImage(
+                        model = liveCoverForUi,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(alpha = roomColorTokens.backdropImageAlpha)
+                    )
+                }
+                playerContent()
+                if (portraitPresentation.showChrome) {
+                    LivePortraitOverlayAppBar(
+                        roomTitle = liveRoomTitle,
+                        anchorInfo = anchorInfo,
+                        subtitle = liveSubtitle,
+                        onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
+                        onUserClick = onUserClick,
+                        onCopyLink = { copyLiveUrl() },
+                        onShare = { shareLiveUrl() },
+                        onShareToMessage = { shareLiveToMessage() },
+                        onOpenBrowser = { openLiveUrl() },
+                        isFollowing = successState?.isFollowing ?: false,
+                        currentQualityDesc = currentQualityDesc,
+                        onFollowClick = { viewModel.toggleFollow() },
+                        onQualityClick = { showQualityMenu = true },
+                        onOpenRank = { showContributionRankSheet = true },
+                        onOpenSend = { showSendDanmakuSheet = true },
+                        onOpenBlock = { showBlockDialog = true },
+                        redPocketInfo = successState?.redPocketInfo,
+                        onRedPocketClick = {
+                            successState?.redPocketInfo?.let { openRedPocket(it) }
+                        },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(
+                            horizontal = AppSpacingTokens.Medium,
+                            vertical = AppSpacingTokens.Small,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.Small),
+                ) {
+                    AnimatedVisibility(
+                        visible = portraitPresentation.showChatPreview,
+                        enter = if (reduceMotion) {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideInVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                        exit = if (reduceMotion) {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideOutVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                    ) {
+                        LivePortraitChatStream(
+                                messages = chatHistory.takeLast(portraitChatPreviewCount),
+                                superChatCount = superChatItems.size,
+                                onUserClick = onUserClick,
+                                onAtUser = { item ->
+                                    viewModel.setReplyTarget(item)
+                                    showSendDanmakuSheet = true
+                                },
+                                onOpenSuperChat = {
+                                    selectedInteractionTab = 1
+                                    showPortraitInteractionSheet = true
+                                },
+                                onBlockUser = { item ->
+                                    if (item.uid > 0L) {
+                                        viewModel.shieldUser(item.uid)
+                                    } else {
+                                        val keyword = item.uname.ifBlank { item.text }
+                                        if (keyword.isNotBlank()) addLiveBlockKeyword(keyword)
+                                    }
+                                },
+                                onReportDanmaku = { item ->
+                                    reportTarget = item
+                                },
+                                onOpenHistory = {
+                                    selectedInteractionTab = 0
+                                    showPortraitInteractionSheet = true
+                                },
+                                hazeState = hazeState,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.88f)
+                                    .heightIn(max = portraitOverlayPanelHeightDp.dp),
+                        )
+                    }
+                    AnimatedVisibility(
+                        visible = portraitPresentation.showChrome,
+                        enter = if (reduceMotion) {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeIn(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideInVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                        exit = if (reduceMotion) {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec())
+                        } else {
+                            fadeOut(animationSpec = AppMotionTokens.standardSpec()) +
+                                slideOutVertically(AppMotionTokens.standardSpec()) { it / 8 }
+                        },
+                    ) {
+                        LivePortraitBottomBar(
+                            isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
+                            chatVisible = isPortraitChatVisible,
+                            onToggleDanmaku = { toggleLiveDanmaku() },
+                            onOpenSend = { showSendDanmakuSheet = true },
+                            onOpenEmote = { showEmoticonSheet = true },
+                            onToggleChat = { isPortraitChatVisible = !isPortraitChatVisible },
+                            onOpenMore = { showPortraitMoreSheet = true },
+                            onLike = { count -> viewModel.clickLike(count) },
+                            hazeState = hazeState,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                if (portraitPresentation.clearScreen) {
+                    AppSurface(
+                        onClick = {
+                            isPortraitClearScreen = false
+                            showPortraitPlayerControls = true
+                        },
+                        shape = AppShapes.container(ContainerLevel.Pill),
+                        color = LiveStatusPalette.MediaScrim.copy(alpha = 0.56f),
+                        contentColor = LiveStatusPalette.MediaContent,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .navigationBarsPadding()
+                            .padding(AppSpacingTokens.Medium)
+                            .heightIn(min = 40.dp),
+                    ) {
                         Box(
-                            Modifier.fillMaxSize().padding(bottom = if (portraitPresentation.showChatPreview) LIVE_INPUT_HEIGHT_DP.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 0.dp),
-                        ) { playerContent() }
-                        if (portraitPresentation.showChatPreview) {
-                            Box(
-                                Modifier.align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                                    .navigationBarsPadding()
-                                    .padding(bottom = (LIVE_INPUT_HEIGHT_DP + LIVE_CHAT_INPUT_GAP_DP).dp)
-                                    .height(portraitOverlayPanelHeightDp.dp),
-                            ) { interactionContent(true, false) }
-                            // Footer owns its navigation inset; the player and chat reserve the same height.
-                            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                                interactionInput(true)
-                            }
-                        }
-                        if (portraitPresentation.clearScreen) {
-                            AppTextButton(
-                                onClick = { isPortraitClearScreen = false },
-                                modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding(),
-                            ) { AppText("退出清屏", color = LiveStatusPalette.MediaContent) }
+                            modifier = Modifier.padding(horizontal = AppSpacingTokens.Large),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AppText("退出清屏", color = LiveStatusPalette.MediaContent)
                         }
                     }
                 }
@@ -1479,8 +1681,7 @@ fun LivePlayerScreen(
                         currentQualityDesc = currentQualityDesc,
                         onFollowClick = { viewModel.toggleFollow() },
                         onQualityClick = { showQualityMenu = true },
-                        onlineRankText = roomInfo.onlineRankText,
-            onOpenRank = { showContributionRankSheet = true },
+                        onOpenRank = { showContributionRankSheet = true },
                         onOpenSend = { showSendDanmakuSheet = true },
                         onOpenBlock = { showBlockDialog = true },
                         redPocketInfo = successState?.redPocketInfo,
@@ -1496,7 +1697,7 @@ fun LivePlayerScreen(
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        interactionContent(true, true)
+                        interactionContent(shouldUseLiveChatMediaOverlay(liveLayoutMode))
                     }
                 }
             }
@@ -1505,7 +1706,7 @@ fun LivePlayerScreen(
 
     // SC 左下角非侵入式悬浮卡片（不遮挡中央视频画面，仅响应实时新 SC，带倒计时与独立关闭）
     // 跟随弹幕开关显示，并可在弹幕设置中独立关闭
-    if (isFullscreen && shouldShowLiveSuperChatFlash(
+    if (shouldShowLiveSuperChatFlash(
             showMediaOverlays = portraitPresentation.showMediaOverlays,
             isDanmakuEnabled = successState?.isDanmakuEnabled == true,
             flashEnabled = liveSuperChatFlashEnabled
@@ -1521,15 +1722,12 @@ fun LivePlayerScreen(
     }
     }
 
-    if (showPortraitMoreSheet) {
+    if (portraitPresentation.showChrome && showPortraitMoreSheet) {
         LivePortraitMoreSheet(
             onDismiss = { showPortraitMoreSheet = false },
             actions = buildList {
-                if (portraitPresentation.usePortraitControls) {
-                    add(AppWindowAction("清屏", onClick = { isPortraitClearScreen = true }))
-                }
-                add(AppWindowAction("投票", onClick = { showVoteSheet = true }))
-                add(AppWindowAction("完整聊天 / SC", onClick = {
+                add(AppWindowAction("清屏", onClick = { isPortraitClearScreen = true }))
+                add(AppWindowAction("完整聊天 / SC / 投票", onClick = {
                     selectedInteractionTab = 0
                     showPortraitInteractionSheet = true
                 }))
@@ -1544,7 +1742,7 @@ fun LivePlayerScreen(
                     if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
                 }))
                 add(AppWindowAction(
-                    if (isFullscreen) "退出全屏" else "全屏观看",
+                    if (isFullscreen) "退出竖屏全屏" else "竖屏全屏观看",
                     onClick = { toggleFullscreen() },
                 ))
                 if (showLivePipButton) {
@@ -1572,26 +1770,19 @@ fun LivePlayerScreen(
         )
     }
 
-    if (showPortraitInteractionSheet) {
+    if (portraitPresentation.showChrome && showPortraitInteractionSheet) {
         AppModalBottomSheet(onDismissRequest = { showPortraitInteractionSheet = false }) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height((configuration.screenHeightDp * 0.58f).dp)
             ) {
-                interactionContent(false, true)
+                interactionContent(false)
             }
         }
     }
     
     // 画质菜单（BiliPai 同款底部选择 + 原生 chip 分发）
-    if (showVoteSheet) {
-        AppModalBottomSheet(onDismissRequest = { showVoteSheet = false }) {
-            Box(Modifier.fillMaxWidth().height((configuration.screenHeightDp * 0.6f).dp)) {
-                LiveVotePanel(voteSnapshot, Modifier.fillMaxSize())
-            }
-        }
-    }
     if (showQualityMenu) {
         val successState = uiState as? LivePlayerState.Success
         if (successState != null) {
@@ -1631,10 +1822,6 @@ fun LivePlayerScreen(
             allowTop = liveDanmakuSettings.allowTop,
             allowBottom = liveDanmakuSettings.allowBottom,
             allowColorful = liveDanmakuSettings.allowColorful,
-            superChatPanelEnabled = liveSuperChatPanelEnabled,
-            onToggleSuperChatPanel = {
-                coroutineScope.launch { SettingsManager.setLiveSuperChatPanelEnabled(context, !liveSuperChatPanelEnabled) }
-            },
             superChatFlashEnabled = liveSuperChatFlashEnabled,
             superChatPersistent = liveSuperChatPersistent,
             superChatMaxWidthDp = liveSuperChatMaxWidthDp,
@@ -1742,7 +1929,6 @@ fun LivePlayerScreen(
             shieldInfo = shieldInfo,
             isLoggedIn = com.android.purebilibili.core.store.TokenManager.midCache != null,
             onAddKeyword = { keyword -> viewModel.addShieldKeyword(keyword) },
-            onAddUser = viewModel::shieldUser,
             onDeleteKeyword = { keyword -> viewModel.deleteShieldKeyword(keyword) },
             onUnblockUser = { user -> viewModel.unshieldUser(user.uid) },
             onSetRule = { type, level -> viewModel.setSilentRule(type, level) },
@@ -1761,6 +1947,27 @@ fun LivePlayerScreen(
         )
     }
 
+    if (showEmoticonSheet) {
+        LiveEmoticonSheet(
+            packages = emoticonPackages,
+            onInsertText = { item ->
+                val maxLength = successState?.danmakuPermission?.maxLength ?: 40
+                com.android.purebilibili.data.repository.appendLiveTextEmoticon(
+                    draft = danmakuDraft,
+                    item = item,
+                    maxLength = maxLength
+                ).onSuccess { draft ->
+                    danmakuDraft = draft
+                    showEmoticonSheet = false
+                    showSendDanmakuSheet = true
+                }.onFailure { error ->
+                    Toast.makeText(context, error.message, Toast.LENGTH_SHORT).show()
+                }
+            },
+            onSendEmoticon = { item -> viewModel.sendEmoticon(item) },
+            onDismiss = { showEmoticonSheet = false }
+        )
+    }
 
     if (showPlayerInfoDialog) {
         LivePlayerInfoDialog(
@@ -1797,7 +2004,6 @@ fun LivePlayerScreen(
             roomTitle = liveRoomTitle,
             anchorInfo = anchorInfo,
             roomInfo = roomInfo,
-            onUserClick = onUserClick,
             onDismiss = { showContributionRankSheet = false }
         )
     }
@@ -1813,11 +2019,11 @@ fun LivePlayerScreen(
         )
     }
 
-    if (showSendDanmakuSheet) {
+    if (showSendDanmakuSheet && !showEmoticonSheet) {
         LiveSendDanmakuSheet(
             onDismiss = {
                 showSendDanmakuSheet = false
-                showEmoticonSheet = false
+                viewModel.clearReplyTarget()
             },
             onSend = { message, color, mode ->
                 viewModel.sendDanmaku(message, color, mode)
@@ -1826,26 +2032,9 @@ fun LivePlayerScreen(
             onMessageChange = { danmakuDraft = it },
             permission = successState?.danmakuPermission ?: com.android.purebilibili.data.repository.LiveDanmakuPermission(),
             replyTarget = replyTarget,
-            isSending = isSending,
-            selectedColor = sendColor,
-            selectedMode = sendMode,
-            onColorSelected = { sendColor = it },
-            onModeSelected = { sendMode = it },
-            onClearReply = viewModel::clearReplyTarget,
-            onOpenEmote = { showEmoticonSheet = !showEmoticonSheet },
-            emoticonContent = if (showEmoticonSheet) ({
-                LiveEmoticonPanel(
-                    packages = emoticonPackages,
-                    enabled = !isSending,
-                    onInsertText = { item ->
-                        val maxLength = successState?.danmakuPermission?.maxLength ?: 40
-                        com.android.purebilibili.data.repository.appendLiveTextEmoticon(danmakuDraft, item, maxLength)
-                            .onSuccess { danmakuDraft = it }
-                            .onFailure { Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show() }
-                    },
-                    onSendEmoticon = viewModel::sendEmoticon,
-                )
-            }) else null,
+            onOpenEmote = {
+                showEmoticonSheet = true
+            },
         )
     }
 
@@ -1908,7 +2097,6 @@ private fun LivePortraitOverlayAppBar(
     currentQualityDesc: String,
     onFollowClick: () -> Unit,
     onQualityClick: () -> Unit,
-    onlineRankText: String,
     onOpenRank: () -> Unit,
     onOpenSend: () -> Unit,
     onOpenBlock: () -> Unit,
@@ -1932,8 +2120,10 @@ private fun LivePortraitOverlayAppBar(
                 )
             )
             .statusBarsPadding()
-            .height(56.dp)
-            .padding(horizontal = 14.dp),
+            .padding(
+                horizontal = AppSpacingTokens.Medium,
+                vertical = AppSpacingTokens.Medium
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AppIconButton(
@@ -1946,46 +2136,141 @@ private fun LivePortraitOverlayAppBar(
                 tint = roomColorTokens.inputOverlayColor
             )
         }
-        Row(
-            modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
-                .clickable(enabled = anchorInfo.uid > 0L) { onUserClick(anchorInfo.uid) },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        AppSurface(
+            shape = AppShapes.container(ContainerLevel.Pill),
+            color = LiveStatusPalette.MediaScrim.copy(alpha = 0.42f),
+            contentColor = roomColorTokens.inputOverlayColor,
+            modifier = Modifier
+                .clickable(
+                    enabled = anchorInfo.uid > 0L,
+                    role = Role.Button,
+                    onClickLabel = "查看主播${anchorInfo.uname}",
+                    onClick = { onUserClick(anchorInfo.uid) }
+                )
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "主播：${anchorInfo.uname}"
+                }
         ) {
-            AsyncImage(
-                model = anchorInfo.face,
-                contentDescription = "主播头像",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(34.dp).clip(CircleShape),
-            )
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(
+                    start = 2.dp,
+                    end = if (!isFollowing) 3.dp else AppSpacingTokens.ExtraSmall,
+                    top = 2.dp,
+                    bottom = 2.dp
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = anchorInfo.face,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(roomColorTokens.inputOverlayColor.copy(alpha = 0.18f))
+                )
+                Spacer(Modifier.width(AppSpacingTokens.Micro))
+                Column(
+                    modifier = Modifier.widthIn(min = 36.dp, max = 88.dp),
+                    verticalArrangement = Arrangement.Center
+                ) {
                     AppText(
-                        anchorInfo.uname.ifBlank { roomTitle },
-                        modifier = Modifier.weight(1f, fill = false),
-                        color = LiveStatusPalette.MediaContent,
-                        fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        text = anchorInfo.uname.ifBlank { roomTitle },
+                        color = roomColorTokens.inputOverlayColor,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    if (onlineRankText.isNotBlank()) {
+                    val secondaryText = subtitle.ifBlank { roomTitle }
+                    if (secondaryText.isNotBlank()) {
                         AppText(
-                            onlineRankText,
-                            modifier = Modifier.padding(start = 10.dp).clickable(onClick = onOpenRank),
-                            color = LiveStatusPalette.MediaContent, fontSize = 12.sp,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            text = secondaryText,
+                            color = roomColorTokens.inputOverlayColor.copy(alpha = 0.72f),
+                            style = MaterialTheme.typography.labelSmall,
+                            lineHeight = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+                if (!isFollowing) {
+                    Spacer(Modifier.width(AppSpacingTokens.Small))
+                    AppSurface(
+                        onClick = onFollowClick,
+                        shape = AppShapes.container(ContainerLevel.Pill),
+                        color = palette.accent,
+                        contentColor = palette.onAccent,
+                        modifier = Modifier
+                            .height(26.dp)
+                            .followActionAnchor()
+                            .semantics { contentDescription = "关注主播" }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = AppSpacingTokens.Small, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            AppIcon(
+                                imageVector = rememberAppProfileAddIcon(),
+                                contentDescription = null,
+                                tint = palette.onAccent,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            AppText(
+                                text = "关注",
+                                color = palette.onAccent,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        AppSurface(
+            onClick = onOpenRank,
+            shape = AppShapes.container(ContainerLevel.Pill),
+            color = LiveStatusPalette.MediaScrim.copy(alpha = 0.42f),
+            contentColor = roomColorTokens.inputOverlayColor,
+            modifier = Modifier
+                .height(30.dp)
+                .semantics { contentDescription = "高能榜" }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = AppSpacingTokens.Small, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.Micro)
+            ) {
+                AppIcon(
+                    imageVector = rememberAppAnalyticsIcon(),
+                    contentDescription = null,
+                    tint = roomColorTokens.inputOverlayColor,
+                    modifier = Modifier.size(13.dp)
+                )
                 AppText(
-                    subtitle, color = LiveStatusPalette.MediaContent.copy(alpha = 0.75f),
-                    fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    text = "高能榜",
+                    color = roomColorTokens.inputOverlayColor,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
+        if (redPocketInfo != null) {
+            Spacer(Modifier.width(AppSpacingTokens.Small))
+            LiveRedPocketChip(
+                info = redPocketInfo,
+                onClick = onRedPocketClick,
+                compact = true
+            )
+        }
+        Spacer(Modifier.width(AppSpacingTokens.Small))
         AppWindowActionMenu(
             modifier = Modifier.size(30.dp),
             groups = listOf(
-                listOfNotNull(
-                    if (redPocketInfo != null) AppWindowAction("人气红包", onClick = onRedPocketClick) else null,
+                listOf(
                     AppWindowAction(
                         label = if (isFollowing) "取消关注" else "关注主播",
                         onClick = onFollowClick,
@@ -2133,39 +2418,82 @@ private fun LivePortraitInfoPanel(
 
 @Composable
 private fun LivePrimaryInteractionPanel(
-    isOverlay: Boolean = false,
     selectedTab: Int,
-    showSuperChat: Boolean,
     onSelectedTab: (Int) -> Unit,
     chatContent: @Composable () -> Unit,
     superChatContent: @Composable () -> Unit,
     voteContent: @Composable () -> Unit,
     persistentFooter: (@Composable () -> Unit)? = null,
 ) {
-    val pagerState = rememberPagerState(
-        initialPage = selectedTab.coerceIn(0, if (showSuperChat) 1 else 0),
-        pageCount = { if (showSuperChat) 2 else 1 },
-    )
-    LaunchedEffect(showSuperChat, pagerState) {
-        if (!showSuperChat) {
-            pagerState.scrollToPage(0)
-            onSelectedTab(0)
+    val playerChromeProfile = rememberAppPlayerChromeProfile()
+    val segmentedSpec = remember(playerChromeProfile.compactChromeSpec) {
+        resolveLiveInteractionSegmentedControlSpec(playerChromeProfile.compactChromeSpec)
+    }
+    val tabs = remember { listOf("聊天", "SC", "投票") }
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val selectionBackdrop = rememberLayerBackdrop()
+
+    LaunchedEffect(selectedTab) {
+        val target = selectedTab.coerceIn(0, tabs.lastIndex)
+        if (pagerState.currentPage != target) {
+            animatePagerSelection(pagerState, target)
         }
     }
-    val latestOnSelectedTab by rememberUpdatedState(onSelectedTab)
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }.collect { latestOnSelectedTab(it) }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (selectedTab != pagerState.currentPage) {
+            onSelectedTab(pagerState.currentPage)
+        }
     }
-    Column(Modifier.fillMaxSize().background(Color.Transparent)) {
-        com.android.purebilibili.core.ui.components.AppHorizontalPager(
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(selectionBackdrop)
+                .background(MaterialTheme.colorScheme.background),
+        )
+        Column(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = segmentedSpec.horizontalPaddingDp.dp,
+                    vertical = segmentedSpec.verticalPaddingDp.dp
+                )
+        ) {
+            AppThemeAdaptiveTabRow(
+                role = com.android.purebilibili.core.ui.components.AppTabRowRole.SECONDARY,
+                options = tabs.mapIndexed { index, label -> AppSegmentOption(index, label) },
+                selectedValue = pagerState.currentPage,
+                onSelectionChange = { index ->
+                    onSelectedTab(index)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                height = segmentedSpec.heightDp.dp,
+                indicatorHeight = segmentedSpec.indicatorHeightDp.dp,
+                labelFontSize = segmentedSpec.labelFontSizeSp.sp,
+                miuixBackdrop = selectionBackdrop,
+                dragSelectionEnabled = tabs.size > 1,
+                tapPressRefractionEnabled = true,
+                indicatorPositionProvider = {
+                    pagerState.currentPage + pagerState.currentPageOffsetFraction
+                },
+                isScrollInProgressProvider = { pagerState.isScrollInProgress },
+            )
+        }
+        HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         ) { page ->
-            Box(Modifier.fillMaxSize().padding(vertical = 12.dp)) {
-                if (page == 0) chatContent() else superChatContent()
+            when (page) {
+                0 -> Box(modifier = Modifier.fillMaxSize()) { chatContent() }
+                1 -> Box(modifier = Modifier.fillMaxSize()) { superChatContent() }
+                else -> Box(modifier = Modifier.fillMaxSize()) { voteContent() }
             }
         }
         persistentFooter?.invoke()
+        }
     }
 }
 
@@ -2280,8 +2608,6 @@ private fun LiveDanmakuSettingsDialog(
     allowTop: Boolean,
     allowBottom: Boolean,
     allowColorful: Boolean,
-    superChatPanelEnabled: Boolean,
-    onToggleSuperChatPanel: () -> Unit,
     superChatFlashEnabled: Boolean,
     superChatPersistent: Boolean,
     superChatMaxWidthDp: Int,
@@ -2370,11 +2696,6 @@ private fun LiveDanmakuSettingsDialog(
                     title = "彩色弹幕",
                     checked = allowColorful,
                     onCheckedChange = { onToggleAllowColorful() }
-                )
-                LiveSettingSwitchRow(
-                    title = "聊天区显示 SC 页面",
-                    checked = superChatPanelEnabled,
-                    onCheckedChange = { onToggleSuperChatPanel() },
                 )
                 LiveSettingSwitchRow(
                     title = "醒目留言弹窗",

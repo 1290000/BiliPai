@@ -532,15 +532,13 @@ data class SearchLiveUserItem(
     @Serializable(with = FlexibleIntSerializer::class)
     val attentions: Int = 0,
     val live_time: String = "",
-    @SerialName("area_name") val areaName: String = "",
     val tags: String = ""
 ) {
     fun cleanupFields(): SearchLiveUserItem {
         return copy(
             uname = cleanSearchText(uname),
             uface = normalizeSearchImageUrl(uface),
-            tags = cleanSearchText(tags),
-            areaName = cleanSearchText(areaName)
+            tags = cleanSearchText(tags)
         )
     }
 }

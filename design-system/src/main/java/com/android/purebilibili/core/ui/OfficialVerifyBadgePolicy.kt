@@ -121,7 +121,8 @@ fun OfficialVerifyBadge(
     ) {
         Text(
             text = badge.text,
-            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            lineHeight = 12.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

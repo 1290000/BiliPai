@@ -149,7 +149,7 @@ class LiveRoomLayoutPolicyTest {
     }
 
     @Test
-    fun `fullscreen landscape reserves the video area without ordinary chat`() {
+    fun `fullscreen landscape uses transparent overlay chat`() {
         val mode = resolveLiveRoomLayoutMode(
             isLandscape = true,
             isTablet = true,
@@ -169,8 +169,8 @@ class LiveRoomLayoutPolicyTest {
     }
 
     @Test
-    fun `live interaction panel defaults to visible`() {
-        assertTrue(defaultLiveInteractionPanelVisible())
+    fun `live interaction panel defaults to collapsed`() {
+        assertFalse(defaultLiveInteractionPanelVisible())
     }
 
     @Test
@@ -181,7 +181,7 @@ class LiveRoomLayoutPolicyTest {
                 isInteractionPanelVisible = true
             )
         )
-        // 用户主动收起的聊天列保持隐藏
+        // 分栏聊天列跟随用户开关：默认收起，避免退出全屏后自动弹出
         assertFalse(
             shouldShowLiveSplitChatPanel(
                 layoutMode = LiveRoomLayoutMode.LandscapeSplit,
@@ -194,7 +194,7 @@ class LiveRoomLayoutPolicyTest {
                 isInteractionPanelVisible = true
             )
         )
-        assertFalse(
+        assertTrue(
             shouldShowLiveLandscapeChatOverlay(
                 layoutMode = LiveRoomLayoutMode.LandscapeOverlay,
                 isInteractionPanelVisible = true

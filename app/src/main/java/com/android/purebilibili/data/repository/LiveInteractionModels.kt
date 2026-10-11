@@ -92,9 +92,7 @@ data class LiveEmoticonItem(
     val description: String = "",
     // 独立大表情使用此 ID；普通表情发送 emoji 文本。
     val emoticonUnique: String = "",
-    val dmType: Int = 1,
-    val width: Int = 80,
-    val height: Int = 80,
+    val dmType: Int = 1
 ) {
     val displayText: String get() = emoji.ifBlank { description.ifBlank { "表情" } }
 }
@@ -110,9 +108,7 @@ fun EmoticonPkg.toLiveEmoticonPackage(): LiveEmoticonPackage = LiveEmoticonPacka
             url = emotion.url,
             description = emotion.des,
             emoticonUnique = emotion.emoticon_unique,
-            dmType = if (pkg_type == 3) 0 else 1,
-            width = emotion.width?.takeIf { it > 0 } ?: 80,
-            height = emotion.height?.takeIf { it > 0 } ?: 80
+            dmType = if (pkg_type == 3) 0 else 1
         )
     }
 )

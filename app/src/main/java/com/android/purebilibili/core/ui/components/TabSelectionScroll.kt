@@ -5,7 +5,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import com.android.purebilibili.core.ui.LocalAppThemeConfig
@@ -92,7 +91,6 @@ internal fun KeepScrollableTabSelectionVisible(
     continuousFollow: () -> Boolean = { false },
     centerSelection: Boolean = true,
 ) {
-    val initialSelectionPositioned = remember(scrollState) { object { var value = false } }
     val entranceAnimationEnabled = LocalAppThemeConfig.current.uiEntranceAnimationEnabled
     val focusPositionLatest by rememberUpdatedState(focusPosition)
     val continuousFollowLatest by rememberUpdatedState(continuousFollow)
@@ -130,14 +128,13 @@ internal fun KeepScrollableTabSelectionVisible(
                 when (
                     resolveTabSelectionRailScrollMode(
                         continuousFollow = continuous,
-                        entranceAnimationEnabled = entranceAnimationEnabled && initialSelectionPositioned.value,
+                        entranceAnimationEnabled = entranceAnimationEnabled,
                     )
                 ) {
                     TabSelectionRailScrollMode.LOCK_STEP -> scrollState.scrollTo(target)
                     TabSelectionRailScrollMode.ANIMATE -> scrollState.animateScrollTo(target)
                     TabSelectionRailScrollMode.INSTANT -> scrollState.scrollTo(target)
                 }
-                initialSelectionPositioned.value = true
             }
     }
 }

@@ -508,16 +508,6 @@ fun AppNavigation(
     }
     val userAgreementAcked = welcomePrefs.getBoolean(USER_AGREEMENT_ACK_KEY, false)
     val agreementRequired = isUserAgreementRequired(userAgreementAcked)
-    // Read the persisted order before mounting the pager: page 0 is the user's first tab.
-    val navigationSettingsFlow = remember(context) {
-        kotlinx.coroutines.flow.flow<AppNavigationSettings?> {
-            NavigationSettingsStore.ensureListenVideoBottomTabMigration(context)
-            SettingsManager.getAppNavigationSettings(context).collect { emit(it) }
-        }
-    }
-    val resolvedAppNavigationSettings by navigationSettingsFlow
-        .collectAsStateWithLifecycle(initialValue = null)
-    val appNavigationSettings = resolvedAppNavigationSettings ?: return
     val startDestination =
         if (agreementRequired) ScreenRoutes.Onboarding.route else ScreenRoutes.Home.route
     val cachedPortraitStartupRoute = remember(context) {
@@ -666,6 +656,12 @@ fun AppNavigation(
             previousVideoBvidForStopPolicy = currentVideoBvidForStopPolicy
         }
 
+        LaunchedEffect(Unit) {
+            NavigationSettingsStore.ensureListenVideoBottomTabMigration(context)
+        }
+        val appNavigationSettings by SettingsManager.getAppNavigationSettings(context).collectAsStateWithLifecycle(initialValue = AppNavigationSettings(),
+            context = kotlin.coroutines.EmptyCoroutineContext
+        )
         var navigationHostOriginInRoot by remember { mutableStateOf(Offset.Zero) }
         var sidebarAccountSwitcherVisible by rememberSaveable { mutableStateOf(false) }
         var sidebarAccountSessionGeneration by remember { mutableIntStateOf(0) }
@@ -2395,7 +2391,7 @@ fun AppNavigation(
                                     HorizontalPager(
                                         modifier = Modifier.fillMaxSize(),
                                         state = bottomPagerState,
-                                        key = { page -> resolveBottomPagerLayoutKey(page, visibleBottomBarItems) },
+                                        key = { page -> resolveBottomPagerSaveableStateKey(visibleBottomBarItems[page]) },
                                         beyondViewportPageCount = resolveBottomPagerBeyondViewportPageCount(
                                             pageCount = visibleBottomBarItems.size,
                                             contentReady = bottomPagerContentReady
@@ -3568,7 +3564,6 @@ fun AppNavigation(
                                 },
                                 onAreaListClick = { pushNavigation3Key(BiliPaiNavKey.LiveArea) },
                                 onFollowingClick = { pushNavigation3Key(BiliPaiNavKey.LiveFollowing) },
-                                onUserClick = { mid -> pushNavigation3Key(BiliPaiNavKey.Space(mid)) },
                                 onAreaDetailClick = { parentAreaId, areaId, title ->
                                     pushNavigation3Key(
                                         BiliPaiNavKey.LiveAreaDetail(
@@ -3607,7 +3602,6 @@ fun AppNavigation(
                                     parentAreaId = liveAreaDetailKey.parentAreaId,
                                     areaId = liveAreaDetailKey.areaId,
                                     title = liveAreaDetailKey.title,
-                                    onSearchClick = { pushNavigation3Key(BiliPaiNavKey.LiveSearch) },
                                     onBack = { performSystemBackAction() },
                                     onAreaClick = { parentAreaId, areaId, title ->
                                         pushNavigation3Key(
