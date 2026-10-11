@@ -114,6 +114,39 @@ data class SubtitleCueCacheStats(
 typealias CreatorCardStats = com.android.purebilibili.data.model.response.CreatorCardStats
 
 object VideoRepository {
+    private data class InitialPlayUrlKey(
+        val accountScope: String,
+        val bvid: String,
+        val cid: Long,
+        val quality: Int,
+        val autoHighest: Boolean,
+        val audioLang: String?
+    )
+    private val initialPlayUrlRequests = OnDemandRequestCache<InitialPlayUrlKey, PlayUrlData?>(
+        maxEntries = 1,
+        maxAgeMs = 0L
+    )
+
+    fun cachedVideoCid(bvid: String, aid: Long = 0L): Long =
+        SharedContentRepository.cachedDetailCid(bvid, aid)
+
+    fun clearVideoDetailCaches() {
+        SharedContentRepository.clearDetailCache()
+        VideoCatalogRepository.clearRelatedVideosCache()
+    }
+
+    fun invalidateVideoLoadCaches(bvid: String, aid: Long, cid: Long) {
+        val cachedInfo = SharedContentRepository.cachedDetailInfo(bvid, aid)
+        val canonicalBvid = cachedInfo?.bvid?.takeIf { it.isNotBlank() } ?: bvid
+        val resolvedCid = cid.takeIf { it > 0L } ?: cachedInfo?.cid ?: 0L
+        SharedContentRepository.invalidateDetail(bvid, aid)
+        if (canonicalBvid != bvid) SharedContentRepository.invalidateDetail(canonicalBvid)
+        VideoCatalogRepository.invalidateRelatedVideos(canonicalBvid)
+        if (resolvedCid > 0L) PlayUrlCache.invalidate(canonicalBvid, resolvedCid)
+        initialPlayUrlRequests.invalidateWhere {
+            (it.bvid == bvid || it.bvid == canonicalBvid) && (cid <= 0L || it.cid == cid)
+        }
+    }
     private val api = NetworkModule.api
     // Subtitle cache is shared with TV by SubtitleContentRepository.
     private val verticalVideoCache = ConcurrentHashMap<String, Boolean>()
@@ -275,22 +308,22 @@ object VideoRepository {
     suspend fun getInitialPlayUrlData(
         bvid: String,
         cid: Long,
-        targetQuality: Int,
+        targetQuality: Int?,
         audioLang: String? = null
     ): PlayUrlData? = withContext(Dispatchers.IO) {
         if (bvid.isBlank() || cid <= 0L) return@withContext null
-
-        val isAutoHighestQuality = targetQuality >= 127
+        TokenManager.awaitRestore()
+        val isAutoHighestQuality = targetQuality != null && targetQuality >= 127
         val isLogin = resolveVideoPlaybackAuthState(
             hasSessionCookie = hasPlaybackSessionCookie(),
             hasAccessToken = !playbackAccessToken().isNullOrEmpty()
         )
         val isVip = isPlaybackVip()
         val auto1080pEnabled = try {
-            val context = NetworkModule.appContext
-            context?.getSharedPreferences("settings_prefs", android.content.Context.MODE_PRIVATE)
+            NetworkModule.appContext
+                ?.getSharedPreferences("settings_prefs", android.content.Context.MODE_PRIVATE)
                 ?.getBoolean("exp_auto_1080p", true) ?: true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             true
         }
         val startQuality = resolveInitialStartQuality(
@@ -300,51 +333,57 @@ object VideoRepository {
             isVip = isVip,
             auto1080pEnabled = auto1080pEnabled
         )
-
-        if (!shouldSkipPlayUrlCache(isAutoHighestQuality, isVip, audioLang)) {
-            val cachedPlayData = PlayUrlCache.get(
+        val accountScope = videoPlaybackAccountScope()
+        val key = InitialPlayUrlKey(accountScope, bvid, cid, startQuality, isAutoHighestQuality, audioLang)
+        val result = initialPlayUrlRequests.getOrLoad(key) {
+            if (!shouldSkipPlayUrlCache(isAutoHighestQuality, isVip, audioLang)) {
+                val cached = PlayUrlCache.get(
+                    bvid = bvid,
+                    cid = cid,
+                    requestedQuality = startQuality,
+                    audioLang = audioLang,
+                    accountScope = accountScope
+                )
+                if (cached != null && shouldAcceptCachedPlayUrlForAutoHighest(
+                        isAutoHighestQuality = isAutoHighestQuality,
+                        isVip = isVip,
+                        cachedDashVideoIds = cached.dash?.video?.map { it.id }.orEmpty()
+                    )
+                ) return@getOrLoad cached
+            }
+            val fetched = fetchPlayUrlRecursive(
                 bvid = bvid,
                 cid = cid,
-                requestedQuality = startQuality
-            )
-            val cachedDashIds = cachedPlayData?.dash?.video?.map { it.id }.orEmpty()
-            if (
-                cachedPlayData != null &&
-                shouldAcceptCachedPlayUrlForAutoHighest(
-                    isAutoHighestQuality = isAutoHighestQuality,
-                    isVip = isVip,
-                    cachedDashVideoIds = cachedDashIds
+                targetQn = startQuality,
+                audioLang = audioLang,
+                requestKind = PlayUrlRequestKind.INITIAL
+            ) ?: return@getOrLoad null
+            if (accountScope != videoPlaybackAccountScope()) {
+                throw CancellationException("Playback account changed")
+            }
+            if (shouldCachePlayUrlResult(
+                    source = fetched.source,
+                    audioLang = audioLang,
+                    requestedQuality = startQuality,
+                    returnedQuality = fetched.data.quality,
+                    dashVideoIds = fetched.data.dash?.video?.map { it.id }.orEmpty()
                 )
             ) {
-                return@withContext cachedPlayData
+                PlayUrlCache.put(
+                    bvid = bvid,
+                    cid = cid,
+                    data = fetched.data,
+                    quality = startQuality,
+                    audioLang = audioLang,
+                    accountScope = accountScope
+                )
             }
+            fetched.data
         }
-
-        val fetchResult = fetchPlayUrlRecursive(
-            bvid = bvid,
-            cid = cid,
-            targetQn = startQuality,
-            audioLang = audioLang,
-            requestKind = PlayUrlRequestKind.INITIAL
-        ) ?: return@withContext null
-
-        val dashVideoIds = fetchResult.data.dash?.video?.map { it.id }?.distinct() ?: emptyList()
-        if (shouldCachePlayUrlResult(
-                source = fetchResult.source,
-                audioLang = audioLang,
-                requestedQuality = startQuality,
-                returnedQuality = fetchResult.data.quality,
-                dashVideoIds = dashVideoIds
-            )
-        ) {
-            PlayUrlCache.put(
-                bvid = bvid,
-                cid = cid,
-                data = fetchResult.data,
-                quality = startQuality
-            )
+        if (accountScope != videoPlaybackAccountScope()) {
+            throw CancellationException("Playback account changed")
         }
-        fetchResult.data
+        result
     }
 
     suspend fun getPortraitPlaybackDetails(
@@ -905,170 +944,18 @@ object VideoRepository {
         audioLang: String? = null
     ): Result<Pair<ViewInfo, PlayUrlData>> = withContext(Dispatchers.IO) {
         try {
-            val lookup = resolveVideoInfoLookupInput(rawBvid = bvid, aid = aid)
-                ?: throw Exception("无效的视频标识: bvid=$bvid, aid=$aid")
-            val viewResp = if (lookup.bvid.isNotEmpty()) {
-                com.android.purebilibili.core.util.Logger.d("VideoRepo", " getVideoDetails: using bvid=${lookup.bvid}")
-                api.getVideoInfo(lookup.bvid)
-            } else {
-                com.android.purebilibili.core.util.Logger.d("VideoRepo", " getVideoDetails: using aid=${lookup.aid}")
-                api.getVideoInfoByAid(lookup.aid)
-            }
-            
-            val rawInfo = viewResp.data ?: throw Exception("视频详情为空: ${viewResp.code}")
-            val cid = resolveRequestedVideoCid(
-                requestCid = requestedCid,
-                infoCid = rawInfo.cid,
-                pages = rawInfo.pages
-            )
-            val info = if (cid > 0L && cid != rawInfo.cid) {
-                rawInfo.copy(cid = cid)
-            } else {
-                rawInfo
-            }
-            val cacheBvid = info.bvid.ifBlank { lookup.bvid.ifBlank { bvid } }
-            
-            //  [调试] 记录视频信息
-            com.android.purebilibili.core.util.Logger.d(
-                "VideoRepo",
-                " getVideoDetails: bvid=${info.bvid}, aid=${info.aid}, requestCid=$requestedCid, infoCid=${rawInfo.cid}, resolvedCid=$cid, title=${info.title.take(20)}..."
-            )
-            
-            if (cid == 0L) throw Exception("CID 获取失败")
-
-            // 🚀 [修复] 自动最高画质模式：跳过缓存，确保获取最新的高清流
-            val isAutoHighestQuality = targetQuality != null && targetQuality >= 127
-
-            //  [优化] 根据登录和大会员状态选择起始画质
-            val isLogin = resolveVideoPlaybackAuthState(
-                hasSessionCookie = hasPlaybackSessionCookie(),
-                hasAccessToken = !playbackAccessToken().isNullOrEmpty()
-            )
-            val isVip = isPlaybackVip()
-            
-            //  [实验性功能] 读取 auto1080p 设置
-            val auto1080pEnabled = try {
-                val context = com.android.purebilibili.core.network.NetworkModule.appContext
-                context?.getSharedPreferences("settings_prefs", android.content.Context.MODE_PRIVATE)
-                    ?.getBoolean("exp_auto_1080p", true) ?: true // 默认开启
-            } catch (e: Exception) {
-                true // 出错时默认开启
-            }
-            
-            val startQuality = resolveInitialStartQuality(
+            val info = getVideoInfoOnly(bvid, aid, requestedCid).getOrThrow()
+            val playData = getInitialPlayUrlData(
+                bvid = info.bvid,
+                cid = info.cid,
                 targetQuality = targetQuality,
-                isAutoHighestQuality = isAutoHighestQuality,
-                isLogin = isLogin,
-                isVip = isVip,
-                auto1080pEnabled = auto1080pEnabled
-            )
-            com.android.purebilibili.core.util.Logger.d(
-                "VideoRepo",
-                buildStartQualityDecisionSummary(
-                    bvid = cacheBvid.ifBlank { bvid },
-                    cid = cid,
-                    userSettingQuality = targetQuality,
-                    startQuality = startQuality,
-                    isAutoHighestQuality = isAutoHighestQuality,
-                    isLoggedIn = isLogin,
-                    isVip = isVip,
-                    auto1080pEnabled = auto1080pEnabled,
-                    audioLang = audioLang
-                )
-            )
-
-            // [优化] 默认语言优先走缓存；VIP 自动最高仅在缓存已含高码率轨时复用，避免每次冷拉。
-            if (!shouldSkipPlayUrlCache(isAutoHighestQuality, isVip, audioLang)) {
-                val cachedPlayData = PlayUrlCache.get(
-                    bvid = cacheBvid,
-                    cid = cid,
-                    requestedQuality = startQuality
-                )
-                val cachedDashIds = cachedPlayData?.dash?.video?.map { it.id }.orEmpty()
-                if (
-                    cachedPlayData != null &&
-                    shouldAcceptCachedPlayUrlForAutoHighest(
-                        isAutoHighestQuality = isAutoHighestQuality,
-                        isVip = isVip,
-                        cachedDashVideoIds = cachedDashIds
-                    )
-                ) {
-                    com.android.purebilibili.core.util.Logger.d(
-                        "VideoRepo",
-                        " Using cached PlayUrlData for bvid=$cacheBvid, requestedQuality=$startQuality"
-                    )
-                    return@withContext Result.success(Pair(info, cachedPlayData))
-                }
-            } else {
-                com.android.purebilibili.core.util.Logger.d(
-                    "VideoRepo",
-                    "🚀 Skip cache: bvid=$cacheBvid, isAutoHighest=$isAutoHighestQuality, audioLang=${audioLang ?: "default"}"
-                )
-            }
-
-            val playUrlBvid = cacheBvid.ifBlank { bvid }
-            val fetchResult = fetchPlayUrlRecursive(
-                bvid = playUrlBvid,
-                cid = cid,
-                targetQn = startQuality,
-                audioLang = audioLang,
-                requestKind = PlayUrlRequestKind.INITIAL
-            )
-                ?: throw Exception("无法获取任何画质的播放地址")
-            val playData = fetchResult.data
-
-            //  支持 DASH 和 durl 两种格式
-            val hasDash = !playData.dash?.video.isNullOrEmpty()
-            val hasDurl = !playData.durl.isNullOrEmpty()
-            val dashVideoIds = playData.dash?.video?.map { it.id }?.distinct()?.sortedDescending() ?: emptyList()
-            com.android.purebilibili.core.util.Logger.d(
-                "VideoRepo",
-                buildPlayUrlFetchSummary(
-                    bvid = playUrlBvid,
-                    cid = cid,
-                    source = fetchResult.source,
-                    requestedQuality = startQuality,
-                    returnedQuality = playData.quality,
-                    acceptQualities = playData.accept_quality,
-                    dashVideoIds = dashVideoIds,
-                    hasDurl = hasDurl,
-                    isLoggedIn = isLogin,
-                    isVip = isVip,
-                    audioLang = audioLang
-                )
-            )
-            if (!hasDash && !hasDurl) throw Exception("播放地址解析失败 (无 dash/durl)")
-
-            //  [优化] 缓存结果 (仅默认语言缓存)
-            if (shouldCachePlayUrlResult(
-                    source = fetchResult.source,
-                    audioLang = audioLang,
-                    requestedQuality = startQuality,
-                    returnedQuality = playData.quality,
-                    dashVideoIds = dashVideoIds
-                )
-            ) {
-                PlayUrlCache.put(
-                    bvid = cacheBvid,
-                    cid = cid,
-                    data = playData,
-                    quality = startQuality
-                )
-                com.android.purebilibili.core.util.Logger.d(
-                    "VideoRepo",
-                    " Cached PlayUrlData for bvid=$cacheBvid, cid=$cid, requestedQuality=$startQuality, actualQuality=${playData.quality}"
-                )
-            } else {
-                com.android.purebilibili.core.util.Logger.d(
-                    "VideoRepo",
-                    " Skip cache write: source=${fetchResult.source}, audioLang=${audioLang ?: "default"}"
-                )
-            }
-
-            Result.success(Pair(info, playData))
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(e)
+                audioLang = audioLang
+            ) ?: error("无法获取播放地址")
+            Result.success(info to playData)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
         }
     }
 
@@ -1990,6 +1877,9 @@ object VideoRepository {
 
     suspend fun getRelatedVideosResult(bvid: String): Result<List<RelatedVideo>> =
         VideoCatalogRepository.getRelatedVideosResult(bvid)
+
+    suspend fun getCachedRelatedVideosResult(bvid: String): Result<List<RelatedVideo>>? =
+        VideoCatalogRepository.getCachedRelatedVideosResult(bvid)
 
 
     //  [新增] API 错误码分类，提供用户友好的错误提示

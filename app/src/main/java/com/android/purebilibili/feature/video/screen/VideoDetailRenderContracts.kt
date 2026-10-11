@@ -63,7 +63,8 @@ internal data class VideoDetailPlaybackActions(
     val likedDanmakuIds: kotlinx.coroutines.flow.StateFlow<Set<Long>> =
         kotlinx.coroutines.flow.MutableStateFlow(emptySet()),
     val reportDanmaku: (dmid: Long, reason: Int) -> Unit = { _, _ -> },
-    val recallDanmaku: (Long) -> Unit = {}
+    val recallDanmaku: (Long) -> Unit = {},
+    val retryPlayback: () -> Unit = reloadVideo
 )
 
 @Immutable

@@ -207,6 +207,7 @@ object CacheUtils {
 
             if (CacheClearTarget.PLAYBACK_QUALITY in targets) {
                 PlayUrlCache.clear()
+                VideoRepository.clearVideoDetailCaches()
                 PlaybackCooldownManager.clearAll()
                 Logger.d(TAG, " Playback quality cache cleared")
             }
@@ -263,6 +264,7 @@ object CacheUtils {
         // 内存缓存
         context.imageLoader.memoryCache?.clear()
         PlayUrlCache.clear()
+        VideoRepository.clearVideoDetailCaches()
         VideoRepository.clearSubtitleCueCache()
         DanmakuRepository.clearDanmakuCache()
         emit(ClearProgress(20, "内存缓存已清除"))
@@ -339,6 +341,7 @@ object CacheUtils {
         val memorySize = breakdown.memoryCache
         context.imageLoader.memoryCache?.clear()
         PlayUrlCache.clear()
+        VideoRepository.clearVideoDetailCaches()
         VideoRepository.clearSubtitleCueCache()
         DanmakuRepository.clearDanmakuCache()
         clearedSize += memorySize

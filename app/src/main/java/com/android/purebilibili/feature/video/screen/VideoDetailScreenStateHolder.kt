@@ -596,6 +596,7 @@ internal fun VideoDetailScreenStateHolder(
         initialPipMode = isInPipMode,
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val detailState by viewModel.detailState.collectAsStateWithLifecycle()
     val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
     val subjectSnapshot by viewModel.subjectSnapshot.collectAsStateWithLifecycle()
     val engagementState by engagementViewModel.uiState.collectAsStateWithLifecycle()
@@ -616,6 +617,7 @@ internal fun VideoDetailScreenStateHolder(
             playNextWatch = viewModel::playNextWatchSuggestion,
             changeQuality = viewModel::changeQuality,
             reloadVideo = viewModel::reloadVideo,
+            retryPlayback = viewModel::retry,
             switchCdn = viewModel::switchCdn,
             switchCdnTo = viewModel::switchCdnTo,
             probeCdnCandidates = viewModel::probeCurrentCdnCandidates,
@@ -717,17 +719,7 @@ internal fun VideoDetailScreenStateHolder(
             checkCommentFraud = commentViewModel::checkCommentFraud
         )
     }
-    VideoDetailDomainEffects(
-        context = context,
-        isVisible = isVisible,
-        uiState = uiState,
-        subjectSnapshot = subjectSnapshot,
-        favoriteFolderSaveEvent = favoriteFolderSaveEvent,
-        playbackViewModel = viewModel,
-        engagementViewModel = engagementViewModel,
-        composerViewModel = composerViewModel,
-        supplementViewModel = supplementViewModel,
-    )
+
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var isNavigatingToVideo by presentationState.navigatingToVideoState
     // `isNavigatingToVideo` 仅覆盖共享元素动画，动画结束会提前复位；NavHost 旧 entry
@@ -789,6 +781,20 @@ internal fun VideoDetailScreenStateHolder(
     val introListState = rememberSaveable(currentBvid, saver = LazyListState.Saver) {
         LazyListState()
     }
+    val detailContentState = remember(uiState, detailState, currentBvid, playbackTargetCid) {
+        detailState.contentSnapshot(uiState, currentBvid, playbackTargetCid)
+    }
+    VideoDetailDomainEffects(
+        context = context,
+        isVisible = isVisible,
+        uiState = detailContentState ?: uiState,
+        subjectSnapshot = subjectSnapshot,
+        favoriteFolderSaveEvent = favoriteFolderSaveEvent,
+        playbackViewModel = viewModel,
+        engagementViewModel = engagementViewModel,
+        composerViewModel = composerViewModel,
+        supplementViewModel = supplementViewModel,
+    )
     val commentListState = rememberSaveable(currentBvid, saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -1223,7 +1229,7 @@ internal fun VideoDetailScreenStateHolder(
         context = context,
         playbackViewModel = viewModel,
         commentViewModel = commentViewModel,
-        aid = (uiState as? VideoPlaybackUiState.Success)?.info?.aid,
+        aid = detailContentState?.info?.aid,
         fraudDetectionEnabled = commentFraudDetectionEnabled,
     )
     val sortPreferenceScope = rememberCoroutineScope()
@@ -3168,32 +3174,32 @@ internal fun VideoDetailScreenStateHolder(
     // 🔧 [性能优化] 记录上次缓存的 bvid，避免重复缓存 MiniPlayer 信息
     var lastCachedMiniPlayerBvid by remember { mutableStateOf<String?>(null) }
 
-    //  核心修改：初始化评论 & 媒体中心信息
+    LaunchedEffect(detailContentState?.info?.aid, preferredCommentSortMode, isVisible) {
+        if (!isVisible) return@LaunchedEffect
+        val info = detailContentState?.info ?: return@LaunchedEffect
+        commentViewModel.init(
+            aid = info.aid,
+            upMid = info.owner.mid,
+            preferredSortMode = preferredCommentSortMode,
+            expectedReplyCount = info.stat.reply
+        )
+        if (openCommentRootRpidFromRoute > 0L) {
+            selectedVideoContentTabIndex = 1
+            if (!hasHandledCommentRootFromRoute) {
+                hasHandledCommentRootFromRoute = commentViewModel.openSubReplyFromRoute(
+                    rootReplyId = openCommentRootRpidFromRoute,
+                    targetReplyId = openCommentTargetRpidFromRoute
+                )
+            }
+        }
+    }
+
+    //  核心修改：初始化媒体中心信息
     LaunchedEffect(uiState, isVisible) {
         if (uiState is VideoPlaybackUiState.Success) {
             val info = (uiState as VideoPlaybackUiState.Success).info
             val success = uiState as VideoPlaybackUiState.Success
 
-            // 初始化评论（传入 UP 主 mid 用于筛选）- 保持在主线程
-            commentViewModel.init(
-                aid = info.aid,
-                upMid = info.owner.mid,
-                preferredSortMode = preferredCommentSortMode,
-                expectedReplyCount = info.stat.reply
-            )
-
-            if (openCommentRootRpidFromRoute > 0L) {
-                selectedVideoContentTabIndex = 1
-                if (!hasHandledCommentRootFromRoute) {
-                    val openStarted = commentViewModel.openSubReplyFromRoute(
-                        rootReplyId = openCommentRootRpidFromRoute,
-                        targetReplyId = openCommentTargetRpidFromRoute
-                    )
-                    if (openStarted) {
-                        hasHandledCommentRootFromRoute = true
-                    }
-                }
-            }
 
             playerState.updateMediaMetadata(
                 title = info.title,
@@ -3480,6 +3486,7 @@ internal fun VideoDetailScreenStateHolder(
             transitionChromeAlphaProvider = videoCardDetailChromeAlphaProvider,
             danmakuHostActive = !hasCommittedRelatedVideoNavigation,
             suppressTransientOverlaysForTransition = suppressOverlayControlsForReturn,
+            showPlaybackErrorNotice = detailContentState != null,
             onToggleFullscreen = { toggleFullscreen() },
             playbackActions = playbackActions,
             onDoubleTapLike = engagementViewModel::toggleLike,
@@ -4001,6 +4008,7 @@ internal fun VideoDetailScreenStateHolder(
                             TabletVideoLayout(
                                 playerState = playerState,
                                 uiState = uiState,
+                                detailContentState = detailContentState,
                                 commentState = commentState,
                                 engagementState = engagementState,
                                 subReplyState = subReplyState,
@@ -4068,6 +4076,7 @@ internal fun VideoDetailScreenStateHolder(
                             LargeScreenVideoLayout(
                             playerState = playerState,
                             uiState = uiState,
+                            detailContentState = detailContentState,
                             commentState = commentState,
                             engagementState = engagementState,
                             subReplyState = subReplyState,
@@ -5207,7 +5216,7 @@ internal fun VideoDetailScreenStateHolder(
                                 // composition，并在 Miuix 飞行 entry 内让位给来源卡文字。
                                 detachSecondaryContentForReturn &&
                                     uiState !is VideoPlaybackUiState.Error -> Unit
-                                uiState is VideoPlaybackUiState.Loading -> {
+                                uiState is VideoPlaybackUiState.Loading && detailContentState == null -> {
                                     val loadingState = uiState as VideoPlaybackUiState.Loading
                                     Box(modifier = Modifier.fillMaxSize()) {
                                         //  显示重试进度
@@ -5234,8 +5243,8 @@ internal fun VideoDetailScreenStateHolder(
                                     }
                                 }
 
-                                uiState is VideoPlaybackUiState.Success -> {
-                                    val success = uiState as VideoPlaybackUiState.Success
+                                detailContentState != null -> {
+                                    val success = detailContentState
                                     VideoDetailPhoneSuccessContentLayer(
                                         success = success,
                                         introListState = introListState,

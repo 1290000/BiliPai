@@ -1160,6 +1160,7 @@ fun rememberVideoPlayerState(
                 // 小窗模式下不释放 player，只释放其他资源
                 com.android.purebilibili.core.util.Logger.d("VideoPlayerState", " MiniPlayerManager 正在使用此 player，不释放")
             } else {
+                viewModel.cancelPendingVideoLoad()
                 // ⚡ [性能优化] 释放视频尺寸监听器（快速，main thread）
                 holder.release()
                 // 仅当引用匹配时才清理，避免误清理新页面正在使用的 player
@@ -1529,15 +1530,25 @@ fun rememberVideoPlayerState(
         }
     }
 
-    //  [重构] 合并为单个 LaunchedEffect 确保执行顺序
-    // 必须先 attachPlayer，再 loadVideo，否则 ViewModel 中的 exoPlayer 引用无效
+    // 网络请求与播放器绑定分开，进场门控只约束媒体准备。
+    // 门控开放前先 attachPlayer，保证 prepare 使用当前播放器。
+    DisposableEffect(viewModel, player, entryTransitionFinished, playbackSessionActive) {
+        if (playbackSessionActive && (entryTransitionFinished || reuseFromMiniPlayerAtEntry)) {
+            viewModel.attachPlayer(player)
+        }
+        viewModel.setPlaybackPreparationAllowed(entryTransitionFinished)
+        if (!playbackSessionActive && !miniPlayerManager.isPlayerManaged(player)) {
+            viewModel.cancelPendingVideoLoad()
+        }
+        onDispose { }
+    }
+
     LaunchedEffect(
         player,
         bvid,
         cid,
         reuseFromMiniPlayerAtEntry,
         fallbackResumePositionMs,
-        entryTransitionFinished,
         playbackSessionActive,
     ) {
         if (!playbackSessionActive) {
@@ -1545,27 +1556,17 @@ fun rememberVideoPlayerState(
             return@LaunchedEffect
         }
 
-        // 冷启动进场：共享元素 morph 期间先不 attach，避免解码器/Surface 初始化与景深模糊抢主线程。
+        // 冷启动进场：仅 attach/prepare 等待 morph 门控，网络请求立即启动。
         // 小窗复用则立即 attach，保证 live morph 能带上已在播的 surface。
-        if (!entryTransitionFinished && !reuseFromMiniPlayerAtEntry) {
-            Logger.d(
-                "VideoPlayerState",
-                "SUB_DBG defer attach/load until entry transition finished: request=$bvid/$cid"
-            )
-            return@LaunchedEffect
-        }
-
         // 1️⃣ 首先绑定 player
-        viewModel.attachPlayer(player)
+        if (entryTransitionFinished || reuseFromMiniPlayerAtEntry) {
+            viewModel.attachPlayer(player)
+        }
         Logger.d(
             "VideoPlayerState",
             "SUB_DBG attach player + decide restore/load: request=$bvid/$cid, reuse=$reuseFromMiniPlayerAtEntry, entryFinished=$entryTransitionFinished"
         )
 
-        if (!entryTransitionFinished) {
-            return@LaunchedEffect
-        }
-        
         // 2️⃣ 尝试从缓存恢复 UI 状态 (仅当复用播放器时)
         // 解决从小窗/后台返回时的网络请求错误问题
         var restored = false
