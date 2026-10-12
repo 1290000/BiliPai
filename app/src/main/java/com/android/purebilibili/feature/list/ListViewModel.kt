@@ -4,6 +4,7 @@ package com.android.purebilibili.feature.list
 import com.android.purebilibili.core.player.PlaybackProgressManager
 
 import android.app.Application
+import android.content.Context
 import com.android.purebilibili.core.ui.animation.gl.isThanosEffectSupported
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -12,6 +13,8 @@ import androidx.lifecycle.viewModelScope
 import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.refresh.HistoryRefreshBus
+import com.android.purebilibili.core.store.FavoriteFolderCoverCache
+import com.android.purebilibili.data.model.response.FavFolder
 import com.android.purebilibili.data.model.response.VideoItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -937,6 +940,11 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
     private val folderContentSemaphore = Semaphore(1)
     private val folderRequestGenerations = mutableMapOf<Int, Long>()
     private val folderLoadedOrders = mutableMapOf<Int, String>()
+
+    // 🖼 收藏夹预览封面：串行化补全流程，并用会话级集合避免重复请求同一个收藏夹
+    private val coverPrefetchMutex = Mutex()
+    private val coverResolvedMediaIds: MutableSet<Long> =
+        java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
     
     /**
      * 获取指定文件夹的 UI 状态
@@ -1107,47 +1115,130 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
                     .getOrThrow()
                 _folders.value = ownedFolders
                 allFolderIds = ownedFolders.map(::resolveFavoriteFolderMediaId)
-                loadFavoriteFolderPreviewCovers(ownedFolders)
+                // 收藏夹列表刷新后封面会重新变为空，重置会话级去重集合并先用缓存回填。
+                coverResolvedMediaIds.clear()
+                applyCachedFavoriteFolderCovers(ownedFolders)
+                // 首屏先主动补齐一小批，避免卡片进入视口后才开始请求封面。
+                ensureFavoriteFolderCovers(
+                    ownedFolders.take(FAVORITE_FOLDER_COVER_INITIAL_WINDOW)
+                )
             }
         }
     }
 
-    /** Match the profile page behavior: use the first resource as a preview when the API omits folder.cover. */
-    private suspend fun loadFavoriteFolderPreviewCovers(folders: List<com.android.purebilibili.data.model.response.FavFolder>) {
-        val targets = folders.asSequence()
-            .take(6)
-            .filter { it.cover.isBlank() && it.media_count > 0 }
-            .mapNotNull { folder ->
-                resolveFavoriteFolderMediaId(folder).takeIf { it > 0L }?.let { mediaId ->
-                    folder.id to mediaId
-                }
+    /**
+     * 进入收藏页时先用本地缓存补齐封面（不发起网络请求）。
+     *
+     * 未命中缓存的收藏夹保持空封面，交给列表滚动到可见前沿时按需补全，
+     * 避免打开页面就一次性发起大量 fav/resource/list 请求。
+     */
+    private suspend fun applyCachedFavoriteFolderCovers(folders: List<FavFolder>) {
+        if (folders.isEmpty()) return
+        val lookups = folders.mapNotNull { folder ->
+            val mediaId = resolveFavoriteFolderMediaId(folder)
+            if (mediaId <= 0L || folder.cover.isNotBlank() || folder.media_count <= 0) {
+                null
+            } else {
+                FavoriteFolderCoverCache.Lookup(mediaId = mediaId, mediaCount = folder.media_count)
             }
-            .toList()
-        if (targets.isEmpty()) return
+        }
+        if (lookups.isEmpty()) return
+        val covers = FavoriteFolderCoverCache.lookupAll(getApplication(), lookups)
+        if (covers.isEmpty()) return
+        coverResolvedMediaIds.addAll(covers.keys)
+        applyFavoriteFolderCovers(covers)
+    }
 
-        val semaphore = Semaphore(2)
-        val coversByFolderId = supervisorScope {
-            targets.map { (folderId, mediaId) ->
+    /**
+     * 按需补齐收藏夹封面：命中缓存直接填充，未命中的才发起 fav/resource/list 请求。
+     *
+     * 由收藏夹列表滚动到可见前沿时调用，[candidates] 为当前需要保证封面的收藏夹前缀。
+     * 缓存以 media_count 失效，因此命中缓存即代表封面仍是最新收藏的视频封面。
+     */
+    fun ensureFavoriteFolderCovers(candidates: List<FavFolder>) {
+        if (candidates.isEmpty()) return
+        viewModelScope.launch {
+            coverPrefetchMutex.withLock {
+                val context = getApplication<Application>()
+                val pending = resolveFavoriteFolderCoverFetchTargets(
+                    folders = candidates,
+                    alreadyResolved = coverResolvedMediaIds,
+                )
+                if (pending.isEmpty()) return@withLock
+
+                // 先吃缓存：命中的不占请求额度，也标记为已解析避免下次重复查询。
+                val cached = FavoriteFolderCoverCache.lookupAll(
+                    context = context,
+                    lookups = pending.map { target ->
+                        FavoriteFolderCoverCache.Lookup(
+                            mediaId = target.mediaId,
+                            mediaCount = target.mediaCount,
+                        )
+                    },
+                )
+                if (cached.isNotEmpty()) {
+                    coverResolvedMediaIds.addAll(cached.keys)
+                    applyFavoriteFolderCovers(cached)
+                }
+
+                val remaining = pending.filter { it.mediaId !in cached }
+                if (remaining.isEmpty()) return@withLock
+                // 先登记再请求，避免滚动过程中同一收藏夹被重复发起。
+                coverResolvedMediaIds.addAll(remaining.map { it.mediaId })
+                fetchFavoriteFolderCovers(context, remaining)
+            }
+        }
+    }
+
+    private suspend fun fetchFavoriteFolderCovers(
+        context: Context,
+        targets: List<FavoriteFolderCoverTarget>,
+    ) {
+        if (targets.isEmpty()) return
+        val semaphore = Semaphore(FAVORITE_FOLDER_COVER_CONCURRENCY)
+        val resolved = supervisorScope {
+            targets.map { target ->
                 async {
-                    val cover = semaphore.withPermit {
-                        com.android.purebilibili.data.repository.FavoriteRepository.getFavoriteList(
-                            mediaId = mediaId,
-                            pn = 1,
-                            ps = 1,
-                        ).getOrNull()?.medias
-                            ?.firstOrNull { it.cover.isNotBlank() }
-                            ?.cover
-                            .orEmpty()
+                    semaphore.withPermit {
+                        val cover = try {
+                            com.android.purebilibili.data.repository.FavoriteRepository.getFavoriteList(
+                                mediaId = target.mediaId,
+                                pn = 1,
+                                ps = 1,
+                            ).getOrNull()?.medias
+                                ?.firstOrNull { it.cover.isNotBlank() }
+                                ?.cover
+                                .orEmpty()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            ""
+                        }
+                        FavoriteFolderCoverCache.Resolved(
+                            mediaId = target.mediaId,
+                            mediaCount = target.mediaCount,
+                            cover = cover,
+                        )
                     }
-                    folderId to cover
                 }
             }.awaitAll()
-        }.filter { (_, cover) -> cover.isNotBlank() }.toMap()
-        if (coversByFolderId.isEmpty()) return
+        }.filter { it.cover.isNotBlank() }
+        if (resolved.isEmpty()) return
 
-        _folders.value = _folders.value.map { folder ->
-            val cover = coversByFolderId[folder.id]?.trim().orEmpty()
-            if (folder.cover.isBlank() && cover.isNotBlank()) folder.copy(cover = cover) else folder
+        FavoriteFolderCoverCache.store(context, resolved)
+        applyFavoriteFolderCovers(resolved.associate { it.mediaId to it.cover })
+    }
+
+    /** 把封面回填到收藏夹列表，只补空白封面，避免覆盖接口已返回的值。 */
+    private suspend fun applyFavoriteFolderCovers(coversByMediaId: Map<Long, String>) {
+        if (coversByMediaId.isEmpty()) return
+        // 用 CAS 更新，避免多个补封面批次并发回填时互相覆盖。
+        _folders.update { folders ->
+            folders.map { folder ->
+                if (folder.cover.isNotBlank()) return@map folder
+                val cover = coversByMediaId[resolveFavoriteFolderMediaId(folder)]?.trim().orEmpty()
+                if (cover.isBlank()) folder else folder.copy(cover = cover)
+            }
         }
     }
 

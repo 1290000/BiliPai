@@ -1295,6 +1295,9 @@ fun CommonListScreen(
                             selectedFavoriteResourceIds = emptySet()
                             searchQuery = ""
                         },
+                        onCoverPrefetch = { candidates ->
+                            favoriteViewModel.ensureFavoriteFolderCovers(candidates)
+                        },
                     )
                 } else {
                     if (historyViewModel != null) {
