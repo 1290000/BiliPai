@@ -150,6 +150,8 @@ fun Modifier.appElasticPress(
     state: AppElasticPressState? = null,
     transformInBackdrop: Boolean = false,
     highlightShape: Shape = RoundedCornerShape(50),
+    /** Only true while a caller-owned gesture has consumed the movement. */
+    allowConsumedDrag: () -> Boolean = { false },
 ): Modifier {
     if (foldIn(false) { found, element -> found || element === ElasticPressMarker }) return this
     return Modifier.then(ElasticPressMarker).composed {
@@ -195,7 +197,7 @@ fun Modifier.appElasticPress(
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
                             if (!change.pressed) break
                             if (change.position != change.previousPosition) {
-                                if (change.isConsumed) break
+                                if (change.isConsumed && !allowConsumedDrag()) break
                                 if (dragEnabled) {
                                     positionJob?.cancel()
                                     positionJob = scope.launch { position.snapTo(change.position) }

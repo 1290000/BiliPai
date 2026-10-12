@@ -1701,174 +1701,179 @@ fun CommonListScreen(
                             }
                         },
                         actions = {
-                            if (!isBatchActionMode) {
-                                onOpenSearchDestination?.let { openSearch ->
-                                    AppIconButton(onClick = { openSearch(searchQuery) }) {
-                                        AppIcon(Icons.Rounded.Search, contentDescription = "搜索")
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(AppSpacingTokens.ExtraSmall + AppSpacingTokens.Micro),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (!isBatchActionMode) {
+                                    onOpenSearchDestination?.let { openSearch ->
+                                        AppIconButton(onClick = { openSearch(searchQuery) }) {
+                                            AppIcon(Icons.Rounded.Search, contentDescription = "搜索")
+                                        }
                                     }
                                 }
-                            }
-                            if (favoriteViewModel != null && favoriteSection == FavoriteSection.VIDEO) {
-                                if (!isFavoriteBatchMode) {
-                                AppIconButton(
-                                    enabled = activeFavoriteItems.any { it.bvid.isNotBlank() } && !isSubscribedBrowse,
-                                    onClick = {
-                                        activeFavoriteItems.firstOrNull { it.bvid.isNotBlank() }?.let { first ->
+                                if (favoriteViewModel != null && favoriteSection == FavoriteSection.VIDEO) {
+                                    if (!isFavoriteBatchMode) {
+                                    AppIconButton(
+                                        enabled = activeFavoriteItems.any { it.bvid.isNotBlank() } && !isSubscribedBrowse,
+                                        onClick = {
+                                            activeFavoriteItems.firstOrNull { it.bvid.isNotBlank() }?.let { first ->
+                                                playFavoriteVideo(
+                                                    activeFavoriteItems,
+                                                    first.bvid,
+                                                    first.cid,
+                                                    first.pic,
+                                                    selectedFolderIndex,
+                                                    false,
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        AppIcon(
+                                            imageVector = rememberAppPlayIcon(),
+                                            contentDescription = "播放全部",
+                                        )
+                                    }
+                                    AppIconButton(
+                                        enabled = activeFavoriteItems.isNotEmpty() && !isSubscribedBrowse,
+                                        onClick = {
                                             playFavoriteVideo(
                                                 activeFavoriteItems,
-                                                first.bvid,
-                                                first.cid,
-                                                first.pic,
-                                                selectedFolderIndex,
-                                                false,
+                                                activeFavoriteItems.firstOrNull()?.bvid.orEmpty(),
+                                                activeFavoriteItems.firstOrNull()?.cid ?: 0L,
+                                                activeFavoriteItems.firstOrNull()?.pic.orEmpty(),
+                                                if (!isSubscribedBrowse) {
+                                                    selectedFolderIndex
+                                                } else {
+                                                    null
+                                                },
+                                                true
+                                            )
+                                        }
+                                    ) {
+                                        AppIcon(
+                                            imageVector = rememberAppHeadphonesIcon(),
+                                            contentDescription = "全部听"
+                                        )
+                                    }
+
+                                    if (!isSubscribedBrowse) {
+                                        AppWindowActionMenu(
+                                            enabled = !isFavoriteManaging,
+                                            groups = listOf(
+                                                listOf(
+                                                    AppWindowAction(
+                                                        label = "新建收藏夹",
+                                                        enabled = !isFavoriteManaging,
+                                                        onClick = {
+                                                            favoriteFolderEditorMode = "create"
+                                                            favoriteFolderEditorTitle = ""
+                                                            favoriteFolderEditorIntro = ""
+                                                            favoriteFolderEditorPrivate = false
+                                                        },
+                                                    ),
+                                                    AppWindowAction(
+                                                        label = "编辑收藏夹",
+                                                        enabled = selectedFavoriteFolder != null && !isFavoriteManaging,
+                                                        onClick = {
+                                                            selectedFavoriteFolder?.let { folder ->
+                                                                favoriteFolderEditorMode = "edit"
+                                                                favoriteFolderEditorTitle = folder.title
+                                                                favoriteFolderEditorIntro = folder.intro
+                                                                favoriteFolderEditorPrivate = folder.attr != 0
+                                                            }
+                                                        },
+                                                    ),
+                                                    AppWindowAction(
+                                                        label = "删除收藏夹",
+                                                        enabled = selectedFolderIndex > 0 && !isFavoriteManaging,
+                                                        onClick = { showFavoriteFolderDeleteConfirm = true },
+                                                    ),
+                                                ),
+                                                listOf(
+                                                    AppWindowAction(
+                                                        label = "排序：${favoriteOrder.label}",
+                                                        enabled = !isFavoriteManaging,
+                                                        children = FavoriteResourceOrder.entries.map { order ->
+                                                            AppWindowAction(
+                                                                label = order.label,
+                                                                enabled = !isFavoriteManaging,
+                                                                selected = order == favoriteOrder,
+                                                                onClick = { favoriteViewModel.changeFavoriteOrder(order) },
+                                                            )
+                                                        },
+                                                    ),
+                                                ),
+                                                listOf(
+                                                    AppWindowAction(
+                                                        label = "分享收藏夹",
+                                                        enabled = selectedFavoriteFolder?.attr == 0 && !isFavoriteManaging,
+                                                        onClick = {
+                                                            selectedFavoriteFolder?.let { folder ->
+                                                                com.android.purebilibili.core.util.ShareUtils.shareText(
+                                                                    context = context,
+                                                                    subject = folder.title,
+                                                                    text = "https://www.bilibili.com/medialist/detail/ml${resolveFavoriteFolderMediaId(folder)}",
+                                                                    chooserTitle = "分享收藏夹",
+                                                                )
+                                                            }
+                                                        },
+                                                    ),
+                                                    AppWindowAction(
+                                                        label = "分享至动态",
+                                                        enabled = selectedFavoriteFolder?.attr == 0 && !isFavoriteManaging,
+                                                        onClick = { showFavoriteDynamicShareConfirm = true },
+                                                    ),
+                                                    AppWindowAction(
+                                                        label = "清理失效内容",
+                                                        enabled = canCleanInvalidFavoriteResources(selectedFavoriteFolder) && !isFavoriteManaging,
+                                                        onClick = { showFavoriteCleanInvalidConfirm = true },
+                                                    ),
+                                                ),
+                                            ),
+                                        ) {
+                                            AppIcon(
+                                                imageVector = Icons.Filled.MoreVert,
+                                                contentDescription = "更多管理"
                                             )
                                         }
                                     }
-                                ) {
-                                    AppIcon(
-                                        imageVector = rememberAppPlayIcon(),
-                                        contentDescription = "播放全部",
-                                    )
-                                }
-                                AppIconButton(
-                                    enabled = activeFavoriteItems.isNotEmpty() && !isSubscribedBrowse,
-                                    onClick = {
-                                        playFavoriteVideo(
-                                            activeFavoriteItems,
-                                            activeFavoriteItems.firstOrNull()?.bvid.orEmpty(),
-                                            activeFavoriteItems.firstOrNull()?.cid ?: 0L,
-                                            activeFavoriteItems.firstOrNull()?.pic.orEmpty(),
-                                            if (!isSubscribedBrowse) {
-                                                selectedFolderIndex
-                                            } else {
-                                                null
-                                            },
-                                            true
-                                        )
                                     }
-                                ) {
-                                    AppIcon(
-                                        imageVector = rememberAppHeadphonesIcon(),
-                                        contentDescription = "全部听"
-                                    )
                                 }
 
-                                if (!isSubscribedBrowse) {
-                                    AppWindowActionMenu(
-                                        enabled = !isFavoriteManaging,
-                                        groups = listOf(
-                                            listOf(
-                                                AppWindowAction(
-                                                    label = "新建收藏夹",
-                                                    enabled = !isFavoriteManaging,
-                                                    onClick = {
-                                                        favoriteFolderEditorMode = "create"
-                                                        favoriteFolderEditorTitle = ""
-                                                        favoriteFolderEditorIntro = ""
-                                                        favoriteFolderEditorPrivate = false
-                                                    },
-                                                ),
-                                                AppWindowAction(
-                                                    label = "编辑收藏夹",
-                                                    enabled = selectedFavoriteFolder != null && !isFavoriteManaging,
-                                                    onClick = {
-                                                        selectedFavoriteFolder?.let { folder ->
-                                                            favoriteFolderEditorMode = "edit"
-                                                            favoriteFolderEditorTitle = folder.title
-                                                            favoriteFolderEditorIntro = folder.intro
-                                                            favoriteFolderEditorPrivate = folder.attr != 0
-                                                        }
-                                                    },
-                                                ),
-                                                AppWindowAction(
-                                                    label = "删除收藏夹",
-                                                    enabled = selectedFolderIndex > 0 && !isFavoriteManaging,
-                                                    onClick = { showFavoriteFolderDeleteConfirm = true },
+                                if (historyViewModel != null) {
+                                    if (!isHistoryBatchMode) {
+                                        AppWindowActionMenu(
+                                            enabled = !isHistoryManagementBusy,
+                                            groups = listOf(
+                                                listOf(
+                                                    AppWindowAction(
+                                                        label = resolveHistoryPauseActionLabel(isHistoryPaused),
+                                                        enabled = !isHistoryManagementBusy,
+                                                        onClick = { historyViewModel.toggleHistoryPause() },
+                                                    ),
+                                                    AppWindowAction(
+                                                        label = "删除已看记录",
+                                                        enabled = state.items.isNotEmpty() && !isHistoryManagementBusy,
+                                                        onClick = { historyViewModel.deleteViewedHistory() },
+                                                    ),
+                                                    AppWindowAction(
+                                                        label = "清空观看记录",
+                                                        enabled = state.items.isNotEmpty() && !isHistoryManagementBusy,
+                                                        onClick = { showHistoryClearConfirm = true },
+                                                    ),
                                                 ),
                                             ),
-                                            listOf(
-                                                AppWindowAction(
-                                                    label = "排序：${favoriteOrder.label}",
-                                                    enabled = !isFavoriteManaging,
-                                                    children = FavoriteResourceOrder.entries.map { order ->
-                                                        AppWindowAction(
-                                                            label = order.label,
-                                                            enabled = !isFavoriteManaging,
-                                                            selected = order == favoriteOrder,
-                                                            onClick = { favoriteViewModel.changeFavoriteOrder(order) },
-                                                        )
-                                                    },
-                                                ),
-                                            ),
-                                            listOf(
-                                                AppWindowAction(
-                                                    label = "分享收藏夹",
-                                                    enabled = selectedFavoriteFolder?.attr == 0 && !isFavoriteManaging,
-                                                    onClick = {
-                                                        selectedFavoriteFolder?.let { folder ->
-                                                            com.android.purebilibili.core.util.ShareUtils.shareText(
-                                                                context = context,
-                                                                subject = folder.title,
-                                                                text = "https://www.bilibili.com/medialist/detail/ml${resolveFavoriteFolderMediaId(folder)}",
-                                                                chooserTitle = "分享收藏夹",
-                                                            )
-                                                        }
-                                                    },
-                                                ),
-                                                AppWindowAction(
-                                                    label = "分享至动态",
-                                                    enabled = selectedFavoriteFolder?.attr == 0 && !isFavoriteManaging,
-                                                    onClick = { showFavoriteDynamicShareConfirm = true },
-                                                ),
-                                                AppWindowAction(
-                                                    label = "清理失效内容",
-                                                    enabled = canCleanInvalidFavoriteResources(selectedFavoriteFolder) && !isFavoriteManaging,
-                                                    onClick = { showFavoriteCleanInvalidConfirm = true },
-                                                ),
-                                            ),
-                                        ),
-                                    ) {
-                                        AppIcon(
-                                            imageVector = Icons.Filled.MoreVert,
-                                            contentDescription = "更多管理"
-                                        )
+                                        ) {
+                                            AppIcon(
+                                                imageVector = Icons.Filled.MoreVert,
+                                                contentDescription = "更多管理"
+                                            )
+                                        }
                                     }
                                 }
-                                }
+
                             }
-
-                            if (historyViewModel != null) {
-                                if (!isHistoryBatchMode) {
-                                    AppWindowActionMenu(
-                                        enabled = !isHistoryManagementBusy,
-                                        groups = listOf(
-                                            listOf(
-                                                AppWindowAction(
-                                                    label = resolveHistoryPauseActionLabel(isHistoryPaused),
-                                                    enabled = !isHistoryManagementBusy,
-                                                    onClick = { historyViewModel.toggleHistoryPause() },
-                                                ),
-                                                AppWindowAction(
-                                                    label = "删除已看记录",
-                                                    enabled = state.items.isNotEmpty() && !isHistoryManagementBusy,
-                                                    onClick = { historyViewModel.deleteViewedHistory() },
-                                                ),
-                                                AppWindowAction(
-                                                    label = "清空观看记录",
-                                                    enabled = state.items.isNotEmpty() && !isHistoryManagementBusy,
-                                                    onClick = { showHistoryClearConfirm = true },
-                                                ),
-                                            ),
-                                        ),
-                                    ) {
-                                        AppIcon(
-                                            imageVector = Icons.Filled.MoreVert,
-                                            contentDescription = "更多管理"
-                                        )
-                                    }
-                                }
-                            }
-
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent,

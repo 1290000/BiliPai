@@ -61,6 +61,12 @@ import com.android.purebilibili.core.ui.LocalComponentMotionEnabled
 import com.android.purebilibili.core.ui.MediaContrastPalette
 import kotlin.math.roundToInt
 
+/** A row can record explicit intent without treating persisted state restoration as input. */
+internal class LiquidSwitchIntent {
+    var requested: Boolean? = null
+}
+internal val LocalLiquidSwitchIntent = compositionLocalOf<LiquidSwitchIntent?> { null }
+
 private class LiquidValueMotion(private val scope: CoroutineScope, initial: Float, private val motionEnabled: Boolean) {
     private val value = Animatable(initial)
     private var pointerValue by mutableStateOf<Float?>(null)
@@ -149,6 +155,23 @@ private class LiquidValueMotion(private val scope: CoroutineScope, initial: Floa
         }
     }
 
+    fun synchronize(next: Float) {
+        if (pointerValue != null || abs(target - next) < 0.001f) return
+        target = next.coerceIn(0f, 1f)
+        selectionPulseJob?.cancel()
+        valueJob?.cancel()
+        velocityJob?.cancel()
+        releaseJob?.cancel()
+        pressJob?.cancel()
+        valueJob = scope.launch {
+            value.snapTo(target)
+            velocity.snapTo(0f)
+            press.snapTo(0f)
+            scaleX.snapTo(1f)
+            scaleY.snapTo(1f)
+        }
+    }
+
     /** Preference rows can toggle checked without sending pointer events to the thumb. */
     fun animateSelection(next: Float) {
         if (pointerValue != null || abs(target - next) < 0.001f) return
@@ -209,7 +232,12 @@ private fun Modifier.liquidValueGesture(
     interactionSource: MutableInteractionSource? = null,
 ): Modifier = pointerInput(motion, interactionSource) {
     awaitEachGesture {
-        val down = awaitFirstDown(false, PointerEventPass.Initial)
+        // Slop detection also reads Main. Starting in Initial would re-read this
+        // consumed down in Main and immediately cancel instead of seeing movement.
+        val down = awaitFirstDown(false, PointerEventPass.Main)
+        // Main visits the child before enclosing clickables. Own the press here;
+        // horizontal slop still arbitrates against vertical scrolling.
+        down.consume()
         var complete = false
         val pressInteraction = PressInteraction.Press(down.position)
         interactionSource?.tryEmit(pressInteraction)
@@ -329,13 +357,24 @@ internal fun AppLiquidSwitch(
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val latestLtr by rememberUpdatedState(isLtr)
     val track = rememberLayerBackdrop()
-    val active = colorResource(R.color.liquid_switch_active)
+    val active = if (com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidControlsUseThemeColor) {
+        MaterialTheme.colorScheme.primary
+    } else colorResource(R.color.liquid_switch_active)
     val inactive = colorResource(R.color.liquid_value_inactive)
     val background = AppSurfaceTokens.background()
     val switchBackdrop = remember(track, background, motion) {
         LiquidValueBackdrop(track, background, { motion.press.value }, compressTrack = true)
     }
-    LaunchedEffect(checked, motion) { motion.animateSelection(if (checked) 1f else 0f) }
+    val rowIntent = LocalLiquidSwitchIntent.current
+    LaunchedEffect(checked, motion, rowIntent) {
+        val next = if (checked) 1f else 0f
+        if (rowIntent != null && rowIntent.requested == checked) {
+            rowIntent.requested = null
+            motion.animateSelection(next)
+        } else {
+            motion.synchronize(next)
+        }
+    }
     fun select(next: Boolean) {
         if (hapticsEnabled && next != latestChecked) haptic.performHapticFeedback(if (next) androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOn else androidx.compose.ui.hapticfeedback.HapticFeedbackType.ToggleOff)
         motion.finishGesture(if (next) 1f else 0f)
@@ -395,7 +434,9 @@ internal fun AppLiquidSlider(
     val sliderBackdrop = remember(track, background, motion) {
         LiquidValueBackdrop(track, background, { motion.press.value }, compressTrack = false)
     }
-    val active = colors?.activeTrackColor ?: colorResource(R.color.liquid_slider_active)
+    val active = colors?.activeTrackColor ?: if (
+        com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidControlsUseThemeColor
+    ) MaterialTheme.colorScheme.primary else colorResource(R.color.liquid_slider_active)
     val inactive = colors?.inactiveTrackColor ?: colorResource(R.color.liquid_value_inactive)
     fun update(progress: Float, fromPointer: Boolean = false) {
         val bounded = progress.coerceIn(0f, 1f)

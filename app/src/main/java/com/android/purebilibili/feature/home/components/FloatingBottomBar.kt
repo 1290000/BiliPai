@@ -1115,7 +1115,8 @@ fun FloatingBottomBar(
                                 }
                             },
                         )
-                        .then(interactiveHighlight?.modifier ?: Modifier)
+                        // Capture content without replaying the shell's press light.
+                        // The moving capsule owns its separate edge highlight.
                         .height(capturedContentHeight)
                         .padding(horizontal = horizontalPadding),
                     verticalAlignment = Alignment.CenterVertically,

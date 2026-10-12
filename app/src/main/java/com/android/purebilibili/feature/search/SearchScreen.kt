@@ -119,7 +119,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.core.animate
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.Job
@@ -473,11 +472,11 @@ internal enum class SearchFilterControl {
 
 internal val defaultSearchFilterTabOrder: List<SearchType> = listOf(
     SearchType.VIDEO,
+    SearchType.UP,
     SearchType.BANGUMI,
     SearchType.MEDIA_FT,
     SearchType.LIVE,
     SearchType.LIVE_USER,
-    SearchType.UP,
     SearchType.ARTICLE,
     SearchType.TOPIC,
     SearchType.PHOTO
@@ -1300,12 +1299,18 @@ fun SearchScreen(
                             }
                             Layout(
                                 modifier = if (searchCollapseFraction > 0f) {
-                                    // Only collapsing controls need a viewport clip. Expanded
-                                    // chrome must let the whole capsule's spring overflow.
-                                    Modifier.clipToBounds().drawWithContent {
+                                    // Hide chrome above the status-bar boundary, but retain
+                                    // a halo below/alongside the header for elastic controls.
+                                    Modifier.drawWithContent {
                                         val top = searchStatusBarHeightPx.coerceIn(0f, size.height)
                                         if (size.height > top) {
-                                            clipRect(top = top) { this@drawWithContent.drawContent() }
+                                            val overflow = AppChromeSizeTokens.MinimumTouchTarget.toPx()
+                                            clipRect(
+                                                left = -overflow,
+                                                top = top,
+                                                right = size.width + overflow,
+                                                bottom = size.height + overflow,
+                                            ) { this@drawWithContent.drawContent() }
                                         }
                                     }
                                 } else Modifier,
@@ -2778,6 +2783,46 @@ fun SearchTopBar(
                 if (trailingActions != null) {
                     Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
                     trailingActions()
+                } else {
+                    val submitElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
+                    val clearElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
+                    Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
+                    SearchTopBarIconButton(
+                        onClick = { onSearch(resolvedSubmitKeyword) },
+                        elasticState = submitElasticState,
+                        shape = actionShape,
+                        transformInBackdrop = glassActive,
+                        enabled = canSubmit,
+                        modifier = Modifier
+                            .size(chromeSpec.submitActionSizeDp.dp)
+                            .searchTopChromeGlass(actionShape, chromeSpec.submitActionSizeDp, submitElasticState),
+                    ) {
+                        AppIcon(
+                            imageVector = rememberAppSearchIcon(),
+                            contentDescription = stringResource(R.string.common_search),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (canSubmit) 1f else 0.35f),
+                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
+                    SearchTopBarIconButton(
+                        onClick = onClearQuery,
+                        elasticState = clearElasticState,
+                        shape = actionShape,
+                        transformInBackdrop = glassActive,
+                        enabled = query.isNotEmpty(),
+                        elasticFeedbackEnabled = true,
+                        modifier = Modifier
+                            .size(chromeSpec.clearActionSizeDp.dp)
+                            .searchTopChromeGlass(actionShape, chromeSpec.clearActionSizeDp, clearElasticState),
+                    ) {
+                        AppIcon(
+                            imageVector = rememberAppClearIcon(),
+                            contentDescription = stringResource(R.string.common_clear),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (query.isNotEmpty()) 1f else 0.35f),
+                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp),
+                        )
+                    }
                 }
             }
         }
@@ -2792,6 +2837,7 @@ private fun SearchTopBarIconButton(
     transformInBackdrop: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    elasticFeedbackEnabled: Boolean = enabled,
     content: @Composable () -> Unit
 ) {
     Box(
@@ -2804,7 +2850,7 @@ private fun SearchTopBarIconButton(
         // The surface owns motion; never move only the glyph inside a fixed clipping shell.
         Box(
             modifier = modifier.appElasticPress(
-                enabled = enabled,
+                enabled = elasticFeedbackEnabled,
                 state = elasticState,
                 transformInBackdrop = transformInBackdrop,
                 highlightShape = shape,

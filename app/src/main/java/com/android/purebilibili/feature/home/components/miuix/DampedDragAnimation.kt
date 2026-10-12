@@ -23,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 
 enum class DampedDragTrackingMode {
@@ -194,14 +195,23 @@ class DampedDragAnimation(
         releaseJob?.cancel()
         velocityJob?.cancel()
         releaseJob = animationScope.launch {
-            withFrameNanos { }
-            if (value != targetValue) {
-                val threshold = ((valueRange.endInclusive - valueRange.start) * 0.025f)
-                    .coerceAtLeast(visibilityThreshold.coerceAtLeast(0.001f))
-                snapshotFlow { abs(valueAnimation.value - targetValue) }
-                    .filter { it <= threshold }
-                    .first()
+            val settled = withTimeoutOrNull(450L) {
+                withFrameNanos { }
+                if (value != targetValue) {
+                    val threshold = ((valueRange.endInclusive - valueRange.start) * 0.025f)
+                        .coerceAtLeast(visibilityThreshold.coerceAtLeast(0.001f))
+                    snapshotFlow { abs(valueAnimation.value - targetValue) }
+                        .filter { it <= threshold }
+                        .first()
+                }
+                true
             }
+            if (settled == null) {
+                // A cancelled tracking mutation must not keep the pressed pill stuck.
+                valueTrackingJob?.cancel()
+                valueAnimation.snapTo(targetValue)
+            }
+            pressJob?.cancel()
             // 照搬 HyperIsland LiquidGlassNavigationBar 的 release()：直接接管正在跑的
             // 放大动画，不等待它结束。原先这里的 pressJob?.join() 会让缩放先跑到峰值停住、
             // 之后才开始缩回（放大 → 停顿 → 缩小），破坏连贯性。

@@ -54,7 +54,8 @@ private fun DynamicLivePulseIndicator(
     modifier: Modifier = Modifier,
 ) {
     val reduceMotion = rememberSystemReduceMotion()
-    val progress = if (!reduceMotion) {
+    val animationGate = com.android.purebilibili.core.ui.rememberDecorativeAnimationGate()
+    val progress = if (!reduceMotion && animationGate.active) {
         val transition = rememberInfiniteTransition(label = "dynamicLivePulse")
         transition.animateFloat(
             initialValue = 0f,
@@ -68,7 +69,7 @@ private fun DynamicLivePulseIndicator(
         null
     }
 
-    Canvas(modifier = modifier.size(width = 11.dp, height = 12.dp)) {
+    Canvas(modifier = modifier.size(width = 11.dp, height = 12.dp).then(animationGate.modifier)) {
         drawDynamicLivePulseBars(
             progress = progress?.value,
             color = color,
