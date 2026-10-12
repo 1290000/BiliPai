@@ -110,6 +110,8 @@ import com.android.purebilibili.feature.dynamic.resolveDynamicLikeState
 import com.android.purebilibili.data.model.response.DynamicStatModule
 import com.android.purebilibili.data.model.response.DynamicType
 import com.android.purebilibili.data.model.response.OpusContentBlock
+import com.android.purebilibili.data.model.response.OpusLinkCard
+import com.android.purebilibili.data.model.response.resolveDynamicCardButtonText
 import com.android.purebilibili.data.repository.DynamicRepository
 import com.android.purebilibili.feature.dynamic.DynamicDeleteAction
 import com.android.purebilibili.feature.dynamic.resolveDynamicDeleteAction
@@ -272,13 +274,40 @@ fun DynamicCardV2(
     var pendingDeleteAction by remember(item.id_str) { mutableStateOf<DynamicDeleteAction?>(null) }
     var pendingBlockAuthor by remember(item.id_str) { mutableStateOf<DynamicManageAction.BlockAuthor?>(null) }
     var pendingVoteId by remember(item.id_str) { mutableStateOf<Long?>(null) }
-    val resolvedAdditionalCard = remember(content?.additional) {
-        resolveDynamicAdditionalCard(content?.additional)
+    //  附加内容卡（相关游戏 / 投稿 / 商品 / 预约 / 投票 / 赛事 / 充电抽奖）统一映射，
+    //  与详情页 opus 正文段落里的 link_card 走同一个模型和同一个组件，
+    //  这样信息流与详情页的版式、高度、交互完全一致，进入详情不再闪烁。
+    val resolvedLinkCard = remember(content?.additional) {
+        resolveDynamicLinkCard(content?.additional)
     }
-    var additionalCardState by remember(item.id_str, resolvedAdditionalCard) {
-        mutableStateOf(resolvedAdditionalCard)
+    //  详情返回里可能同时带 additional 和 opus 正文块里的同一张卡，
+    //  按卡片身份去重，避免统一渲染后出现两张一样的卡片。
+    val opusLinkCardIdentities = remember(fullOpusContentBlocks) {
+        fullOpusContentBlocks
+            .filterIsInstance<OpusContentBlock.LinkCard>()
+            .map { block -> block.card.linkCardIdentity() }
+            .toSet()
     }
-    var reserveSubmitting by remember(item.id_str) { mutableStateOf(false) }
+    val additionalLinkCard = resolvedLinkCard
+        ?.takeUnless { card -> card.linkCardIdentity() in opusLinkCardIdentities }
+    //  附加内容卡的跳转分发：信息流与详情页共用同一套解析，
+    //  避免同一个链接在列表里走外链、进详情却打开 App 内页面。
+    val openLinkCardTarget: (OpusLinkCard) -> Unit = { linkCard ->
+        when (val action = resolveDynamicOpusLinkCardAction(linkCard)) {
+            is DynamicOpusLinkCardAction.OpenVideo -> onVideoClick(action.videoId)
+            is DynamicOpusLinkCardAction.OpenDynamicDetail -> openDynamicDetail?.invoke(action.dynamicId)
+            is DynamicOpusLinkCardAction.OpenArticle -> onArticleClick?.invoke(action.articleId, action.title)
+            is DynamicOpusLinkCardAction.OpenLive -> onLiveClick(
+                action.roomId,
+                linkCard.title.ifBlank { "直播间" },
+                author?.name.orEmpty()
+            )
+            is DynamicOpusLinkCardAction.OpenUser -> onUserClick(action.mid)
+            is DynamicOpusLinkCardAction.OpenBangumi -> onBangumiClick(action.seasonId, action.epId)
+            is DynamicOpusLinkCardAction.OpenExternalUrl -> openDynamicUrl(uriHandler, action.url)
+            DynamicOpusLinkCardAction.None -> Unit
+        }
+    }
     //  [新增] 评论互动设置弹窗状态
     var showReplyInteractionDialog by remember(item.id_str) { mutableStateOf<ReplyInteractionData?>(null) }
     var replyInteractionOid by remember(item.id_str) { mutableStateOf(0L) }
@@ -1456,36 +1485,14 @@ fun DynamicCardV2(
                             }
                         }
                         is OpusContentBlock.LinkCard -> {
-                            DynamicOpusLinkCard(
+                            DynamicLinkCardSlot(
                                 card = block.card,
+                                dynamicId = item.id_str,
                                 modifier = Modifier.padding(bottom = AppSpacingTokens.Medium),
-                                enabled = block.card.jumpUrl.isNotBlank() ||
-                                    (block.card.type == "LINK_CARD_TYPE_VOTE" && block.card.oid.toLongOrNull() != null),
-                                onClick = {
-                                    val opusVoteId = block.card.takeIf {
-                                        it.type == "LINK_CARD_TYPE_VOTE"
-                                    }?.oid?.toLongOrNull()?.takeIf { it > 0L }
-                                    if (opusVoteId != null) {
-                                        pendingVoteId = opusVoteId
-                                    } else {
-                                        when (val action = resolveDynamicOpusLinkCardAction(block.card)) {
-                                            is DynamicOpusLinkCardAction.OpenVideo -> onVideoClick(action.videoId)
-                                            is DynamicOpusLinkCardAction.OpenDynamicDetail -> openDynamicDetail?.invoke(action.dynamicId)
-                                            is DynamicOpusLinkCardAction.OpenArticle -> onArticleClick?.invoke(action.articleId, action.title)
-                                            is DynamicOpusLinkCardAction.OpenLive -> onLiveClick(
-                                                action.roomId,
-                                                block.card.title.ifBlank { "直播间" },
-                                                author?.name.orEmpty()
-                                            )
-                                            is DynamicOpusLinkCardAction.OpenUser -> onUserClick(action.mid)
-                                            is DynamicOpusLinkCardAction.OpenBangumi -> onBangumiClick(action.seasonId, action.epId)
-                                            is DynamicOpusLinkCardAction.OpenExternalUrl -> runCatching {
-                                                uriHandler.openUri(action.url)
-                                            }
-                                            DynamicOpusLinkCardAction.None -> Unit
-                                        }
-                                    }
-                                }
+                                onReserveClick = onReserveClick,
+                                onVoteClick = { voteId -> pendingVoteId = voteId },
+                                onOpenCard = openLinkCardTarget,
+                                onOpenUrl = { url -> openDynamicUrl(uriHandler, url) },
                             )
                         }
                     }
@@ -1890,63 +1897,14 @@ fun DynamicCardV2(
             Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
         }
         
-        additionalCardState?.let { additionalCard ->
-            DynamicAdditionalCard(
-                model = additionalCard,
-                actionLoading = reserveSubmitting,
-                onActionClick = if (additionalCard.reserveActionJumpUrl.isNotBlank()) {
-                    { openDynamicUrl(uriHandler, additionalCard.reserveActionJumpUrl) }
-                } else if (additionalCard.reserveId > 0L && onReserveClick != null) {
-                    {
-                        if (!reserveSubmitting) {
-                            reserveSubmitting = true
-                            onReserveClick(
-                                DynamicReserveAction(
-                                    dynamicId = item.id_str,
-                                    reserveId = additionalCard.reserveId,
-                                    currentButtonStatus = additionalCard.reserveButtonStatus,
-                                    reserveTotal = additionalCard.reserveTotal,
-                                    buttonType = additionalCard.reserveButtonType,
-                                    title = additionalCard.title,
-                                    startAtMillis = additionalCard.reserveStartAtMillis,
-                                )
-                            ) { result ->
-                                reserveSubmitting = false
-                                result.onSuccess { updated ->
-                                    additionalCardState = additionalCard.copy(
-                                        subtitle = listOf(
-                                            additionalCard.reserveDescriptionPrefix,
-                                            updated.description,
-                                        ).filter(String::isNotBlank).joinToString("  ")
-                                            .ifBlank { additionalCard.subtitle },
-                                        reserveTotal = updated.reserveTotal,
-                                        reserveButtonStatus = updated.buttonStatus,
-                                        actionLabel = if (updated.buttonStatus == additionalCard.reserveButtonType) {
-                                            additionalCard.reserveCheckedLabel
-                                        } else {
-                                            additionalCard.reserveUncheckedLabel
-                                        },
-                                    )
-                                }.onFailure { error ->
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        error.message ?: "预约操作失败",
-                                        android.widget.Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                            }
-                        }
-                    }
-                } else null,
-                onClick = {
-                    if (additionalCard.voteId > 0L) {
-                        pendingVoteId = additionalCard.voteId
-                    } else if (additionalCard.jumpUrl.isNotBlank()) {
-                        openDynamicUrl(uriHandler, additionalCard.jumpUrl)
-                    } else if (additionalCard.reserveDescriptionJumpUrl.isNotBlank()) {
-                        openDynamicUrl(uriHandler, additionalCard.reserveDescriptionJumpUrl)
-                    }
-                }
+        additionalLinkCard?.let { linkCard ->
+            DynamicLinkCardSlot(
+                card = linkCard,
+                dynamicId = item.id_str,
+                onReserveClick = onReserveClick,
+                onVoteClick = { voteId -> pendingVoteId = voteId },
+                onOpenCard = openLinkCardTarget,
+                onOpenUrl = { url -> openDynamicUrl(uriHandler, url) },
             )
             Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
         }
@@ -2066,88 +2024,100 @@ private fun resolveOpusTextAlign(alignment: Int): TextAlign = when (alignment) {
     else -> TextAlign.Start
 }
 
+/** 预约成功后服务端回写的字段，按卡片身份缓存，避免影响列表里的其它卡片。 */
+private data class DynamicReserveOverride(
+    val description: String,
+    val reserveTotal: Long,
+    val buttonStatus: Int,
+)
+
+/**
+ * 把预约结果合并回卡片模型：描述行、预约人数与按钮状态。
+ * 按钮文案由新的 status 重新推导，因此信息流与详情回写后的样子也保持一致。
+ */
+private fun OpusLinkCard.withReserveOverride(override: DynamicReserveOverride?): OpusLinkCard {
+    if (override == null) return this
+    val reserve = this.reserve ?: return this
+    val button = reserve.button
+    return copy(
+        description = override.description.ifBlank { description },
+        badgeText = resolveDynamicCardButtonText(button?.copy(status = override.buttonStatus))
+            .ifBlank { badgeText },
+        reserve = reserve.copy(
+            reserve_total = override.reserveTotal,
+            button = button?.copy(status = override.buttonStatus),
+        ),
+    )
+}
+
+/**
+ * 附加内容卡插槽：信息流与详情页共用同一个入口。
+ *
+ * 这里只负责预约按钮的本地状态（提交中 / 提交后回写）与点击分发，
+ * 展示与版式全部交给 [DynamicLinkCard]，保证两个页面像素级一致。
+ */
 @Composable
-private fun DynamicAdditionalCard(
-    model: DynamicAdditionalCardModel,
-    actionLoading: Boolean,
-    onActionClick: (() -> Unit)?,
-    onClick: () -> Unit
+private fun DynamicLinkCardSlot(
+    card: OpusLinkCard,
+    dynamicId: String,
+    modifier: Modifier = Modifier,
+    onReserveClick: ((DynamicReserveAction, (Result<DynamicReserveResult>) -> Unit) -> Unit)?,
+    onVoteClick: (Long) -> Unit,
+    onOpenCard: (OpusLinkCard) -> Unit,
+    onOpenUrl: (String) -> Unit,
 ) {
-    Column {
-        DynamicNativeLinkCard(
-            title = model.title,
-            subtitle = model.subtitle,
-            cover = model.cover,
-            kindLabel = model.kindLabel,
-            actionLabel = model.actionLabel,
-            enabled = model.enabled,
-            actionEnabled = !model.reserveButtonDisabled && !actionLoading,
-            onActionClick = onActionClick,
-            onClick = onClick,
-        )
-        // 赛事比分行：左队 标志+名称 | 比分/阶段 | 右队 名称+标志
-        if (model.matchTeams.size == 2) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = AppSpacingTokens.Small, vertical = AppSpacingTokens.Small),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val left = model.matchTeams[0]
-                val right = model.matchTeams[1]
-                PageAwareAsyncImage(
-                    model = left.logoUrl.takeIf { it.isNotBlank() },
-                    contentDescription = null,
-                    modifier = Modifier.size(26.dp).clip(CircleShape),
-                    contentScale = ContentScale.Fit
-                )
-                AppText(
-                    text = left.name,
-                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = AppSpacingTokens.ExtraSmall)
-                )
-                AppText(
-                    text = left.score.ifBlank { model.matchCenterLabel }.ifBlank { "VS" },
-                    fontSize = MaterialTheme.typography.titleSmall.fontSize,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                AppText(
-                    text = right.name,
-                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = AppSpacingTokens.ExtraSmall)
-                )
-                PageAwareAsyncImage(
-                    model = right.logoUrl.takeIf { it.isNotBlank() },
-                    contentDescription = null,
-                    modifier = Modifier.size(26.dp).clip(CircleShape),
-                    contentScale = ContentScale.Fit
-                )
+    val context = LocalContext.current
+    val cardKey = card.linkCardIdentity()
+    var reserveSubmitting by remember(cardKey) { mutableStateOf(false) }
+    var reserveOverride by remember(cardKey) { mutableStateOf<DynamicReserveOverride?>(null) }
+    val shownCard = card.withReserveOverride(reserveOverride)
+    val reserveUi = remember(shownCard, dynamicId) { resolveDynamicReserveUi(shownCard, dynamicId) }
+    val matchUi = remember(shownCard) { resolveDynamicMatchUi(shownCard) }
+    val onReserveAction: (() -> Unit)? = when {
+        reserveUi == null -> null
+        reserveUi.actionJumpUrl.isNotBlank() -> ({ onOpenUrl(reserveUi.actionJumpUrl) })
+        onReserveClick != null -> ({
+            if (!reserveSubmitting) {
+                reserveSubmitting = true
+                onReserveClick(reserveUi.action) { result ->
+                    reserveSubmitting = false
+                    result.onSuccess { updated ->
+                        reserveOverride = DynamicReserveOverride(
+                            description = listOf(
+                                shownCard.reserve?.desc1?.text.orEmpty(),
+                                updated.description,
+                            ).filter(String::isNotBlank).joinToString("  "),
+                            reserveTotal = updated.reserveTotal,
+                            buttonStatus = updated.buttonStatus,
+                        )
+                    }.onFailure { error ->
+                        android.widget.Toast.makeText(
+                            context,
+                            error.message ?: "预约操作失败",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
             }
-            if (model.matchTeams[0].score.isNotBlank() && model.matchCenterLabel.isNotBlank()) {
-                AppText(
-                    text = model.matchCenterLabel,
-                    fontSize = MaterialTheme.typography.labelSmall.fontSize,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = AppSpacingTokens.Small)
-                )
-            }
-        }
+        })
+        else -> null
     }
+    DynamicLinkCard(
+        card = shownCard,
+        modifier = modifier,
+        reserveUi = reserveUi,
+        matchUi = matchUi,
+        reserveSubmitting = reserveSubmitting,
+        onReserveAction = onReserveAction,
+        onClick = {
+            val voteId = resolveDynamicLinkCardVoteId(shownCard)
+            when {
+                voteId != null -> onVoteClick(voteId)
+                shownCard.jumpUrl.isNotBlank() -> onOpenCard(shownCard)
+                reserveUi?.descriptionJumpUrl?.isNotBlank() == true -> onOpenUrl(reserveUi.descriptionJumpUrl)
+            }
+        },
+    )
 }
 
 @Composable
