@@ -1299,16 +1299,16 @@ fun SearchScreen(
                                 0f
                             }
                             Layout(
-                                modifier = Modifier
-                                    .clipToBounds()
-                                    .drawWithContent {
-                                        // The retained status-bar spacer is not a viewport for
-                                        // collapsed controls; clip below its safe inset.
+                                modifier = if (searchCollapseFraction > 0f) {
+                                    // Only collapsing controls need a viewport clip. Expanded
+                                    // chrome must let the whole capsule's spring overflow.
+                                    Modifier.clipToBounds().drawWithContent {
                                         val top = searchStatusBarHeightPx.coerceIn(0f, size.height)
                                         if (size.height > top) {
                                             clipRect(top = top) { this@drawWithContent.drawContent() }
                                         }
-                                    },
+                                    }
+                                } else Modifier,
                                 content = {
                                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                                         Column(
@@ -2572,25 +2572,12 @@ fun SearchTopBar(
         resolveSearchTopBarRowMinHeightDp(inputHeightDp)
     }
     val searchInteractionSource = remember { MutableInteractionSource() }
-    val isSearchFieldFocused by searchInteractionSource.collectIsFocusedAsState()
     val backIcon = rememberAppBackIcon()
-    val searchIcon = rememberAppSearchIcon()
-    val clearIcon = rememberAppClearIcon()
     val density = LocalDensity.current
     val entryMotionProgress = remember { Animatable(1f) }
     val latestOnEntryMotionFinished by rememberUpdatedState(onEntryMotionFinished)
     val latestOnExitMotionFinished by rememberUpdatedState(onExitMotionFinished)
-    val searchIconColor by animateColorAsState(
-        targetValue = if (isSearchFieldFocused) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-        },
-        animationSpec = if (reducedMotionBudget) snap() else tween(durationMillis = 200),
-        label = "iconColor"
-    )
     val backLabel = stringResource(R.string.common_back)
-    val searchLabel = stringResource(R.string.common_search)
     val resolvedSubmitKeyword = remember(query, suggestedKeyword) {
         resolveSearchSubmitKeyword(
             query = query,
@@ -2609,8 +2596,6 @@ fun SearchTopBar(
         feedbackStrength = com.android.purebilibili.core.ui.components.APP_SEARCH_ELASTIC_FEEDBACK_STRENGTH,
     )
     val backElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
-    val submitElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
-    val clearElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
     fun Modifier.searchTopChromeGlass(
         shape: androidx.compose.ui.graphics.Shape,
         controlHeightDp: Int,
@@ -2787,75 +2772,12 @@ fun SearchTopBar(
                         .height(inputHeightDp.dp)
                         .appElasticPress(state = searchElasticState, transformInBackdrop = glassActive, highlightShape = inputShape)
                         .searchTopChromeGlass(inputShape, inputHeightDp, searchElasticState)
-                        .then(if (glassActive) Modifier.graphicsLayer(searchElasticState.layerBlock) else Modifier)
                         .onFocusChanged { onFocusChanged(it.isFocused) }
                 )
 
-                Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
-
                 if (trailingActions != null) {
-                    trailingActions()
-                } else {
-                    SearchTopBarIconButton(
-                        onClick = { onSearch(resolvedSubmitKeyword) },
-                        elasticState = submitElasticState,
-                        shape = actionShape,
-                        transformInBackdrop = glassActive,
-                        enabled = canSubmit,
-                        modifier = Modifier
-                            .size(chromeSpec.submitActionSizeDp.dp)
-                            .searchTopChromeGlass(actionShape, chromeSpec.submitActionSizeDp, submitElasticState)
-                            .then(
-                                if (glassActive) {
-                                    Modifier
-                                } else {
-                                    Modifier
-                                        .clip(actionShape)
-                                        .background(
-                                            if (canSubmit) {
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-                                            } else {
-                                                Color.Transparent
-                                            }
-                                        )
-                                }
-                            )
-                    ) {
-                        AppIcon(
-                            searchIcon,
-                            contentDescription = searchLabel,
-                            tint = if (canSubmit) {
-                                searchIconColor
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                            },
-                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
-                        )
-                    }
-
                     Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
-
-                    SearchTopBarIconButton(
-                        onClick = onClearQuery,
-                        elasticState = clearElasticState,
-                        shape = actionShape,
-                        transformInBackdrop = glassActive,
-                        enabled = query.isNotEmpty(),
-                        modifier = Modifier
-                            .size(chromeSpec.clearActionSizeDp.dp)
-                            .searchTopChromeGlass(actionShape, chromeSpec.clearActionSizeDp, clearElasticState)
-                    ) {
-                        AppIcon(
-                            clearIcon,
-                            contentDescription = stringResource(R.string.common_clear),
-                            tint = if (query.isNotEmpty()) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                            },
-                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp)
-                        )
-                    }
+                    trailingActions()
                 }
             }
         }
@@ -2894,10 +2816,8 @@ private fun SearchTopBarIconButton(
             ) {
                 AppIconButton(
                     onClick = onClick,
-                    modifier = Modifier.matchParentSize().then(
-                        if (transformInBackdrop) Modifier.graphicsLayer(elasticState.layerBlock)
-                        else Modifier,
-                    ),
+                    // drawBackdrop already transforms the surface and its descendants.
+                    modifier = Modifier.matchParentSize(),
                     enabled = enabled,
                     content = content,
                 )
@@ -3310,7 +3230,7 @@ private fun SearchResultTypeTabRow(
                     com.android.purebilibili.core.ui.AppSurfaceTokens.primary()
                 },
                 unselectedContentColor = com.android.purebilibili.core.ui.AppSurfaceTokens.onSurfaceVariantSummary(),
-                labelFontSize = MaterialTheme.typography.labelLarge.fontSize,
+                labelFontSize = MaterialTheme.typography.labelMedium.fontSize,
                 indicatorPositionProvider = {
                     pagerState.currentPage + pagerState.currentPageOffsetFraction
                 },
@@ -3343,7 +3263,7 @@ private fun SearchResultTypeTabRow(
             itemWidth = itemWidth.takeIf { useScrollableRail },
             height = AppChromeSizeTokens.BottomBarMatchedSegmentedControlHeightDp.dp,
             indicatorHeight = AppChromeSizeTokens.BottomBarMatchedSegmentedIndicatorHeightDp.dp,
-            labelFontSize = MaterialTheme.typography.labelLarge.fontSize,
+            labelFontSize = MaterialTheme.typography.labelMedium.fontSize,
             allowNativeLabelOverflow = true,
             miuixBackdrop = miuixBackdrop,
             liquidGlassEffectsEnabled = true,
