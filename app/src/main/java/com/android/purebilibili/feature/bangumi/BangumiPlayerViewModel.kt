@@ -29,8 +29,10 @@ import com.android.purebilibili.feature.video.playback.audio.resolveRequestedAud
 import com.android.purebilibili.feature.video.playback.policy.shouldRefreshPremiumAudioForPlaybackSpeedChange
 import com.android.purebilibili.feature.video.usecase.VideoInteractionUseCase
 import com.android.purebilibili.feature.plugin.PlaybackCdnPlugin
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.channels.Channel
@@ -185,7 +187,32 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     private val followStatusCache = mutableMapOf<Long, Boolean>()
     private val followStatusValueCache = mutableMapOf<Long, Int>()
     private val followedSeasonIds = mutableSetOf<Long>()
-    private val loadedFollowTypes = mutableSetOf<Int>()
+    private var followVerificationJob: Job? = null
+    private var followCacheSession = currentBangumiFollowSession()
+
+    private fun ensureFollowCacheSession(): BangumiFollowSession {
+        val session = currentBangumiFollowSession()
+        if (followCacheSession != session) {
+            followCacheSession = session
+            followVerificationJob?.cancel()
+            followStatusCache.clear()
+            followStatusValueCache.clear()
+            followedSeasonIds.clear()
+            val current = _uiState.value as? BangumiPlayerState.Success
+            if (current != null) {
+                val status = (current.seasonDetail.userStatus ?: UserStatus()).copy(
+                    follow = 0, followStatus = 0
+                )
+                _uiState.value = current.copy(
+                    seasonDetail = current.seasonDetail.copy(userStatus = status)
+                )
+            }
+        }
+        return session
+    }
+
+    private fun acceptsFollowSession(session: BangumiFollowSession): Boolean =
+        ensureFollowCacheSession() == session
     
     //  [重构] 覆盖基类的空降跳过回调，显示 toast
     override fun onSponsorSkipped(segment: SponsorSegment) {
@@ -211,12 +238,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         }
     }
 
-    init {
-        viewModelScope.launch {
-            ensureFollowedSeasonsLoaded(MY_FOLLOW_TYPE_BANGUMI)
-            ensureFollowedSeasonsLoaded(MY_FOLLOW_TYPE_CINEMA)
-        }
-    }
+    // 播放器初始化不扫描两类追番列表。
     
     /**
      *  [新增] 自动播放下一集
@@ -296,6 +318,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         isCourse: Boolean = false,
         preferredAid: Long = 0L
     ) {
+        val followSession = ensureFollowCacheSession()
         isCourseMode = isCourse
         val startPositionMs = resumePositionMs.coerceAtLeast(0L)
         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📥 loadBangumiPlay: seasonId=$seasonId, epId=$epId, aid=$preferredAid, resume=${startPositionMs}ms, isCourse=$isCourse, exoPlayer=${exoPlayer?.hashCode()}")
@@ -369,6 +392,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         
         currentSeasonId = seasonId
         currentEpId = epId
+        followVerificationJob?.cancel()
         playbackLoadJob?.cancel()
         playbackLoadJob = viewModelScope.launch {
             _uiState.value = BangumiPlayerState.Loading
@@ -387,6 +411,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 )
             }
             
+            detailResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (!acceptsFollowSession(followSession)) return@launch
             detailResult.onSuccess { detail ->
                 val resumeTarget = resolveBangumiInitialEpisode(
                     detail = detail,
@@ -417,6 +444,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     detail = detail,
                     episode = episode,
                     episodeIndex = episodeIndex,
+                    followSession = followSession,
                     startPositionMs = resolveBangumiPlaybackStartPositionMs(
                         routeResumePositionMs = targetResumeMs,
                         savedEpisodePositionMs = progressManager?.getCachedPosition(
@@ -472,8 +500,10 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         detail: BangumiDetail,
         episode: BangumiEpisode,
         episodeIndex: Int,
-        startPositionMs: Long = 0L
+        startPositionMs: Long = 0L,
+        followSession: BangumiFollowSession = ensureFollowCacheSession()
     ) {
+        if (!acceptsFollowSession(followSession)) return
         com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "🎬 fetchPlayUrl: epId=${episode.id}, cid=${episode.cid}, aid=${episode.aid}")
         val isCourse = detail.seasonType == 10
         var requestedQn = resolveBangumiInitialQuality()
@@ -506,6 +536,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             )
         }
         
+        playUrlResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        if (!acceptsFollowSession(followSession)) return
         playUrlResult.onSuccess { playData ->
             com.android.purebilibili.core.util.Logger.d("BangumiPlayerVM", "📡 PlayUrl success: quality=${playData.quality}, hasDash=${playData.dash != null}, hasDurl=${!playData.durl.isNullOrEmpty()}")
             
@@ -650,33 +683,20 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
             }
             
             val realSeasonId = detail.seasonId
-            val followType = defaultMyFollowTypeForSeasonType(detail.seasonType)
-            if (!loadedFollowTypes.contains(followType)) {
-                ensureFollowedSeasonsLoaded(followType)
-            }
-            val isFollowed = when {
-                followStatusValueCache.containsKey(realSeasonId) -> followStatusValueCache[realSeasonId]!! > 0
-                followStatusCache.containsKey(realSeasonId) -> followStatusCache[realSeasonId] == true
-                followedSeasonIds.contains(realSeasonId) -> true
-                else -> isBangumiFollowed(detail.userStatus)
-            }
-            followStatusCache[realSeasonId] = isFollowed
-            if (isFollowed) {
-                followedSeasonIds.add(realSeasonId)
-            }
+            val mergedFollow = resolveBangumiMergedFollowStatus(
+                realSeasonId, detail.userStatus, followStatusCache,
+                followStatusValueCache, followedSeasonIds
+            )
+            val isFollowed = mergedFollow.isFollowing
+            // 读取结果不写入操作覆盖缓存，避免临时未追状态挡住后台校验。
             val userStatus = detail.userStatus
             val correctedDetail = detail.copy(
                 userStatus = userStatus?.copy(
                     follow = if (isFollowed) 1 else 0,
-                    followStatus = if (isFollowed) {
-                        followStatusValueCache[realSeasonId]
-                            ?: maxOf(userStatus.followStatus, BANGUMI_FOLLOW_STATUS_WANT)
-                    } else {
-                        0
-                    }
+                    followStatus = mergedFollow.followStatus
                 ) ?: UserStatus(
                     follow = if (isFollowed) 1 else 0,
-                    followStatus = if (isFollowed) 1 else 0
+                    followStatus = mergedFollow.followStatus
                 )
             )
             val (isLoggedIn, isVip) = resolveBangumiPlaybackAuthState(
@@ -708,6 +728,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 isVip = isVip
             )
 
+            verifyPlaybackFollowStatus(detail)
             refreshEpisodeInteractionState(
                 episodeAid = episode.aid,
                 episodeId = episode.id
@@ -804,11 +825,13 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
      * 切换剧集
      */
     fun switchEpisode(episode: BangumiEpisode) {
+        val session = ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         
         if (episode.id == currentState.currentEpisode.id && currentState.playUrl != null) return
         
         flushBangumiPlaybackHeartbeat()
+        followVerificationJob?.cancel()
         playbackLoadJob?.cancel()
         currentEpId = episode.id
         val newIndex = currentState.seasonDetail.episodes?.indexOfFirst { it.id == episode.id } ?: 0
@@ -824,7 +847,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         exoPlayer?.clearMediaItems()
 
         playbackLoadJob = viewModelScope.launch {
-            fetchPlayUrl(currentState.seasonDetail, episode, newIndex)
+            fetchPlayUrl(currentState.seasonDetail, episode, newIndex, followSession = session)
         }
     }
 
@@ -832,10 +855,15 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
      * 重新加载当前剧集
      */
     fun reloadCurrentEpisode() {
+        val session = ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
+        followVerificationJob?.cancel()
         playbackLoadJob?.cancel()
         playbackLoadJob = viewModelScope.launch {
-            fetchPlayUrl(currentState.seasonDetail, currentState.currentEpisode, currentState.currentEpisodeIndex)
+            fetchPlayUrl(
+                currentState.seasonDetail, currentState.currentEpisode,
+                currentState.currentEpisodeIndex, followSession = session
+            )
         }
     }
 
@@ -900,6 +928,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     }
 
     fun changeQuality(qualityId: Int) {
+        val followSession = ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         val currentPos = getPlayerCurrentPosition()
         
@@ -915,6 +944,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 isCourse = isCourse
             )
             
+            playUrlResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (!acceptsFollowSession(followSession)) return@launch
             playUrlResult.onSuccess { playData ->
                 val videoUrl: String?
                 val audioUrl: String?
@@ -966,7 +998,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 if (videoUrl.isNullOrEmpty()) return@onSuccess
                 val qualityOptions = resolveBangumiQualityOptions(playData)
                 
-                _uiState.value = currentState.copy(
+                val latestState = _uiState.value as? BangumiPlayerState.Success ?: return@onSuccess
+                if (latestState.currentEpisode.id != currentState.currentEpisode.id) return@onSuccess
+                _uiState.value = latestState.copy(
                     playUrl = videoUrl,
                     audioUrl = audioUrl,
                     quality = playData.quality,
@@ -1051,6 +1085,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     }
 
     private fun switchAudioQuality(audioQuality: Int): Boolean {
+        ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return false
         val player = exoPlayer ?: return false
         val dash = currentState.cachedDash ?: return false
@@ -1128,6 +1163,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
      * 追番/取消追番
      */
     fun toggleFollow() {
+        ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         val isFollowing = isBangumiFollowed(currentState.seasonDetail.userStatus)
         updateFollowStatus(
@@ -1140,14 +1176,17 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     }
 
     fun updateFollowStatus(status: Int) {
+        val session = ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         val seasonId = currentState.seasonDetail.seasonId
-        val wasFollowing = isBangumiFollowed(currentState.seasonDetail.userStatus) ||
-            followStatusCache[seasonId] == true ||
-            (followStatusValueCache[seasonId] ?: 0) > 0
+        val wasFollowing = resolveBangumiMergedFollowStatus(
+            seasonId, currentState.seasonDetail.userStatus,
+            followStatusCache, followStatusValueCache, followedSeasonIds
+        ).isFollowing
         val isCourse = isCourseMode || currentState.seasonDetail.seasonType == 10
         
         viewModelScope.launch {
+            if (!acceptsFollowSession(session)) return@launch
             val result = when {
                 status == BANGUMI_FOLLOW_STATUS_UNFOLLOW -> {
                     BangumiRepository.unfollowBangumi(seasonId, isCourse = isCourse)
@@ -1160,6 +1199,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 }
                 else -> {
                     val followResult = BangumiRepository.followBangumi(seasonId, isCourse = isCourse)
+                    followResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    if (!acceptsFollowSession(session)) return@launch
                     if (followResult.isSuccess) {
                         BangumiRepository.updateBangumiFollowStatus(seasonId, status)
                     } else {
@@ -1168,6 +1210,9 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 }
             }
             
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (!acceptsFollowSession(session)) return@launch
             if (result.isSuccess) {
                 //  [修复] 立即更新本地状态，不等待重新获取
                 val newIsFollowing = status != BANGUMI_FOLLOW_STATUS_UNFOLLOW
@@ -1188,10 +1233,13 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                     }
                 ) ?: UserStatus(
                     follow = if (newIsFollowing) 1 else 0,
-                    followStatus = if (newIsFollowing) 1 else 0
+                    followStatus = if (newIsFollowing) status else 0
                 )
-                val updatedDetail = currentState.seasonDetail.copy(userStatus = updatedUserStatus)
-                _uiState.value = currentState.copy(seasonDetail = updatedDetail)
+                val latestState = _uiState.value as? BangumiPlayerState.Success
+                if (latestState?.seasonDetail?.seasonId == seasonId) {
+                    val updatedDetail = latestState.seasonDetail.copy(userStatus = updatedUserStatus)
+                    _uiState.value = latestState.copy(seasonDetail = updatedDetail)
+                }
                 
                 //  显示 Toast 反馈
                 _toastEvent.send(
@@ -1208,6 +1256,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     }
 
     fun toggleLike() {
+        val session = ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         val aid = currentState.currentEpisode.aid
         if (aid <= 0L) {
@@ -1224,6 +1273,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 bvid = currentState.currentEpisode.bvid
             )
             result.onSuccess { liked ->
+                if (!acceptsFollowSession(session)) return@onSuccess
                 val latestState = _uiState.value as? BangumiPlayerState.Success ?: currentState
                 if (latestState.currentEpisode.id != currentState.currentEpisode.id) return@onSuccess
                 _uiState.value = updateBangumiSuccessInteractionState(
@@ -1261,6 +1311,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
     }
 
     fun doCoin(count: Int, alsoLike: Boolean) {
+        val session = ensureFollowCacheSession()
         val currentState = _uiState.value as? BangumiPlayerState.Success ?: return
         val aid = currentState.currentEpisode.aid
         if (aid <= 0L) {
@@ -1279,6 +1330,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 bvid = currentState.currentEpisode.bvid
             )
             result.onSuccess {
+                if (!acceptsFollowSession(session)) return@onSuccess
                 val latestState = _uiState.value as? BangumiPlayerState.Success ?: currentState
                 if (latestState.currentEpisode.id != currentState.currentEpisode.id) return@onSuccess
                 _uiState.value = applyBangumiCoinResult(
@@ -1428,22 +1480,53 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
         }
     }
 
-    private suspend fun ensureFollowedSeasonsLoaded(type: Int): Int {
-        if (loadedFollowTypes.contains(type)) return 0
-        val preloadResult = preloadFollowedSeasonsForType(
-            type = type,
-            followedSeasonIds = followedSeasonIds
-        )
-        if (preloadResult.requestSucceeded) {
-            loadedFollowTypes.add(type)
+    private fun verifyPlaybackFollowStatus(detail: BangumiDetail) {
+        val session = ensureFollowCacheSession()
+        followVerificationJob?.cancel()
+        val seasonId = detail.seasonId
+        if (detail.seasonType == 10 || followStatusCache.containsKey(seasonId) ||
+            followStatusValueCache.containsKey(seasonId) ||
+            seasonId in followedSeasonIds || isBangumiFollowed(detail.userStatus)) return
+        if (session.session.isNullOrEmpty()) return
+        followVerificationJob = viewModelScope.launch {
+            if (!acceptsFollowSession(session)) return@launch
+            val foundIds = mutableSetOf<Long>()
+            val result = preloadFollowedSeasonsForType(
+                type = defaultMyFollowTypeForSeasonType(detail.seasonType),
+                followedSeasonIds = foundIds,
+                targetSeasonId = seasonId
+            )
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (!acceptsFollowSession(session)) return@launch
+            val current = _uiState.value as? BangumiPlayerState.Success ?: return@launch
+            if (current.seasonDetail.seasonId != seasonId || !result.requestSucceeded) return@launch
+            followedSeasonIds.addAll(foundIds)
+            if (seasonId !in foundIds) return@launch
+            val verifiedStatus = if (!followStatusCache.containsKey(seasonId) &&
+                !followStatusValueCache.containsKey(seasonId) && result.targetFollowStatus != null) {
+                (current.seasonDetail.userStatus ?: UserStatus()).copy(
+                    follow = 1, followStatus = result.targetFollowStatus
+                )
+            } else current.seasonDetail.userStatus
+            val merged = resolveBangumiMergedFollowStatus(
+                seasonId, verifiedStatus, followStatusCache,
+                followStatusValueCache, followedSeasonIds
+            )
+            val status = (current.seasonDetail.userStatus ?: UserStatus()).copy(
+                follow = if (merged.isFollowing) 1 else 0,
+                followStatus = merged.followStatus
+            )
+            _uiState.value = current.copy(
+                seasonDetail = current.seasonDetail.copy(userStatus = status)
+            )
         }
-        return preloadResult.total
     }
 
     private fun refreshEpisodeInteractionState(
         episodeAid: Long,
         episodeId: Long
     ) {
+        val session = ensureFollowCacheSession()
         if (episodeAid <= 0L) return
 
         viewModelScope.launch {
@@ -1454,6 +1537,7 @@ class BangumiPlayerViewModel : BasePlayerViewModel() {
                 ActionRepository.checkCoinStatus(episodeAid)
             }.getOrDefault(0)
 
+            if (!acceptsFollowSession(session)) return@launch
             val currentState = _uiState.value as? BangumiPlayerState.Success ?: return@launch
             if (currentState.currentEpisode.id != episodeId || currentState.currentEpisode.aid != episodeAid) {
                 return@launch

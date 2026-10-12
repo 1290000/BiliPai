@@ -82,7 +82,8 @@ fun BangumiDetailScreen(
     onUserClick: (Long) -> Unit = {},
     viewModel: BangumiViewModel = viewModel()
 ) {
-    val detailState by viewModel.detailState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val detailState = uiState.detailState
     
     // 加载详情
     LaunchedEffect(seasonId, epId, mediaId) {
