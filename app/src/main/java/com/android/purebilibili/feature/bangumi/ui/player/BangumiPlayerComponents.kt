@@ -896,7 +896,8 @@ fun BangumiGestureIndicator(
             val alignment = resolveGestureLevelOverlaySpec(
                 style = overlayStyle,
                 kind = kind,
-                percent = value
+                percent = value,
+                brightnessColor = androidx.compose.ui.res.colorResource(com.android.purebilibili.R.color.player_brightness_accent),
             ).alignment
             Box(
                 modifier = modifier.fillMaxSize(),
