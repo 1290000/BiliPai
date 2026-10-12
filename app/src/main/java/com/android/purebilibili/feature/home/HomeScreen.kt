@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import com.android.purebilibili.core.ui.rememberHomeStaggeredGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import com.android.purebilibili.core.ui.components.AppLazyVerticalStaggeredGrid as LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.*  // 🌊 瀑布流布局
 import top.yukonga.miuix.kmp.blur.Backdrop as MiuixBackdrop
 import com.android.purebilibili.core.ui.blur.rememberChromeBackdropSource
@@ -1989,7 +1988,6 @@ fun HomeScreen(
                                 widthSizeClass = windowSizeClass.widthSizeClass,
                             )
                             val homeFeedCoverAspectRatio = homeFeedCardLayout.coverAspectRatio
-                            val homeFeedHorizontalArrangement = Arrangement.spacedBy(homeFeedCardLayout.itemSpacingDp.dp)
                             val pinchColumnBounds = resolveHomeFeedPinchColumnBounds(
                                 widthSizeClass = windowSizeClass.widthSizeClass,
                                 contentWidthDp = maxWidth.value.toInt(),
@@ -2286,23 +2284,36 @@ fun HomeScreen(
                                            }
                                        )
                               ) {
-                              if (category != HomeCategory.POPULAR && categoryState.isLoading && categoryState.videos.isEmpty() && categoryState.liveRooms.isEmpty()) {
-                                  // Loading Skeleton per page
-                                  // [性能优化] 脉冲 state 只包进 provider,值在骨架卡 draw 阶段读取,
-                                  // 骨架期间屏幕级组合作用域不再逐帧失效。
-                                  val skeletonPulseState = rememberHomeFeedSkeletonPulseState()
-                                  LazyVerticalStaggeredGrid(
-                                      columns = StaggeredGridCells.Fixed(effectiveGridColumns),
-                                      contentPadding = PaddingValues(
-                                          bottom = homeListBottomPadding,
-                                          start = homeFeedCardLayout.outerPaddingDp.dp,
-                                          end = homeFeedCardLayout.outerPaddingDp.dp,
-                                          top = listTopPadding
-                                      ),
-                                      horizontalArrangement = homeFeedHorizontalArrangement,
-                                      verticalItemSpacing = homeFeedCardLayout.verticalItemSpacingDp.dp,
-                                      modifier = Modifier.fillMaxSize()
-                                  ) {
+                              // Loading Skeleton per page
+                              // 骨架不再自建独立的 LazyVerticalStaggeredGrid：它与内容网格不是同一个
+                              // LazyLayout 实例，切换时整屏重建、滚动锚点丢失。改为把骨架 item 交给内容
+                              // 网格（同一个 gridState），由它在原地铺占位卡。
+                              val showInitialSkeleton = category != HomeCategory.POPULAR &&
+                                  categoryState.isLoading &&
+                                  categoryState.videos.isEmpty() &&
+                                  categoryState.liveRooms.isEmpty()
+                              // [性能优化] 脉冲 state 只包进 provider,值在骨架卡 draw 阶段读取,
+                              // 骨架期间屏幕级组合作用域不再逐帧失效;非骨架期不启动无限动画。
+                              val skeletonPulseState = if (showInitialSkeleton) {
+                                  rememberHomeFeedSkeletonPulseState()
+                              } else {
+                                  remember { mutableStateOf(0f) }
+                              }
+                              // remember 住骨架 provider：它的身份稳定，内容网格才不会因为
+                              // 每次重组换新 lambda 而反复重组。
+                              val initialSkeletonContent: (LazyStaggeredGridScope.() -> Unit)? = remember(
+                                  showInitialSkeleton,
+                                  category,
+                                  homeSettings.homeHeroCarouselEnabled,
+                                  effectiveGridColumns,
+                                  homeWallpaperBackdropAppearance.visible,
+                                  homeSettings.homeWallpaperEffectMode,
+                                  isDataSaverActive,
+                                  homeFeedCoverAspectRatio,
+                                  skeletonPulseState,
+                              ) {
+                                  if (!showInitialSkeleton) return@remember null
+                                  {
                                       // [新增] 用户启用首页横幅时，骨架顶部渲染横幅占位，
                                       // 与加载完成后的 HomeHeroCarousel 布局对齐
                                       if (category == HomeCategory.RECOMMEND && homeSettings.homeHeroCarouselEnabled) {
@@ -2318,22 +2329,23 @@ fun HomeScreen(
                                       }
                                       // [Fix] Dynamic skeleton count to fill tablet screens (at least 5 rows)
                                       val skeletonItemCount = effectiveGridColumns * 5
-                                     items(
-                                         count = skeletonItemCount,
-                                         key = { it },
-                                         contentType = { "home_feed_skeleton_card" }
-                                     ) {
-                                         HomeFeedSkeletonCard(
-                                             pulse = { skeletonPulseState.value },
-                                             wallpaperTintEnabled = homeWallpaperBackdropAppearance.visible,
-                                             wallpaperEffectMode = homeSettings.homeWallpaperEffectMode,
-                                             isDataSaverActive = isDataSaverActive,
-                                             coverAspectRatio = homeFeedCoverAspectRatio
-                                         )
-                                     }
-                                 }
-                             } else {
-                                 val categoryError = categoryState.error
+                                      items(
+                                          count = skeletonItemCount,
+                                          key = { it },
+                                          contentType = { "home_feed_skeleton_card" }
+                                      ) {
+                                          HomeFeedSkeletonCard(
+                                              modifier = Modifier.animateItem(),
+                                              pulse = { skeletonPulseState.value },
+                                              wallpaperTintEnabled = homeWallpaperBackdropAppearance.visible,
+                                              wallpaperEffectMode = homeSettings.homeWallpaperEffectMode,
+                                              isDataSaverActive = isDataSaverActive,
+                                              coverAspectRatio = homeFeedCoverAspectRatio
+                                          )
+                                      }
+                                  }
+                              }
+                              val categoryError = categoryState.error
                                  if (categoryError != null && categoryState.videos.isEmpty()) {
                                  // Error State per page
                                  Box(
@@ -2503,7 +2515,10 @@ fun HomeScreen(
                                      onPopularSubCategoryChange = onPopularSubCategoryChange,
                                      onWeeklySeriesClick = onWeeklySeriesClick,
                                      onTodayWatchVideoClick = onTodayWatchVideoClick,
-                                     firstGridItemModifier = Modifier
+                                     firstGridItemModifier = Modifier,
+                                     // 首屏骨架作为内容网格的首批 item 铺进去：同一个 LazyLayout、
+                                     // 同一种 contentType，数据到达时原地替换 + animateItem 交叉淡入。
+                                     initialSkeletonContent = initialSkeletonContent
                                  )
                                  }
                                  if (category == HomeCategory.POPULAR) {
@@ -2527,7 +2542,6 @@ fun HomeScreen(
                                          onLoadMoreCallback
                                      )
                                  }
-                             }
                              }
                              } // Close Box wrapper
                         }

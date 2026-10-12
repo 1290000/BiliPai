@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import com.android.purebilibili.core.ui.components.AppLazyColumn as LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,9 +34,6 @@ import com.android.purebilibili.core.ui.AppTopBar
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.components.AppIconButton
-import com.android.purebilibili.core.ui.skeleton.ContentSkeletonBlock
-import com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonBlockColor
-import com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonPulse
 import com.android.purebilibili.data.model.response.SystemNoticeItem
 import com.android.purebilibili.data.repository.MessageRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -156,65 +151,102 @@ fun SystemNoticeScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            when {
-                uiState.isLoading -> SystemNoticeListSkeleton(modifier = Modifier.fillMaxSize())
-                uiState.error != null -> MessageFeedError(
-                    text = uiState.error ?: "加载失败",
-                    onRetry = viewModel::loadInitial,
-                    modifier = Modifier.fillMaxSize()
-                )
-                uiState.items.isEmpty() -> MessageFeedEmpty(
-                    text = "暂无系统通知",
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Scaffold body already below topBar.
-                else -> AdaptivePullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = viewModel::refresh,
-                    indicatorTopInset = paddingValues.calculateTopPadding(),
-                    modifier = Modifier.fillMaxSize()
+            // 骨架与真实卡片共用同一个 LazyColumn 与同一个 contentType：数据到达时
+            // LazyList 在原地替换 item（配合 animateItem 交叉淡入），不再整棵子树重建。
+            // Scaffold body already below topBar.
+            AdaptivePullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::refresh,
+                indicatorTopInset = paddingValues.calculateTopPadding(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = paddingValues.calculateTopPadding() + 12.dp, bottom = paddingValues.calculateBottomPadding() + 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = paddingValues.calculateTopPadding() + 12.dp, bottom = paddingValues.calculateBottomPadding() + 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(uiState.items, key = { it.id }) { item ->
-                            val annotatedContent = rememberSystemNoticeAnnotatedContent(item.content)
-                            MessageFeedCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    AppText(
-                                        text = item.title,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    ClickableText(
-                                        text = annotatedContent,
-                                        style = MaterialTheme.typography.bodyMedium.copy(
+                    when {
+                        uiState.isLoading -> {
+                            items(
+                                count = MESSAGE_FEED_SKELETON_ITEM_COUNT,
+                                key = { index -> "system_notice_skeleton_$index" },
+                                contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                            ) { index ->
+                                MessageFeedNoticeSkeleton(
+                                    slotIndex = index,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        }
+
+                        uiState.error != null -> {
+                            item(key = "system_notice_error") {
+                                MessageFeedError(
+                                    text = uiState.error ?: "加载失败",
+                                    onRetry = viewModel::loadInitial,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f)
+                                )
+                            }
+                        }
+
+                        uiState.items.isEmpty() -> {
+                            item(key = "system_notice_empty") {
+                                MessageFeedEmpty(
+                                    text = "暂无系统通知",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f)
+                                )
+                            }
+                        }
+
+                        else -> {
+                            items(
+                                items = uiState.items,
+                                key = { it.id },
+                                contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                            ) { item ->
+                                val annotatedContent = rememberSystemNoticeAnnotatedContent(item.content)
+                                MessageFeedCard(modifier = Modifier.fillMaxWidth().animateItem()) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        AppText(
+                                            text = item.title,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        ClickableText(
+                                            text = annotatedContent,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
+                                            onClick = { offset ->
+                                                annotatedContent
+                                                    .getStringAnnotations(tag = "link", start = offset, end = offset)
+                                                    .firstOrNull()
+                                                    ?.item
+                                                    ?.let(onOpenLink)
+                                            }
+                                        )
+                                        AppText(
+                                            text = item.timeAt,
+                                            modifier = Modifier
+                                                .align(Alignment.End),
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        ),
-                                        onClick = { offset ->
-                                            annotatedContent
-                                                .getStringAnnotations(tag = "link", start = offset, end = offset)
-                                                .firstOrNull()
-                                                ?.item
-                                                ?.let(onOpenLink)
-                                        }
-                                    )
-                                    AppText(
-                                        text = item.timeAt,
-                                        modifier = Modifier
-                                            .align(Alignment.End),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                        )
+                                    }
                                 }
                             }
                         }
-                        item {
+                    }
+
+                    if (uiState.hasMore || uiState.isLoadingMore) {
+                        item(key = "system_notice_load_more") {
                             MessageFeedLoadMore(
                                 isLoadingMore = uiState.isLoadingMore,
                                 hasMore = uiState.hasMore,
@@ -222,53 +254,6 @@ fun SystemNoticeScreen(
                             )
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SystemNoticeListSkeleton(modifier: Modifier = Modifier) {
-    val blockColor = rememberContentSkeletonBlockColor(rememberContentSkeletonPulse())
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        userScrollEnabled = false,
-    ) {
-        items(7) {
-            MessageFeedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ContentSkeletonBlock(
-                        color = blockColor,
-                        modifier = Modifier
-                            .fillMaxWidth(0.46f)
-                            .height(17.dp),
-                    )
-                    ContentSkeletonBlock(
-                        color = blockColor,
-                        modifier = Modifier
-                            .fillMaxWidth(0.94f)
-                            .height(14.dp),
-                    )
-                    ContentSkeletonBlock(
-                        color = blockColor,
-                        modifier = Modifier
-                            .fillMaxWidth(0.72f)
-                            .height(14.dp),
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    ContentSkeletonBlock(
-                        color = blockColor,
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .fillMaxWidth(0.28f)
-                            .height(12.dp),
-                    )
                 }
             }
         }

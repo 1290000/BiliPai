@@ -56,8 +56,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.AppSpacingTokens
+import com.android.purebilibili.core.ui.skeleton.ContentSkeletonBlock
+import com.android.purebilibili.core.ui.skeleton.rememberStaticSkeletonBlockColor
 import com.android.purebilibili.core.util.resolveSingleColumnFeedMaxWidth
 import com.android.purebilibili.core.util.responsiveContentWidth
+
+/**
+ * 会话行的 lazy item 身份。骨架行与真实会话行共用同一个 contentType，加载完成时
+ * LazyList 才能在原地替换 item，而不是「整批删除 + 整批新增」重建可视区。
+ */
+internal const val MESSAGE_SESSION_ROW_CONTENT_TYPE = "message_session_row"
+
+/** 首屏会话骨架行数。与真实首屏页大小同量级，避免加载完成后列表长度突变。 */
+private const val MESSAGE_SESSION_SKELETON_ROW_COUNT = 8
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,72 +112,96 @@ fun InboxScreen(
                 .fillMaxSize()
                 .responsiveContentWidth(maxWidth = resolveSingleColumnFeedMaxWidth())
         ) {
-            when {
-                uiState.isLoading -> {
-                    com.android.purebilibili.core.ui.skeleton.ContentMediaListSkeleton(
-                        modifier = Modifier.fillMaxSize(),
-                        useUserRow = true,
-                        itemCount = 8,
-                    )
-                }
-                uiState.error != null -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        AppText(uiState.error ?: "加载失败")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        AppButton(onClick = { viewModel.loadSessions() }) {
-                            AppText("重试")
+            // 骨架与真实内容共用同一个 LazyColumn：加载期只把会话行换成骨架，
+            // 「消息分类」「私信会话」两个头部始终是真实组件（标题固定，不依赖数据），
+            // 因此数据到达时不会出现「整块头部凭空出现」造成的整页下移。
+            AdaptivePullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                indicatorTopInset = paddingValues.calculateTopPadding()
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = paddingValues.calculateBottomPadding() + 8.dp)
+                ) {
+                    item(key = "message_center_shortcut_row") {
+                        MessageCenterTopShortcutRow(
+                            items = buildMessageCenterTopItems(uiState.feedUnreadData),
+                            onItemClick = onTopItemClick
+                        )
+                    }
+
+                    item(key = "message_session_category_row") {
+                        MessageSessionCategoryRow(
+                            items = buildMessageSessionCategoryItems(uiState.unreadData),
+                            selectedCategory = uiState.selectedCategory,
+                            onCategoryClick = { viewModel.selectCategory(it) }
+                        )
+                    }
+
+                    if (uiState.selectedCategory == MessageSessionCategory.Dustbin) {
+                        item(key = "message_dustbin_action_row") {
+                            DustbinActionRow(
+                                isOperating = uiState.isBatchOperating,
+                                onMarkRead = { viewModel.markDustbinRead() },
+                                onClear = { showClearDustbinConfirm = true }
+                            )
                         }
                     }
-                }
-                uiState.sessions.isEmpty() -> {
-                    AppText(
-                        text = "暂无私信",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> {
-                    // Scaffold body already below topBar.
-                    AdaptivePullToRefreshBox(
-                        isRefreshing = uiState.isRefreshing,
-                        onRefresh = { viewModel.refresh() },
-                        indicatorTopInset = paddingValues.calculateTopPadding()
-                    ) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = paddingValues.calculateBottomPadding() + 8.dp)
-                        ) {
-                            item {
-                                MessageCenterTopShortcutRow(
-                                    items = buildMessageCenterTopItems(uiState.feedUnreadData),
-                                    onItemClick = onTopItemClick
+
+                    when {
+                        uiState.isLoading -> {
+                            items(
+                                count = MESSAGE_SESSION_SKELETON_ROW_COUNT,
+                                key = { index -> "message_session_skeleton_$index" },
+                                contentType = { MESSAGE_SESSION_ROW_CONTENT_TYPE }
+                            ) { index ->
+                                SessionListItemSkeleton(
+                                    slotIndex = index,
+                                    modifier = Modifier.animateItem(),
                                 )
                             }
+                        }
 
-                            item {
-                                MessageSessionCategoryRow(
-                                    items = buildMessageSessionCategoryItems(uiState.unreadData),
-                                    selectedCategory = uiState.selectedCategory,
-                                    onCategoryClick = { viewModel.selectCategory(it) }
-                                )
+                        uiState.error != null -> {
+                            item(key = "message_inbox_error") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    AppText(uiState.error ?: "加载失败")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    AppButton(onClick = { viewModel.loadSessions() }) {
+                                        AppText("重试")
+                                    }
+                                }
                             }
+                        }
 
-                            if (uiState.selectedCategory == MessageSessionCategory.Dustbin) {
-                                item {
-                                    DustbinActionRow(
-                                        isOperating = uiState.isBatchOperating,
-                                        onMarkRead = { viewModel.markDustbinRead() },
-                                        onClear = { showClearDustbinConfirm = true }
+                        uiState.sessions.isEmpty() -> {
+                            item(key = "message_inbox_empty") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.5f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AppText(
+                                        text = "暂无私信",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
+                        }
 
+                        else -> {
                             items(
                                 items = uiState.sessions,
-                                key = InboxSessionPaginationPolicy::resolveSessionKey
+                                key = InboxSessionPaginationPolicy::resolveSessionKey,
+                                contentType = { MESSAGE_SESSION_ROW_CONTENT_TYPE }
                             ) { session ->
                                 if (
                                     uiState.hasMore &&
@@ -191,10 +226,12 @@ fun InboxScreen(
                                     },
                                     cardId = sessionKey,
                                     preset = com.android.purebilibili.core.ui.animation.DissolveAnimationPreset.TELEGRAM_FAST,
-                                    modifier = Modifier.jiggleOnDissolve(
-                                        cardId = sessionKey,
-                                        isCurrentCardDissolving = isSessionDissolving,
-                                    ),
+                                    modifier = Modifier
+                                        .jiggleOnDissolve(
+                                            cardId = sessionKey,
+                                            isCurrentCardDissolving = isSessionDissolving,
+                                        )
+                                        .animateItem(),
                                 ) {
                                     SessionListItem(
                                         session = session,
@@ -219,22 +256,22 @@ fun InboxScreen(
                                     )
                                 }
                             }
+                        }
+                    }
 
-                            if (uiState.hasMore) {
-                                item {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (uiState.isLoadingMore) {
-                                            com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
-                                                size = 24.dp
-                                            )
-                                        } else {
-                                            AppTextButton(onClick = { viewModel.loadMoreSessions() }) {
-                                                AppText("加载更多")
-                                            }
-                                        }
+                    if (uiState.hasMore && !uiState.isLoading) {
+                        item(key = "message_inbox_load_more") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (uiState.isLoadingMore) {
+                                    com.android.purebilibili.core.ui.CutePersonLoadingIndicator(
+                                        size = 24.dp
+                                    )
+                                } else {
+                                    AppTextButton(onClick = { viewModel.loadMoreSessions() }) {
+                                        AppText("加载更多")
                                     }
                                 }
                             }
@@ -548,6 +585,91 @@ private fun MessageUnreadBadge(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+/**
+ * 会话行骨架。
+ *
+ * 尺寸严格对齐 [SessionListItem]：分组卡片模式外层 12dp/3dp、行内 16dp/10dp；非分组模式
+ * 外层 0、行内 16dp/12dp；头像 48dp。头像 48dp 高于两侧文字列，因此行高由头像决定，
+ * 骨架与真实行高一致——这是消除「换内容时行位置跳」的关键。
+ *
+ * 颜色用 [rememberStaticSkeletonBlockColor] 固定色，不参与呼吸脉冲：呼吸中的灰块与随后的
+ * 内容淡入叠加，观感上就是「闪」。
+ */
+@Composable
+private fun SessionListItemSkeleton(
+    modifier: Modifier = Modifier,
+    slotIndex: Int = 0,
+) {
+    val useGroupedListCards = rememberAppSemanticVisualPolicy().prefersGroupedListCards
+    val blockColor = rememberStaticSkeletonBlockColor()
+    AppSurface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = if (useGroupedListCards) 12.dp else 0.dp,
+                vertical = if (useGroupedListCards) 3.dp else 0.dp
+            ),
+        shape = if (useGroupedListCards) {
+            AppShapes.container(ContainerLevel.Card)
+        } else {
+            RectangleShape
+        },
+        color = if (useGroupedListCards) {
+            AppSurfaceTokens.surfaceContainer()
+        } else {
+            Color.Transparent
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = if (useGroupedListCards) 10.dp else 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ContentSkeletonBlock(
+                color = blockColor,
+                shape = CircleShape,
+                modifier = Modifier.size(48.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    modifier = Modifier
+                        .fillMaxWidth(if (slotIndex % 3 == 0) 0.40f else 0.30f)
+                        .height(16.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    modifier = Modifier
+                        .fillMaxWidth(if (slotIndex % 2 == 0) 0.72f else 0.58f)
+                        .height(14.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column(horizontalAlignment = Alignment.End) {
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(12.dp)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    shape = CircleShape,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 

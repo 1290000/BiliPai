@@ -269,6 +269,11 @@ internal fun HomeCategoryPageContent(
         )
     },
     firstGridItemModifier: Modifier = Modifier,
+    /**
+     * 首屏骨架 item 提供者。非空时网格只铺骨架，与真实卡片共用同一个 LazyLayout 与同一个
+     * gridState；数据到达后由真实卡片原地替换，不会整屏重建、也不丢滚动锚点。
+     */
+    initialSkeletonContent: (LazyStaggeredGridScope.() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cardReflowState = remember(category) { HomeCardReflowState() }
@@ -605,6 +610,12 @@ internal fun HomeCategoryPageContent(
                 verticalItemSpacing = cardLayout.verticalItemSpacingDp.dp,
                 modifier = Modifier.fillMaxSize()
             ) {
+                // 首屏骨架直接铺在内容网格里：同一个 LazyLayout、同一个 gridState，
+                // 骨架 → 卡片是一次 item 原地替换，而不是整棵网格重建。
+                if (initialSkeletonContent != null) {
+                    initialSkeletonContent()
+                    return@FeedVerticalStaggeredGrid
+                }
         categoryState.refreshError?.let { message ->
             item(key = "refresh_error", span = StaggeredGridItemSpan.FullLine) {
                 ListLoadError(

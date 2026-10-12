@@ -1235,6 +1235,7 @@ fun ReplyHeader(count: Int) {
 
 @Composable
 fun ReplyItemView(
+    modifier: Modifier = Modifier,
     item: ReplyItem,
     upMid: Long = 0,
     showUpFlag: Boolean = false,
@@ -1559,7 +1560,7 @@ fun ReplyItemView(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(appearance.panelColor)
             .combinedClickable(

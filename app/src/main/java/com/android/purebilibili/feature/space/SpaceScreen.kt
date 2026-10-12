@@ -220,8 +220,7 @@ import com.android.purebilibili.data.model.response.SpaceArticleItem
 import com.android.purebilibili.data.model.response.SpaceCheeseItem
 import com.android.purebilibili.data.model.response.displayImageUrls
 import com.android.purebilibili.core.ui.skeleton.ContentSkeletonBlock
-import com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonBlockColor
-import com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonPulse
+import com.android.purebilibili.core.ui.skeleton.rememberStaticSkeletonBlockColor
 import com.android.purebilibili.data.model.response.SpaceAudioItem
 import com.android.purebilibili.data.model.response.SpaceDynamicItem
 import com.android.purebilibili.data.model.response.SpaceTopArcData
@@ -256,6 +255,10 @@ import kotlinx.coroutines.launch
 
 // UP 空间多张头图自动轮播间隔
 private const val SPACE_BANNER_AUTO_ROTATE_INTERVAL_MS = 4_000L
+
+// 课堂 Tab 的骨架行与真实行共用同一种 contentType：数据到达时是 item 原地替换，
+// 列表不会被整棵重建。
+private const val SPACE_CHEESE_ROW_CONTENT_TYPE = "space_cheese_row"
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
@@ -656,15 +659,16 @@ fun SpaceScreen(
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-                when (val state = uiState) {
-                    SpaceUiState.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .globalWallpaperAwareBackground(MaterialTheme.colorScheme.surface),
-                        ) {
-                            SpaceLoadingSkeleton(modifier = Modifier.fillMaxSize())
-                        }
+                // Loading 不再单独渲染一棵骨架网格：它和 Success 共用同一个 SpaceContent
+                // 调用点（同一棵 LazyVerticalGrid）。Loading 时喂一个占位 Success 并把
+                // isInitialLoading 传下去，由内容网格在原地铺骨架 item；数据到达后是
+                // item 原地替换，网格与滚动状态都不会重建，首屏不跳。
+                val isLoadingSpace = uiState is SpaceUiState.Loading
+                val spaceState: SpaceUiState = (uiState as? SpaceUiState.Success)
+                    ?: remember { SpaceUiState.Success(userInfo = SpaceUserInfo()) }
+                when (val state = spaceState) {
+                    is SpaceUiState.Loading -> {
+                        // Loading 已被上面的占位 Success 取代，此分支仅为穷尽 when 保留。
                     }
 
                     is SpaceUiState.Error -> {
@@ -792,6 +796,7 @@ fun SpaceScreen(
                             sharedTransitionScope = sharedTransitionScope,
                             animatedVisibilityScope = animatedVisibilityScope,
                             chromeTopInset = scaffoldPadding.calculateTopPadding(),
+                            isInitialLoading = isLoadingSpace,
                         )
                         }
 
@@ -1175,6 +1180,12 @@ private fun SpaceContent(
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     chromeTopInset: Dp = 0.dp,
+    /**
+     * 首屏加载中：在同一个内容网格里铺骨架 item，而不是另起一棵独立的骨架网格。
+     * 骨架与真实卡片共用同一个 LazyVerticalGrid / gridState，数据到达时是 item
+     * 原地替换，网格不重建、滚动锚点不丢。
+     */
+    isInitialLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -1261,8 +1272,10 @@ private fun SpaceContent(
         )
         onVideoClick(bvid, playbackTarget.cid, playbackTarget.resumePositionMs)
     }
-    LaunchedEffect(state.userInfo.mid) {
-        onLoadHome()
+    // 首屏骨架阶段不触发「主页 Tab」加载：此时 state 是占位值（mid = 0）。真实数据
+    // 到达后 isInitialLoading 转 false，effect 会以真实 mid 重新触发一次，语义不变。
+    LaunchedEffect(state.userInfo.mid, isInitialLoading) {
+        if (!isInitialLoading) onLoadHome()
     }
 
     val bangumiTabState = state.tabShellState.tabStates[SpaceMainTab.BANGUMI] ?: SpaceTabContentState()
@@ -1451,6 +1464,20 @@ private fun SpaceContent(
         )
         val spaceFeedCoverAspectRatio = spaceFeedCardLayout.coverAspectRatio
         val outerPaddingDp = maxOf(16, spaceFeedCardLayout.outerPaddingDp).dp
+        // 首屏骨架与真实卡片共用同一个网格、同一种排版：色块用固定色（不呼吸），
+        // 骨架只负责占位，数据到达时是 item 原地替换而不是整棵网格重建。
+        val spaceSkeletonBlockColor = rememberStaticSkeletonBlockColor()
+        val spaceSkeletonBannerHeightDp = remember(
+            windowWidthDp,
+            windowSizeClass.widthDp,
+            windowSizeClass.heightDp,
+        ) {
+            resolveSpaceBannerMetrics(
+                renderedBannerWidthDp = windowWidthDp.toFloat(),
+                windowWidthDp = windowSizeClass.widthDp.value,
+                windowHeightDp = windowSizeClass.heightDp.value,
+            ).heightDp
+        }
         LazyVerticalGrid(
             columns = GridCells.Fixed(gridColumns),
             state = gridState,
@@ -1494,7 +1521,21 @@ private fun SpaceContent(
             ),
             horizontalArrangement = Arrangement.spacedBy(spaceFeedCardLayout.itemSpacingDp.dp),
             verticalArrangement = Arrangement.spacedBy(spaceFeedCardLayout.verticalItemSpacingDp.dp)
-        ) {
+        ) LazyVerticalGrid@{
+            // 首屏骨架直接铺在内容网格里：与真实卡片共用同一个 LazyVerticalGrid 与同一个
+            // gridState，数据到达后是 item 原地替换，网格本身不重建、也不丢滚动锚点。
+            // （显式标签：LazyVerticalGrid 是 AppLazyVerticalGrid 的导入别名，避免隐式
+            // 标签名与别名不一致导致 return@ 解析到别处。）
+            if (isInitialLoading) {
+                SpaceLoadingSkeleton(
+                    columns = gridColumns,
+                    coverAspectRatio = spaceFeedCoverAspectRatio,
+                    bannerHeightDp = spaceSkeletonBannerHeightDp,
+                    useExpandedHeader = adaptiveLayoutSpec.useExpandedHeader,
+                    blockColor = spaceSkeletonBlockColor,
+                )
+                return@LazyVerticalGrid
+            }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SpaceHeader(
                     userInfo = state.headerState.userInfo ?: state.userInfo,
@@ -2514,9 +2555,16 @@ private fun SpaceContent(
 
             SpaceMainTab.CHEESE -> {
                 if (state.isLoadingCheese && state.cheeseItems.isEmpty()) {
-                    items(6, span = { GridItemSpan(maxLineSpan) }) {
+                    // 骨架行与真实行同 span、同 contentType，并各自挂 animateItem：
+                    // 切换时只剩「行淡入」这一件事，列表不会被整棵重建。
+                    items(
+                        count = 6,
+                        key = { index -> "space_cheese_skeleton_$index" },
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = { SPACE_CHEESE_ROW_CONTENT_TYPE },
+                    ) {
                         SpaceCheeseSkeletonItem(
-                            modifier = boundedListModifier
+                            modifier = boundedListModifier.animateItem()
                         )
                     }
                 } else if (state.cheeseItems.isEmpty()) {
@@ -2537,11 +2585,12 @@ private fun SpaceContent(
                     items(
                         items = state.cheeseItems,
                         key = { "space_cheese_${it.seasonId}" },
-                        span = { GridItemSpan(maxLineSpan) }
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = { SPACE_CHEESE_ROW_CONTENT_TYPE }
                     ) { item ->
                         SpaceCheeseCard(
                             item = item,
-                            modifier = boundedListModifier,
+                            modifier = boundedListModifier.animateItem(),
                             onClick = {
                                 onCheeseClick(item.seasonId)
                             }
@@ -4706,8 +4755,8 @@ private fun SpaceCheeseCard(
 private fun SpaceCheeseSkeletonItem(
     modifier: Modifier = Modifier,
 ) {
-    val pulse = rememberContentSkeletonPulse()
-    val blockColor = rememberContentSkeletonBlockColor(pulse)
+    // 固定色块而非呼吸脉冲：呼吸灰块叠上「行淡入」会被看成闪烁。
+    val blockColor = rememberStaticSkeletonBlockColor()
     AppSurface(
         modifier = modifier
             .fillMaxWidth()
