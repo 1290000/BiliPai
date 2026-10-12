@@ -2,6 +2,7 @@ package com.android.purebilibili.feature.video.screen
 
 import androidx.compose.ui.geometry.Rect
 import com.android.purebilibili.core.ui.transition.VideoCardSourceLayout
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -148,5 +149,20 @@ class VideoDetailReturnMediaLayoutTest {
         assertEquals(480, frozen.heightPx)
         assertEquals(1000, clipTracked.widthPx)
         assertEquals(576, clipTracked.heightPx)
+    }
+
+    @Test
+    fun playerLayoutResolvesTheMediaFrameOncePerNodeSize() {
+        val source = File(
+            "src/main/java/com/android/purebilibili/feature/video/screen/" +
+                "VideoDetailReturnMediaLayout.kt"
+        ).readText()
+        val player = source.substringAfter("internal fun Modifier.videoDetailReturnPlayerLayout(")
+        // layout 与 draw 在同一帧各解析一次 frame 会重复插值、逆缩放读取与对象分配；
+        // 返回手势期间逐帧命中，因此必须按节点尺寸与输入做记忆化。
+        assertTrue(player.contains("var memoFrame: VideoDetailReturnMediaLayoutFrame? = null"))
+        assertTrue(player.contains("nativeBounds == memoNativeBounds"))
+        assertTrue(player.contains("return cached"))
+        assertTrue(player.contains("memoFrame = resolved"))
     }
 }

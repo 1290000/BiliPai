@@ -726,6 +726,15 @@ internal fun Modifier.videoCardTransitionLiveBackgroundEffect(
         }
     }
 
+    // Reuse the render effect and clip shape while the quantized radius stays unchanged. Kept
+    // local to the modifier (outside snapshot state) so per-frame layer updates do not rebuild
+    // BlurEffect/RoundedCornerShape, matching the overlay depth layer above. This is uniform for
+    // every device: blur stays enabled, only redundant allocations are avoided.
+    var cachedLiveBlurRadiusPx = Float.NaN
+    var cachedLiveBlurEffect: BlurEffect? = null
+    var cachedLiveCornerRadiusPx = Float.NaN
+    var cachedLiveClipShape: RoundedCornerShape? = null
+
     return this
         .drawWithContent {
             val frame = frameState.value
@@ -760,24 +769,36 @@ internal fun Modifier.videoCardTransitionLiveBackgroundEffect(
             val shouldClip = frame.cornerRadiusPx > 0.01f
             clip = shouldClip
             if (shouldClip) {
-                shape = RoundedCornerShape(
-                    (frame.cornerRadiusPx / screenDensity.coerceAtLeast(0.01f)).dp
-                )
+                val cornerRadiusPx = frame.cornerRadiusPx
+                if (cornerRadiusPx != cachedLiveCornerRadiusPx) {
+                    cachedLiveCornerRadiusPx = cornerRadiusPx
+                    cachedLiveClipShape = RoundedCornerShape(
+                        (cornerRadiusPx / screenDensity.coerceAtLeast(0.01f)).dp
+                    )
+                }
+                cachedLiveClipShape?.let { shape = it }
                 shadowElevation = frame.shadowElevationPx
             } else {
                 shadowElevation = 0f
             }
-            renderEffect = if (
-                realtimeBlurEnabledProvider() && frame.blurRadiusPx > 0.01f
-            ) {
-                BlurEffect(
-                    radiusX = frame.blurRadiusPx,
-                    radiusY = frame.blurRadiusPx,
-                    edgeTreatment = TileMode.Clamp,
-                )
+            val liveBlurRadiusPx = if (realtimeBlurEnabledProvider()) {
+                frame.blurRadiusPx
             } else {
-                null
+                0f
             }
+            if (liveBlurRadiusPx != cachedLiveBlurRadiusPx) {
+                cachedLiveBlurRadiusPx = liveBlurRadiusPx
+                cachedLiveBlurEffect = if (liveBlurRadiusPx > 0.01f) {
+                    BlurEffect(
+                        radiusX = liveBlurRadiusPx,
+                        radiusY = liveBlurRadiusPx,
+                        edgeTreatment = TileMode.Clamp,
+                    )
+                } else {
+                    null
+                }
+            }
+            renderEffect = cachedLiveBlurEffect
         }
 }
 
