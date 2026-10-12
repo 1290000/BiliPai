@@ -122,8 +122,8 @@ android {
         targetSdk = 37
         // 版本名按发行计划确定；versionCode 每次发布单调 +1
         // 规范：docs/wiki/VERSIONING.md · 更新日志：CHANGELOG.md
-        versionCode = 451
-        versionName = "0.3.4"
+        versionCode = 453
+        versionName = "0.3.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -253,23 +253,31 @@ android {
         baseline = file("lint-baseline.xml")
         abortOnError = true
         checkDependencies = true
-        // CI source policies are separate from the full Android Lint run.
-        if (providers.gradleProperty("bili.ciChecks").orNull == "true") {
-            // Legacy platform baselines must not hide new CI policies or checker failures.
-            baseline = null
-            fatal += "ObsoleteLintCustomCheck"
-            checkOnly += setOf(
-                "BiliPaiFrameBlurAllocation",
-                "BiliPaiModelStability",
+        // CI profiles separate performance contracts from informational style findings.
+        val ciChecks = providers.gradleProperty("bili.ciChecks").orNull
+        if (ciChecks != null) {
+            val styleIssues = setOf(
                 "BiliPaiHardcodedColor",
-                "BiliPaiHardcodedSpacing",
+                "BiliPaiHardcodedDimension",
                 "BiliPaiHardcodedTypography",
                 "BiliPaiHardcodedShape",
                 "BiliPaiHardcodedMotion",
                 "BiliPaiHardcodedSurface",
-                "LintError",
-                "ObsoleteLintCustomCheck",
             )
+            val selectedIssues = when (ciChecks) {
+                "performance" -> setOf("BiliPaiFrameBlurAllocation", "BiliPaiModelStability")
+                "style" -> styleIssues
+                else -> throw GradleException("bili.ciChecks must be performance or style")
+            }
+            // Never let a platform baseline or style warnings hide a broken checker.
+            baseline = null
+            val checkerFailures = setOf("LintError", "ObsoleteLintCustomCheck")
+            fatal += checkerFailures
+            checkOnly += selectedIssues
+            checkOnly += checkerFailures
+            if (ciChecks == "style") {
+                warning += styleIssues
+            }
         }
     }
 }
@@ -556,6 +564,8 @@ dependencies {
     // --- 12. Testing (测试框架) ---
     // JUnit 4 (兼容旧测试)
     testImplementation("junit:junit:4.13.2")
+    // Codec and CDN tests require real Android Base64/Uri, not returnDefaultValues stubs.
+    testImplementation("org.robolectric:robolectric:4.17")
     // 真实 org.json 实现：android.jar 的 org.json 在单测里是桩（returnDefaultValues 下
     // 静默返回空值），CommandDanmakuPolicy 等生产解析路径需要真实实现才能单测。
     testImplementation("org.json:json:20240303")

@@ -62,3 +62,22 @@ UI jank increase <=1 percentage point; retained images/memory must plateau after
 warmup. Also inspect phone/tablet inline margins (including parent clipping), fullscreen aspect modes, SurfaceView/TextureView, rotation, quality/seek changes, background,
 shared-element return and HDR/Anime4K exclusions. Inspect subtitles and comments
 for unchanged contrast. Keep default off if performance or visual acceptance fails.
+
+- Fullscreen liquid-glass controls now consume Miuix `LayerBackdrop` recordings
+  of sibling page layers (video/glow, cover, danmaku, subtitles), composed in paint
+  order. Glass consumers never belong to their own capture subtree. Miuix owns
+  source coordinates, inverse transforms, invalidation and layer cleanup.
+- SDR glass uses TextureView so video participates in the view hierarchy. The
+  TextureView choice is retained for the detail entry to avoid recreating the
+  output again when leaving fullscreen. HDR still overrides it; HDR/Anime4K,
+  audio-only, portrait fullscreen and PiP use the neutral control material.
+- Glass no longer requests bitmap copies, native-size frame buffers, 30fps polling,
+  stale-frame fading or pause/resume frame retention from the ambient controller.
+  Ambient/status-bar capture retains its own 96px budget and refresh lifecycle.
+- Recording remains attached through the shared 300ms chrome exit and while
+  paused-center controls can appear; it detaches when playing with hidden controls.
+  Controls read the latest recorded page rather than a timer-driven frame cache.
+  Hidden controls do not change the ambient sampling policy. Actual TextureView replay through
+  Compose graphics layers and rendering cost remain unverified at runtime.
+- Top actions and the three bottom docks retain 48dp rows; fullscreen titles
+  ellipsize instead of scrolling into the action area.

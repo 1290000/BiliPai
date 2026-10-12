@@ -17,7 +17,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
@@ -31,6 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -99,7 +100,8 @@ internal fun AppleCoverFlowBackground(
     // Use the process-wide frame clock instead of an elapsed timer local to this Composable.
     // Browsing pages and every player/lyrics surface therefore render the same flow coordinates
     // when one replaces another, rather than restarting the animation at a different phase.
-    val sharedClockMs = rememberThrottledFlowTimeMs(sourceBitmap, animate)
+    val animationGate = com.android.purebilibili.core.ui.rememberDecorativeAnimationGate()
+    val sharedClockMs = rememberThrottledFlowTimeMs(sourceBitmap, animate && animationGate.active)
     val scaledTimeMs = scaledAppleFlowTimeMs(sharedClockMs, speed)
     val frameTimeMs = (scaledTimeMs / FRAME_INTERVAL_MS) * FRAME_INTERVAL_MS
 
@@ -141,7 +143,7 @@ internal fun AppleCoverFlowBackground(
         frameBitmap = next
     }
 
-    Box(modifier = modifier.background(backgroundColor)) {
+    Box(modifier = modifier.background(backgroundColor).then(animationGate.modifier)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -196,17 +198,14 @@ internal fun scaledAppleFlowTimeMs(elapsedMs: Long, speedTenths: Int): Long =
  */
 @Composable
 private fun rememberThrottledFlowTimeMs(key: Any?, animate: Boolean): Long {
-    val active = animate && LocalPlayerSurfaceActive.current
+    val active = key != null && animate && LocalPlayerSurfaceActive.current
     var sharedClockMs by remember(key) { mutableLongStateOf(0L) }
     LaunchedEffect(key, active) {
         if (!active) return@LaunchedEffect
-        var lastPublishedNanos = 0L
-        while (true) {
-            val now = withFrameNanos { it }
-            if (lastPublishedNanos == 0L || now - lastPublishedNanos >= FRAME_INTERVAL_MS * 1_000_000L) {
-                sharedClockMs = now / 1_000_000L
-                lastPublishedNanos = now
-            }
+        while (isActive) {
+            // Same process-wide monotonic origin, without requesting every display frame.
+            sharedClockMs = System.nanoTime() / 1_000_000L
+            delay(FRAME_INTERVAL_MS)
         }
     }
     return sharedClockMs

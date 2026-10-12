@@ -218,16 +218,18 @@ UI 主题、组件、页面状态和设备宽度的专项矩阵见 [UI 设计规
 
 ### CI 质量门的职责
 
-`Build` 与 `PerfGuard` 共用 `bash scripts/ci_quality.sh`，分别执行验证器的 Lint fixture 回归、生产源码的语义检查，以及真实策略行为测试。`--continue` 保留独立任务的报告，不会吞掉失败退出码。这个命令不打包 APK，也不是全量单元测试。
+`QualityChecks` 使用三个独立 job：`PerfGuard` 只检查分配风险、模型稳定性承诺和运行时降级；`Correctness` 检查版本排序、偏好迁移/映射及缓存写入；`StylePolicy (report)` 检查样式解析器回归并发布设计规范 warning。PR 直接触发此工作流，push / Build 手动构建只通过可复用 `workflow_call` 调用一次，不再让 Build 和另一个 PerfGuard 工作流重复执行整组检查。每个入口必须显式指定 `bash scripts/ci_quality.sh performance|correctness|style`，不保留隐式全量模式；这些命令不打包 APK，也不是全量单元测试。`--continue` 只保留独立报告，不吞掉失败退出码。
 
 源码策略由 `ci-lint` 模块通过 Android Lint / UAST / Kotlin 类型解析执行，不再放在 JUnit 中读仓库源码做正则断言：
 
 - `BiliPaiFrameBlurAllocation` 检查已解析的 Android `createBlurEffect` 是否位于 Compose `graphicsLayer` 更新回调内；预建效果、外置缓存及能静态建立半径比较/写回/效果存储关系的内联缓存不因变量名不同而报错。这是分配风险定位，不是实际帧耗时测量，也不做跨函数调用图证明。
 - `BiliPaiModelStability` 检查 `compose_stability.conf` 承诺的模型包及子包，涵盖 `core-data` 等依赖模块；区分属性与函数/getter/init 局部变量。只读集合接口仍不证明深度不可变或运行时从未修改。
-- 六类样式规则仍限定 `live/home/dynamic/following/list/watchlater` 包及子包。真正的命名 `Spec/Palette/Policy` 不可变 token 属性 initializer 可豁免；直接返回 `tween/spring` 的具名规格工厂也属于 motion token，支持表达式体、括号及只有一个 return 的函数体，不豁免其他 UI 语句或嵌套回调。同文件 UI 函数不能靠同名测试文件存在而豁免。`dp` 规则描述的是字面尺寸，不把所有尺寸都称为间距。
+- 六类样式规则仍限定 `live/home/dynamic/following/list/watchlater` 包及子包。命名 `Spec/Palette/Policy` 不可变 token 属性 initializer 可豁免；非 `@Composable` 的具名规格工厂还可定义已解析的样式返回值及默认参数。支持表达式体、`return` 分支、Compose 值类型及 `Style/Spec/Palette/Policy/Geometry/Tuning/Metrics/Padding` 命名的数据规格，不豁免中间局部语句、嵌套回调或同文件 UI 函数，也不因同名测试存在而豁免。泛型或匿名类型没有可识别类名时保守保留诊断，不令检查器崩溃；这不是跨函数无副作用证明。
+- `BiliPaiHardcodedDimension` 描述尺寸、间距、位移及效果半径，不把所有 `dp` 都称为间距。零值仅按已解析 API 角色处理：取消阴影、padding/offset/blur、最小边界及 `letterSpacing` 等恒等选择不要求 token；`width(0.dp)`、`fontSize = 0.sp`、最大边界及同名伪 API 仍受检查。`RoundedCornerShape` 只报 shape，不再重复报 dimension；全零 `dp` 圆角表示方形，不报 shape。
+- 对比度计算的 `resolveAccessibleContainerColors(backgroundColor = …)` 可读取真实主题背景；显示容器、其他参数或同名函数不获得豁免。样式诊断归类为可用性约束，规则默认仍是 `ERROR`；仅样式 CI profile 将六类规范显式报告为 warning，不进入性能 job。它们既不证明实际掉帧，也不直接证明视觉缺陷。
 - 原审批文件豁免按规则迁入 `app/lint.xml`，不自动收录当前违规、不更新数量上限或集合摘要。新的豁免仍需要解释具体设计理由。
 
-Gradle 将检查器挂到 app 和 Android library 的 `lintChecks`，并启用依赖分析，避免只检查 app 而漏掉拆出的模型。CI 的 `-Pbili.ciChecks=true` 仅选择这些策略及检查器故障诊断，不使用旧平台 Lint baseline；普通 `lintDebug` 仍保留平台检查和原 baseline。`ObsoleteLintCustomCheck` 在 CI 中为 fatal，检查器不兼容而被整体跳过不能再产生假绿。
+Gradle 将检查器挂到 app 和 Android library 的 `lintChecks`，并启用依赖分析，避免漏掉拆出的模型。`-Pbili.ciChecks=performance` 仅选择分配风险与模型稳定性；`-Pbili.ciChecks=style` 仅选择六类设计规范并将其报告为 warning。两个 profile 都移除旧平台 baseline，并把 `LintError` / `ObsoleteLintCustomCheck` 设为 fatal；编译、检查器崩溃/加载故障及回归失败仍导致 job 失败，没有 `continue-on-error`、`abortOnError=false` 或忽略失败的包装。普通 `lintDebug` 仍保留平台检查、默认规则严重性和原 baseline。旧 `bili.ciChecks=true` 已删除；下文出现它的命令仅是历史执行记录，不是当前入口。
 
 行为验证从所属模块执行：app 包含更新版本排序、刷新率选择、运行时掉帧窗口与降级恢复、真实 Preferences 映射、主题迁移及缓存写入顺序/取消边界；design-system 执行运行时降级决策和信号合并策略。不能用 app 的 `--tests` 筛选代替 design-system 的测试任务。
 
@@ -271,14 +273,132 @@ gradlew.bat :ci-lint:test --rerun :app:lintDebug -Pbili.ciChecks=true --continue
 
 本独立分支没有再次执行已知阻塞的 app / design-system 测试任务，迁移前的 68 个行为用例结果不能作为本分支结果；未执行完整 `scripts/ci_quality.sh`、全量单元测试、APK 打包或设备帧耗时验证。验证器已运行不代表完整质量门已通过，远端状态以 PR checks 为准。
 
+### 2026-10-12 上游测试编译修复
+
+基于已合并歌词 / 动态图文及语义守卫的 `upstream/main`（`4103c7140`）建立独立测试修复分支。问题证据来自 [PR #898 远程失败日志](https://github.com/jay3-yy/BiliPai/actions/runs/38199034534)：app 测试源码涉及 18 个文件，design-system 涉及 2 个文件；检查器自身的 36 个用例通过，但测试编译及 587 项生产源码策略诊断使质量门失败。
+
+本次只修改测试、测试依赖及文档，不修改生产代码、内部符号可见性或 Lint 门禁：
+
+- 分区回退、搜索签名及评论 gRPC 分页内部策略用例迁到所属 core-data 模块，显式提供 Kotlin/Jupiter 与 JUnit 4/Vintage 运行依赖，避免仅编译成功却不发现测试。
+- 修复重复 package/import/class、过期 Compose 导入、AICU 时钟参数误绑定、设备传输构造器及 OkHttp Call 测试夹具接口。
+- 设备传输和 CDN 字节流测试使用 Robolectric / Android 35，执行真实 Android Base64 / Uri；不依赖 Android JVM 空桩或虚构适配器。
+- 删除源码片段、实现类型、显示措辞及旧几何默认值断言；保留字幕合并与过滤、同意与分页状态、搜索签名、链接点击范围、表情注释、CDN 字节完整性 / 回退 / 取消释放。首页布局改为测量值变化、窄容器边界及液态玻璃开关优先级验证，不重新钉住默认尺寸。
+
+Windows / `D:/Java/jdk-21`、gh 认证下多轮实际 Gradle 编译及定向测试的最终结果：
+
+| 模块 | 用例 | 结果 |
+| --- | --- | --- |
+| app | 310 | 全部通过，0 失败、0 错误、0 跳过 |
+| core-data | 11 | 全部通过，0 失败、0 错误、0 跳过 |
+| design-system | 20 | 全部通过，0 失败、0 错误、0 跳过 |
+
+最后一次 Gradle 命令退出 0；app 重新编译并执行测试，core-data / design-system 的未变更用例任务为 UP-TO-DATE，复用同分支前轮实际执行的报告。上表包含质量入口的 app 56 个及 design-system 12 个运行时行为用例，不代表全量测试通过。
+
+编译阻塞消除后的首轮 app 321 个用例中有 19 个失败：4 个 CDN Android Uri mock 失败；13 个首页旧几何默认值、布局及开关断言失败；2 个动态图文断言把换行节点拼接或 orig_text 空默认值当作契约。随后修复运行环境，移除失效实现断言，并从最终正文、点击目标 / 范围及可变测量值检查消费者行为；未改生产逻辑迎合旧预期。
+
+另外用 Java 直接调用本分支 Gradle 编译的生产 `buildSearchRecommendParams`，将结果消费为真实请求 URI：手机 token 使用 HD appkey、TV token 保持 TV appkey、Cookie-only 不发送 access_key，三种签名均符合预期。未发出实际网络请求，临时 smoke 脚本不进入仓库。
+
+本次未重跑已知失败的生产 Lint、完整质量脚本、全量单元测试、APK 打包、Android 界面或设备帧耗时。远程既有 587 项命中仍须独立处理：4 处分配位置确实在 graphicsLayer 回调中直接创建模糊效果且未缓存，但不是掉帧测量；样式命中含隐藏标签的 `0.sp` 及禁用阴影的 `0.dp` 等规范选择，不能全部解释为产品错误。存量规则如何接入硬门禁由维护者决定，本 PR 不生成 baseline、不新增豁免、不降级规则。
+
+### 2026-10-12 样式验证器校准（PR #899）
+
+在测试修复提交 `166532d712` 上追加验证器校准。对照的是 [PR #899 原有远程运行](https://github.com/jay3-yy/BiliPai/actions/runs/38205444886) 的 615 项诊断（611 项样式、4 处分配风险），不是重跑旧失败后宣称修复。仅包含验证器、规则配置、回归测试及对应文档，不包含动态主题修复、原主工作区的其他测试整理或弹幕改动。
+
+先用新的规格工厂回归复现误报：同一 fixture 期望 4 个 UI 使用位置诊断，旧检查器实际报 13 个。校准返回路径、规格默认参数及数据规格类型后，通过实际生产 Lint 补获并修复 `HomeHeroCarouselPolicy.kt` 泛型返回类型无类名导致的 `Set.of().contains(null)` 崩溃；没有禁用检查器或吞掉异常。
+
+在 Windows / `D:/Java/jdk-21`、gh 认证下执行：
+
+```text
+gradlew.bat :ci-lint:test --rerun :app:lintDebug -Pbili.ciChecks=true --continue --no-daemon --console=plain
+```
+
+| 验证路径 | 实际结果 |
+| --- | --- |
+| 检查器回归 | 性能 8、模型 14、样式 20，共 42 个；全部通过，0 失败、错误或跳过 |
+| 原生 CI Lint | 完整执行并生成报告，退出 1；451 项诊断，模型与检查器故障为零 |
+| 样式诊断构成 | dimension 369、color 16、motion 38、shape 8、surface 11、typography 5，共 447 项 |
+| 分配风险 | 原有 4 处 graphicsLayer 模糊效果分配仍保留，未测量设备帧耗时 |
+
+这里的 451 项来自已移除未提交动态主题代码后的 PR 候选运行，不能套用此前包含主题修复的 441 项统计。相较旧远端的 615 项，本次仅校准验证器后净减少 164 项诊断；这不是批量改变页面视觉参数、确认全部剩余命中为产品漏洞，或宣称 CI 已通过。
+
+
+本轮没有生成 baseline、扩大路径豁免或降级规则，也没有批量调整页面尺寸来消除命中。剩余样式位置仍需逐项审查及复用 token，不能全部解释为产品漏洞。未执行全量单元测试、APK 打包或 Android 界面/设备帧耗时验证；远程结果以 PR checks 为准。
+
+### 2026-10-12 CI 职责拆分（PR #899）
+
+在 `0df2ea5dc` 上追加 CI 拆分，重命名旧 `PerfGuard.yml` 为可复用的 `QualityChecks.yml`。Build 的原质量 job 改为调用它，打包 job 仍依赖质量 job 与 FCM 检查；三类检查不再在两个工作流中重复执行。模型稳定性属于 Compose 性能承诺，不是设备帧耗时测量；样式报告不再决定性能检查的成败。三个 job 各自上传报告，样式 warning 也会上传，不等失败才保留证据。
+
+使用 Windows Git Bash、`D:/Java/jdk-21` 与 gh 认证，直接执行真实 `scripts/ci_quality.sh` 入口：
+
+| 入口 | 实际测试 | 原生 Lint | 退出 |
+| --- | --- | --- | --- |
+| performance | 性能/模型 fixture 22、app 19、design-system 12，共 53 个全部通过 | 仅原有 4 处分配错误；无样式命中 | 1 |
+| correctness | app 37 个全部通过 | 不执行 Lint | 0 |
+| style | 样式 fixture 20 个全部通过 | 保留 447 个样式 warning；无分配或模型诊断 | 0 |
+
+这里的候选不含本地主题或模糊业务修复，因此性能入口依然正确阻止 4 处分配风险，不能声称完整质量门通过。前述 451 项旧统计没有消失，而是分成了性能错误与样式报告；没有清空 baseline、偷偷删除规则或改页面参数凑绿。无模式调用实际退出 2，防止旧调用者意外运行一组含糊的检查。
+
+另用同一个 `style` 入口做故障 smoke：临时令检查器只在真实生产 `CiStyleFaultProbe.kt` 中抛出异常，20 个 fixture 仍全部通过，但 `:app:lintAnalyzeDebug` 因检查器故障退出 1，未被 warning profile 吞掉。随后移除临时源文件及异常注入，检查器恢复原内容，再运行 `style` 入口恢复退出 0、447 个 warning 和 20 个回归通过。临时故障代码不进入提交。
+
+工作流经 actionlint 1.7.12 校验，Shell 入口通过 `bash -n`。校验同时发现 Build 原有的 `github.run_started_at` 不是有效上下文字段，改为在既有发布证据脚本中生成实际 UTC 时间；已直接消费该脚本确认生成可解析的 UTC `generatedAt`，没有打包 APK。
+
+本次工作流与 job 名称变化；若维护者设置了旧 required-check 名称，需要同步分支保护，不在本 PR 中修改仓库保护设置。CI 拆分提交本身未包含本地主题、模糊复用及缓存测试；随后追加的模糊修复见下节，主题仍不加入 #899。未运行全量测试、设备视觉或帧耗时验证。
+
+### 2026-10-12 评论覆盖图层的模糊效果复用（PR #899）
+
+以下保存职责拆分前的本地修复证据及拆分后的性能入口验证；旧阶段的 `bili.ciChecks=true` 已由上述两个明确 profile 替代，不再作为当前入口。
+
+在 `0df2ea5dc` 上建立 `fix/comment-blur-effect-reuse`，只处理 `CommentThreadNavigationBlur`、`VideoCommentSheetHost`、`DynamicCommentSheet`、`DynamicDetailScreen` 的重复效果创建。复用现有 `BlurRenderEffectCache`，不新增缓存框架或修改检查器：Modifier 工厂把缓存保留在图层回调外，三个 Composable 图层使用 `remember` 保留各自缓存。半径变化才替换当前效果；关闭仍将图层 `renderEffect` 设为 `null`。保持原半径计算/量化、`> 0.5px` 条件、Android API 31 判断及 `CLAMP` 模式，不改前景、模糊层级、尺寸或动画时长。
+
+修复前后用相同临时消费场景调用真实 Modifier 的 `graphicsLayer` 回调。Robolectric 4.17 / Android 35 的原生图形后端实际创建效果，观察器只记录图层赋值，不复制半径或缓存实现。6 次正模糊更新落在两档半径：修复前创建 6 个效果实例，期望 2 的断言失败；修复后只保留 2 个实例，断言通过。关闭时效果为 `null`；Android 30 场景不创建效果，也不读取进度提供器。观察器涉及私有 Modifier 回调访问，仅用于临时 smoke，已从源码移除，不作为永久实现细节测试。
+
+保留的 `BlurRenderEffectCacheTest` 使用真实 Android 效果检查同半径对象复用、半径变化替换单条缓存、零/负/非有限半径不暴露旧模糊，以及 Android 30 不支持效果的边界。4 个用例全部通过，0 失败、错误或跳过。
+
+```text
+gradlew.bat :app:testDebugUnitTest --tests *.CommentThreadBlurAllocationSmokeTest --tests *.BlurRenderEffectCacheTest :app:lintDebug -Pbili.ciChecks=true --continue --no-daemon --console=plain
+```
+
+该次命令实际重新编译 app 并执行 2 个临时消费场景及 4 个永久缓存用例，测试全部通过；原生 Lint 仍退出 1。含原有未提交主题修改的同口径报告由 441 项降为 437 项，`BiliPaiFrameBlurAllocation` 从 4 归零；其余为 dimension 369、color 6、motion 38、shape 8、surface 11、typography 5。没有模型或检查器故障诊断，未加入 baseline、增加豁免、降低严重性或改动样式参数。
+
+移除临时消费场景源码后，再次实际执行永久用例命令，重新编译测试并执行 4 个用例，全部通过，Gradle 退出 0：
+
+```text
+gradlew.bat :app:testDebugUnitTest --tests *.BlurRenderEffectCacheTest --no-daemon --console=plain
+```
+
+职责拆分后，在包含 `0c86ced3f` 的同一修复分支上验证当前性能入口；发布到 #899 前，暂时移出三处独立主题修改，并再次对仅含模糊修复的候选执行相同命令。`performance` 入口现在显式选择 `BlurRenderEffectCacheTest`，避免缓存边界回归只在手动筛选时执行。下表来自不含主题修改的发布候选：
+
+```bash
+bash scripts/ci_quality.sh performance
+```
+
+| 验证路径 | 当前实际结果 |
+| --- | --- |
+| 原生性能 Lint | 分析任务实际执行，SARIF 零诊断；分配、模型稳定性及检查器故障均为零 |
+| app 行为回归 | 实际执行 23 个用例，含 4 个真实模糊缓存边界用例；全部通过 |
+| 检查器回归 | 22 个用例报告无失败，发布候选任务 UP-TO-DATE |
+| design-system 行为回归 | 12 个用例报告无失败，本轮任务 UP-TO-DATE |
+| 真实脚本退出 | 0，BUILD SUCCESSFUL；共 57 个用例报告无失败、错误或跳过 |
+
+前轮另用临时场景消费真实评论 Modifier 的图层回调，2 个场景及 4 个缓存用例全部通过：6 次正模糊更新复用 2 个效果实例，关闭和量化零值清空效果，重新启用相同半径仍复用上次效果；Android 30 不创建效果且不读取进度。随后移除临时场景源码，再执行上述真实性能入口。发布候选实际重新编译 app 及测试、执行 23 个 app 用例并完成原生 Lint 分析；报告任务 UP-TO-DATE，复用一致的零诊断结果。不是复制缓存算法、参数模拟或源码计数，编译任务允许使用正常 Gradle 缓存。
+
+这是效果对象复用的运行证据，不是完整 Android 页面的视觉验证或设备帧耗时测量。本次追加提交仅包含四处模糊复用、缓存回归、性能入口筛选及对应文档，原有主题修改仍留在本地，不混入 #899。没有改变样式严重性、检查器或 baseline；上述历史 437 项包含本地主题修改，不能当作发布候选的样式结果。本地性能入口通过不等于远端 checks 已通过；主工作区的其他修改未触碰，本次未重跑样式入口、正确性入口、全量测试或 APK 打包。
+
+
+
+
+
 按变更面选择最小验证集：
 
 ```bash
-# 与 GitHub Actions 相同的质量门，不包含 APK 构建
-bash scripts/ci_quality.sh
+# 与 GitHub Actions 相同的三个职责入口，不包含 APK 构建
+bash scripts/ci_quality.sh performance
+bash scripts/ci_quality.sh correctness
+bash scripts/ci_quality.sh style
 
-# 仅检查 CI 源码策略；真实违规会使任务失败
-./gradlew :app:lintDebug -Pbili.ciChecks=true
+# 只执行相应源码策略；样式 profile 为报告，检查器故障仍失败
+./gradlew :app:lintDebug -Pbili.ciChecks=performance
+./gradlew :app:lintDebug -Pbili.ciChecks=style
 
 # 验证解析器的误报、漏报、缓存、模块与豁免边界
 ./gradlew :ci-lint:test

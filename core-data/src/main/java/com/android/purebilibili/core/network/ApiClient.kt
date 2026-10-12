@@ -1661,6 +1661,7 @@ interface StoryApi {
     // 获取故事流 (竖屏短视频列表)
     @GET("x/v2/feed/index/story")
     suspend fun getStoryFeed(
+        @Query("display_id") displayId: Int = 1,
         @Query("fnval") fnval: Int = 4048,         // 视频格式参数
         @Query("fnver") fnver: Int = 0,
         @Query("force_host") forceHost: Int = 0,

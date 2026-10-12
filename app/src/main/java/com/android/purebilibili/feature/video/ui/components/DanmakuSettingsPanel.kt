@@ -304,6 +304,29 @@ internal fun shouldDismissDanmakuSettingsPanelFromBackdropGesture(
  * 
  * Requirement Reference: AC2.4 - Reusable DanmakuSettingsPanel
  */
+enum class DanmakuSliderParameter {
+    OPACITY, FONT_SCALE, FONT_WEIGHT, SPEED, DISPLAY_AREA, STROKE_WIDTH, LINE_HEIGHT,
+    SCROLL_DURATION, STATIC_DURATION,
+}
+
+fun applyDanmakuSliderPreview(
+    manager: com.android.purebilibili.feature.video.danmaku.DanmakuManager,
+    parameter: DanmakuSliderParameter,
+    value: Float,
+) {
+    when (parameter) {
+        DanmakuSliderParameter.OPACITY -> manager.opacity = value
+        DanmakuSliderParameter.FONT_SCALE -> manager.fontScale = value
+        DanmakuSliderParameter.FONT_WEIGHT -> manager.fontWeight = value.roundToInt()
+        DanmakuSliderParameter.SPEED -> manager.speedFactor = value
+        DanmakuSliderParameter.DISPLAY_AREA -> manager.displayArea = value
+        DanmakuSliderParameter.STROKE_WIDTH -> manager.strokeWidth = value
+        DanmakuSliderParameter.LINE_HEIGHT -> manager.lineHeight = value
+        DanmakuSliderParameter.SCROLL_DURATION -> manager.scrollDurationSeconds = value
+        DanmakuSliderParameter.STATIC_DURATION -> manager.staticDurationSeconds = value
+    }
+}
+
 @Composable
 fun DanmakuSettingsPanel(
     isFullscreen: Boolean = true,
@@ -341,6 +364,7 @@ fun DanmakuSettingsPanel(
     portraitDisplayAreaMode: PortraitDanmakuDisplayAreaMode =
         PortraitDanmakuDisplayAreaMode.VIDEO_VIEWPORT,
     syncUiState: DanmakuCloudSyncUiState = DanmakuCloudSyncUiState(),
+    onSliderPreview: ((DanmakuSliderParameter, Float) -> Unit)? = null,
     onOpacityChange: (Float) -> Unit,
     onFontScaleChange: (Float) -> Unit,
     onFontWeightChange: (Int) -> Unit = {},
@@ -419,7 +443,7 @@ fun DanmakuSettingsPanel(
             dismissOnClickOutside = false
         )
     ) {
-        com.android.purebilibili.core.ui.ModalWindowBlurBehindEffect()
+        com.android.purebilibili.core.ui.ModalWindowBlurBehindEffect(enabled = false)
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = when (layoutPolicy.anchor) {
@@ -432,7 +456,7 @@ fun DanmakuSettingsPanel(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
-                        Color.Black.copy(alpha = if (isFullscreenStyle) 0.42f else 0.6f)
+                        Color.Black.copy(alpha = if (isFullscreenStyle) 0.08f else 0.22f)
                     )
                     .pointerInput(onDismiss, viewConfiguration.touchSlop) {
                         awaitEachGesture {
@@ -746,6 +770,9 @@ fun DanmakuSettingsPanel(
                                 valueRange = 0.3f..2f,
                                 displayValue = { "${(it * 100).toInt()}%" },
                                 onValueChange = onFontScaleChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.FONT_SCALE, next) ?: onFontScaleChange(next)
+                                    },
                                 colors = panelColors,
                                 fullscreenStyle = isFullscreenStyle,
                                 resetValue = 1f,
@@ -759,6 +786,9 @@ fun DanmakuSettingsPanel(
                                     valueRange = 2f..15f,
                                     displayValue = { "${it.roundToInt()}s" },
                                     onValueChange = onScrollDurationSecondsChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.SCROLL_DURATION, next) ?: onScrollDurationSecondsChange(next)
+                                    },
                                     colors = panelColors,
                                     fullscreenStyle = true,
                                     resetValue = 7f,
@@ -771,6 +801,9 @@ fun DanmakuSettingsPanel(
                                     valueRange = 2f..15f,
                                     displayValue = { "${it.roundToInt()}s" },
                                     onValueChange = onStaticDurationSecondsChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.STATIC_DURATION, next) ?: onStaticDurationSecondsChange(next)
+                                    },
                                     colors = panelColors,
                                     fullscreenStyle = true,
                                     resetValue = 4f,
@@ -783,6 +816,9 @@ fun DanmakuSettingsPanel(
                                     valueRange = 0.8f..2.2f,
                                     displayValue = { String.format("%.1f", it) },
                                     onValueChange = onLineHeightChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.LINE_HEIGHT, next) ?: onLineHeightChange(next)
+                                    },
                                     colors = panelColors,
                                     fullscreenStyle = true,
                                     resetValue = 1.6f,
@@ -795,6 +831,9 @@ fun DanmakuSettingsPanel(
                                 valueRange = 0.3f..1f,
                                 displayValue = { "${(it * 100).toInt()}%" },
                                 onValueChange = onOpacityChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.OPACITY, next) ?: onOpacityChange(next)
+                                    },
                                 colors = panelColors,
                                 fullscreenStyle = isFullscreenStyle,
                                 resetValue = 1f,
@@ -812,6 +851,9 @@ fun DanmakuSettingsPanel(
                                     }
                                 },
                                 onValueChange = onSpeedChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.SPEED, next) ?: onSpeedChange(next)
+                                    },
                                 colors = panelColors,
                                 fullscreenStyle = isFullscreenStyle,
                                 resetValue = 1f,
@@ -850,6 +892,10 @@ fun DanmakuSettingsPanel(
                                     steps = 7,
                                     displayValue = { "${it.roundToInt()}" },
                                     onValueChange = { onFontWeightChange(it.roundToInt()) },
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.FONT_WEIGHT, next)
+                                            ?: onFontWeightChange(next.roundToInt())
+                                    },
                                     colors = panelColors,
                                     fullscreenStyle = isFullscreenStyle,
                                     resetValue = 5f,
@@ -861,6 +907,9 @@ fun DanmakuSettingsPanel(
                                     valueRange = 0f..4f,
                                     displayValue = { String.format("%.1f dp", it) },
                                     onValueChange = onStrokeWidthChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.STROKE_WIDTH, next) ?: onStrokeWidthChange(next)
+                                    },
                                     colors = panelColors,
                                     fullscreenStyle = isFullscreenStyle,
                                     resetValue = 1.5f,
@@ -873,6 +922,9 @@ fun DanmakuSettingsPanel(
                                         valueRange = 0.8f..2.2f,
                                         displayValue = { String.format("%.1f", it) },
                                         onValueChange = onLineHeightChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.LINE_HEIGHT, next) ?: onLineHeightChange(next)
+                                    },
                                         colors = panelColors,
                                         fullscreenStyle = false,
                                         resetValue = 1.6f,
@@ -884,6 +936,9 @@ fun DanmakuSettingsPanel(
                                         valueRange = 2f..15f,
                                         displayValue = { "${it.roundToInt()}s" },
                                         onValueChange = onScrollDurationSecondsChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.SCROLL_DURATION, next) ?: onScrollDurationSecondsChange(next)
+                                    },
                                         colors = panelColors,
                                         fullscreenStyle = false,
                                         resetValue = 7f,
@@ -896,6 +951,9 @@ fun DanmakuSettingsPanel(
                                         valueRange = 2f..15f,
                                         displayValue = { "${it.roundToInt()}s" },
                                         onValueChange = onStaticDurationSecondsChange,
+                                    onValuePreview = { next ->
+                                        onSliderPreview?.invoke(DanmakuSliderParameter.STATIC_DURATION, next) ?: onStaticDurationSecondsChange(next)
+                                    },
                                         colors = panelColors,
                                         fullscreenStyle = false,
                                         resetValue = 4f,
@@ -1893,13 +1951,24 @@ private fun DanmakuSliderItem(
     steps: Int = 0,
     displayValue: (Float) -> String,
     onValueChange: (Float) -> Unit,
+    onValuePreview: ((Float) -> Unit)? = null,
     colors: DanmakuSettingsPanelSurfaceColors,
     fullscreenStyle: Boolean,
     resetValue: Float? = null,
     tickCount: Int = 0,
     valueText: (Float) -> String = displayValue
 ) {
-    var localValue by remember(value) { mutableFloatStateOf(value) }
+    var localValue by remember(valueRange) { mutableFloatStateOf(value) }
+    var previewing by remember { mutableStateOf(false) }
+    val latestCommit by androidx.compose.runtime.rememberUpdatedState(onValueChange)
+    androidx.compose.runtime.LaunchedEffect(value) {
+        if (!previewing) localValue = value
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { if (previewing) latestCommit(localValue) }
+    }
+    val liquidSlider = com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled &&
+        android.os.Build.VERSION.SDK_INT >= 33
     val sliderProgress = remember(localValue, valueRange) {
         val total = valueRange.endInclusive - valueRange.start
         if (total <= 0f) {
@@ -1926,6 +1995,7 @@ private fun DanmakuSliderItem(
                     AppIconButton(
                         onClick = {
                             localValue = resetValue
+                            previewing = false
                             onValueChange(resetValue)
                         },
                         modifier = Modifier
@@ -1965,10 +2035,10 @@ private fun DanmakuSliderItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (fullscreenStyle) 32.dp else 28.dp),
+                .height(if (liquidSlider) 48.dp else if (fullscreenStyle) 32.dp else 28.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (fullscreenStyle && tickCount > 1) {
+            if (!liquidSlider && fullscreenStyle && tickCount > 1) {
                 DanmakuSliderTicks(
                     tickCount = tickCount,
                     progress = sliderProgress,
@@ -1983,12 +2053,18 @@ private fun DanmakuSliderItem(
                 value = localValue,
                 onValueChange = { newValue ->
                     localValue = newValue
+                    previewing = true
+                    onValuePreview?.invoke(newValue)
                 },
-                onValueChangeFinished = { onValueChange(localValue) },
+                onValueChangeFinished = {
+                    previewing = false
+                    onValueChange(localValue)
+                },
                 valueRange = valueRange,
                 steps = steps,
-                // 横竖屏统一使用面板调色板（主题色 thumb + 轨道），不再用白色 thumb。
-                colors = AppSliderDefaults.colors(
+                // Glass uses the same resource palette and lens as settings controls.
+                // Native themes retain the panel's existing contrast palette.
+                colors = if (liquidSlider) null else AppSliderDefaults.colors(
                     thumbColor = colors.sliderThumbColor,
                     activeTrackColor = colors.sliderActiveTrackColor,
                     inactiveTrackColor = colors.sliderInactiveTrackColor

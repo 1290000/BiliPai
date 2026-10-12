@@ -107,6 +107,7 @@ import com.android.purebilibili.feature.video.ui.feedback.followActionAnchor
 import com.android.purebilibili.feature.live.components.LiveContributionRankSheet
 import com.android.purebilibili.feature.live.components.LiveDmBlockSheet
 import com.android.purebilibili.feature.live.components.LiveEmoticonPanel
+import com.android.purebilibili.feature.live.components.LiveLandscapePlayerControls
 import com.android.purebilibili.feature.live.components.LivePlayerControls
 import com.android.purebilibili.feature.live.components.LivePortraitBottomBar
 import com.android.purebilibili.feature.live.components.LivePortraitChatPreview
@@ -394,14 +395,19 @@ fun LivePlayerScreen(
             isInteractionPanelVisible = isInteractionPanelVisible
         )
     }
-    val splitChatPanelWidthDp = remember(configuration.screenWidthDp, configuration.screenHeightDp) {
+    val splitChatPanelWidthDp = remember(configuration.screenWidthDp) {
         resolveLiveSplitChatPanelWidthDp(
             screenWidthDp = configuration.screenWidthDp,
-            screenHeightDp = configuration.screenHeightDp,
             contentPaddingDp = AppSpacingTokens.Medium.value.toInt() * 2,
         )
     }
 
+    val showLandscapeChatOverlay = remember(liveLayoutMode, isInteractionPanelVisible) {
+        shouldShowLiveLandscapeChatOverlay(
+            layoutMode = liveLayoutMode,
+            isInteractionPanelVisible = isInteractionPanelVisible
+        )
+    }
     val useTextureSurfaceForLivePlayer = remember(sharedTransitionScope, animatedVisibilityScope) {
         shouldUseTextureSurfaceForLivePlayer(
             hasSharedTransitionScope = sharedTransitionScope != null,
@@ -417,6 +423,7 @@ fun LivePlayerScreen(
     
     // 强制横屏切换
     fun toggleFullscreen() {
+        if (isFullscreen) isInteractionPanelVisible = false
         showPortraitMoreSheet = false
         showPortraitInteractionSheet = false
         showPortraitPlayerControls = true
@@ -1005,7 +1012,10 @@ fun LivePlayerScreen(
                     }
                 }
                 val viewportModifier = with(density) {
-                    Modifier.graphicsLayer(scaleX = videoScale, scaleY = videoScale).size(
+                    Modifier.graphicsLayer(
+                        scaleX = if (isLandscape) 1f else videoScale,
+                        scaleY = if (isLandscape) 1f else videoScale
+                    ).size(
                         width = viewportLayout.width.toDp(),
                         height = viewportLayout.height.toDp()
                     )
@@ -1068,79 +1078,150 @@ fun LivePlayerScreen(
             }
             
             // Custom Controls
-            LivePlayerControls(
-                isPlaying = exoPlayer.playWhenReady,
-                isFullscreen = isFullscreen,
-                gesturePolicy = playerGesturePolicy,
-                usePortraitControls = false,
-                isClearScreen = portraitPresentation.clearScreen,
-                onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
-                onOpenPortraitMore = {
-                    showPortraitPlayerControls = true
-                    showPortraitMoreSheet = true
-                },
-                showTopBar = shouldShowLivePlayerControlsTopBar(
-                    layoutMode = liveLayoutMode,
-                    isFullscreen = isFullscreen
-                ),
-                title = liveRoomTitle,
-                subtitle = liveSubtitle,
-                onPlayPause = {
-                    if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
-                },
-                onToggleFullscreen = { toggleFullscreen() },
-                onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
-                // 侧边栏开关
-                isChatVisible = isInteractionPanelVisible,
-                onToggleChat = {
-                    if (isFullscreen) showPortraitInteractionSheet = true
-                    else isInteractionPanelVisible = !isInteractionPanelVisible
-                },
-                showChatToggle = showChatToggle,
-                // 弹幕开关
-                isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
-                onToggleDanmaku = { toggleLiveDanmaku() },
-                onOpenDanmakuSettings = { showDanmakuSettingsDialog = true },
-                onOpenBlockSettings = { showBlockDialog = true },
-                // [新增] 刷新
-                onRefresh = { viewModel.retry() },
-                isAudioOnly = successState?.isAudioOnly ?: false,
-                onToggleAudioOnly = { viewModel.toggleAudioOnly() },
-                isBackgroundPlaybackEnabled = backgroundPlaybackEnabled,
-                onToggleBackgroundPlayback = { toggleBackgroundPlayback() },
-                onOpenShutdownTimer = { showShutdownTimerDialog = true },
-                onOpenPlayerInfo = { showPlayerInfoDialog = true },
-                onOpenSend = { showSendDanmakuSheet = true },
-                videoFitDesc = videoAspectRatio.displayName,
-                onVideoFitClick = { showVideoFitMenu = true },
-                currentQualityDesc = currentQualityDesc,
-                onQualityClick = { showQualityMenu = true },
-                currentSourceDesc = currentSourceDesc,
-                onSourceClick = { showStreamSourceSheet = true },
-                onOpenMore = { showPortraitMoreSheet = true },
-                videoScale = videoScale,
-                onScale = { zoom -> videoScale = (videoScale * zoom).coerceIn(0.5f, 3f) },
-                onResetScale = { videoScale = 1f },
-                showPipButton = showLivePipButton,
-                onEnterPip = { enterLivePip() },
-                showLockButton = isFullscreen,
-                onCaptureScreenshot = { captureLiveScreenshot() },
-                onLike = { count -> viewModel.clickLike(count) },
-                applyTopSystemBarPadding = shouldApplyLiveTopControlSystemInsets(
-                    layoutMode = liveLayoutMode,
-                    isFullscreen = isFullscreen
-                ),
-                applyBottomSystemBarPadding = shouldApplyLiveBottomControlSystemInsets(
-                    layoutMode = liveLayoutMode,
+            if (liveLayoutMode == LiveRoomLayoutMode.LandscapeOverlay ||
+                liveLayoutMode == LiveRoomLayoutMode.LandscapeSplit
+            ) {
+                LiveLandscapePlayerControls(
+                    isPlaying = exoPlayer.playWhenReady,
                     isFullscreen = isFullscreen,
-                    hasReservedBottomOverlay = reservedBottomOverlayDp > 0
-                ),
-                bottomControlsBottomPadding = if (reservedBottomOverlayDp > 0) {
-                    (reservedBottomOverlayDp + portraitOverlayMetrics.playerControlsGapDp).dp
-                } else {
-                    AppSpacingTokens.None
-                }
-            )
+                    gesturePolicy = playerGesturePolicy,
+                    usePortraitControls = false,
+                    isClearScreen = portraitPresentation.clearScreen,
+                    onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
+                    onOpenPortraitMore = {
+                        showPortraitPlayerControls = true
+                        showPortraitMoreSheet = true
+                    },
+                    showTopBar = shouldShowLivePlayerControlsTopBar(
+                        layoutMode = liveLayoutMode,
+                        isFullscreen = isFullscreen
+                    ),
+                    title = liveRoomTitle,
+                    subtitle = liveSubtitle,
+                    onPlayPause = {
+                        if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
+                    },
+                    onToggleFullscreen = { toggleFullscreen() },
+                    onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
+                    // 侧边栏开关
+                    isChatVisible = isInteractionPanelVisible,
+                    onToggleChat = { isInteractionPanelVisible = !isInteractionPanelVisible },
+                    showChatToggle = showChatToggle,
+                    // 弹幕开关
+                    isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
+                    onToggleDanmaku = { toggleLiveDanmaku() },
+                    onOpenDanmakuSettings = { showDanmakuSettingsDialog = true },
+                    onOpenBlockSettings = { showBlockDialog = true },
+                    // [新增] 刷新
+                    onRefresh = { viewModel.retry() },
+                    isAudioOnly = successState?.isAudioOnly ?: false,
+                    onToggleAudioOnly = { viewModel.toggleAudioOnly() },
+                    isBackgroundPlaybackEnabled = backgroundPlaybackEnabled,
+                    onToggleBackgroundPlayback = { toggleBackgroundPlayback() },
+                    onOpenShutdownTimer = { showShutdownTimerDialog = true },
+                    onOpenPlayerInfo = { showPlayerInfoDialog = true },
+                    onOpenSend = { showSendDanmakuSheet = true },
+                    videoFitDesc = videoAspectRatio.displayName,
+                    onVideoFitClick = { showVideoFitMenu = true },
+                    currentQualityDesc = currentQualityDesc,
+                    onQualityClick = { showQualityMenu = true },
+                    currentSourceDesc = currentSourceDesc,
+                    onSourceClick = { showStreamSourceSheet = true },
+                    showPipButton = showLivePipButton,
+                    onEnterPip = { enterLivePip() },
+                    showLockButton = isFullscreen,
+                    onCaptureScreenshot = { captureLiveScreenshot() },
+                    onLike = { count -> viewModel.clickLike(count) },
+                    applyTopSystemBarPadding = shouldApplyLiveTopControlSystemInsets(
+                        layoutMode = liveLayoutMode,
+                        isFullscreen = isFullscreen
+                    ),
+                    applyBottomSystemBarPadding = shouldApplyLiveBottomControlSystemInsets(
+                        layoutMode = liveLayoutMode,
+                        isFullscreen = isFullscreen,
+                        hasReservedBottomOverlay = reservedBottomOverlayDp > 0
+                    ),
+                    bottomControlsBottomPadding = if (reservedBottomOverlayDp > 0) {
+                        (reservedBottomOverlayDp + portraitOverlayMetrics.playerControlsGapDp).dp
+                    } else {
+                        AppSpacingTokens.None
+                    }
+                )
+            } else {
+                LivePlayerControls(
+                    isPlaying = exoPlayer.playWhenReady,
+                    isFullscreen = isFullscreen,
+                    gesturePolicy = playerGesturePolicy,
+                    usePortraitControls = false,
+                    isClearScreen = portraitPresentation.clearScreen,
+                    onPortraitTap = { showPortraitPlayerControls = !showPortraitPlayerControls },
+                    onOpenPortraitMore = {
+                        showPortraitPlayerControls = true
+                        showPortraitMoreSheet = true
+                    },
+                    showTopBar = shouldShowLivePlayerControlsTopBar(
+                        layoutMode = liveLayoutMode,
+                        isFullscreen = isFullscreen
+                    ),
+                    title = liveRoomTitle,
+                    subtitle = liveSubtitle,
+                    onPlayPause = {
+                        if (exoPlayer.playWhenReady) exoPlayer.pause() else exoPlayer.play()
+                    },
+                    onToggleFullscreen = { toggleFullscreen() },
+                    onBack = { if (isFullscreen) toggleFullscreen() else exitLiveRoom() },
+                    // 侧边栏开关
+                    isChatVisible = isInteractionPanelVisible,
+                    onToggleChat = {
+                        if (isFullscreen) showPortraitInteractionSheet = true
+                        else isInteractionPanelVisible = !isInteractionPanelVisible
+                    },
+                    showChatToggle = showChatToggle,
+                    // 弹幕开关
+                    isDanmakuEnabled = successState?.isDanmakuEnabled ?: true,
+                    onToggleDanmaku = { toggleLiveDanmaku() },
+                    onOpenDanmakuSettings = { showDanmakuSettingsDialog = true },
+                    onOpenBlockSettings = { showBlockDialog = true },
+                    // [新增] 刷新
+                    onRefresh = { viewModel.retry() },
+                    isAudioOnly = successState?.isAudioOnly ?: false,
+                    onToggleAudioOnly = { viewModel.toggleAudioOnly() },
+                    isBackgroundPlaybackEnabled = backgroundPlaybackEnabled,
+                    onToggleBackgroundPlayback = { toggleBackgroundPlayback() },
+                    onOpenShutdownTimer = { showShutdownTimerDialog = true },
+                    onOpenPlayerInfo = { showPlayerInfoDialog = true },
+                    onOpenSend = { showSendDanmakuSheet = true },
+                    videoFitDesc = videoAspectRatio.displayName,
+                    onVideoFitClick = { showVideoFitMenu = true },
+                    currentQualityDesc = currentQualityDesc,
+                    onQualityClick = { showQualityMenu = true },
+                    currentSourceDesc = currentSourceDesc,
+                    onSourceClick = { showStreamSourceSheet = true },
+                    onOpenMore = { showPortraitMoreSheet = true },
+                    videoScale = videoScale,
+                    onScale = { zoom -> videoScale = (videoScale * zoom).coerceIn(0.5f, 3f) },
+                    onResetScale = { videoScale = 1f },
+                    showPipButton = showLivePipButton,
+                    onEnterPip = { enterLivePip() },
+                    showLockButton = isFullscreen,
+                    onCaptureScreenshot = { captureLiveScreenshot() },
+                    onLike = { count -> viewModel.clickLike(count) },
+                    applyTopSystemBarPadding = shouldApplyLiveTopControlSystemInsets(
+                        layoutMode = liveLayoutMode,
+                        isFullscreen = isFullscreen
+                    ),
+                    applyBottomSystemBarPadding = shouldApplyLiveBottomControlSystemInsets(
+                        layoutMode = liveLayoutMode,
+                        isFullscreen = isFullscreen,
+                        hasReservedBottomOverlay = reservedBottomOverlayDp > 0
+                    ),
+                    bottomControlsBottomPadding = if (reservedBottomOverlayDp > 0) {
+                        (reservedBottomOverlayDp + portraitOverlayMetrics.playerControlsGapDp).dp
+                    } else {
+                        AppSpacingTokens.None
+                    }
+                )
+            }
 
             if (successState?.isAudioOnly == true) {
                 Box(
@@ -1419,9 +1500,57 @@ fun LivePlayerScreen(
                             .widthIn(max = (configuration.screenWidthDp / 2).dp)
                     )
                 }
+                if (showLandscapeChatOverlay) {
+                    val screenWidthDp = maxWidth.value.roundToInt()
+                    val screenHeightDp = maxHeight.value.roundToInt()
+                    val overlayMetrics = remember(screenWidthDp, screenHeightDp) {
+                        resolveLiveLandscapeChatOverlayMetrics(
+                            screenWidthDp = screenWidthDp,
+                            screenHeightDp = screenHeightDp
+                        )
+                    }
+                    val overlayWidthDp = remember(screenWidthDp, overlayMetrics) {
+                        resolveLiveLandscapeChatOverlayWidthDp(
+                            screenWidthDp = screenWidthDp,
+                            metrics = overlayMetrics
+                        )
+                    }
+                    val overlayHeightDp = remember(screenHeightDp, overlayMetrics) {
+                        resolveLiveLandscapeChatOverlayHeightDp(
+                            screenHeightDp = screenHeightDp,
+                            metrics = overlayMetrics
+                        )
+                    }
+                    val overlayShape = AppShapes.borderedContainer(ContainerLevel.Floating)
+                    AppSurface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(
+                                end = overlayMetrics.edgePaddingDp.dp,
+                                bottom = overlayMetrics.bottomControlReserveDp.dp
+                            )
+                            .width(overlayWidthDp.dp)
+                            .height(overlayHeightDp.dp)
+                            .clip(overlayShape)
+                            .hazeEffectCompat(
+                                state = hazeState,
+                                style = HazeMaterials.ultraThin()
+                            ),
+                        shape = overlayShape,
+                        color = roomColorTokens.baseBackgroundColor.copy(alpha = 0.28f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            AppSpacingTokens.Micro / 2f,
+                            roomColorTokens.inputOverlayColor.copy(alpha = 0.15f)
+                        )
+                    ) {
+                        LandscapeChatOverlay(
+                            danmakuFlow = viewModel.danmakuFlow,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
         }
-
         LiveRoomLayoutMode.PortraitVerticalOverlay -> {
             Box(Modifier.fillMaxSize()) {
                 LiveRoomBackdrop(imageUrl = liveCoverForUi, modifier = Modifier.fillMaxSize())

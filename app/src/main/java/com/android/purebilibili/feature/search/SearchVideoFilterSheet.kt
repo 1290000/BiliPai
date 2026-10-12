@@ -155,24 +155,24 @@ fun SearchVideoFilterActions(
         horizontalArrangement = Arrangement.spacedBy(componentSpacing.actionGapDp.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Always circular Material ripple. Miuix IconButton indication is square;
-        // clip + unbounded radius keeps the wave circular under every preset.
+        // The dock owns deformation; inner click targets must not stretch separately.
         val filterInteraction = remember { MutableInteractionSource() }
         BottomBarMatchedReusableLiquidDock(
             shape = CircleShape,
             backdrop = miuixBackdrop,
             reuseEnabled = true,
+            elasticFeedbackEnabled = true,
             useNeutralLiquidContainer = true,
             shellLensIntensity = resolveFloatingDockGeometryScale(chromeSpec.clearActionSizeDp.toFloat()),
             modifier = Modifier.size(actionSize),
-        ) { _ ->
+        ) { liquidChromeActive ->
             Box(
                 modifier = Modifier
                     .size(actionSize)
                     .clip(CircleShape)
                     .clickable(
                         interactionSource = filterInteraction,
-                        indication = ripple(
+                        indication = if (liquidChromeActive) null else ripple(
                             bounded = false,
                             radius = 20.dp
                         ),
@@ -197,6 +197,7 @@ fun SearchVideoFilterActions(
             shape = CircleShape,
             backdrop = miuixBackdrop,
             reuseEnabled = true,
+            elasticFeedbackEnabled = true,
             useNeutralLiquidContainer = true,
             shellLensIntensity = resolveFloatingDockGeometryScale(chromeSpec.clearActionSizeDp.toFloat()),
             modifier = Modifier.size(actionSize),

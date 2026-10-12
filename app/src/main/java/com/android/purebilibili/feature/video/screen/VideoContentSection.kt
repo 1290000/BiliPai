@@ -1,6 +1,8 @@
 // 文件路径: feature/video/screen/VideoContentSection.kt
 package com.android.purebilibili.feature.video.screen
 
+import androidx.compose.material.icons.outlined.Edit
+
 import com.android.purebilibili.navigation.animatePagerSelection
 import com.android.purebilibili.core.ui.components.AppIcon
 import com.android.purebilibili.core.ui.components.AppText
@@ -708,14 +710,14 @@ internal fun VideoContentSection(
             )
         }
     }
-    
+
     // 评论图片预览状态
     var showImagePreview by remember { mutableStateOf(false) }
     var previewImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var previewInitialIndex by remember { mutableIntStateOf(0) }
     var sourceRect by remember { mutableStateOf<ImagePreviewSourceAnchor?>(null) }
     var previewTextContent by remember { mutableStateOf<ImagePreviewTextContent?>(null) }
-    
+
     // 合集展开状态
     var showCollectionSheet by remember { mutableStateOf(false) }
     var showAiSummarySheet by remember { mutableStateOf(false) }
@@ -2195,36 +2197,36 @@ private fun VideoContentTabBar(
             )
 
             if (shouldShowVideoContentTabBarDanmakuActions(selectedTabIndex)) {
-                AnimatedVisibility(
-                    visible = shouldShowDanmakuSendInput(isPlayerCollapsed = isPlayerCollapsed),
-                    enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
-                    exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AppText(
-                        text = danmakuActionLayoutPolicy.sendLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        tapToCopyEnabled = false,
+                    AnimatedVisibility(
+                        visible = shouldShowDanmakuSendInput(isPlayerCollapsed = isPlayerCollapsed),
+                        enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
+                        exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
+                    ) {
+                        com.android.purebilibili.core.ui.components.AppIconButton(
+                            onClick = onDanmakuSendClick,
+                            modifier = Modifier
+                                .width(40.dp)
+                                .heightIn(min = AppChromeSizeTokens.MinimumTouchTarget),
+                        ) {
+                            com.android.purebilibili.feature.video.ui.components.PiliPlusDanmakuSendIcon()
+                        }
+                    }
+
+                    NativeDanmakuToggleButton(
+                        enabled = danmakuEnabled,
+                        onToggle = onDanmakuToggle,
+                        activeTint = MaterialTheme.colorScheme.primary,
+                        inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .sizeIn(
-                                minWidth = AppChromeSizeTokens.MinimumTouchTarget,
-                                minHeight = danmakuActionLayoutPolicy.sendMinHeightDp.dp,
-                            )
-                            .wrapContentHeight(align = Alignment.CenterVertically)
-                            .clickable(onClick = onDanmakuSendClick),
+                            .padding(end = danmakuActionLayoutPolicy.toggleTrailingPaddingDp.dp)
+                            .width(40.dp)
+                            .height(AppChromeSizeTokens.MinimumTouchTarget),
+                        iconSize = danmakuActionLayoutPolicy.toggleIconSizeDp.dp,
                     )
                 }
-
-                NativeDanmakuToggleButton(
-                    enabled = danmakuEnabled,
-                    onToggle = onDanmakuToggle,
-                    activeTint = MaterialTheme.colorScheme.onSurface,
-                    inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(end = danmakuActionLayoutPolicy.toggleTrailingPaddingDp.dp)
-                        .size(danmakuActionLayoutPolicy.toggleButtonSizeDp.dp),
-                    iconSize = danmakuActionLayoutPolicy.toggleIconSizeDp.dp,
-                )
             }
         }
     }

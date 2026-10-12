@@ -11,20 +11,31 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import com.android.purebilibili.feature.video.ambient.LocalAmbientPresentation
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -132,9 +143,9 @@ internal fun shouldShowLandscapeMetaRow(
 
 /**
  * Top Control Bar Component
- * 
+ *
  * Redesigned to match official Bilibili landscape layout:
- * - Left: Back button, Title (Marquee), Online count
+ * - Left: Back button, bounded fullscreen title/status dock; inline title marquee
  * - Right: Action buttons (Like, Dislike, Coin, Share, Cast, More)
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -161,17 +172,38 @@ fun TopControlBar(
     onCastClick: () -> Unit = {}, // Added Cast callback
     showCastButton: Boolean = true,
     onMoreClick: () -> Unit = {},
+    isLoggedIn: Boolean = true,
+    onDanmakuInputClick: (() -> Unit)? = null,
+    backButtonStartPaddingDp: Int? = null,
+    actionEndPaddingDp: Int? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val displayCutoutInsets = WindowInsets.displayCutout
     val configuration = LocalConfiguration.current
+    val ambient = LocalAmbientPresentation.current
+    var rowOrigin by remember { mutableStateOf<Offset?>(null) }
+    val videoContentBounds = remember(ambient) {
+        derivedStateOf {
+            ambient?.current?.contentBoundsInWindow ?: ambient?.videoBoundsInWindow?.invoke()
+        }
+    }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val hostLifecycleStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
-    val layoutPolicy = remember(configuration.screenWidthDp) {
-        resolveTopControlBarLayoutPolicy(
-            widthDp = configuration.screenWidthDp
-        )
+    val layoutPolicy = remember(configuration.screenWidthDp, isFullscreen) {
+        val base = resolveTopControlBarLayoutPolicy(widthDp = configuration.screenWidthDp)
+        if (isFullscreen) base.copy(
+            horizontalPaddingDp = PlayerChromeLayout.EdgePaddingDp,
+            verticalPaddingDp = 8,
+            buttonSizeDp = PlayerChromeLayout.CircularButtonSizeDp,
+            iconSizeDp = 24,
+            titleFontSp = 15,
+            timeFontSp = 12,
+            actionSpacingDp = PlayerChromeLayout.ActionGapDp,
+            backToTitleSpacingDp = PlayerChromeLayout.ActionGapDp,
+            onlineCountStartPaddingDp = 60,
+        ) else base
     }
     val showDislikeAction = remember(configuration.screenWidthDp, allowDislikeAction, showInteractiveActions) {
         allowDislikeAction &&
@@ -217,6 +249,7 @@ fun TopControlBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .then(if (isFullscreen) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)) else Modifier)
             .then(
                 if (
                     shouldApplyStatusBarPaddingToTopControlBar(
@@ -235,7 +268,36 @@ fun TopControlBar(
             )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { rowOrigin = it.positionInWindow() }
+                .layout { measurable, constraints ->
+                    val bounds = videoContentBounds.value
+                    val origin = rowOrigin
+                    val alignedEndInset = if (isFullscreen && actionEndPaddingDp != null) {
+                        (actionEndPaddingDp.dp.roundToPx() -
+                            displayCutoutInsets.getRight(this, layoutDirection) -
+                            layoutPolicy.horizontalPaddingDp.dp.roundToPx()).coerceAtLeast(0)
+                    } else 0
+                    val videoInset = if (isFullscreen && onDanmakuInputClick == null && bounds != null && origin != null && constraints.hasBoundedWidth) {
+                        resolveTopActionsVideoInsetPx(
+                            rowLeftPx = origin.x,
+                            rowWidthPx = constraints.maxWidth,
+                            videoRightPx = bounds.right,
+                            clearancePx = 12.dp.roundToPx(),
+                        )
+                    } else 0
+                    val inset = maxOf(alignedEndInset, videoInset)
+                    val width = (constraints.maxWidth - inset).coerceAtLeast(0)
+                    val childConstraints = if (inset > 0) constraints.copy(
+                        minWidth = (constraints.minWidth - inset).coerceAtLeast(0),
+                        maxWidth = width,
+                    ) else constraints
+                    val placeable = measurable.measure(childConstraints)
+                    layout(placeable.width + inset, placeable.height) {
+                        placeable.placeRelative(0, 0)
+                    }
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             // --- Left Section: Back & Info ---
@@ -244,122 +306,178 @@ fun TopControlBar(
                 modifier = Modifier.weight(1f) // Text takes remaining space
             ) {
                 // Back Button
-                AppIconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                PlayerControlGlassDock(
+                    enabled = isFullscreen,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    modifier = if (isFullscreen && backButtonStartPaddingDp != null) {
+                        val density = LocalDensity.current
+                        val layoutDirection = LocalLayoutDirection.current
+                        val cutoutStart = with(density) {
+                            WindowInsets.displayCutout.getLeft(density, layoutDirection).toDp()
+                        }
+                        // Move only the back target; keep the title's measured slot unchanged.
+                        Modifier.absoluteOffset(
+                            x = backButtonStartPaddingDp.dp - cutoutStart - layoutPolicy.horizontalPaddingDp.dp,
+                        )
+                    } else Modifier,
                 ) {
-                    AppIcon(
-                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
-                        contentDescription = "Back", 
-                        tint = Color.White,
-                        modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
-                    )
+                    AppIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                        )
+                    }
                 }
-                
+
                 Spacer(modifier = Modifier.width(layoutPolicy.backToTitleSpacingDp.dp))
 
-                // 标题与右侧图标保持同一行
-                AppText(
-                    text = title,
-                    color = Color.White,
-                    fontSize = layoutPolicy.titleFontSp.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .weight(1f)
-                        .basicMarquee() // Marquee effect for long text
-                )
+                if (isFullscreen) {
+                    PlayerTitleInfoDock(
+                        title = title,
+                        statusInfo = statusInfo,
+                        onlineCount = onlineCount,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .widthIn(max = 420.dp),
+                    )
+                } else {
+                    // 标题与右侧图标保持同一行
+                    AppText(
+                        text = title,
+                        color = Color.White,
+                        fontSize = layoutPolicy.titleFontSp.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .basicMarquee()
+                    )
+                }
             }
-            
+
             Spacer(modifier = Modifier.width(layoutPolicy.sectionGapDp.dp)) // Space between text and actions
-            
+
             // --- Right Section: Actions ---
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(layoutPolicy.actionSpacingDp.dp)
+            PlayerControlGlassDock(
+                enabled = isFullscreen,
+                modifier = if (isFullscreen && onDanmakuInputClick != null) {
+                    Modifier.widthIn(max = (configuration.screenWidthDp * 0.38f).dp)
+                } else Modifier,
             ) {
-                if (showInteractiveActionGroup) {
-                    // Like
-                    Box(modifier = Modifier.likeBurstAnchor()) {
-                        ActionIcon(
-                            icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
-                            contentDescription = "点赞",
-                            isActive = isLiked,
-                            onClick = onLikeClick,
-                            buttonSizeDp = layoutPolicy.buttonSizeDp,
-                            iconSizeDp = layoutPolicy.iconSizeDp
-                        )
-                    }
-
-                    if (showDislikeAction) {
-                        // Dislike
-                        ActionIcon(
-                            icon = Icons.Outlined.ThumbDown,
-                            contentDescription = "不喜欢",
-                            isActive = false,
-                            onClick = onDislikeClick,
-                            buttonSizeDp = layoutPolicy.buttonSizeDp,
-                            iconSizeDp = layoutPolicy.iconSizeDp
-                        )
-                    }
-
-                    // Coin
-                    ActionIcon(
-                        icon = AppIcons.BiliCoin,
-                        contentDescription = "投币",
-                        isActive = isCoined,
-                        onClick = onCoinClick,
-                        buttonSizeDp = layoutPolicy.buttonSizeDp,
-                        iconSizeDp = layoutPolicy.iconSizeDp
-                    )
-
-                    // Share
-                    ActionIcon(
-                        icon = Icons.Outlined.Share,
-                        contentDescription = "分享",
-                        isActive = false,
-                        onClick = onShareClick,
-                        buttonSizeDp = layoutPolicy.buttonSizeDp,
-                        iconSizeDp = layoutPolicy.iconSizeDp
-                    )
-                }
-
-                if (showCastButton) {
-                    ActionIcon(
-                        icon = Icons.Outlined.Cast,
-                        contentDescription = "投屏",
-                        isActive = false,
-                        onClick = onCastClick,
-                        buttonSizeDp = layoutPolicy.buttonSizeDp,
-                        iconSizeDp = layoutPolicy.iconSizeDp
-                    )
-                }
-
-                ActionIcon(
-                    icon = Icons.Outlined.Comment,
-                    contentDescription = "评论区",
-                    isActive = false,
-                    onClick = onCommentClick,
-                    buttonSizeDp = layoutPolicy.buttonSizeDp,
-                    iconSizeDp = layoutPolicy.iconSizeDp
-                )
-                
-                // More (Three dots)
-                AppIconButton(
-                    onClick = onMoreClick,
-                    modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                Row(
+                    modifier = if (isFullscreen) Modifier
+                        .then(if (onDanmakuInputClick != null) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
+                        .padding(horizontal = 4.dp)
+                    else Modifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(layoutPolicy.actionSpacingDp.dp)
                 ) {
-                    AppIcon(
-                        imageVector = Icons.Outlined.MoreVert,
-                        contentDescription = "更多",
-                        tint = Color.White,
-                        modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                    if (showInteractiveActionGroup) {
+                        // Like
+                        Box(modifier = Modifier.likeBurstAnchor()) {
+                            ActionIcon(
+                                icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
+                                contentDescription = "点赞",
+                                isActive = isLiked,
+                                onClick = onLikeClick,
+                                buttonSizeDp = layoutPolicy.buttonSizeDp,
+                                iconSizeDp = layoutPolicy.iconSizeDp
+                            )
+                        }
+
+                        if (showDislikeAction) {
+                            // Dislike
+                            ActionIcon(
+                                icon = Icons.Outlined.ThumbDown,
+                                contentDescription = "不喜欢",
+                                isActive = false,
+                                onClick = onDislikeClick,
+                                buttonSizeDp = layoutPolicy.buttonSizeDp,
+                                iconSizeDp = layoutPolicy.iconSizeDp
+                            )
+                        }
+
+                        // Coin
+                        ActionIcon(
+                            icon = AppIcons.BiliCoin,
+                            contentDescription = "投币",
+                            isActive = isCoined,
+                            onClick = onCoinClick,
+                            buttonSizeDp = layoutPolicy.buttonSizeDp,
+                            iconSizeDp = layoutPolicy.iconSizeDp
+                        )
+
+                        // Share
+                        ActionIcon(
+                            icon = Icons.Outlined.Share,
+                            contentDescription = "分享",
+                            isActive = false,
+                            onClick = onShareClick,
+                            buttonSizeDp = layoutPolicy.buttonSizeDp,
+                            iconSizeDp = layoutPolicy.iconSizeDp
+                        )
+                    }
+
+                    if (showCastButton) {
+                        ActionIcon(
+                            icon = Icons.Outlined.Cast,
+                            contentDescription = "投屏",
+                            isActive = false,
+                            onClick = onCastClick,
+                            buttonSizeDp = layoutPolicy.buttonSizeDp,
+                            iconSizeDp = layoutPolicy.iconSizeDp
+                        )
+                    }
+
+                    ActionIcon(
+                        icon = Icons.Outlined.Comment,
+                        contentDescription = "评论区",
+                        isActive = false,
+                        onClick = onCommentClick,
+                        buttonSizeDp = layoutPolicy.buttonSizeDp,
+                        iconSizeDp = layoutPolicy.iconSizeDp
                     )
+
+                    // More (Three dots)
+                    AppIconButton(
+                        onClick = onMoreClick,
+                        modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = "更多",
+                            tint = Color.White,
+                            modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                        )
+                    }
+                }
+            }
+            if (isFullscreen && onDanmakuInputClick != null) {
+                Spacer(modifier = Modifier.width(PlayerChromeLayout.ActionGapDp.dp))
+                PlayerControlGlassDock(
+                    enabled = isFullscreen,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                ) {
+                    AppIconButton(
+                        onClick = onDanmakuInputClick,
+                        modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp),
+                    ) {
+                        com.android.purebilibili.feature.video.ui.components.PiliPlusDanmakuSendIcon(
+                            size = layoutPolicy.iconSizeDp.dp,
+                            tint = Color.White,
+                        )
+                    }
                 }
             }
         }
 
-        if (shouldShowLandscapeMetaRow(statusInfo.isVisible, onlineCount)) {
+        if (!isFullscreen && shouldShowLandscapeMetaRow(statusInfo.isVisible, onlineCount)) {
             Column(
                 modifier = Modifier.padding(
                     start = layoutPolicy.onlineCountStartPaddingDp.dp,
@@ -410,6 +528,81 @@ fun TopControlBar(
                         fontSize = layoutPolicy.onlineCountFontSp.sp,
                         fontWeight = FontWeight.Normal
                     )
+                }
+            }
+        }
+    }
+}
+
+/** A finite width lets long titles ellipsize without sizing or displacing the action dock. */
+@Composable
+private fun PlayerTitleInfoDock(
+    title: String,
+    statusInfo: LandscapeTopStatusInfo,
+    onlineCount: String,
+    modifier: Modifier = Modifier,
+) {
+    PlayerControlGlassDock(
+        enabled = true,
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AppText(
+                text = title,
+                color = Color.White,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            if (shouldShowLandscapeMetaRow(statusInfo.isVisible, onlineCount)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    statusInfo.battery?.let { battery ->
+                        BatteryStatusIcon(
+                            state = battery,
+                            modifier = Modifier.size(width = 22.dp, height = 13.dp),
+                        )
+                        AppText(
+                            text = battery.displayText,
+                            color = resolveBatteryStatusTint(battery).copy(alpha = 0.95f),
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                    statusInfo.currentTimeText?.let { time ->
+                        AppText(
+                            text = time,
+                            color = Color.White.copy(alpha = 0.86f),
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                    if (onlineCount.isNotBlank()) {
+                        AppText(
+                            text = onlineCount,
+                            color = Color.White.copy(alpha = 0.72f),
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
                 }
             }
         }
@@ -502,3 +695,13 @@ private fun ActionIcon(
         )
     }
 }
+
+/** Reserve the real video's right black bar plus a small margin for glass refraction. */
+internal fun resolveTopActionsVideoInsetPx(
+    rowLeftPx: Float,
+    rowWidthPx: Int,
+    videoRightPx: Float,
+    clearancePx: Int,
+): Int = kotlin.math.ceil((rowLeftPx + rowWidthPx - videoRightPx + clearancePx).toDouble())
+    .toInt()
+    .coerceIn(0, (rowWidthPx * 0.4f).toInt().coerceAtLeast(0))

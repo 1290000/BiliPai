@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -483,9 +484,14 @@ fun BottomControlBar(
     onPlaybackOrderClick: () -> Unit = {},
     progressPlacement: PlayerProgressPlacement = PlayerProgressPlacement.ABOVE_CONTROLS,
     onPipClick: () -> Unit = {},
+    cdnDiagnosticsAvailable: Boolean = false,
+    onCdnDiagnosticsClick: () -> Unit = {},
+    onPlayerSettingsClick: (() -> Unit)? = null,
     onFloatingPanelVisibilityChange: (Boolean) -> Unit = {},
     /** 紧凑布局：控制行更贴左右边缘，并更靠近进度条。 */
     compactPlayerChrome: Boolean = false,
+    /** The fullscreen top bar owns sending; redistribute this row to direct actions. */
+    danmakuSendInTopBar: Boolean = false,
 
     modifier: Modifier = Modifier,
     seekPositionProvider: (() -> Long)? = null,
@@ -511,11 +517,28 @@ fun BottomControlBar(
     val uiLayoutWidthDp = remember(configuration.screenWidthDp, viewportWidthDpOverride) {
         (viewportWidthDpOverride ?: configuration.screenWidthDp).coerceAtLeast(1)
     }
-    val layoutPolicy = remember(uiLayoutWidthDp, compactPlayerChrome) {
-        resolveBottomControlBarLayoutPolicy(
+    val layoutPolicy = remember(uiLayoutWidthDp, compactPlayerChrome, isFullscreen) {
+        val base = resolveBottomControlBarLayoutPolicy(
             widthDp = uiLayoutWidthDp,
-            compact = compactPlayerChrome
+            compact = compactPlayerChrome,
         )
+        if (isFullscreen) base.copy(
+            progressSpacingDp = 4,
+            horizontalPaddingDp = PlayerChromeLayout.EdgePaddingDp,
+            playButtonSizeDp = 48,
+            playIconSizeDp = 22,
+            afterPlaySpacingDp = 0,
+            timeFontSp = 12,
+            afterTimeSpacingDp = 4,
+            danmakuIconSizeDp = 22,
+            danmakuSwitchToInputSpacingDp = 8,
+            danmakuInputStartPaddingDp = 12,
+            danmakuInputFontSp = 12,
+            afterInputSpacingDp = 8,
+            rightActionSpacingDp = 0,
+            actionTextFontSp = 12,
+            fullscreenIconSizeDp = 22,
+        ) else base
     }
     val floatingPanelMinWidthDp = remember(uiLayoutWidthDp) {
         resolveFloatingControlPanelMinWidthDp(widthDp = uiLayoutWidthDp)
@@ -570,8 +593,9 @@ fun BottomControlBar(
             settingEndPaddingDp = 0,
         )
     }
-    val fullscreenToggleTouchTargetDp = remember(layoutPolicy.fullscreenIconSizeDp) {
-        resolveFullscreenToggleTouchTargetDp(iconSizeDp = layoutPolicy.fullscreenIconSizeDp)
+    val fullscreenToggleTouchTargetDp = remember(layoutPolicy.fullscreenIconSizeDp, isFullscreen) {
+        if (isFullscreen) PlayerChromeLayout.CircularButtonSizeDp
+        else resolveFullscreenToggleTouchTargetDp(iconSizeDp = layoutPolicy.fullscreenIconSizeDp)
     }
     val showEpisodeButton = remember(isFullscreen, hasEpisodeEntry, uiLayoutWidthDp) {
         shouldShowEpisodeButtonInControlBar(
@@ -587,14 +611,14 @@ fun BottomControlBar(
             showInlineEpisodeButton = showEpisodeButton
         )
     }
-    val showDanmakuInput = remember(isFullscreen, uiLayoutWidthDp) {
-        shouldShowDanmakuInputInControlBar(
+    val showDanmakuInput = remember(isFullscreen, uiLayoutWidthDp, danmakuSendInTopBar) {
+        !danmakuSendInTopBar && shouldShowDanmakuInputInControlBar(
             isFullscreen = isFullscreen,
             widthDp = uiLayoutWidthDp
         )
     }
-    val showCompactDanmakuSend = remember(isFullscreen, uiLayoutWidthDp) {
-        com.android.purebilibili.feature.video.ui.components.shouldShowCompactDanmakuSendAction(
+    val showCompactDanmakuSend = remember(isFullscreen, uiLayoutWidthDp, danmakuSendInTopBar) {
+        !danmakuSendInTopBar && com.android.purebilibili.feature.video.ui.components.shouldShowCompactDanmakuSendAction(
             isFullscreen = isFullscreen,
             widthDp = uiLayoutWidthDp
         )
@@ -715,34 +739,81 @@ fun BottomControlBar(
             progressPlacement = progressPlacement
         )
     }
-    val progressBarContent: @Composable () -> Unit = {
-        PlayerControlProgressBar(
-            progressProvider = progressProvider,
-            displayPositionProvider = displayedPositionProvider,
-            isSeekScrubbing = isSeekScrubbing,
-            layoutPolicy = progressLayoutPolicy,
-            onSeek = onSeek,
-            onSeekStart = onSeekStart,
-            onSeekDragStart = onSeekDragStart,
-            onSeekDragUpdate = onSeekDragUpdate,
-            onSeekDragCancel = onSeekDragCancel,
-            videoshotData = videoshotData,
-            viewPoints = viewPoints,
-            sponsorMarkers = sponsorMarkers,
-            pbpRidgeSamples = pbpRidgeSamples,
-            currentChapterProvider = currentChapterProvider,
-            onChapterClick = onChapterClick,
-            modifier = Modifier
-                .padding(horizontal = if (isFullscreen) layoutPolicy.horizontalPaddingDp.dp else 0.dp)
-                .semantics { testTagsAsResourceId = true }
-                .testTag("player_progress")
+    val glassProgressDock = isFullscreen && com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
+    val expandInlineActionDock = !isFullscreen && uiLayoutWidthDp < 600 &&
+        !showDanmakuInput && !showCompactDanmakuSend
+    val showDirectTools = isFullscreen && danmakuSendInTopBar && uiLayoutWidthDp >= 840
+    val dockProgressLayoutPolicy = if (glassProgressDock) {
+        // The track's touch row matches the shell, keeping the track vertically centered.
+        // Chapter chrome stays above that row, as does the separate seek preview area.
+        val trackRowHeightDp = PlayerChromeLayout.CircularButtonSizeDp
+        progressLayoutPolicy.copy(
+            baseHeightWithoutChapterDp = trackRowHeightDp,
+            baseHeightWithChapterDp = trackRowHeightDp +
+                progressLayoutPolicy.baseHeightWithChapterDp - progressLayoutPolicy.touchContainerHeightDp,
+            touchContainerHeightDp = trackRowHeightDp,
         )
+    } else {
+        progressLayoutPolicy
+    }
+    val progressBarContent: @Composable () -> Unit = {
+        val renderProgress: @Composable (Modifier) -> Unit = { progressModifier ->
+            PlayerControlProgressBar(
+                progressProvider = progressProvider,
+                displayPositionProvider = displayedPositionProvider,
+                isSeekScrubbing = isSeekScrubbing,
+                layoutPolicy = dockProgressLayoutPolicy,
+                neutralGlassTrack = glassProgressDock,
+                onSeek = onSeek,
+                onSeekStart = onSeekStart,
+                onSeekDragStart = onSeekDragStart,
+                onSeekDragUpdate = onSeekDragUpdate,
+                onSeekDragCancel = onSeekDragCancel,
+                videoshotData = videoshotData,
+                viewPoints = viewPoints,
+                sponsorMarkers = sponsorMarkers,
+                pbpRidgeSamples = pbpRidgeSamples,
+                currentChapterProvider = currentChapterProvider,
+                onChapterClick = onChapterClick,
+                modifier = progressModifier
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("player_progress")
+            )
+        }
+        if (glassProgressDock) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = layoutPolicy.horizontalPaddingDp.dp)
+                    .heightIn(min = 48.dp),
+            ) {
+                // Seeking adds a thumbnail preview above the track. Keep the shell pinned to
+                // the 48dp track row so it never stretches around the preview image.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .playerControlGlassProgressDock(),
+                )
+                renderProgress(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+        } else {
+            renderProgress(Modifier.padding(horizontal = if (isFullscreen) layoutPolicy.horizontalPaddingDp.dp else 0.dp))
+        }
     }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = resolvedBottomPaddingDp.dp)
+            .then(if (isFullscreen) Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)) else Modifier)
+            .padding(bottom = resolvedBottomPaddingDp.dp + if (isFullscreen && com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled) 4.dp else 0.dp)
             .then(
                 if (shouldApplyNavigationBarPaddingToBottomControlBar(isFullscreen = isFullscreen)) {
                     Modifier.navigationBarsPadding()
@@ -765,7 +836,9 @@ fun BottomControlBar(
         }
 
         // 2. Control Row
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides layoutPolicy.playButtonSizeDp.dp) {
+        CompositionLocalProvider(
+            LocalMinimumInteractiveComponentSize provides layoutPolicy.playButtonSizeDp.dp,
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -778,106 +851,110 @@ fun BottomControlBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clipToBounds(),
+                    .then(if (isFullscreen) Modifier else Modifier.clipToBounds()),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left: Play/Pause
-                OverlayPlaybackButton(
-                    isPlaying = isPlaying,
-                    onClick = onPlayPauseClick,
-                    outerSize = layoutPolicy.playButtonSizeDp.dp,
-                    glyphSize = layoutPolicy.playIconSizeDp.dp
-                )
-
-                Spacer(modifier = Modifier.width(layoutPolicy.afterPlaySpacingDp.dp))
-
-                ProgressTimeText(
-                    positionProvider = displayedPositionProvider,
-                    durationProvider = { progressProvider().duration },
-                    fontSp = layoutPolicy.timeFontSp,
-                )
-
-                Spacer(modifier = Modifier.width(layoutPolicy.afterTimeSpacingDp.dp))
-
-                // Danmaku toggle: fullscreen always; tablet inline player (wide) also needs it
-                // while overlay chrome is visible. Always-visible send/toggle live on the
-                // tablet side pane next to 评论.
                 val showDanmakuToggle = shouldShowDanmakuToggleInControlBar(
                     isFullscreen = isFullscreen,
                     widthDp = uiLayoutWidthDp
                 )
-                if (showDanmakuToggle) {
-                    val danmakuActiveColor = Color.White.copy(alpha = 0.96f)
-                    val danmakuInactiveColor = Color.White.copy(alpha = 0.74f)
-                    NativeDanmakuToggleButton(
-                        enabled = danmakuEnabled,
-                        onToggle = onDanmakuToggle,
-                        activeTint = danmakuActiveColor,
-                        inactiveTint = danmakuInactiveColor,
-                        iconSize = layoutPolicy.danmakuIconSizeDp.dp,
-                    )
+                PlayerControlGlassDock(
+                    enabled = true,
+                    modifier = if (isFullscreen) Modifier.height(48.dp) else Modifier,
+                ) {
+                    Row(
+                        modifier = if (isFullscreen) Modifier
+                            .fillMaxHeight()
+                            .padding(horizontal = 4.dp) else Modifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (isFullscreen && uiLayoutWidthDp >= 840 && showNextEpisodeButton) {
+                            AppIconButton(
+                                onClick = onNextEpisodeClick,
+                                modifier = Modifier.size(48.dp),
+                            ) {
+                                AppIcon(
+                                    imageVector = Icons.Filled.SkipNext,
+                                    contentDescription = "下一集",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
 
-                    AppIconButton(onClick = onDanmakuSettingsClick) {
-                        AppIcon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "弹幕设置",
-                            tint = Color.White.copy(alpha = 0.9f),
+
+                        ProgressTimeText(
+                            positionProvider = displayedPositionProvider,
+                            durationProvider = { progressProvider().duration },
+                            fontSp = layoutPolicy.timeFontSp,
                         )
-                    }
 
+                        Spacer(modifier = Modifier.width(layoutPolicy.afterTimeSpacingDp.dp))
+
+                        if (showDanmakuToggle) {
+                            val danmakuActiveColor = Color.White.copy(alpha = 0.96f)
+                            val danmakuInactiveColor = Color.White.copy(alpha = 0.74f)
+                            NativeDanmakuToggleButton(
+                                enabled = danmakuEnabled,
+                                onToggle = onDanmakuToggle,
+                                activeTint = danmakuActiveColor,
+                                inactiveTint = danmakuInactiveColor,
+                                iconSize = layoutPolicy.danmakuIconSizeDp.dp,
+                            )
+
+                            AppIconButton(
+                                onClick = onDanmakuSettingsClick,
+                                modifier = if (isFullscreen) Modifier.size(48.dp) else Modifier,
+                            ) {
+                                com.android.purebilibili.feature.video.ui.components.PiliPlusDanmakuSettingsIcon(
+                                    tint = Color.White.copy(alpha = 0.9f),
+                                    size = if (isFullscreen) 22.dp else layoutPolicy.danmakuIconSizeDp.dp,
+                                )
+                            }
+
+                        }
+                    }
+                }
+                if (showDanmakuToggle) {
                     if (showDanmakuInput) {
                         Spacer(modifier = Modifier.width(layoutPolicy.danmakuSwitchToInputSpacingDp.dp))
 
                         BoxWithConstraints(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(layoutPolicy.danmakuInputHeightDp.dp),
+                                .height(if (isFullscreen) 48.dp else layoutPolicy.danmakuInputHeightDp.dp),
                         ) {
                             val availableWidthDp = maxWidth.value.toInt()
                             if (
                                 com.android.purebilibili.feature.video.ui.components
                                     .shouldDrawDanmakuInputCapsule(availableWidthDp)
                             ) {
-                                Row(
+                                Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .clip(
-                                            RoundedCornerShape(
-                                                (layoutPolicy.danmakuInputHeightDp / 2).dp,
-                                            ),
-                                        )
+                                        .clip(RoundedCornerShape(50))
                                         .background(
-                                            Color.White.copy(
-                                                alpha = if (isLoggedIn) 0.2f else 0.12f,
-                                            ),
-                                        ),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                            .consumeTap(onDanmakuInputClick),
-                                        contentAlignment = Alignment.CenterStart,
-                                    ) {
-                                        AppText(
-                                            text = danmakuInputPlaceholder,
-                                            color = Color.White.copy(
-                                                alpha = if (isLoggedIn) 0.7f else 0.5f,
-                                            ),
-                                            fontSize = layoutPolicy.danmakuInputFontSp.sp,
-                                            maxLines = danmakuPlaceholderPolicy.maxLines,
-                                            overflow = if (danmakuPlaceholderPolicy.ellipsis) {
-                                                TextOverflow.Ellipsis
-                                            } else {
-                                                TextOverflow.Clip
-                                            },
-                                            modifier = Modifier.padding(
-                                                start = layoutPolicy.danmakuInputStartPaddingDp.dp,
-                                                end = 8.dp,
-                                            ),
+                                            if (isFullscreen) Color.Black.copy(alpha = 0.20f)
+                                            else Color.White.copy(alpha = if (isLoggedIn) 0.2f else 0.12f),
                                         )
-                                    }
+                                        .consumeTap(onDanmakuInputClick),
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    AppText(
+                                        text = if (isFullscreen) {
+                                            if (isLoggedIn) "发弹幕" else "登录发弹幕"
+                                        } else danmakuInputPlaceholder,
+                                        color = Color.White.copy(alpha = if (isLoggedIn) 0.62f else 0.44f),
+                                        fontSize = layoutPolicy.danmakuInputFontSp.sp,
+                                        maxLines = danmakuPlaceholderPolicy.maxLines,
+                                        overflow = if (danmakuPlaceholderPolicy.ellipsis) {
+                                            TextOverflow.Ellipsis
+                                        } else TextOverflow.Clip,
+                                        modifier = Modifier.padding(
+                                            start = layoutPolicy.danmakuInputStartPaddingDp.dp,
+                                            end = 8.dp,
+                                        ),
+                                    )
                                 }
                             }
                         }
@@ -885,62 +962,77 @@ fun BottomControlBar(
                         Spacer(modifier = Modifier.width(layoutPolicy.afterInputSpacingDp.dp))
                     } else if (showCompactDanmakuSend) {
                         Spacer(modifier = Modifier.width(layoutPolicy.danmakuSwitchToInputSpacingDp.dp))
-                        AppText(
-                            text = if (isLoggedIn) "发弹幕" else "登录发弹幕",
-                            color = Color.White.copy(alpha = if (isLoggedIn) 0.92f else 0.62f),
-                            fontSize = layoutPolicy.actionTextFontSp.sp,
-                            fontWeight = FontWeight.Medium,
+                        Box(
                             modifier = Modifier
-                                .clip(AppShapes.container(ContainerLevel.Card))
-                                .background(Color.White.copy(alpha = 0.16f))
+                                .heightIn(min = if (isFullscreen) 48.dp else 0.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (isFullscreen) Color.Black.copy(alpha = 0.20f)
+                                    else Color.White.copy(alpha = 0.16f),
+                                )
                                 .clickable(onClick = onDanmakuInputClick)
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        )
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AppText(
+                                text = if (isLoggedIn) "发弹幕" else "登录发弹幕",
+                                color = Color.White.copy(alpha = if (isLoggedIn) 0.62f else 0.44f),
+                                fontSize = layoutPolicy.actionTextFontSp.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         Spacer(modifier = Modifier.width(layoutPolicy.afterInputSpacingDp.dp))
                         Spacer(modifier = Modifier.weight(1f))
-                    } else {
+                    } else if (!danmakuSendInTopBar && !expandInlineActionDock) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
-                } else {
+                } else if (!danmakuSendInTopBar && !expandInlineActionDock) {
                     Spacer(modifier = Modifier.weight(1f))
+                }
+                if (danmakuSendInTopBar || expandInlineActionDock) {
+                    Spacer(modifier = Modifier.width(PlayerChromeLayout.ActionGapDp.dp))
                 }
 
                 // Right: Function Buttons
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(layoutPolicy.rightActionSpacingDp.dp)
+                PlayerControlGlassDock(
+                    enabled = true,
+                    modifier = if (isFullscreen) Modifier
+                        .then(
+                            if (danmakuSendInTopBar) Modifier.weight(1f)
+                            else Modifier.widthIn(max = (uiLayoutWidthDp * 0.62f).dp)
+                        )
+                        .height(48.dp)
+                    else if (expandInlineActionDock) Modifier.weight(1f) else Modifier,
                 ) {
-                    if (showAspectRatioButton) {
-                        Box(
-                            modifier = Modifier
-                                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                                .clickable(onClick = onRatioClick),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AppText(
-                                text = currentRatio.displayName,
-                                color = Color.White,
-                                fontSize = layoutPolicy.actionTextFontSp.sp,
-                                lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    } else if (showAudioQualityButtonInline) {
-                        Row(
-                            modifier = Modifier
-                                .heightIn(min = layoutPolicy.playButtonSizeDp.dp)
-                                .clickable(onClick = onAudioQualityClick),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            // The format badge already names the selected audio quality.
-                            when {
-                                isHiResAudioSelected -> HiResBadge()
-                                isDolbyAudioSelected -> DolbyBadge()
-                                else -> AppText(
-                                    text = currentAudioQualityLabel.ifBlank { "音质" },
+                    Row(
+                        modifier = if (isFullscreen) Modifier
+                            .fillMaxHeight()
+                            // Keep the scroll viewport away from the dock's rounded ends.
+                            .padding(horizontal = 10.dp)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 2.dp)
+                        else if (expandInlineActionDock) Modifier
+                            .heightIn(min = 40.dp)
+                            .padding(horizontal = 8.dp)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 2.dp)
+                        else Modifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(
+                            if (isFullscreen || expandInlineActionDock) 4.dp else layoutPolicy.rightActionSpacingDp.dp,
+                        )
+                    ) {
+                        if (showAspectRatioButton) {
+                            Box(
+                                modifier = Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .clickable(onClick = onRatioClick),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AppText(
+                                    text = currentRatio.displayName,
                                     color = Color.White,
                                     fontSize = layoutPolicy.actionTextFontSp.sp,
                                     lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
@@ -949,216 +1041,309 @@ fun BottomControlBar(
                                     softWrap = false
                                 )
                             }
-                        }
-                    }
-
-                    // Quality
-                    if (currentQualityLabel.isNotEmpty()) {
-                        AppText(
-                            text = currentQualityLabel,
-                            color = Color.White,
-                            fontSize = layoutPolicy.actionTextFontSp.sp,
-                            lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable(onClick = onQualityClick)
-                        )
-                    }
-
-                    if (showEpisodeButton) {
-                        AppText(
-                            text = "分集",
-                            color = Color.White,
-                            fontSize = layoutPolicy.actionTextFontSp.sp,
-                            lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.clickable(onClick = onEpisodeClick)
-                        )
-                    }
-
-                    // Speed
-                    AppText(
-                        text = if (currentSpeed == 1.0f) "倍速" else "${currentSpeed}x",
-                        color = if (currentSpeed == 1.0f) Color.White else MaterialTheme.colorScheme.primary,
-                        fontSize = layoutPolicy.actionTextFontSp.sp,
-                        lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        softWrap = false,
-                        modifier = Modifier.clickable(onClick = onSpeedClick)
-                    )
-
-                    if (showSubtitleButton) {
-                        AppSurface(
-                            color = if (subtitleEnabled) {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                            } else {
-                                Color.White.copy(alpha = 0.18f)
-                            },
-                            shape = AppShapes.container(ContainerLevel.Field),
-                            onClick = {
-                                val nextShowSubtitlePanel = !showSubtitlePanel
-                                com.android.purebilibili.core.util.Logger.d(
-                                    "BottomControlBar",
-                                    "字幕按钮点击: nextShow=$nextShowSubtitlePanel, fullscreen=$isFullscreen, showMore=$showMoreActionsPanel, subtitleEnabled=$subtitleEnabled"
-                                )
-                                showSubtitlePanel = nextShowSubtitlePanel
-                                if (nextShowSubtitlePanel) {
-                                    showMoreActionsPanel = false
-                                    showVideoEnhancementPanel = false
+                        } else if (showAudioQualityButtonInline) {
+                            Row(
+                                modifier = Modifier
+                                    .heightIn(min = layoutPolicy.playButtonSizeDp.dp)
+                                    .clickable(onClick = onAudioQualityClick),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                // The format badge already names the selected audio quality.
+                                when {
+                                    isHiResAudioSelected -> HiResBadge()
+                                    isDolbyAudioSelected -> DolbyBadge()
+                                    else -> AppText(
+                                        text = currentAudioQualityLabel.ifBlank { "音质" },
+                                        color = Color.White,
+                                        fontSize = layoutPolicy.actionTextFontSp.sp,
+                                        lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
                                 }
                             }
-                        ) {
+                        }
+
+                        // Quality
+                        if (currentQualityLabel.isNotEmpty()) {
+                            AppText(
+                                text = currentQualityLabel,
+                                color = Color.White,
+                                fontSize = layoutPolicy.actionTextFontSp.sp,
+                                lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .then(if (isFullscreen) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier)
+                                    .clickable(onClick = onQualityClick)
+                                    .then(if (isFullscreen) Modifier.wrapContentSize(Alignment.Center) else Modifier)
+                            )
+                        }
+
+                        if (showEpisodeButton) {
+                            AppText(
+                                text = "分集",
+                                color = Color.White,
+                                fontSize = layoutPolicy.actionTextFontSp.sp,
+                                lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier
+                                    .then(if (isFullscreen) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier)
+                                    .clickable(onClick = onEpisodeClick)
+                                    .then(if (isFullscreen) Modifier.wrapContentSize(Alignment.Center) else Modifier)
+                            )
+                        }
+
+                        // Speed
+                        AppText(
+                            text = if (currentSpeed == 1.0f) "倍速" else "${currentSpeed}x",
+                            color = if (currentSpeed == 1.0f) Color.White else MaterialTheme.colorScheme.primary,
+                            fontSize = layoutPolicy.actionTextFontSp.sp,
+                            lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier
+                                .then(if (isFullscreen) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier)
+                                .clickable(onClick = onSpeedClick)
+                                .then(if (isFullscreen) Modifier.wrapContentSize(Alignment.Center) else Modifier)
+                        )
+
+                        if (danmakuSendInTopBar && uiLayoutWidthDp >= 840 && showPlaybackOrderLabel) {
+                            AppText(
+                                text = playbackOrderLabel,
+                                color = Color.White,
+                                fontSize = layoutPolicy.actionTextFontSp.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .clickable(onClick = onPlaybackOrderClick)
+                                    .wrapContentSize(Alignment.Center)
+                                    .padding(horizontal = 2.dp),
+                            )
+                        }
+
+                        if (showSubtitleButton) {
                             AppText(
                                 text = "字幕",
                                 color = if (subtitleEnabled) MaterialTheme.colorScheme.primary else Color.White,
                                 fontSize = layoutPolicy.actionTextFontSp.sp,
                                 lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 softWrap = false,
-                                modifier = Modifier.padding(
-                                    horizontal = layoutPolicy.actionChipHorizontalPaddingDp.dp,
-                                    vertical = layoutPolicy.actionChipVerticalPaddingDp.dp
+                                modifier = Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .clickable {
+                                        val nextShowSubtitlePanel = !showSubtitlePanel
+                                        com.android.purebilibili.core.util.Logger.d(
+                                            "BottomControlBar",
+                                            "字幕按钮点击: nextShow=$nextShowSubtitlePanel, fullscreen=$isFullscreen, showMore=$showMoreActionsPanel, subtitleEnabled=$subtitleEnabled"
+                                        )
+                                        showSubtitlePanel = nextShowSubtitlePanel
+                                        if (nextShowSubtitlePanel) {
+                                            showMoreActionsPanel = false
+                                            showVideoEnhancementPanel = false
+                                        }
+                                    }
+                                    .wrapContentSize(Alignment.Center)
+                            )
+                        }
+
+                        if (isFullscreen && uiLayoutWidthDp >= 840) {
+                            FullscreenDockTextAction(
+                                text = "画中画",
+                                fontSp = layoutPolicy.actionTextFontSp,
+                                onClick = onPipClick,
+                            )
+                        }
+
+                        if (showDirectTools) {
+                            FullscreenDockTextAction(
+                                text = "音质",
+                                selected = isSpecialAudioSelected,
+                                fontSp = layoutPolicy.actionTextFontSp,
+                                onClick = onAudioQualityClick,
+                            )
+                            if (anime4kAvailable) {
+                                FullscreenDockTextAction(
+                                    text = "画质增强",
+                                    selected = anime4kEnabled,
+                                    fontSp = layoutPolicy.actionTextFontSp,
+                                    onClick = {
+                                        showSubtitlePanel = false
+                                        showMoreActionsPanel = false
+                                        showVideoEnhancementPanel = true
+                                    },
                                 )
+                            }
+                            FullscreenDockTextAction(
+                                text = "竖屏",
+                                fontSp = layoutPolicy.actionTextFontSp,
+                                onClick = onPortraitFullscreen,
+                            )
+                        }
+
+                        if (showMoreActionsButton || sponsorContributionAvailable || isFullscreen) {
+                            AppWindowActionMenu(
+                                groups = listOf(
+                                    listOfNotNull(
+                                        if (sponsorContributionAvailable) {
+                                            AppWindowAction(
+                                                label = if (sponsorContributionMarking) "结束标记片段" else "标记片段起点",
+                                                selected = sponsorContributionMarking,
+                                                onClick = {
+                                                    showMoreActionsPanel = false
+                                                    onSponsorContributionMarkBoundary()
+                                                },
+                                            )
+                                        } else null,
+                                        if (sponsorContributionAvailable && !sponsorContributionMarking) {
+                                            AppWindowAction(label = "标记整段恰饭", onClick = {
+                                                showMoreActionsPanel = false
+                                                onSponsorContributionMarkWholeVideo()
+                                            })
+                                        } else null,
+                                        if (sponsorContributionAvailable && sponsorContributionMarking) {
+                                            AppWindowAction(label = "取消片段标记", onClick = {
+                                                showMoreActionsPanel = false
+                                                onSponsorContributionCancel()
+                                            })
+                                        } else null,
+                                        if (showEpisodeInMoreActions) {
+                                            AppWindowAction(label = "分集", onClick = {
+                                                    showMoreActionsPanel = false
+                                                    onEpisodeClick()
+                                                })
+                                        } else null,
+                                        if (showNextEpisodeButton && !(isFullscreen && uiLayoutWidthDp >= 840)) {
+                                            AppWindowAction(label = "下集", onClick = {
+                                                    showMoreActionsPanel = false
+                                                    onNextEpisodeClick()
+                                                })
+                                        } else null,
+                                        if (showPlaybackOrderLabel && !(danmakuSendInTopBar && uiLayoutWidthDp >= 840)) {
+                                            AppWindowAction(label = playbackOrderLabel, selected = playbackOrderLabel != "自动连播", onClick = {
+                                                    showMoreActionsPanel = false
+                                                    onPlaybackOrderClick()
+                                                })
+                                        } else null,
+                                        if (!showDirectTools) AppWindowAction(
+                                            label = if (currentAudioQualityLabel.isBlank() || currentAudioQualityLabel == "音质") {
+                                                "音质"
+                                            } else {
+                                                "音质 · $currentAudioQualityLabel"
+                                            },
+                                            selected = isHiResAudioSelected || isDolbyAudioSelected,
+                                            onClick = {
+                                                showMoreActionsPanel = false
+                                                onAudioQualityClick()
+                                            }
+                                        ) else null,
+                                        if (showPortraitSwitchButton && !showDirectTools) {
+                                            AppWindowAction(label = "竖屏", onClick = {
+                                                    showMoreActionsPanel = false
+                                                    onPortraitFullscreen()
+                                                })
+                                        } else null,
+                                        if (anime4kAvailable && !showDirectTools) {
+                                            AppWindowAction(label = "画质增强", selected = anime4kEnabled, onClick = {
+                                                    showMoreActionsPanel = false
+                                                    showVideoEnhancementPanel = true
+                                                })
+                                        } else null,
+                                        if (cdnDiagnosticsAvailable) {
+                                            AppWindowAction(label = "CDN 测速与线路", onClick = {
+                                                showMoreActionsPanel = false
+                                                onCdnDiagnosticsClick()
+                                            })
+                                        } else null,
+                                        if (onPlayerSettingsClick != null) AppWindowAction(label = "播放器设置", onClick = {
+                                            showMoreActionsPanel = false
+                                            onPlayerSettingsClick()
+                                        }) else null,
+                                        if (viewPoints.isNotEmpty()) {
+                                            AppWindowAction(label = "章节列表", onClick = {
+                                                showMoreActionsPanel = false
+                                                onChapterClick()
+                                            })
+                                        } else null,
+                                        if (
+                                            !danmakuSendInTopBar && com.android.purebilibili.feature.video.ui.components.shouldShowDanmakuSendInMoreActions(
+                                                isFullscreen = isFullscreen,
+                                                showInlineDanmakuInput = showDanmakuInput
+                                            )
+                                        ) {
+                                            AppWindowAction(label = if (isLoggedIn) "发弹幕" else "登录发弹幕", onClick = {
+                                                    showMoreActionsPanel = false
+                                                    onDanmakuInputClick()
+                                                })
+                                        } else null
+                                    )
+                                ),
+                                onExpandedChange = { expanded -> showMoreActionsPanel = expanded },
+                                content = {
+                                    AppText(
+                                        text = "更多",
+                                        color = if (showMoreActionsPanel) MaterialTheme.colorScheme.primary else Color.White,
+                                        fontSize = layoutPolicy.actionTextFontSp.sp,
+                                        lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        // Keep the label on one line so the overflow action is never
+                                        // split as “更”/“多” in landscape.
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Clip,
+                                        modifier = Modifier.padding(vertical = layoutPolicy.actionChipVerticalPaddingDp.dp)
+                                    )
+                                }
+                            )
+                        }
+
+                        // 📱 [修复] 竖屏全屏按钮 - 仅在非全屏且有需要时显示，避免挤压平板控制栏
+                        if (showPortraitSwitchButtonInline) {
+                            AppText(
+                                text = "竖屏",
+                                color = Color.White,
+                                fontSize = layoutPolicy.actionTextFontSp.sp,
+                                lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier
+                                    .then(if (isFullscreen) Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp) else Modifier)
+                                    .clickable(onClick = onPortraitFullscreen)
+                                    .then(if (isFullscreen) Modifier.wrapContentSize(Alignment.Center) else Modifier)
                             )
                         }
                     }
-
-                    if (showMoreActionsButton || sponsorContributionAvailable) {
-                        AppWindowActionMenu(
-                            groups = listOf(
-                                listOfNotNull(
-                                    if (sponsorContributionAvailable) {
-                                        AppWindowAction(
-                                            label = if (sponsorContributionMarking) "结束标记片段" else "标记片段起点",
-                                            selected = sponsorContributionMarking,
-                                            onClick = {
-                                                showMoreActionsPanel = false
-                                                onSponsorContributionMarkBoundary()
-                                            },
-                                        )
-                                    } else null,
-                                    if (sponsorContributionAvailable && !sponsorContributionMarking) {
-                                        AppWindowAction(label = "标记整段恰饭", onClick = {
-                                            showMoreActionsPanel = false
-                                            onSponsorContributionMarkWholeVideo()
-                                        })
-                                    } else null,
-                                    if (sponsorContributionAvailable && sponsorContributionMarking) {
-                                        AppWindowAction(label = "取消片段标记", onClick = {
-                                            showMoreActionsPanel = false
-                                            onSponsorContributionCancel()
-                                        })
-                                    } else null,
-                                    if (showEpisodeInMoreActions) {
-                                        AppWindowAction(label = "分集", onClick = {
-                                                showMoreActionsPanel = false
-                                                onEpisodeClick()
-                                            })
-                                    } else null,
-                                    if (showNextEpisodeButton) {
-                                        AppWindowAction(label = "下集", onClick = {
-                                                showMoreActionsPanel = false
-                                                onNextEpisodeClick()
-                                            })
-                                    } else null,
-                                    if (showPlaybackOrderLabel) {
-                                        AppWindowAction(label = playbackOrderLabel, selected = playbackOrderLabel != "自动连播", onClick = {
-                                                showMoreActionsPanel = false
-                                                onPlaybackOrderClick()
-                                            })
-                                    } else null,
-                                    AppWindowAction(
-                                        label = if (currentAudioQualityLabel.isBlank() || currentAudioQualityLabel == "音质") {
-                                            "音质"
-                                        } else {
-                                            "音质 · $currentAudioQualityLabel"
-                                        },
-                                        selected = isHiResAudioSelected || isDolbyAudioSelected,
-                                        onClick = {
-                                            showMoreActionsPanel = false
-                                            onAudioQualityClick()
-                                        }
-                                    ),
-                                    if (showPortraitSwitchButton) {
-                                        AppWindowAction(label = "竖屏", onClick = {
-                                                showMoreActionsPanel = false
-                                                onPortraitFullscreen()
-                                            })
-                                    } else null,
-                                    if (anime4kAvailable) {
-                                        AppWindowAction(label = "画质增强", selected = anime4kEnabled, onClick = {
-                                                showMoreActionsPanel = false
-                                                showVideoEnhancementPanel = true
-                                            })
-                                    } else null,
-                                    if (
-                                        com.android.purebilibili.feature.video.ui.components.shouldShowDanmakuSendInMoreActions(
-                                            isFullscreen = isFullscreen,
-                                            showInlineDanmakuInput = showDanmakuInput
-                                        )
-                                    ) {
-                                        AppWindowAction(label = if (isLoggedIn) "发弹幕" else "登录发弹幕", onClick = {
-                                                showMoreActionsPanel = false
-                                                onDanmakuInputClick()
-                                            })
-                                    } else null
-                                )
-                            ),
-                            onExpandedChange = { expanded -> showMoreActionsPanel = expanded },
-                            content = {
-                                AppText(
-                                    text = "更多",
-                                    color = if (showMoreActionsPanel) MaterialTheme.colorScheme.primary else Color.White,
-                                    fontSize = layoutPolicy.actionTextFontSp.sp,
-                                    lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    // Keep the label on one line so the overflow action is never
-                                    // split as “更”/“多” in landscape.
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Clip,
-                                    modifier = Modifier.padding(vertical = layoutPolicy.actionChipVerticalPaddingDp.dp)
-                                )
-                            }
-                        )
-                    }
-
-                    // 📱 [修复] 竖屏全屏按钮 - 仅在非全屏且有需要时显示，避免挤压平板控制栏
-                    if (showPortraitSwitchButtonInline) {
-                        AppText(
-                            text = "竖屏",
-                            color = Color.White,
-                            fontSize = layoutPolicy.actionTextFontSp.sp,
-                            lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.clickable(onClick = onPortraitFullscreen)
-                        )
-                    }
                 }
             }
-            Spacer(modifier = Modifier.width(layoutPolicy.rightActionSpacingDp.dp))
+            Spacer(modifier = Modifier.width(if (isFullscreen) 8.dp else layoutPolicy.rightActionSpacingDp.dp))
             // Fullscreen
-            Box(
-                modifier = Modifier
-                    .size(fullscreenToggleTouchTargetDp.dp)
-                    .testTag("player_fullscreen_toggle")
-                    .consumeTap(onToggleFullscreen),
-                contentAlignment = Alignment.Center
-            ) {
-                AppIcon(
-                    imageVector = if (isFullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
-                    contentDescription = if (isFullscreen) "退出横屏" else "横屏",
-                    tint = Color.White,
-                    modifier = Modifier.size(layoutPolicy.fullscreenIconSizeDp.dp)
-                )
+            PlayerControlGlassDock(enabled = true, shape = androidx.compose.foundation.shape.CircleShape) {
+                Box(
+                    modifier = Modifier
+                        .size(fullscreenToggleTouchTargetDp.dp)
+                        .testTag("player_fullscreen_toggle")
+                        .consumeTap(onToggleFullscreen),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AppIcon(
+                        imageVector = if (isFullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                        contentDescription = if (isFullscreen) "退出横屏" else "横屏",
+                        tint = Color.White,
+                        modifier = Modifier.size(layoutPolicy.fullscreenIconSizeDp.dp)
+                    )
+                }
             }
         }
         }
@@ -1308,6 +1493,30 @@ fun BottomControlBar(
             )
         }
     }
+}
+
+@Composable
+private fun FullscreenDockTextAction(
+    text: String,
+    fontSp: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+) {
+    AppText(
+        text = text,
+        color = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+        fontSize = fontSp.sp,
+        lineHeight = (fontSp + 2).sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .clickable(onClick = onClick)
+            .wrapContentSize(Alignment.Center)
+            .padding(horizontal = 2.dp),
+    )
 }
 
 @Composable
@@ -1599,7 +1808,8 @@ fun VideoProgressBar(
     currentChapter: String? = null,
     onChapterClick: () -> Unit = {},
     modifier: Modifier = Modifier,
-    displayPositionProvider: (() -> Long)? = null
+    displayPositionProvider: (() -> Long)? = null,
+    neutralGlassTrack: Boolean = false,
 ) {
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
     var dragTargetPositionMs by remember { mutableLongStateOf(displayPositionMs.coerceAtLeast(0L)) }
@@ -1623,11 +1833,11 @@ fun VideoProgressBar(
         progressColors?.playerProgressActiveTint,
         MaterialTheme.colorScheme.primary,
     )
-    val bufferedTrackColor = parseUiSkinColor(
+    val bufferedTrackColor = if (neutralGlassTrack) Color.White.copy(alpha = 0.34f) else parseUiSkinColor(
         progressColors?.playerProgressBufferedTint,
         Color.White.copy(alpha = 0.42f),
     )
-    val inactiveTrackColor = parseUiSkinColor(
+    val inactiveTrackColor = if (neutralGlassTrack) Color.White.copy(alpha = 0.26f) else parseUiSkinColor(
         progressColors?.playerProgressTrackTint,
         Color.White.copy(alpha = 0.24f),
     )
@@ -1908,7 +2118,7 @@ fun VideoProgressBar(
                             }
                     )
 
-                    if (duration > 0L && containerWidthPx > 0f) {
+                    if (duration > 0L && containerWidthPx > 0f && (!neutralGlassTrack || isSeekScrubbing)) {
                         val thumbOffsetProvider: () -> Int = {
                             (containerWidthPx * resolveProgressFraction(activePositionProvider(), duration) - thumbSizePx / 2f)
                                 .coerceIn(0f, (containerWidthPx - thumbSizePx).coerceAtLeast(0f))
@@ -1923,6 +2133,13 @@ fun VideoProgressBar(
                                     .align(Alignment.CenterStart)
                                     .offset { IntOffset(thumbOffsetProvider(), 0) },
                                 contentDescription = null,
+                            )
+                        } else if (LocalPlayerControlGlassEnabled.current) {
+                            PlayerControlGlassThumb(
+                                size = thumbSizeDp,
+                                dragging = isSeekScrubbing,
+                                modifier = Modifier.align(Alignment.CenterStart)
+                                    .offset { IntOffset(thumbOffsetProvider(), 0) },
                             )
                         } else {
                             Box(

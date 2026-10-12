@@ -358,7 +358,8 @@ internal fun BottomBarSkinIcon(
     modifier: Modifier = Modifier
 ) {
     val motion = LocalBottomBarSkinMotionSpec.current
-    val looping = motion.enabled && selected && motion.mode.isLoopingSkinMotionMode()
+    val animationGate = com.android.purebilibili.core.ui.rememberDecorativeAnimationGate()
+    val looping = motion.enabled && selected && motion.mode.isLoopingSkinMotionMode() && animationGate.active
     val loopScale = if (looping) {
         rememberInfiniteTransition(label = "skinIconLoop").animateFloat(
             initialValue = 0.96f,
@@ -372,7 +373,7 @@ internal fun BottomBarSkinIcon(
     } else {
         null
     }
-    Box(modifier = modifier.size(size)) {
+    Box(modifier = modifier.size(size).then(animationGate.modifier)) {
         if (motion.enabled) {
             AnimatedContent(
                 targetState = iconPath,

@@ -2250,13 +2250,15 @@ fun HomeScreen(
                                       .fillMaxSize()
                                       .zIndex(0f)
                                        .graphicsLayer {
-                                           translationY = if (
-                                               pullRefreshIndicatorStyle == AppPullRefreshIndicatorStyle.MIUIX_NATIVE ||
-                                               pullRefreshIndicatorStyle == AppPullRefreshIndicatorStyle.MATERIAL_DEFAULT
-                                           ) {
-                                               0f
-                                           } else {
-                                               calculateDragOffset()
+                                           translationY = when (pullRefreshIndicatorStyle) {
+                                               AppPullRefreshIndicatorStyle.MIUIX_NATIVE -> 0f
+                                               AppPullRefreshIndicatorStyle.MATERIAL_DEFAULT ->
+                                                   resolveMd3PullContentOffsetPx(
+                                                       distanceFraction = pullRefreshState.distanceFraction,
+                                                       indicatorThresholdPx = PullToRefreshDefaults.PositionalThreshold.toPx(),
+                                                       gapPx = 12.dp.toPx(),
+                                                   )
+                                               else -> calculateDragOffset()
                                            }
                                        }
                                        .homeFeedPinchZoom(

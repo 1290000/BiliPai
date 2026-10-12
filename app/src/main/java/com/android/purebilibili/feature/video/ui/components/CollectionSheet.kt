@@ -276,6 +276,7 @@ fun CollectionSheet(
             val collectionIntro = ugcSeason.displayIntro
             if (collectionIntro.isNotBlank()) {
                 var introExpanded by remember(ugcSeason.id) { mutableStateOf(false) }
+                var introCanExpand by remember(ugcSeason.id, collectionIntro) { mutableStateOf(false) }
                 val totalPlays = sections.sumOf { section ->
                     section.episodes.sumOf { it.arc?.stat?.view?.toLong() ?: 0L }
                 }
@@ -283,7 +284,7 @@ fun CollectionSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateContentSize()
-                        .clickable { introExpanded = !introExpanded }
+                        .clickable(enabled = introCanExpand || introExpanded) { introExpanded = !introExpanded }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.Top
                 ) {
@@ -292,6 +293,7 @@ fun CollectionSheet(
                         Row {
                             AppText(
                                 text = "简介",
+                                tapToCopyEnabled = false,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -300,31 +302,41 @@ fun CollectionSheet(
                             Spacer(modifier = Modifier.width(8.dp))
                             AppText(
                                 text = collectionIntro,
+                                tapToCopyEnabled = false,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = if (introExpanded) Int.MAX_VALUE else 2,
+                                maxLines = if (introExpanded) Int.MAX_VALUE else 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.alignByBaseline()
+                                onTextLayout = { result ->
+                                    if (!introExpanded) introCanExpand = result.hasVisualOverflow
+                                },
+                                modifier = Modifier.weight(1f).alignByBaseline()
                             )
                         }
                         // 次行：N 集 · 总播放
                         AppText(
                             text = "${ugcSeason.ep_count} 集 · 总播放 ${FormatUtils.formatStat(totalPlays)}",
+                            tapToCopyEnabled = false,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    AppIcon(
-                        imageVector = if (introExpanded) {
-                            Icons.Outlined.KeyboardArrowUp
-                        } else {
-                            Icons.Outlined.KeyboardArrowDown
-                        },
-                        contentDescription = if (introExpanded) "收起简介" else "展开简介",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    if (introCanExpand || introExpanded) AppIconButton(
+                        onClick = { introExpanded = !introExpanded },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        AppIcon(
+                            imageVector = if (introExpanded) {
+                                Icons.Outlined.KeyboardArrowUp
+                            } else {
+                                Icons.Outlined.KeyboardArrowDown
+                            },
+                            contentDescription = if (introExpanded) "收起简介" else "展开简介",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 

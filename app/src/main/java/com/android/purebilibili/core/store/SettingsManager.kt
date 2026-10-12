@@ -1511,6 +1511,8 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
 
     private const val DEFAULT_TOP_TAB_ORDER = "RECOMMEND,FOLLOW,POPULAR,LIVE,GAME"
     private const val DEFAULT_SEARCH_FILTER_TAB_ORDER =
+        "video,bili_user,media_bangumi,media_ft,live_room,live_user,article,topic,photo"
+    private const val LEGACY_DEFAULT_SEARCH_FILTER_TAB_ORDER =
         "video,media_bangumi,media_ft,live_room,live_user,bili_user,article,topic,photo"
     private const val DEFAULT_TOP_TAB_VISIBLE = "RECOMMEND,FOLLOW,POPULAR,LIVE,GAME"
     /** 首页顶部 dock 标签数量上限。 */
@@ -1543,6 +1545,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
         intPreferencesKey("bottom_bar_search_layout_mode")
     private val KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED =
         booleanPreferencesKey("android_native_liquid_glass_enabled")
+    private val KEY_LIQUID_CONTROLS_USE_THEME_COLOR = booleanPreferencesKey("liquid_controls_use_theme_color")
     private val KEY_LEGACY_ANDROID_NATIVE_TOP_TAB_LIQUID_GLASS_ENABLED =
         booleanPreferencesKey("android_native_top_tab_liquid_glass_enabled")
     //  Legacy shared Liquid Glass toggle, kept as migration fallback.
@@ -3958,7 +3961,10 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     fun getSearchFilterTabOrder(context: Context): Flow<List<String>> =
         context.settingsDataStore.data.map { prefs ->
             val orderString = prefs[KEY_SEARCH_FILTER_TAB_ORDER] ?: DEFAULT_SEARCH_FILTER_TAB_ORDER
-            orderString.split(",").filter { it.isNotBlank() }
+            val effectiveOrder = if (orderString == LEGACY_DEFAULT_SEARCH_FILTER_TAB_ORDER) {
+                DEFAULT_SEARCH_FILTER_TAB_ORDER
+            } else orderString
+            effectiveOrder.split(",").filter { it.isNotBlank() }
         }
 
     suspend fun setSearchFilterTabOrder(context: Context, order: List<String>) {
@@ -4411,6 +4417,13 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
                 preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED]
                     ?: true
             }
+
+    fun getLiquidControlsUseThemeColor(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { it[KEY_LIQUID_CONTROLS_USE_THEME_COLOR] ?: false }
+
+    suspend fun setLiquidControlsUseThemeColor(context: Context, value: Boolean) {
+        context.settingsDataStore.edit { it[KEY_LIQUID_CONTROLS_USE_THEME_COLOR] = value }
+    }
 
     suspend fun setAndroidNativeLiquidGlassEnabled(context: Context, value: Boolean) {
         context.settingsDataStore.edit { preferences ->
@@ -8161,6 +8174,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
                 SettingsShareSection.APPEARANCE,
             ),
             BooleanShareablePreferenceDefinition(KEY_BOTTOM_BAR_LIQUID_GLASS_ENABLED, SettingsShareSection.APPEARANCE),
+            BooleanShareablePreferenceDefinition(KEY_LIQUID_CONTROLS_USE_THEME_COLOR, SettingsShareSection.APPEARANCE),
             IntShareablePreferenceDefinition(KEY_BOTTOM_BAR_SEARCH_LAYOUT_MODE, SettingsShareSection.APPEARANCE),
             BooleanShareablePreferenceDefinition(
                 KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED,
@@ -8476,6 +8490,7 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
     private val liquidGlassShareableStorageKeys: Set<String> by lazy {
         setOf(
             KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED.name,
+            KEY_LIQUID_CONTROLS_USE_THEME_COLOR.name,
             KEY_LIQUID_GLASS_ENABLED.name,
             KEY_TOP_BAR_LIQUID_GLASS_ENABLED.name,
             KEY_HOME_SEARCH_LIQUID_GLASS_ENABLED.name,
@@ -8538,6 +8553,9 @@ private val KEY_APP_FONT_WEIGHT = intPreferencesKey("app_font_weight")
             contentDistortion = preferences[KEY_LIQUID_GLASS_CONTENT_DISTORTION],
         )
         return linkedMapOf(
+            KEY_LIQUID_CONTROLS_USE_THEME_COLOR.name to JsonPrimitive(
+                preferences[KEY_LIQUID_CONTROLS_USE_THEME_COLOR] ?: false
+            ),
             KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED.name to JsonPrimitive(
                 preferences[KEY_ANDROID_NATIVE_LIQUID_GLASS_ENABLED] ?: true
             ),

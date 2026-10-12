@@ -311,6 +311,7 @@ internal fun BottomBarMatchedReusableLiquidDock(
     reuseEnabled: Boolean = false,
     elasticFeedbackEnabled: Boolean = false,
     elasticFeedbackStrength: Float = 1f,
+    allowConsumedDrag: () -> Boolean = { false },
     useNeutralLiquidContainer: Boolean = false,
     drawShellLens: Boolean = true,
     shellLensIntensity: Float = 1f,
@@ -322,7 +323,11 @@ internal fun BottomBarMatchedReusableLiquidDock(
     )
     val reuseAllowed = LocalAppThemeConfig.current.liquidGlassEnabled
     if (!reuseEnabled || !reuseAllowed || !liquidGlassEffectsEnabled) {
-        Box(modifier = modifier.appElasticPress(enabled = elasticFeedbackEnabled, state = elasticState)) {
+        Box(modifier = modifier.appElasticPress(
+            enabled = elasticFeedbackEnabled,
+            state = elasticState,
+            allowConsumedDrag = allowConsumedDrag,
+        )) {
             CompositionLocalProvider(
                 com.android.purebilibili.core.ui.components.LocalElasticPressEnabled provides
                     (!elasticFeedbackEnabled && com.android.purebilibili.core.ui.components.LocalElasticPressEnabled.current),
@@ -384,6 +389,7 @@ internal fun BottomBarMatchedReusableLiquidDock(
         enabled = elasticFeedbackEnabled,
         state = elasticState,
         transformInBackdrop = glassEnabled,
+        allowConsumedDrag = allowConsumedDrag,
     )) {
         if (drawShellLens) {
             Box(
