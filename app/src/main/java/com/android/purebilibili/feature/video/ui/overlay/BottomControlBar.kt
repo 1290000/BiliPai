@@ -836,8 +836,6 @@ fun BottomControlBar(
         // 2. Control Row
         CompositionLocalProvider(
             LocalMinimumInteractiveComponentSize provides layoutPolicy.playButtonSizeDp.dp,
-            com.android.purebilibili.core.ui.components.LocalElasticPressEnabled provides
-                (!isFullscreen && com.android.purebilibili.core.ui.components.LocalElasticPressEnabled.current),
         ) {
         Row(
             modifier = Modifier

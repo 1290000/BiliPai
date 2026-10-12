@@ -99,7 +99,8 @@ internal fun PlayerControlGlassDock(
                 state = elastic,
                 transformInBackdrop = glass && providedBackdrop != null,
                 highlightShape = shape,
-                allowConsumedDrag = { ownsDrag.value },
+                // Observe the dock's own scroll gesture as well as its background drag.
+                allowConsumedDrag = { glass || ownsDrag.value },
             )
             .then(if (glass) Modifier.pointerInput(Unit) {
                 // Controls claim drags inside their hit region; video gestures stay outside.
