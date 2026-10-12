@@ -1153,17 +1153,11 @@ fun BottomControlBar(
                         }
 
                         if (isFullscreen && uiLayoutWidthDp >= 840) {
-                            AppIconButton(
+                            FullscreenDockTextAction(
+                                text = "画中画",
+                                fontSp = layoutPolicy.actionTextFontSp,
                                 onClick = onPipClick,
-                                modifier = Modifier.size(48.dp),
-                            ) {
-                                AppIcon(
-                                    imageVector = Icons.Outlined.PictureInPictureAlt,
-                                    contentDescription = "画中画",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
+                            )
                         }
 
                         if (showDirectTools) {
