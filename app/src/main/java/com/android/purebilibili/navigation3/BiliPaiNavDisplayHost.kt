@@ -45,6 +45,7 @@ import com.android.purebilibili.feature.settings.screen.settingsHasPersistentPan
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.LocalSharedTransitionEnabled
+import com.android.purebilibili.core.ui.LocalVideoDetailNavigationTransitionScope
 import com.android.purebilibili.core.ui.transition.LocalClickToPlayEnabled
 import com.android.purebilibili.core.ui.transition.LocalDynamicImagePreviewTextVisible
 import com.android.purebilibili.core.ui.transition.LocalDynamicCommentPreviewVisible
@@ -88,6 +89,7 @@ import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.NavCornerClipMode
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
 import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
+import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
 import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 
 internal class BiliPaiProgrammaticBackDispatcher {
@@ -793,6 +795,7 @@ internal fun BiliPaiNavDisplayHost(
                     onBack = performBack,
                 ) {
                     CompositionLocalProvider(
+                        LocalVideoDetailNavigationTransitionScope provides LocalNavTransitionScope.current,
                         LocalGlobalWallpaperBackdropVisible provides
                             (globalWallpaperVisible && !opaqueVideoChild),
                         LocalVideoCardSharedElementSourceRoute provides key.toLegacyRoute(),

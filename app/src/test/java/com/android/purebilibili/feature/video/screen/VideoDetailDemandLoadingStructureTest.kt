@@ -111,6 +111,34 @@ class VideoDetailDemandLoadingStructureTest {
         assertTrue(keepLoaded.contains("if (playbackStallRecoveryFirstFrameRendered || player.isPlaying)"))
     }
 
+    @Test
+    fun commentInitializationAndShimmerWaitForEntryCompletion() {
+        val screen = source("screen/VideoDetailScreenStateHolder.kt")
+        val commentEffect = screen.substringAfter(
+            "LaunchedEffect(detailContentState?.info?.aid, preferredCommentSortMode, isVisible, entryTransitionFinished)"
+        ).substringBefore("    //  核心修改")
+        assertTrue(commentEffect.contains("if (!isVisible || !entryTransitionFinished) return@LaunchedEffect"))
+        assertTrue(commentEffect.contains("commentViewModel.init("))
+        assertTrue(screen.contains("animated = entryTransitionFinished"))
+    }
+
+    @Test
+    fun navigationGateDoesNotTreatTimeoutAsCompletionWhileMotionIsActive() {
+        val observer = source("screen/VideoDetailEntryTransitionObserver.kt")
+        val navigationGate = observer.substringAfter("if (navigationTransitionScope != null)")
+            .substringBefore("if (heroDriver != null)")
+        assertTrue(navigationGate.contains("navigationTransitionScope.isRunning"))
+        assertTrue(navigationGate.contains("navigationTransitionScope.role != NavRole.Top"))
+        assertTrue(navigationGate.indexOf("if (navigationTransitionScope.isRunning)") <
+            navigationGate.indexOf("heroDriver.progressProvider()"))
+        assertTrue(observer.contains("var finished by remember { mutableStateOf(!deferLoad) }"))
+        assertFalse(observer.contains("remember(deferLoad)"))
+        assertFalse(navigationGate.contains("delay("))
+        val timeout = observer.substringAfter("val timeoutJob = launch")
+            .substringBefore("        try {")
+        assertFalse(timeout.contains("finished = true"))
+    }
+
     private fun source(path: String): String = listOf(
         File("app/src/main/java/com/android/purebilibili/feature/video/$path"),
         File("src/main/java/com/android/purebilibili/feature/video/$path")

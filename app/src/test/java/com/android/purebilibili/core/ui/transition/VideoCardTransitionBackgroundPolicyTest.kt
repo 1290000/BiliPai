@@ -849,6 +849,25 @@ class VideoCardTransitionBackgroundPolicyTest {
     }
 
     @Test
+    fun liveBackgroundLayerReusesRenderEffectAndClipShapeAcrossFrames() {
+        val source = File(
+            "src/main/java/com/android/purebilibili/core/ui/transition/" +
+                "VideoCardTransitionBackgroundPolicy.kt"
+        ).readText()
+        val live = source
+            .substringAfter("internal fun Modifier.videoCardTransitionLiveBackgroundEffect(")
+            .substringBefore("internal data class VideoCardTransitionNavBackdropFrame")
+        // 返回手势逐帧推进：若每帧重建 BlurEffect/RoundedCornerShape，会持续产生分配并
+        // 触发 GPU effect 重建。这里改为按量化半径复用，模糊仍然全程开启且对所有设备一致。
+        assertTrue(live.contains("var cachedLiveBlurRadiusPx = Float.NaN"))
+        assertTrue(live.contains("var cachedLiveClipShape: RoundedCornerShape? = null"))
+        assertTrue(live.contains("if (liveBlurRadiusPx != cachedLiveBlurRadiusPx)"))
+        assertTrue(live.contains("renderEffect = cachedLiveBlurEffect"))
+        assertTrue(live.contains("cachedLiveClipShape?.let { shape = it }"))
+        assertFalse(live.contains("renderEffect = if ("))
+    }
+
+    @Test
     fun openingBlurBuildsInLockstepWithDepth() {
         val early = resolveVideoCardTransitionBackgroundFrame(
             progress = 0.2f,

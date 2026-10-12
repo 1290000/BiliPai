@@ -338,15 +338,50 @@ internal fun Modifier.videoDetailReturnPlayerLayout(
     clipCornerDp: Dp = 0.dp,
     nativeSnapshotBoundsProvider: (() -> Rect?)? = null,
 ): Modifier {
-    fun frame(width: Int, height: Int) = resolveVideoDetailReturnMediaLayoutFrame(
-        containerWidthPx = width,
-        containerHeightPx = height,
-        landingLayout = landingLayout,
-        handoffProgress = handoffProgressProvider(),
-        inverseScaleX = inverseScaleXProvider(),
-        inverseScaleY = inverseScaleYProvider(),
-        nativeSnapshotBounds = nativeSnapshotBoundsProvider?.invoke(),
-    )
+    // Layout and draw both need the frame for the same node size within one frame; memoize it so
+    // the interpolation, inverse-scale and snapshot-bounds reads run once instead of twice.
+    var memoWidth = Int.MIN_VALUE
+    var memoHeight = Int.MIN_VALUE
+    var memoProgress = Float.NaN
+    var memoInverseScaleX = Float.NaN
+    var memoInverseScaleY = Float.NaN
+    var memoNativeBounds: Rect? = null
+    var memoFrame: VideoDetailReturnMediaLayoutFrame? = null
+
+    fun frame(width: Int, height: Int): VideoDetailReturnMediaLayoutFrame {
+        val progress = handoffProgressProvider()
+        val inverseScaleX = inverseScaleXProvider()
+        val inverseScaleY = inverseScaleYProvider()
+        val nativeBounds = nativeSnapshotBoundsProvider?.invoke()
+        memoFrame?.let { cached ->
+            if (width == memoWidth &&
+                height == memoHeight &&
+                progress == memoProgress &&
+                inverseScaleX == memoInverseScaleX &&
+                inverseScaleY == memoInverseScaleY &&
+                nativeBounds == memoNativeBounds
+            ) {
+                return cached
+            }
+        }
+        val resolved = resolveVideoDetailReturnMediaLayoutFrame(
+            containerWidthPx = width,
+            containerHeightPx = height,
+            landingLayout = landingLayout,
+            handoffProgress = progress,
+            inverseScaleX = inverseScaleX,
+            inverseScaleY = inverseScaleY,
+            nativeSnapshotBounds = nativeBounds,
+        )
+        memoWidth = width
+        memoHeight = height
+        memoProgress = progress
+        memoInverseScaleX = inverseScaleX
+        memoInverseScaleY = inverseScaleY
+        memoNativeBounds = nativeBounds
+        memoFrame = resolved
+        return resolved
+    }
     // Clip outside the transformed child so the clip stays in media-slot coordinates.
     return drawWithCache {
         val path = Path()
