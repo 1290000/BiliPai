@@ -1206,6 +1206,8 @@ fun AppNavigation(
             bvid: String,
             cid: Long = 0L,
             coverUrl: String = "",
+            // 从全屏播放中 push 新详情页时，把全屏意图带到新路由，避免中途掉出全屏。
+            fullscreen: Boolean = false,
             startAudio: Boolean = false,
             autoPortrait: Boolean = shouldAutoEnterPortraitForStandardVideoNavigation(),
             resumePositionMs: Long = 0L,
@@ -1246,6 +1248,7 @@ fun AppNavigation(
                         bvid = bvid,
                         cid = cid,
                         coverUrl = coverUrl,
+                        fullscreen = fullscreen,
                         startAudio = startAudio,
                         autoPortrait = autoPortrait,
                         resumePositionMs = resumePositionMs,
@@ -1279,6 +1282,7 @@ fun AppNavigation(
                 coverUrl = coverUrl,
                 startAudio = startAudio,
                 autoPortrait = autoPortrait || morphDirectPortrait,
+                fullscreen = fullscreen,
                 resumePositionMs = resumePositionMs,
                 initialVertical = initialVertical || morphDirectPortrait,
                 directPortraitEntry = morphDirectPortrait,
@@ -3213,10 +3217,16 @@ fun AppNavigation(
                                     val coverUrl = options?.getString(
                                         com.android.purebilibili.feature.video.screen.VIDEO_NAV_COVER_URL_KEY
                                     ).orEmpty()
+                                    // 全屏中点击下一集/相关视频：新详情页要继承全屏意图与封面，
+                                    // 否则会中途掉出全屏。
+                                    val startInFullscreen =
+                                        com.android.purebilibili.feature.video.screen
+                                            .resolveVideoNavigationStartInFullscreen(options)
                                     navigateToVideoInNavigation3(
                                         bvid = vid,
                                         cid = targetCid,
                                         coverUrl = coverUrl,
+                                        fullscreen = startInFullscreen,
                                         sourceRoute = "video/${videoKey.bvid}"
                                     )
                                 },
