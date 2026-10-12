@@ -1,4 +1,26 @@
 
+## 未发布
+
+更新日志(ChangeLog)
+
+[修复] 评论、动态评论及动态详情覆盖图层复用已有 BlurRenderEffectCache，同一量化半径不再在 graphicsLayer 更新时重复创建 Android/Compose 模糊效果；保留半径计算、0.5px 启用阈值、API 31 判断及关闭时清空效果，缓存不写入 Snapshot 状态
+
+[验证] Robolectric 原生图形场景中，真实评论图层的 6 次正模糊更新复用 2 个效果实例，关闭及量化零值会清空效果；4 个缓存边界用例已接入 PerfGuard。拆分后的真实性能入口通过：57 个用例报告无失败，原生性能 Lint 零诊断，命令退出 0；未修改检查器、放宽门禁或测量设备帧耗时，详见 docs/wiki/QA.md
+
+[更改] CI 拆为 PerfGuard、Correctness 与 StylePolicy 报告，Build 复用统一 QualityChecks 工作流，不再重复执行整组守卫；性能检查不包含颜色、尺寸等设计规范，样式 CI profile 显式发布 warning，规则默认严重性不变，编译及检查器故障仍失败
+
+[验证] CI 拆分候选（尚未加入模糊修复）的性能入口有 53 个用例通过但仍有 4 处分配错误，正确性入口的 37 个用例通过，样式入口的 20 个用例通过并保留 447 个 warning；不代表整体 CI 或 APK 已通过。工作流校验修正无效的 run_started_at 上下文，发布证据改用实际 UTC 生成时间，详见 docs/wiki/QA.md
+
+[修复] 样式语义验证器区分具名规格定义与 UI 使用位置，识别返回的 Palette / Spec / Policy / Geometry / Metrics / Padding 及规格默认参数；按已解析 API 角色识别零值，不将圆角重复报为尺寸，并修复泛型返回类型无类名时的检查器崩溃。尺寸规则统一为 BiliPaiHardcodedDimension，样式诊断归类为可用性而非性能问题，保留原 ERROR 门禁及既有豁免范围
+
+[验证] 样式工厂回归曾复现旧检查器将 4 个 UI 使用位置报为 13 个诊断；校准后 42 个检查器回归全部通过。不包含动态主题修复的 PR 候选原生 Lint 实际执行后仍有 451 项诊断（447 项样式、4 处分配风险），模型与检查器故障为零；未增加 baseline、豁免或降低严重性，不能据此宣称远端 CI、全量测试或 APK 已通过，详见 docs/wiki/QA.md
+
+[修复] 消除 app / design-system 测试源码的编译阻塞：清理重复 Kotlin 声明、过期导入和已移除接口的断言，适配当前 AICU 时钟参数、设备传输请求及 OkHttp Call 契约；将分区回退、搜索签名与 gRPC 分页内部策略测试迁到 core-data，保留真实行为与边界覆盖
+
+[测试] 设备传输编解码使用 Robolectric 的真实 Android Base64；字体和页签测试采用正确属性引用及 JUnit Platform 适配，动态图文改为检查真实链接和表情注释范围。移除源码片段、显示措辞、实现默认值及重复断言，不修改生产代码或放宽 CI Lint 门禁
+
+合并前基线 `4103c7140` 的定向 Gradle 回归：app 310、core-data 11、design-system 20 个用例全部通过，含质量入口的 68 个运行时行为用例；生产搜索签名三种账号消费场景通过。这些结果不代表本次合并最新上游后的全量测试、APK 或远端 CI 已通过；此前的 587 项 Lint 策略命中仍独立处理，详见 `docs/wiki/QA.md`
+
 ## v0.3.4 (2026-10-11)
 
 更新日志(ChangeLog)
