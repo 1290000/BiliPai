@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.RowScope
 import com.android.purebilibili.core.ui.components.AppChromeOverflowHost
@@ -270,7 +271,11 @@ fun AdaptiveTopAppBar(
             navigationIcon = {
                 CompositionLocalProvider(
                     com.android.purebilibili.core.ui.components.LocalAppTopBarIconDecorationEnabled provides true,
-                ) { AppChromeOverflowSlot(content = navigationIcon) }
+                ) {
+                    AppChromeOverflowSlot {
+                        Box(Modifier.padding(end = 6.dp)) { navigationIcon() }
+                    }
+                }
             },
             actions = {
                 AppChromeOverflowSlot {

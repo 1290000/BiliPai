@@ -31,6 +31,10 @@ import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.components.AppDropdownMenu
 import com.android.purebilibili.core.ui.components.AppDropdownMenuItem
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.android.purebilibili.core.ui.components.AppIconButton
+import com.android.purebilibili.core.ui.components.LocalAppTopBarIconDecorationEnabled
+import com.android.purebilibili.core.ui.components.LocalAppTopBarIconBackdrop
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -162,6 +166,7 @@ fun DynamicSidebar(
     onToggleExpand: () -> Unit,
     topPadding: androidx.compose.ui.unit.Dp, // 新增：内部处理顶部间距
     onBackClick: () -> Unit, // 新增：返回按钮回调
+    chromeBackdrop: top.yukonga.miuix.kmp.blur.Backdrop? = null,
     modifier: Modifier = Modifier
 ) {
     val animatedWidth by animateFloatAsState(
@@ -387,16 +392,22 @@ fun DynamicSidebar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(returnHeaderHeight)
-                        .align(Alignment.BottomCenter)
-                        .clickable { onBackClick() },
+                        .align(Alignment.BottomCenter),
                     contentAlignment = Alignment.Center
                 ) {
-                    AppIcon(
-                        imageVector = rememberAppBackIcon(),
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(AppSpacingTokens.ExtraLarge)
-                    )
+                    CompositionLocalProvider(
+                        LocalAppTopBarIconDecorationEnabled provides true,
+                        LocalAppTopBarIconBackdrop provides chromeBackdrop,
+                    ) {
+                        AppIconButton(onClick = onBackClick) {
+                            AppIcon(
+                                imageVector = rememberAppBackIcon(),
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(AppSpacingTokens.ExtraLarge)
+                            )
+                        }
+                    }
                 }
             }
         }

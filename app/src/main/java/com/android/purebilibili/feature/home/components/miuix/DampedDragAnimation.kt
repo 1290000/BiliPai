@@ -253,7 +253,16 @@ class DampedDragAnimation(
         requestedValue = targetValue
         launchValueTracking {
             mutatorMutex.mutate {
-                if (animatePress) press()
+                if (animatePress) {
+                    press()
+                    // Establish the lens bloom before translation; a new gesture cancels this mutation.
+                    val bloomThreshold = initialScale + (pressedScale - initialScale) * 0.25f
+                    withTimeoutOrNull(120L) {
+                        snapshotFlow { minOf(scaleXAnimation.value, scaleYAnimation.value) }
+                            .filter { it >= bloomThreshold }
+                            .first()
+                    }
+                }
                 launch { valueAnimation.animateTo(targetValue, valueAnimationSpec) }
                 if (velocity != 0f) {
                     velocityJob?.cancel()
