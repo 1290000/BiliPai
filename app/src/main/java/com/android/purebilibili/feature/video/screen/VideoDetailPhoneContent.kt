@@ -247,8 +247,10 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                 engagementState = VideoContentEngagementState(
                                     isLoggedIn = success.isLoggedIn,
                                     isFollowing = engagementState.isFollowing,
+                                    followStatusKnown = engagementState.followStatusKnown,
                                     isFavorited = engagementState.isFavorited,
                                     isLiked = engagementState.isLiked,
+                                    likeStatusKnown = engagementState.likeStatusKnown,
                                     isDisliked = engagementState.isDisliked,
                                     coinCount = engagementState.coinCount,
                                     currentPageIndex = currentPageIndex,
@@ -405,6 +407,7 @@ internal fun VideoDetailPhoneSuccessContentLayer(
                                         translationY = (1f - progress) * 32f
                                     },
                                 isLiked = engagementState.isLiked,
+                                likeStatusKnown = engagementState.likeStatusKnown,
                                 isFavorited = engagementState.isFavorited,
                                 isCoined = engagementState.coinCount > 0,
                                 onLikeClick = engagementActions.toggleLike,

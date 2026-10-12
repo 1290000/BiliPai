@@ -147,6 +147,7 @@ internal fun LargeScreenVideoLayout(
                 playerContent = playerContent,
                 playerState = playerState,
                 uiState = uiState,
+                engagementState = engagementState,
                 bvid = bvid,
                 coverUrl = coverUrl,
                 isVerticalVideo = isVerticalVideo,
@@ -426,6 +427,7 @@ private fun LargeScreenPlayerHost(
     playerContent: (@Composable (Modifier) -> Unit)? = null,
     playerState: VideoPlayerState,
     uiState: VideoPlaybackUiState,
+    engagementState: VideoEngagementUiState,
     bvid: String,
     coverUrl: String,
     isVerticalVideo: Boolean,
@@ -515,6 +517,10 @@ private fun LargeScreenPlayerHost(
                 state = VideoPlayerSectionState(
                     playerState = playerState,
                     uiState = uiState,
+                    isLiked = engagementState.isLiked,
+                    likeStatusKnown = engagementState.likeStatusKnown,
+                    isFollowed = engagementState.isFollowing,
+                    followStatusKnown = engagementState.followStatusKnown,
                     isFullscreen = false,
                     isInPipMode = isInPipMode,
                     useTextureSurfaceForNavigation = resolveNavigationLiveSurfaceTextureEnabled(

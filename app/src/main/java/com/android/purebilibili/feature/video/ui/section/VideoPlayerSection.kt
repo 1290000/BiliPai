@@ -759,7 +759,9 @@ private fun VideoPlayerSectionContent(
     val relatedVideos = state.relatedVideos
     val ugcSeason = state.ugcSeason
     val isFollowed = state.isFollowed
+    val followStatusKnown = state.followStatusKnown
     val isLiked = state.isLiked
+    val likeStatusKnown = state.likeStatusKnown
     val isCoined = state.isCoined
     val isFavorited = state.isFavorited
     val hasFavoritePlaylist = state.hasFavoritePlaylist
@@ -2009,7 +2011,7 @@ private fun VideoPlayerSectionContent(
                         true
                     }
                     PlayerKeyAction.ToggleLike -> {
-                        onToggleLike()
+                        if (likeStatusKnown) onToggleLike()
                         true
                     }
                     PlayerKeyAction.Coin -> {
@@ -2021,7 +2023,7 @@ private fun VideoPlayerSectionContent(
                         true
                     }
                     PlayerKeyAction.TripleAction -> {
-                        onTriple()
+                        if (likeStatusKnown) onTriple()
                         true
                     }
                     PlayerKeyAction.TakeScreenshot -> {
@@ -4721,6 +4723,8 @@ private fun VideoPlayerSectionContent(
                         }
                     },
                     isFollowing = isFollowed,
+                    followStatusKnown = followStatusKnown,
+                    likeStatusKnown = likeStatusKnown,
                     modifier = Modifier.fillMaxSize()
                 )
                 // 关联视频命令弹幕：跳转前确认
@@ -5563,7 +5567,9 @@ private fun VideoPlayerSectionContent(
                     relatedVideos = relatedVideos,
                     ugcSeason = ugcSeason,
                     isFollowed = isFollowed,
+                    followStatusKnown = followStatusKnown,
                     isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                     isCoined = isCoined,
                     isFavorited = isFavorited,
                     likeCount = uiState.info.stat.like.toLong(),

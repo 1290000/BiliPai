@@ -107,6 +107,7 @@ fun ActionButtonsRow(
     info: ViewInfo,
     isFavorited: Boolean = false,
     isLiked: Boolean = false,
+    likeStatusKnown: Boolean = false,
     isDisliked: Boolean = false,
     coinCount: Int = 0,
     downloadProgress: Float = -1f,  //  -1 = 未下载, 0-1 = 进度, 1 = 已完成
@@ -190,46 +191,60 @@ fun ActionButtonsRow(
                 .heightIn(min = 48.dp),
             contentAlignment = Alignment.Center
         ) {
-            TripleProgressActionButton(
-                icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
-                text = FormatUtils.formatStat(info.stat.like.toLong()),
-                isActive = isLiked,
-                activeColor = activeColors.primaryAction,
-                progress = tripleProgress,
-                onClick = onLikeClick,
-                horizontalPadding = buttonHorizontalPadding,
-                modifier = Modifier
-                    .likeBurstAnchor()
-                    .pointerInput(
-                    isLiked,
-                    tripleCompleted,
-                    tripleProgress
-                ) {
-                    detectTapGestures(
-                        onTap = {
-                            onLikeClick()
-                        },
-                        onLongPress = {
-                            tripleCompleted = false
-                            isTriplePressing = shouldStartTriplePress(
-                                longPressConfirmed = true
-                            )
-                        },
-                        onPress = {
-                            tryAwaitRelease()
-                            if (
-                                shouldCancelTriplePressOnRelease(
-                                    isTriplePressing = isTriplePressing,
-                                    tripleCompleted = tripleCompleted
+            if (likeStatusKnown) {
+                TripleProgressActionButton(
+                    icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
+                    text = FormatUtils.formatStat(info.stat.like.toLong()),
+                    isActive = isLiked,
+                    activeColor = activeColors.primaryAction,
+                    progress = tripleProgress,
+                    onClick = onLikeClick,
+                    horizontalPadding = buttonHorizontalPadding,
+                    modifier = Modifier
+                        .likeBurstAnchor()
+                        .pointerInput(
+                        isLiked,
+                        tripleCompleted,
+                        tripleProgress
+                    ) {
+                        detectTapGestures(
+                            onTap = {
+                                onLikeClick()
+                            },
+                            onLongPress = {
+                                tripleCompleted = false
+                                isTriplePressing = shouldStartTriplePress(
+                                    longPressConfirmed = true
                                 )
-                            ) {
-                                isTriplePressing = false
+                            },
+                            onPress = {
+                                tryAwaitRelease()
+                                if (
+                                    shouldCancelTriplePressOnRelease(
+                                        isTriplePressing = isTriplePressing,
+                                        tripleCompleted = tripleCompleted
+                                    )
+                                ) {
+                                    isTriplePressing = false
+                                }
                             }
-                        }
-                    )
-                },
-                disableInternalClick = true
-            )
+                        )
+                    },
+                    disableInternalClick = true
+                )
+            } else {
+                TripleProgressActionButton(
+                    icon = Icons.Outlined.Circle,
+                    text = FormatUtils.formatStat(info.stat.like.toLong()),
+                    isActive = false,
+                    activeColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    progress = 0f,
+                    onClick = {},
+                    horizontalPadding = buttonHorizontalPadding,
+                    disableInternalClick = true,
+                    showIcon = false,
+                )
+            }
         }
 
         // Dislike - 点踩（与点赞互斥，官方不展示点踩数，固定显示文字）
@@ -385,6 +400,7 @@ private fun TripleProgressActionButton(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     disableInternalClick: Boolean = false,
+    showIcon: Boolean = true,
     horizontalPadding: Dp = 4.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -455,12 +471,16 @@ private fun TripleProgressActionButton(
                 }
             }
 
-            AppIcon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
+            if (showIcon) {
+                AppIcon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.size(24.dp))
+            }
         }
         Spacer(modifier = Modifier.height(2.dp))
         AppText(

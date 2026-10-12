@@ -485,13 +485,21 @@ internal fun AudioModeMusicPlayer(
         onPipClick = if (showPipButton) onEnterPip else null,
         onToggleOrientation = onToggleOrientation,
         orientationActionLabel = orientationActionLabel,
-        isLiked = engagementState.isLiked,
+        isLiked = engagementState.likeStatusKnown &&
+            engagementState.subject?.aid == info.aid &&
+            engagementState.subject?.bvid == info.bvid && engagementState.isLiked,
+        isLikeStatusKnown = engagementState.likeStatusKnown &&
+            engagementState.subject?.aid == info.aid &&
+            engagementState.subject?.bvid == info.bvid,
         onLikeClick = {
-            engagementViewModel.toggleLike(
-                aid = info.aid,
-                bvid = info.bvid,
-                currentlyLiked = engagementState.isLiked
-            )
+            if (engagementState.likeStatusKnown && engagementState.subject?.aid == info.aid &&
+                engagementState.subject?.bvid == info.bvid) {
+                engagementViewModel.toggleLike(
+                    aid = info.aid,
+                    bvid = info.bvid,
+                    currentlyLiked = engagementState.isLiked
+                )
+            }
         },
         onCommentsClick = { showComments = true },
         isFavorited = engagementState.isFavorited,

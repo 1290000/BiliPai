@@ -88,6 +88,7 @@ fun UpPreviewSheet(
     visible: Boolean,
     owner: Owner,
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
     followerCount: Int? = null,
     videoCount: Int? = null,
     likeCount: Int? = null,
@@ -350,6 +351,7 @@ fun UpPreviewSheet(
                         UpPreviewSheetHeader(
                             owner = owner,
                             isFollowing = isFollowing,
+                            followStatusKnown = followStatusKnown,
                             followerCount = resolvedFollower,
                             videoCount = resolvedVideoCount,
                             likeCount = resolvedLikeCount,
@@ -438,6 +440,7 @@ private data class UpPreviewFetchResult(
 private fun UpPreviewSheetHeader(
     owner: Owner,
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
     followerCount: Int?,
     videoCount: Int?,
     likeCount: Int?,
@@ -509,17 +512,17 @@ private fun UpPreviewSheetHeader(
             }
             Spacer(Modifier.width(8.dp))
             AppSurface(
-                onClick = onFollowClick,
+                modifier = Modifier.clickable(enabled = followStatusKnown, onClick = onFollowClick),
                 shape = CircleShape,
-                color = if (isFollowing) {
+                color = if (!followStatusKnown || isFollowing) {
                     colors.followingFillColor
                 } else {
                     colors.followFillColor
                 },
             ) {
                 AppText(
-                    text = if (isFollowing) "已关注" else "+ 关注",
-                    color = if (isFollowing) {
+                    text = if (!followStatusKnown) "待确认" else if (isFollowing) "已关注" else "+ 关注",
+                    color = if (!followStatusKnown || isFollowing) {
                         colors.followingContentColor
                     } else {
                         colors.followContentColor
