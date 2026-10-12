@@ -2146,13 +2146,13 @@ private fun LivePrimaryInteractionPanel(
         initialPage = selectedTab.coerceIn(0, if (showSuperChat) 1 else 0),
         pageCount = { if (showSuperChat) 2 else 1 },
     )
-    LaunchedEffect(showSuperChat, pagerState) {
-        if (!showSuperChat) {
-            pagerState.scrollToPage(0)
-            onSelectedTab(0)
-        }
-    }
     val latestOnSelectedTab by rememberUpdatedState(onSelectedTab)
+    // 主页面与完整聊天弹层共用选择；恢复时直接定位，避免指示器和内容脱节。
+    LaunchedEffect(selectedTab, showSuperChat, pagerState) {
+        val target = selectedTab.coerceIn(0, if (showSuperChat) 1 else 0)
+        if (pagerState.currentPage != target) pagerState.scrollToPage(target)
+        if (selectedTab != target) latestOnSelectedTab(target)
+    }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { latestOnSelectedTab(it) }
     }
