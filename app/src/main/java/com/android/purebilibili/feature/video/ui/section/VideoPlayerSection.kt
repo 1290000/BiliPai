@@ -1523,6 +1523,7 @@ private fun VideoPlayerSectionContent(
     val seekSliderMoving by remember(bvid, currentSeekSessionCid) {
         derivedStateOf { sharedSeekSession.isSliderMoving }
     }
+    val latestSeekSliderMoving = rememberUpdatedState(seekSliderMoving)
     val pendingSeekPosition by remember(bvid, currentSeekSessionCid) {
         derivedStateOf { sharedSeekSession.pendingSeekPositionMs }
     }
@@ -2094,6 +2095,39 @@ private fun VideoPlayerSectionContent(
         currentQualityId = (uiState as? VideoPlaybackUiState.Success)?.currentQuality ?: 0,
         colorTransfer = videoInputFormat?.colorInfo?.colorTransfer ?: 0
     )
+    val playerPageBackdrop = rememberPlayerPageBackdrop()
+    val pageGlassSupported = supportsPlayerPageGlass(
+        liquidGlassEnabled = com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled,
+        fullscreen = isFullscreen,
+        portraitFullscreen = isPortraitFullscreen,
+        hdr = navigationHdrSurfaceRequired,
+        anime4k = shouldUseAnime4kPipeline,
+        audioOnly = isAudioOnly,
+        pip = isInPipMode,
+        detailInline = !isFullscreen && !isPortraitFullscreen,
+    )
+    // Keep TextureView after leaving fullscreen to avoid a second surface recreation.
+    // HDR always overrides this retained SDR choice.
+    var hasUsedPageGlassTexture by remember(bvid) { mutableStateOf(false) }
+    LaunchedEffect(pageGlassSupported) {
+        if (pageGlassSupported) hasUsedPageGlassTexture = true
+    }
+    // Keep page recording through chrome/paused-center exits without a polling job.
+    val pageGlassRequested = showControls || !observedIsPlaying ||
+        (isGestureVisible && (gestureMode == VideoGestureMode.Brightness || gestureMode == VideoGestureMode.Volume))
+    val pageGlassVisibility = animateFloatAsState(
+        targetValue = if (pageGlassRequested) 1f else 0f,
+        animationSpec = tween<Float>(
+            com.android.purebilibili.feature.video.ui.overlay.PLAYER_GLASS_VISIBILITY_DURATION_MS,
+            easing = com.android.purebilibili.core.ui.motion.AppMotionEasing.Continuity,
+        ),
+        label = "playerPageCaptureVisibility",
+    )
+    val pageGlassCaptureVisible by remember(pageGlassVisibility) {
+        derivedStateOf { pageGlassVisibility.value > 0f }
+    }
+    val capturePlayerPage = pageGlassSupported && (pageGlassRequested || pageGlassCaptureVisible) && hostLifecycleStarted &&
+        !MiniPlayerManager.getInstance(context).isMiniMode
     // 应用共享元素
     val livePlayerSharedElementEnabled = shouldEnableLivePlayerSharedElement(
             transitionEnabled = transitionEnabled,
@@ -2312,8 +2346,16 @@ private fun VideoPlayerSectionContent(
                     return@pointerInput
                 }
                 if (!isInPipMode) {
+                    var delegatedToProgressBar = false
                     detectDragGestures(
                         onDragStart = { offset ->
+                            if (latestSeekSliderMoving.value) {
+                                delegatedToProgressBar = true
+                                isGestureVisible = false
+                                gestureMode = VideoGestureMode.None
+                                dragStartX = -1f
+                                return@detectDragGestures
+                            }
                             // [新增] 如果处于缩放状态，禁用常规拖拽手势，优先处理平移
                             if (scale > 1.01f) {  // 留一点浮点数buffer
                                 return@detectDragGestures
@@ -2405,6 +2447,10 @@ private fun VideoPlayerSectionContent(
                             }
                         },
                         onDragEnd = {
+                            if (delegatedToProgressBar) {
+                                delegatedToProgressBar = false
+                                return@detectDragGestures
+                            }
                             val completedGestureMode = gestureMode
                             if (isLongPressing) {
                                 finishLongPressSpeedGesture(gestureEnded = true)
@@ -2480,6 +2526,10 @@ private fun VideoPlayerSectionContent(
                             dragStartX = -1f
                         },
                         onDragCancel = {
+                            if (delegatedToProgressBar) {
+                                delegatedToProgressBar = false
+                                return@detectDragGestures
+                            }
                             if (isLongPressing) {
                                 finishLongPressSpeedGesture(gestureEnded = true)
                                 isGestureVisible = false
@@ -2501,6 +2551,11 @@ private fun VideoPlayerSectionContent(
                         },
                         //  [修复点] 使用 dragAmount 而不是 change.positionChange()
                         onDrag = { change, dragAmount ->
+                            if (delegatedToProgressBar || latestSeekSliderMoving.value) {
+                                delegatedToProgressBar = true
+                                change.consume()
+                                return@detectDragGestures
+                            }
                             if (shouldConsumeExclusiveLongPressSpeedDrag(
                                     isLongPressing = isLongPressing,
                                     longPressSpeedLocked = longPressSpeedLocked
@@ -3701,18 +3756,25 @@ private fun VideoPlayerSectionContent(
             statusBar = shouldCaptureStatusBarAmbientFrame,
             diagnosticLogging = playerDiagnosticLoggingEnabled,
         )
-        val useTextureSurface = shouldUseTextureSurfaceForFlip(
-            isFlippedHorizontal = isFlippedHorizontal,
-            isFlippedVertical = isFlippedVertical,
-            liveBackPreview = liveBackPreview || hasUsedLiveBackPreviewTexture,
-            navigationTransformEnabled = useTextureSurfaceForNavigation,
-            requiresHdrSurfaceOutput = requiresHdrSurface
+        val useTextureSurface = shouldUsePlayerPageTexture(
+            glassSupported = pageGlassSupported,
+            retainedGlassTexture = hasUsedPageGlassTexture,
+            hdr = requiresHdrSurface,
+            existingTextureRequest = shouldUseTextureSurfaceForFlip(
+                isFlippedHorizontal = isFlippedHorizontal,
+                isFlippedVertical = isFlippedVertical,
+                liveBackPreview = liveBackPreview || hasUsedLiveBackPreviewTexture,
+                navigationTransformEnabled = useTextureSurfaceForNavigation,
+                requiresHdrSurfaceOutput = requiresHdrSurface,
+            ),
         )
         key(isFlippedHorizontal, isFlippedVertical, isPortraitFullscreen, useTextureSurface) {
             val viewportAspectRatio = if (isFullscreen) currentAspectRatio else VideoAspectRatio.FIT
             val playerVideoSize = playerState.player.videoSize
             BoxWithConstraints(
-                modifier = playerContentModifier,
+                modifier = playerContentModifier
+                    .then(if (capturePlayerPage) playerPageBackdrop.video.modifier else Modifier)
+                    .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
                 val density = LocalDensity.current
@@ -4307,7 +4369,10 @@ private fun VideoPlayerSectionContent(
             Modifier
         }
 
-        Box(modifier = playerContentModifier) {
+        Box(
+            modifier = playerContentModifier
+                .then(if (capturePlayerPage) playerPageBackdrop.cover.modifier else Modifier),
+        ) {
             val coverContainerModifier = if (fillPlayerViewportForManualStartCover) {
                 sharedCoverOverlayModifier
                     .matchParentSize()
@@ -4465,6 +4530,7 @@ private fun VideoPlayerSectionContent(
             val viewportAspectRatio = if (isFullscreen) currentAspectRatio else VideoAspectRatio.FIT
             BoxWithConstraints(
                 modifier = playerContentModifier
+                    .then(if (capturePlayerPage) playerPageBackdrop.danmaku.modifier else Modifier)
                     .graphicsLayer { alpha = if (shouldShowDanmakuLayer) 1f else 0f }
                     .then(
                         if (topOffset > 0) {
@@ -4957,26 +5023,32 @@ private fun VideoPlayerSectionContent(
             )
         }
 
-        VideoSubtitleOverlayHost(
-            player = playerState.player,
-            uiState = uiState,
-            bvid = bvid,
-            subtitleFeatureEnabled = subtitleFeatureEnabled,
-            subtitleOverlayEnabled = subtitleOverlayEnabled,
-            subtitleDisplayMode = subtitleDisplayMode,
-            primaryTextSizeSp = subtitleTextSizeSpec.primarySp,
-            secondaryTextSizeSp = subtitleTextSizeSpec.secondarySp,
-            initialVerticalOffsetFraction = playerInteractionSettings.subtitleVerticalOffsetFraction,
-            positionLocked = playerInteractionSettings.subtitlePositionLocked,
-            isInPipMode = isInPipMode,
-            isAudioOnly = isAudioOnly,
-            suppressSubtitleOverlay = suppressSubtitleOverlay,
-            isFullscreen = isFullscreen,
-            controlsVisible = showControls,
-            endDrawerReservedWidth = animatedEndDrawerReservedWidth,
-            playerViewportSize = measuredPlayerViewportSize,
-            bottomControlsHeightPx = measuredBottomControlsHeightPx
-        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .then(if (capturePlayerPage) playerPageBackdrop.subtitles.modifier else Modifier),
+        ) {
+            VideoSubtitleOverlayHost(
+                player = playerState.player,
+                uiState = uiState,
+                bvid = bvid,
+                subtitleFeatureEnabled = subtitleFeatureEnabled,
+                subtitleOverlayEnabled = subtitleOverlayEnabled,
+                subtitleDisplayMode = subtitleDisplayMode,
+                primaryTextSizeSp = subtitleTextSizeSpec.primarySp,
+                secondaryTextSizeSp = subtitleTextSizeSpec.secondarySp,
+                initialVerticalOffsetFraction = playerInteractionSettings.subtitleVerticalOffsetFraction,
+                positionLocked = playerInteractionSettings.subtitlePositionLocked,
+                isInPipMode = isInPipMode,
+                isAudioOnly = isAudioOnly,
+                suppressSubtitleOverlay = suppressSubtitleOverlay,
+                isFullscreen = isFullscreen,
+                controlsVisible = showControls,
+                endDrawerReservedWidth = animatedEndDrawerReservedWidth,
+                playerViewportSize = measuredPlayerViewportSize,
+                bottomControlsHeightPx = measuredBottomControlsHeightPx
+            )
+        }
 
         // 🖼️ [修复] 手势指示器：仅在亮度/音量/Seek 模式显示，避免上滑全屏时误显示亮度图标
         val shouldShowGestureIndicator = isGestureVisible &&
@@ -5047,7 +5119,10 @@ private fun VideoPlayerSectionContent(
         GestureLevelOverlayHost(
             visible = shouldShowLevelIndicator,
             mode = gestureMode,
-            percent = gesturePercent
+            percent = gesturePercent,
+            glassBackdrop = playerPageBackdrop.backdrop.takeIf {
+                capturePlayerPage && playerPageBackdrop.video.isReady
+            },
         )
 
         //  Seek 逃生口提示：拖动进度时手指进入顶部角落，松手取消进退
@@ -5620,6 +5695,9 @@ private fun VideoPlayerSectionContent(
                     onSendDanmakuComposer = onSendDanmakuComposer,
                     onDanmakuComposerDraftChange = onDanmakuComposerDraftChange,
                     onDanmakuComposerSelectionChange = onDanmakuComposerSelectionChange,
+                    onDanmakuSliderPreview = { parameter, value ->
+                        com.android.purebilibili.feature.video.ui.components.applyDanmakuSliderPreview(danmakuManager, parameter, value)
+                    },
                     onDanmakuOpacityChange = { value ->
                         danmakuManager.opacity = value
                         scope.launch {
@@ -6054,7 +6132,16 @@ private fun VideoPlayerSectionContent(
                         alpha = transitionChromeAlphaProvider()
                     }
             ) {
-                renderVideoPlayerOverlay()
+                CompositionLocalProvider(
+                    com.android.purebilibili.feature.video.ui.overlay.LocalPlayerLevelGestureActive provides shouldShowLevelIndicator,
+                    com.android.purebilibili.feature.video.ui.overlay.LocalPlayerPageBackdrop provides
+                        playerPageBackdrop.backdrop.takeIf {
+                            capturePlayerPage && playerPageBackdrop.video.isReady &&
+                                playerViewRef?.videoSurfaceView is TextureView
+                        },
+                ) {
+                    renderVideoPlayerOverlay()
+                }
             }
 
             SponsorSkipButton(

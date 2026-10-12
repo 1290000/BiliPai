@@ -177,6 +177,7 @@ enum class HapticType {
     LIGHT,      // 轻触 (选择/切换)
     MEDIUM,     // 中等 (确认)
     HEAVY,      // 重击 (警告/删除)
+    GESTURE_STEP, // 亮度/音量等离散调节刻度
     SELECTION   // 选择变化
 }
 
@@ -205,6 +206,13 @@ fun rememberHapticFeedback(): (HapticType) -> Unit {
                         HapticFeedbackConstants.REJECT
                     } else {
                         HapticFeedbackConstants.LONG_PRESS
+                    }
+                }
+                HapticType.GESTURE_STEP -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        HapticFeedbackConstants.SEGMENT_TICK
+                    } else {
+                        HapticFeedbackConstants.CLOCK_TICK
                     }
                 }
                 HapticType.SELECTION -> {

@@ -1954,6 +1954,8 @@ fun AppNavigation(
         )
         CompositionLocalProvider(
             com.android.purebilibili.core.ui.LocalComponentMotionEnabled provides componentMotionEnabled,
+            com.android.purebilibili.core.ui.components.LocalAppTopBarIconDecorator provides
+                com.android.purebilibili.core.ui.components.BiliPaiTopBarIconDecorator,
             com.android.purebilibili.core.ui.LocalSystemReduceMotion provides systemReduceMotion,
             com.android.purebilibili.core.ui.LocalAppPopupSurfaceRenderer provides
                 com.android.purebilibili.core.ui.components.BiliPaiPopupSurfaceRenderer,

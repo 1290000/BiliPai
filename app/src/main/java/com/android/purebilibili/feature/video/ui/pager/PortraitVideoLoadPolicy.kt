@@ -390,13 +390,32 @@ internal fun resolvePortraitPlayUrlPreloadTargets(
     var pageIndex = committedPage + 1
     while (targets.size < preloadCount && pageIndex < pageItems.size) {
         resolvePortraitPagePlaybackIdentity(pageItems[pageIndex])?.let { identity ->
-            if (targets.none { it.bvid == identity.bvid }) {
+            if (targets.none { it.bvid == identity.bvid && it.cid == identity.cid }) {
                 targets += identity
             }
         }
         pageIndex += 1
     }
     return targets
+}
+
+/** Only the candidate and the forward window remain eligible for background warming. */
+internal fun resolvePortraitPrefetchWindowTargets(
+    anchorPage: Int,
+    pageItems: List<Any>,
+    preloadCount: Int,
+    swipeTargetPage: Int? = null,
+    warmAnchor: Boolean = false,
+): List<PortraitPagePlaybackIdentity> {
+    if (anchorPage !in pageItems.indices) return emptyList()
+    return buildList {
+        swipeTargetPage?.let { pageItems.getOrNull(it) }
+            ?.let(::resolvePortraitPagePlaybackIdentity)?.let { add(it) }
+        if (warmAnchor) {
+            pageItems.getOrNull(anchorPage)?.let(::resolvePortraitPagePlaybackIdentity)?.let { add(it) }
+        }
+        addAll(resolvePortraitPlayUrlPreloadTargets(anchorPage, pageItems, preloadCount))
+    }.distinctBy { resolvePortraitMediaId(it.bvid, it.cid) }
 }
 
 internal fun buildPortraitPlaybackHttpHeaders(): Map<String, String> {

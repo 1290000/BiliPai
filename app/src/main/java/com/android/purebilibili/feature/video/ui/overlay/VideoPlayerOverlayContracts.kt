@@ -191,6 +191,7 @@ data class VideoPlayerOverlayActions(
     ) -> Unit = { _, _, _, _, _ -> },
     val onDanmakuComposerDraftChange: (String, Boolean) -> Unit = { _, _ -> },
     val onDanmakuComposerSelectionChange: (Int, Int, Int) -> Unit = { _, _, _ -> },
+    val onDanmakuSliderPreview: ((com.android.purebilibili.feature.video.ui.components.DanmakuSliderParameter, Float) -> Unit)? = null,
     val onDanmakuOpacityChange: (Float) -> Unit = {},
     val onDanmakuFontScaleChange: (Float) -> Unit = {},
     val onDanmakuFontWeightChange: (Int) -> Unit = {},
