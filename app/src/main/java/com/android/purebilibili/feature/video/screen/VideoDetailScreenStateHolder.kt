@@ -215,6 +215,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.android.purebilibili.core.ui.LocalPredictiveBackGestureEnabled
 import com.android.purebilibili.core.ui.LocalSharedTransitionScope
+import com.android.purebilibili.core.ui.LocalVideoDetailNavigationTransitionScope
 import com.android.purebilibili.core.ui.LocalAnimatedVisibilityScope
 import com.android.purebilibili.core.ui.transition.LocalVideoCardTransitionBackgroundState
 import com.android.purebilibili.core.ui.transition.LocalVideoSharedTransitionSpeedSettings
@@ -811,6 +812,7 @@ internal fun VideoDetailScreenStateHolder(
 
     val entryRootAnimatedVisibilityScope = LocalAnimatedVisibilityScope.current
     val entryRootSharedTransitionScope = LocalSharedTransitionScope.current
+    val entryNavigationTransitionScope = LocalVideoDetailNavigationTransitionScope.current
     val detailShellSharedBoundsEnabledForEntry = shouldUseVideoCardShellContainerTransform(
         sourceRoute = sourceRouteForSharedElement,
         transitionEnabled = transitionEnabled,
@@ -841,6 +843,7 @@ internal fun VideoDetailScreenStateHolder(
             shellSharedBoundsLikely,
         reuseFromMiniPlayerAtEntry = reuseFromMiniPlayerAtEntry,
         isReturningFromDetail = isReturningFromDetail,
+        hasNavigationTransitionScope = entryNavigationTransitionScope != null,
     )
     val entryTransitionFinished = rememberVideoDetailEntryTransitionFinished(
         deferLoad = deferVideoDetailEntryLoad,
@@ -848,12 +851,10 @@ internal fun VideoDetailScreenStateHolder(
         animatedVisibilityScope = entryRootAnimatedVisibilityScope,
         fallbackDurationMillis = homeSharedTransitionMotionSpec.durationMillis,
         heroDriver = entryHeroDriver,
+        navigationTransitionScope = entryNavigationTransitionScope,
     )
-    val entryPlaybackReady = rememberVideoDetailEntryPlaybackReady(
-        deferLoad = deferVideoDetailEntryLoad,
-        morphDurationMillis = homeSharedTransitionMotionSpec.durationMillis,
-        heroDriver = entryHeroDriver,
-    )
+    // 网络请求仍立即启动；只将媒体准备移出导航动画，封面继续承担首帧交接。
+    val entryPlaybackReady = entryTransitionFinished
 
     fun markSecondaryNavigationLeave(expectedBvid: String = currentBvid) {
         miniPlayerManager?.markLeavingByNavigation(expectedBvid = expectedBvid)
@@ -1070,11 +1071,11 @@ internal fun VideoDetailScreenStateHolder(
         runCatching { uriHandler.openUri(url) }
     }
 
-    // 🎭 [性能优化] 进场以动画为主：shell morph 期间不挂载简介/相关/评论等重型内容，
-    // loadVideo 也等 entryTransitionFinished。不再叠加二级 fadeIn/slide，避免与 sharedBounds 冲突。
+    // 进场以动画为主：导航/shell morph 期间不挂载手机正文等重型内容。
+    // loadVideo 立即发起按需网络请求，媒体 prepare 才等待 entryTransitionFinished。
     val entryVisualEnabled = transitionEnabled && !deferVideoDetailEntryLoad
-    // 注意：不要把 entryTransitionFinished 放进 remember key，否则返回时 finished 回抖会重建状态并隐藏内容。
-    var isTransitionFinished by remember(deferVideoDetailEntryLoad, entryVisualEnabled) {
+    // entry 生命周期内只允许完成一次；返回标志或 defer 变化不能重建状态并隐藏已加载正文。
+    var isTransitionFinished by remember {
         mutableStateOf(
             when {
                 deferVideoDetailEntryLoad -> false
@@ -3174,8 +3175,8 @@ internal fun VideoDetailScreenStateHolder(
     // 🔧 [性能优化] 记录上次缓存的 bvid，避免重复缓存 MiniPlayer 信息
     var lastCachedMiniPlayerBvid by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(detailContentState?.info?.aid, preferredCommentSortMode, isVisible) {
-        if (!isVisible) return@LaunchedEffect
+    LaunchedEffect(detailContentState?.info?.aid, preferredCommentSortMode, isVisible, entryTransitionFinished) {
+        if (!isVisible || !entryTransitionFinished) return@LaunchedEffect
         val info = detailContentState?.info ?: return@LaunchedEffect
         commentViewModel.init(
             aid = info.aid,
@@ -5237,7 +5238,7 @@ internal fun VideoDetailScreenStateHolder(
                                             }
                                         } else {
                                             VideoDetailSkeleton(
-                                                animated = true,
+                                                animated = entryTransitionFinished,
                                             )
                                         }
                                     }
