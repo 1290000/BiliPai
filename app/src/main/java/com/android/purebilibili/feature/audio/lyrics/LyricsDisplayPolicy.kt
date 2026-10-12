@@ -124,7 +124,7 @@ internal fun resolveDisplaySecondaryRows(
         ?.trim()
         ?.takeIf {
             it.isNotBlank() &&
-                needsPhoneticAnnotation(it) &&
+                needsPhoneticAnnotation(primaryText) &&
                 !isPseudoSecondaryLine(primaryText, it)
         }
     return displayTranslation to displayRomanization
