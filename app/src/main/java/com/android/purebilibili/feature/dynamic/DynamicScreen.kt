@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import com.android.purebilibili.core.ui.skeleton.rememberStaticSkeletonBlockColor
 import com.android.purebilibili.core.ui.rememberCompatibleStaggeredGridState
 import com.android.purebilibili.core.ui.components.AppHorizontalPager as HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -1558,13 +1559,9 @@ private fun DynamicList(
     val useManualPrependAnchor = remember(feedLayoutMode) {
         shouldUseDynamicManualPrependAnchor(feedLayoutMode)
     }
-    // [性能优化] 脉冲 state 只包进 provider,值在骨架卡 draw 阶段读取,
-    // 骨架期间屏幕级组合作用域不再逐帧失效。
-    val skeletonPulseState = if (showSkeleton) {
-        com.android.purebilibili.feature.dynamic.components.rememberDynamicFeedSkeletonPulseState()
-    } else {
-        null
-    }
+    // 骨架与真实卡片共用同一个瀑布流、同一个 contentType，并各自挂 animateItem：
+    // 色块用固定色而非呼吸脉冲，切换时只剩「卡片淡入」这一件事，不再有灰块闪烁。
+    val skeletonBlockColor = rememberStaticSkeletonBlockColor()
 
     val dynamicHorizontalArrangement = Arrangement.spacedBy(resolveDynamicTimelineHorizontalSpacing())
 
@@ -1613,14 +1610,17 @@ private fun DynamicList(
         }
 
         // 首屏骨架屏（列表为空且加载中时显示，对齐 BiliPai dynSkeleton）
+        // contentType 与真实卡片统一为 dynamic_card，并各自挂 animateItem：
+        // 数据到达时骨架淡出、卡片淡入，不再是「整批删除 + 整批新增」的硬切。
         if (showSkeleton) {
             items(
                 count = com.android.purebilibili.feature.dynamic.components.DYNAMIC_FEED_SKELETON_ITEM_COUNT,
                 key = { index -> "dynamic_skeleton_$index" },
-                contentType = { "dynamic_skeleton" }
+                contentType = { "dynamic_card" }
             ) { _ ->
                 com.android.purebilibili.feature.dynamic.components.DynamicFeedSkeletonCard(
-                    pulse = { skeletonPulseState?.value ?: 0f }
+                    modifier = Modifier.animateItem(),
+                    blockColor = skeletonBlockColor,
                 )
             }
         }
@@ -1660,13 +1660,16 @@ private fun DynamicList(
         }
 
         // 动态卡片列表
+        // 每张卡都挂 animateItem：骨架淡出与卡片淡入同时发生，形成交叉淡入而不是硬切。
         if (oldContentDividerIndex in 0..filteredItems.size) {
             items(
                 count = oldContentDividerIndex,
                 key = { index -> dynamicGridKeys[index] },
                 contentType = { "dynamic_card" }
             ) { index ->
-                dynamicCard(filteredItems[index])
+                Box(modifier = Modifier.animateItem()) {
+                    dynamicCard(filteredItems[index])
+                }
             }
             item(
                 span = StaggeredGridItemSpan.FullLine,
@@ -1683,7 +1686,9 @@ private fun DynamicList(
                 },
                 contentType = { "dynamic_card" }
             ) { offset ->
-                dynamicCard(filteredItems[oldContentDividerIndex + offset])
+                Box(modifier = Modifier.animateItem()) {
+                    dynamicCard(filteredItems[oldContentDividerIndex + offset])
+                }
             }
         } else {
             items(
@@ -1691,7 +1696,9 @@ private fun DynamicList(
                 key = { index -> dynamicGridKeys[index] },
                 contentType = { "dynamic_card" }
             ) { index ->
-                dynamicCard(filteredItems[index])
+                Box(modifier = Modifier.animateItem()) {
+                    dynamicCard(filteredItems[index])
+                }
             }
         }
 

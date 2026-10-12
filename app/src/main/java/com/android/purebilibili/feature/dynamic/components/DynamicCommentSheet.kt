@@ -7,6 +7,7 @@ import com.android.purebilibili.core.ui.components.AppHorizontalDivider
 import com.android.purebilibili.core.ui.AppChromeSizeTokens
 import com.android.purebilibili.core.ui.AppSpacingTokens
 import com.android.purebilibili.core.ui.isMiuixNonGlassEnabled
+import com.android.purebilibili.core.ui.LocalAppThemeConfig
 import com.android.purebilibili.core.ui.AppAlertDialog
 import com.android.purebilibili.core.ui.AppDialogAction
 
@@ -14,13 +15,15 @@ import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
-import com.android.purebilibili.core.ui.skeleton.CommentListColumnSkeleton
+import com.android.purebilibili.core.ui.skeleton.CommentListItemSkeleton
 
 import android.content.Context
 import android.net.Uri
 import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader
 import android.os.Build
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -36,6 +39,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import com.android.purebilibili.core.ui.components.AppLazyColumn as LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -58,6 +62,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,6 +81,8 @@ import com.android.purebilibili.feature.dynamic.resolveDynamicCommentLocationLab
 import com.android.purebilibili.feature.dynamic.resolveDynamicCommentImeSubmission
 import com.android.purebilibili.feature.dynamic.resolveDynamicCommentSheetTotalCount
 import com.android.purebilibili.feature.dynamic.resolveDynamicCommentSheetHostContent
+import com.android.purebilibili.feature.dynamic.resolveDynamicCommentSkeletonSlotCount
+import com.android.purebilibili.feature.dynamic.DYNAMIC_COMMENT_SKELETON_MIN_SLOTS
 import com.android.purebilibili.feature.dynamic.resolveDynamicSubReplyCount
 import com.android.purebilibili.feature.dynamic.shouldOpenDynamicCommentThreadOnTap
 import com.android.purebilibili.feature.dynamic.DynamicCommentSheetHostContent
@@ -147,13 +154,15 @@ fun DynamicCommentOverlayHost(
     onUserClick: (Long) -> Unit,
 ) {
     val selectedDynamicId by viewModel.selectedDynamicId.collectAsStateWithLifecycle()
-    val comments by viewModel.comments.collectAsStateWithLifecycle()
-    val commentsLoading by viewModel.commentsLoading.collectAsStateWithLifecycle()
-    val commentsRefreshing by viewModel.commentsRefreshing.collectAsStateWithLifecycle()
-    val commentsRefreshError by viewModel.commentsRefreshError.collectAsStateWithLifecycle()
-    val commentsLoadingMore by viewModel.commentsLoadingMore.collectAsStateWithLifecycle()
+    // 评论区一次性读取单一状态，避免 5 个独立 flow 分别发射造成中间帧。
+    val commentUiState by viewModel.commentUiState.collectAsStateWithLifecycle()
+    val comments = commentUiState.comments
+    val commentsLoading = commentUiState.isLoading
+    val commentsRefreshing = commentUiState.isRefreshing
+    val commentsRefreshError = commentUiState.refreshError
+    val commentsLoadingMore = commentUiState.isLoadingMore
+    val liveCommentCount = commentUiState.totalCount
     val subReplyState by viewModel.subReplyState.collectAsStateWithLifecycle()
-    val liveCommentCount by viewModel.commentTotalCount.collectAsStateWithLifecycle()
     val sortMode by viewModel.dynamicCommentSortMode.collectAsStateWithLifecycle()
     val replyTarget by viewModel.commentReplyTarget.collectAsStateWithLifecycle()
     val inspectionMode = LocalInspectionMode.current
@@ -302,6 +311,10 @@ fun DynamicCommentSheet(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
+    // 骨架槽位数按可视高度估算：铺满首屏，数据到达时列表不会被撑长或缩短。
+    val commentSkeletonSlotCount = resolveDynamicCommentSkeletonSlotCount(
+        viewportHeightDp = LocalConfiguration.current.screenHeightDp,
+    )
 
     LaunchedEffect(replyTargetUname) {
         if (!replyTargetUname.isNullOrBlank()) {
@@ -529,14 +542,10 @@ fun DynamicCommentSheet(
                             verticalArrangement = Arrangement.spacedBy(AppSpacingTokens.Medium)
                         ) {
                             when {
-                                isLoading && comments.isEmpty() -> item(
-                                    key = "dynamic_comment_initial_skeleton",
-                                    contentType = "dynamic_comment_initial_skeleton",
-                                ) {
-                                    Box(modifier = Modifier.fillParentMaxSize()) {
-                                        CommentListColumnSkeleton(itemCount = 6)
-                                    }
-                                }
+                                isLoading && comments.isEmpty() -> dynamicCommentSkeletonItems(
+                                    slotCount = commentSkeletonSlotCount,
+                                    keyPrefix = "dynamic_comment_skeleton_",
+                                )
 
                                 comments.isEmpty() -> item(
                                     key = "dynamic_comment_empty",
@@ -581,8 +590,13 @@ fun DynamicCommentSheet(
                                 }
 
                                 else -> {
-                                    items(comments, key = { it.rpid }) { reply ->
+                                    items(
+                                        items = comments,
+                                        key = { it.rpid },
+                                        contentType = { DYNAMIC_COMMENT_ITEM_CONTENT_TYPE },
+                                    ) { reply ->
                                         ReplyItemView(
+                                            modifier = dynamicCommentItemModifier(),
                                             item = reply,
                                             onClick = { onViewReplies(reply) },
                                             onSubClick = { root, _ -> onViewReplies(root) },
@@ -828,6 +842,59 @@ fun DynamicInlineCommentHeader(
     AppHorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
+/** 评论项在 LazyColumn 中的统一 contentType，让骨架与真实评论共用同一种槽位。 */
+internal const val DYNAMIC_COMMENT_ITEM_CONTENT_TYPE = "dynamic_comment_item"
+
+private const val DYNAMIC_COMMENT_FADE_IN_MILLIS = 220
+private const val DYNAMIC_COMMENT_FADE_OUT_MILLIS = 160
+private const val DYNAMIC_COMMENT_PLACEMENT_DAMPING = 0.9f
+private const val DYNAMIC_COMMENT_PLACEMENT_STIFFNESS = 220f
+
+/**
+ * 评论项动画：新项淡入、离场项淡出、位移用弹簧。
+ *
+ * 骨架槽位被真实评论替换时，旧的骨架项淡出、新的评论项淡入同时发生，视觉上就是
+ * 「骨架 → 内容」的交叉淡入淡出（等价于 Crossfade），但不需要把整个评论区降级成
+ * 单个 lazy item，从而保住了稳定槽位与滚动锚点。
+ */
+@Composable
+internal fun LazyItemScope.dynamicCommentItemModifier(): Modifier =
+    if (LocalAppThemeConfig.current.uiEntranceAnimationEnabled) {
+        Modifier.animateItem(
+            fadeInSpec = tween(durationMillis = DYNAMIC_COMMENT_FADE_IN_MILLIS),
+            placementSpec = spring(
+                dampingRatio = DYNAMIC_COMMENT_PLACEMENT_DAMPING,
+                stiffness = DYNAMIC_COMMENT_PLACEMENT_STIFFNESS,
+            ),
+            fadeOutSpec = tween(durationMillis = DYNAMIC_COMMENT_FADE_OUT_MILLIS),
+        )
+    } else {
+        Modifier
+    }
+
+/**
+ * 骨架「稳定槽位」：拆成多个独立 lazy item，而不是以前那种「1 个 item 里塞 N 行」。
+ *
+ * 骨架与真实评论使用相同的 contentType 与同量级的 item 数量，切换时 LazyList 的锚点
+ * 不会失效，列表也就不会整体位移。
+ */
+internal fun LazyListScope.dynamicCommentSkeletonItems(
+    slotCount: Int,
+    keyPrefix: String,
+) {
+    val slots = List(slotCount.coerceAtLeast(1)) { it }
+    items(
+        items = slots,
+        key = { "$keyPrefix$it" },
+        contentType = { DYNAMIC_COMMENT_ITEM_CONTENT_TYPE },
+    ) { slotIndex ->
+        CommentListItemSkeleton(
+            modifier = dynamicCommentItemModifier(),
+            slotIndex = slotIndex,
+        )
+    }
+}
+
 fun LazyListScope.dynamicInlineCommentItems(
     comments: List<ReplyItem>,
     isLoading: Boolean,
@@ -843,11 +910,13 @@ fun LazyListScope.dynamicInlineCommentItems(
     onReport: (ReplyItem, Int) -> Unit = { _, _ -> },
     onUserClick: (Long) -> Unit,
     onImagePreview: (List<String>, Int, ImagePreviewSourceAnchor?, ImagePreviewTextContent?) -> Unit,
+    skeletonSlotCount: Int = DYNAMIC_COMMENT_SKELETON_MIN_SLOTS,
 ) {
     when {
-        isLoading && comments.isEmpty() -> item(key = "dynamic_inline_comment_skeleton") {
-            CommentListColumnSkeleton(itemCount = 4)
-        }
+        isLoading && comments.isEmpty() -> dynamicCommentSkeletonItems(
+            slotCount = skeletonSlotCount,
+            keyPrefix = "dynamic_inline_comment_skeleton_",
+        )
 
         comments.isEmpty() -> item(key = "dynamic_inline_comment_empty") {
             Box(
@@ -863,8 +932,13 @@ fun LazyListScope.dynamicInlineCommentItems(
             }
         }
 
-        else -> items(comments, key = { it.rpid }) { reply ->
+        else -> items(
+            items = comments,
+            key = { it.rpid },
+            contentType = { DYNAMIC_COMMENT_ITEM_CONTENT_TYPE },
+        ) { reply ->
             ReplyItemView(
+                modifier = dynamicCommentItemModifier(),
                 item = reply,
                 onClick = { onViewReplies(reply) },
                 onSubClick = { root, _ -> onViewReplies(root) },
