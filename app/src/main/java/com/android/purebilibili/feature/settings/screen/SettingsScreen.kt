@@ -158,6 +158,9 @@ fun SettingsScreen(
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val dynamicImagePreviewTextVisible by SettingsManager.getDynamicImagePreviewTextVisible(context)
         .collectAsStateWithLifecycle(initialValue = true)
+    val dynamicCommentPreviewVisible by com.android.purebilibili.core.store.home.DynamicSettingsStore
+        .observeCommentPreviewVisible(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val dynamicDetailImageLayout by SettingsManager.getDynamicDetailImageLayout(context)
         .collectAsStateWithLifecycle(initialValue = SettingsManager.peekDynamicDetailImageLayout(context))
     val dynamicAllTabHorizontalUserListVisible by SettingsManager
@@ -866,6 +869,13 @@ fun SettingsScreen(
                         }
                     },
                     dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+                    dynamicCommentPreviewVisible = dynamicCommentPreviewVisible,
+                    onDynamicCommentPreviewVisibleChange = { visible ->
+                        scope.launch {
+                            com.android.purebilibili.core.store.home.DynamicSettingsStore
+                                .setCommentPreviewVisible(context, visible)
+                        }
+                    },
                     onDynamicImagePreviewTextVisibleChange = { visible ->
                         scope.launch {
                             SettingsManager.setDynamicImagePreviewTextVisible(context, visible)
@@ -1039,6 +1049,8 @@ private fun MobileSettingsNavLayout(
     onIncrementalTimelineRefreshChange: (Boolean) -> Unit,
     dynamicImagePreviewTextVisible: Boolean,
     onDynamicImagePreviewTextVisibleChange: (Boolean) -> Unit,
+    dynamicCommentPreviewVisible: Boolean,
+    onDynamicCommentPreviewVisibleChange: (Boolean) -> Unit,
     dynamicDetailImageLayout: SettingsManager.DynamicDetailImageLayout,
     onDynamicDetailImageLayoutChange: (SettingsManager.DynamicDetailImageLayout) -> Unit,
     dynamicAllTabHorizontalUserListVisible: Boolean,
@@ -1113,6 +1125,7 @@ private fun MobileSettingsNavLayout(
         onFeedApiTypeChange = onFeedApiTypeChange,
         onIncrementalTimelineRefreshChange = onIncrementalTimelineRefreshChange,
         onDynamicImagePreviewTextVisibleChange = onDynamicImagePreviewTextVisibleChange,
+        onDynamicCommentPreviewVisibleChange = onDynamicCommentPreviewVisibleChange,
         onDynamicDetailImageLayoutChange = onDynamicDetailImageLayoutChange,
         onDynamicAllTabHorizontalUserListVisibleChange = onDynamicAllTabHorizontalUserListVisibleChange,
         onDynamicTopBarCollapseOnScrollChange = onDynamicTopBarCollapseOnScrollChange,
@@ -1153,6 +1166,7 @@ private fun MobileSettingsNavLayout(
         feedApiType = feedApiType,
         incrementalTimelineRefreshEnabled = incrementalTimelineRefreshEnabled,
         dynamicImagePreviewTextVisible = dynamicImagePreviewTextVisible,
+        dynamicCommentPreviewVisible = dynamicCommentPreviewVisible,
         dynamicDetailImageLayout = dynamicDetailImageLayout,
         dynamicAllTabHorizontalUserListVisible = dynamicAllTabHorizontalUserListVisible,
         dynamicTopBarCollapseOnScroll = dynamicTopBarCollapseOnScroll,

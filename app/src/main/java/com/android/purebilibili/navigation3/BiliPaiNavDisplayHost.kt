@@ -47,6 +47,7 @@ import com.android.purebilibili.core.ui.LocalGlobalWallpaperBackdropVisible
 import com.android.purebilibili.core.ui.LocalSharedTransitionEnabled
 import com.android.purebilibili.core.ui.transition.LocalClickToPlayEnabled
 import com.android.purebilibili.core.ui.transition.LocalDynamicImagePreviewTextVisible
+import com.android.purebilibili.core.ui.transition.LocalDynamicCommentPreviewVisible
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
 import com.android.purebilibili.core.ui.transition.LocalMiuixVideoCardTransitionState
 import com.android.purebilibili.core.ui.transition.LocalVideoCardTransitionBackgroundState
@@ -724,6 +725,9 @@ internal fun BiliPaiNavDisplayHost(
     val dynamicImagePreviewTextVisible by com.android.purebilibili.core.store.SettingsManager
         .getDynamicImagePreviewTextVisible(LocalContext.current)
         .collectAsStateWithLifecycle(initialValue = true)
+    val dynamicCommentPreviewVisible by com.android.purebilibili.core.store.home.DynamicSettingsStore
+        .observeCommentPreviewVisible(LocalContext.current)
+        .collectAsStateWithLifecycle(initialValue = false)
 
     Box(
         modifier = Modifier
@@ -798,6 +802,7 @@ internal fun BiliPaiNavDisplayHost(
                         LocalPredictiveBackBackgroundState provides predictiveBackBackgroundState,
                         LocalClickToPlayEnabled provides clickToPlayEnabled,
                         LocalDynamicImagePreviewTextVisible provides dynamicImagePreviewTextVisible,
+                        LocalDynamicCommentPreviewVisible provides dynamicCommentPreviewVisible,
                         LocalSharedTransitionEnabled provides cardTransitionEnabled,
                     ) {
                         Box(

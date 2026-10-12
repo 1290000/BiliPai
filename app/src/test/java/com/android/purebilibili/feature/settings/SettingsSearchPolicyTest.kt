@@ -7,6 +7,22 @@ import kotlin.test.assertTrue
 class SettingsSearchPolicyTest {
 
     @Test
+    fun dynamicCommentPreviewTitleAndAliasesOpenHomeCategory() {
+        listOf("显示动态评论提示", "动态评论摘要", "动态评论预览", "相关评论").forEach { query ->
+            val result = resolveSettingsSearchResults(query)
+                .first { it.settingId == "home.dynamic_comment_preview_visible" }
+
+            assertEquals(SettingsSearchTarget.HOME_FEED, result.target)
+            assertEquals(SettingsRootCategory.HOME_RECOMMENDATION, result.page)
+            assertEquals("home_options", result.focusId)
+            assertEquals(
+                com.android.purebilibili.navigation3.BiliPaiNavKey.SettingsCategory(SettingsRootCategory.HOME_RECOMMENDATION),
+                resolveSettingsSearchNavigation(result),
+            )
+        }
+    }
+
+    @Test
     fun blankQuery_returnsEmptyList() {
         val results = resolveSettingsSearchResults("   ")
 
