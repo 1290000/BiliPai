@@ -1,12 +1,15 @@
 // 文件路径: data/repository/LiveRepository.kt
 package com.android.purebilibili.data.repository
 
+import com.android.purebilibili.core.coroutines.AppScope
 import com.android.purebilibili.core.network.AppSignUtils
 import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.store.TokenManager
 import com.android.purebilibili.data.model.response.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -100,6 +103,9 @@ data class LiveDanmakuPermission(
 
 private const val DEFAULT_LIVE_HEARTBEAT_INTERVAL_SEC = 60
 private const val DEFAULT_LIVE_DANMAKU_MAX_LENGTH = 40
+
+/** App 二级分区列表请求的 page_size；同时用于「无 hasMore/total 元数据」时的到底判断。 */
+private const val LIVE_APP_SECOND_LIST_PAGE_SIZE = 30
 
 internal fun hasPlayableLiveUrl(data: LivePlayUrlData): Boolean {
     if (data.durl.orEmpty().any { it.url.isNotBlank() }) return true
@@ -571,7 +577,9 @@ object LiveRepository {
                 val hasMore = hasMoreLiveAreaRooms(
                     loadedCount = checkedRespData.list.orEmpty().size,
                     page = page,
-                    pageSize = 20,
+                    // 传请求时的 page_size（而非实际返回条数）：无 hasMore/total 时按
+                    // 「短页即到底」兜底，且不会因服务器少回条目而误判。
+                    pageSize = LIVE_APP_SECOND_LIST_PAGE_SIZE,
                     hasMoreFlag = checkedRespData.hasMore,
                     totalCount = checkedRespData.count
                 )
@@ -698,7 +706,7 @@ object LiveRepository {
             "module_select" to "0",
             "network" to "wifi",
             "page" to page.toString(),
-            "page_size" to "20",
+            "page_size" to LIVE_APP_SECOND_LIST_PAGE_SIZE.toString(),
             "platform" to "android",
             "qn" to "0",
             "tag_version" to "1",
@@ -739,11 +747,48 @@ object LiveRepository {
         )
     }
 
-    suspend fun getLiveAreaIndex(): Result<List<LiveAreaParent>> = withContext(Dispatchers.IO) {
+    // 分区索引复用：并发调用共享同一个 in-flight 请求（去重），成功结果缓存短 TTL，
+    // 失败不入缓存——下次调用会重新请求，避免把一次失败固化成长期空数据。
+    private val areaIndexMutex = kotlinx.coroutines.sync.Mutex()
+    private var areaIndexCache: List<LiveAreaParent>? = null
+    private var areaIndexCachedAt = 0L
+    private var areaIndexInFlight: kotlinx.coroutines.Deferred<Result<List<LiveAreaParent>>>? = null
+
+    private const val AREA_INDEX_TTL_MS = 60_000L
+
+    suspend fun getLiveAreaIndex(): Result<List<LiveAreaParent>> {
+        // 先在锁内决定：命中缓存 / 复用 in-flight / 新建共享请求。
+        val start = areaIndexMutex.withLock {
+            val now = android.os.SystemClock.elapsedRealtime()
+            areaIndexCache?.takeIf { now - areaIndexCachedAt < AREA_INDEX_TTL_MS }?.let {
+                return Result.success(it)
+            }
+            val inFlight = areaIndexInFlight
+            if (inFlight != null) {
+                inFlight
+            } else {
+                val created = AppScope.ioScope.async { fetchLiveAreaIndex() }
+                areaIndexInFlight = created
+                created
+            }
+        }
+        val result = start.await()
+        areaIndexMutex.withLock {
+            // 无论成功失败都清 in-flight；只有成功才写缓存（失败不入缓存）。
+            if (areaIndexInFlight === start) areaIndexInFlight = null
+            result.getOrNull()?.let { areas ->
+                areaIndexCache = areas
+                areaIndexCachedAt = android.os.SystemClock.elapsedRealtime()
+            }
+        }
+        return result
+    }
+
+    private suspend fun fetchLiveAreaIndex(): Result<List<LiveAreaParent>> = withContext(Dispatchers.IO) {
         try {
             val resp = api.getLiveAreaList()
-            if (resp.code == 0) {
-                Result.success(resp.data ?: emptyList())
+            if (resp.code == 0 && resp.data != null) {
+                Result.success(requireNotNull(resp.data))
             } else {
                 Result.failure(Exception(resp.message.ifBlank { resp.msg.ifBlank { "获取直播标签失败" } }))
             }

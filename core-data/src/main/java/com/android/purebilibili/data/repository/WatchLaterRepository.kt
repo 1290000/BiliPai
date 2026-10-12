@@ -24,7 +24,7 @@ fun buildWatchLaterPageParams(
     ascending: Boolean,
 ): Map<String, String> = mapOf(
     "pn" to page.coerceAtLeast(1).toString(),
-    "ps" to "20",
+    "ps" to "30",
     "viewed" to viewed.toString(),
     "key" to keyword.trim(),
     "asc" to ascending.toString(),
@@ -47,7 +47,7 @@ object WatchLaterRepository {
         })
         true
     }
-    private const val PAGE_SIZE = 20
+    private const val PAGE_SIZE = 30
     private val api = NetworkModule.api
 
     suspend fun getPage(
@@ -102,7 +102,8 @@ object WatchLaterRepository {
             WatchLaterPage(
                 items = items,
                 totalCount = total,
-                hasMore = page * PAGE_SIZE < total,
+                hasMore = items.isNotEmpty() && page.toLong() *
+                    (data?.ps?.takeIf { it > 0 } ?: minOf(PAGE_SIZE, items.size).coerceAtLeast(1)) < total,
             )
         }
     }

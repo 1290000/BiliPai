@@ -14,6 +14,7 @@ import com.android.purebilibili.data.repository.HistoryRepository
 import com.android.purebilibili.data.repository.shouldContinueDynamicFetchAfterFilter
 import com.android.purebilibili.feature.bangumi.MY_FOLLOW_TYPE_BANGUMI
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -81,6 +82,8 @@ sealed class SpaceUiState {
         val bangumiPage: Int = 1,
         val isLoadingBangumi: Boolean = false,
         val hasMoreBangumi: Boolean = true,
+        val hasLoadedBangumiOnce: Boolean = false,
+        val lastBangumiLoadFailed: Boolean = false,
         //  动态 Tab
         val dynamics: List<SpaceDynamicItem> = emptyList(),
         val dynamicOffset: String = "",
@@ -133,6 +136,13 @@ class SpaceViewModel(
         val data: SpaceVideoData,
         val resolvedPage: Int
     )
+
+    /** 首屏 HOME Tab（置顶视频 + 公告）的预取结果。 */
+    private data class SpaceHomePayload(
+        val mid: Long,
+        val topVideo: SpaceTopArcData?,
+        val notice: String?,
+    )
     
     private val spaceApi = NetworkModule.spaceApi
     
@@ -181,6 +191,11 @@ class SpaceViewModel(
     private var activeVideoListJob: Job? = null
     private var activeSpaceWatchHistoryJob: Job? = null
     private var activeVideoListGeneration: Long = 0
+
+    // 首屏 HOME Tab（置顶视频 + 公告）预取：与 loadSpaceInfo 同时发出，把
+    // 「等空间信息加载完 → 再拉 HOME」两段串行压成一段并行。结果由 loadSpaceHome() 消费。
+    private var homePrefetchMid: Long = 0L
+    private var homePrefetchDeferred: Deferred<SpaceHomePayload>? = null
     private val collectionPreviewLimit = 3
     private var currentKeyword: String = ""
     
@@ -229,8 +244,11 @@ class SpaceViewModel(
 
         activeSpaceLoadJob = viewModelScope.launch {
             _uiState.value = SpaceUiState.Loading
-            
+
             try {
+                // HOME Tab（置顶视频 + 公告）与空间信息互不依赖，这里就一起发出去，
+                // 省掉「等空间信息加载完 → 再拉 HOME」那段串行往返。
+                preloadSpaceHome(mid)
                 val cardTopPhotoDeferred = async { fetchUserCardSpaceTopPhoto(mid) }
                 val aggregateDeferred = async { fetchSpaceAggregate(mid) }
                 val keysDeferred = async { fetchWbiKeys() }
@@ -1285,11 +1303,11 @@ class SpaceViewModel(
         viewModelScope.launch {
             try {
                 _uiState.value = current.markTabLoading(SpaceMainTab.HOME)
-                val topVideoDeferred = async { fetchTopArc(currentMid) }
-                val noticeDeferred = async { fetchNotice(currentMid) }
-                
-                val topVideo = topVideoDeferred.await()
-                val notice = noticeDeferred.await()
+                // 命中首屏预取就直接取它的结果（多数情况下已经完成，await 不会挂起，
+                // 因此「置 loading」和「落结果」落在同一帧，连 loading 都不会闪一下）。
+                val payload = resolveSpaceHomePayload(currentMid)
+                val topVideo = payload.topVideo
+                val notice = payload.notice
                 
                 val latest = _uiState.value as? SpaceUiState.Success ?: current
                 _uiState.value = latest.copy(
@@ -1315,6 +1333,49 @@ class SpaceViewModel(
                     error = e.message ?: "加载失败"
                 )
             }
+        }
+    }
+
+    /**
+     * 用路由里的 mid 立刻预取 HOME Tab 数据（置顶视频 + 公告）。
+     *
+     * 只负责把请求提前发出去，不碰 UI 状态——状态仍由 [loadSpaceHome] 统一落盘，
+     * 这样 Tab 壳的 loading/hasLoaded 记账逻辑不会被绕过。
+     */
+    private fun preloadSpaceHome(mid: Long) {
+        if (mid <= 0L || mid == homePrefetchMid) return
+        homePrefetchMid = mid
+        homePrefetchDeferred?.cancel()
+        homePrefetchDeferred = viewModelScope.async {
+            val topVideoDeferred = async { fetchTopArc(mid) }
+            val noticeDeferred = async { fetchNotice(mid) }
+            SpaceHomePayload(
+                mid = mid,
+                topVideo = topVideoDeferred.await(),
+                notice = noticeDeferred.await(),
+            )
+        }
+    }
+
+    /**
+     * 取 HOME Tab 数据：有同 mid 的预取就复用它，否则当场发请求。
+     * 消费后立刻清空，避免刷新时拿到旧快照。
+     */
+    private suspend fun resolveSpaceHomePayload(mid: Long): SpaceHomePayload {
+        val deferred = homePrefetchDeferred
+        if (deferred != null && homePrefetchMid == mid) {
+            homePrefetchDeferred = null
+            homePrefetchMid = 0L
+            return deferred.await()
+        }
+        return coroutineScope {
+            val topVideoDeferred = async { fetchTopArc(mid) }
+            val noticeDeferred = async { fetchNotice(mid) }
+            SpaceHomePayload(
+                mid = mid,
+                topVideo = topVideoDeferred.await(),
+                notice = noticeDeferred.await(),
+            )
         }
     }
     
@@ -1475,16 +1536,19 @@ class SpaceViewModel(
         if (current.isLoadingBangumi) return
         if (!refresh && !current.hasMoreBangumi) return
 
+        val requestMid = currentMid
+        val generation = activeSpaceLoadGeneration
+        val page = if (refresh || !current.hasLoadedBangumiOnce) 1 else current.bangumiPage + 1
+        _uiState.value = current.copy(isLoadingBangumi = true).markTabLoading(SpaceMainTab.BANGUMI)
         viewModelScope.launch {
-            val page = if (refresh) 1 else current.bangumiPage + 1
-            _uiState.value = current.copy(isLoadingBangumi = true).markTabLoading(SpaceMainTab.BANGUMI)
-
             BangumiRepository.getMyFollowBangumi(
                 type = MY_FOLLOW_TYPE_BANGUMI,
                 page = page,
-                vmid = currentMid
+                pageSize = 20,
+                vmid = requestMid
             ).fold(
                 onSuccess = { data ->
+                    if (!shouldApplySpaceLoadResult(requestMid, currentMid, generation, activeSpaceLoadGeneration)) return@fold
                     val latest = _uiState.value as? SpaceUiState.Success ?: return@fold
                     val incomingItems = data.list.orEmpty()
                     val previousItems = if (refresh) emptyList() else latest.bangumiItems
@@ -1506,11 +1570,18 @@ class SpaceViewModel(
                             pageSize = data.ps,
                             total = data.total,
                         ),
+                        hasLoadedBangumiOnce = true,
+                        lastBangumiLoadFailed = false,
                     ).markTabResult(SpaceMainTab.BANGUMI)
                 },
                 onFailure = { error ->
+                    if (!shouldApplySpaceLoadResult(requestMid, currentMid, generation, activeSpaceLoadGeneration)) return@fold
                     val latest = _uiState.value as? SpaceUiState.Success ?: return@fold
-                    _uiState.value = latest.copy(isLoadingBangumi = false).markTabResult(
+                    _uiState.value = latest.copy(
+                        isLoadingBangumi = false,
+                        lastBangumiLoadFailed = true,
+                        hasLoadedBangumiOnce = true
+                    ).markTabResult(
                         SpaceMainTab.BANGUMI,
                         error = error.message ?: "追番加载失败",
                         // An automatic initial request must settle even on privacy/network errors;

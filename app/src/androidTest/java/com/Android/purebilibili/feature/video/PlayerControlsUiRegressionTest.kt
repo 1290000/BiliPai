@@ -34,6 +34,7 @@ class PlayerControlsUiRegressionTest {
                 TopControlBar(
                     title = "测试视频",
                     isFullscreen = false,
+                    likeStatusKnown = false,
                     showCurrentTime = false,
                     showInteractiveActions = false,
                     showCastButton = castVisible.value,
@@ -45,6 +46,34 @@ class PlayerControlsUiRegressionTest {
 
         composeTestRule.runOnIdle { castVisible.value = true }
         composeTestRule.onNodeWithContentDescription("投屏").assertExists()
+    }
+
+    @Test
+    fun likeButton_unknownStateKeepsDisabledSlotUntilKnown() {
+        val known = mutableStateOf(false)
+        var clicks = 0
+        composeTestRule.setContent {
+            MaterialTheme {
+                TopControlBar(
+                    title = "测试视频",
+                    isFullscreen = true,
+                    statusBarVisible = false,
+                    showCurrentTime = false,
+                    likeStatusKnown = known.value,
+                    isLiked = true,
+                    onLikeClick = { clicks += 1 },
+                    onBack = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("点赞状态尚未确认")
+            .assertExists().assertIsNotEnabled().performClick()
+        composeTestRule.runOnIdle {
+            assertTrue(clicks == 0)
+            known.value = true
+        }
+        composeTestRule.onNodeWithContentDescription("点赞").assertIsEnabled().performClick()
+        composeTestRule.runOnIdle { assertTrue(clicks == 1) }
     }
 
     @Test

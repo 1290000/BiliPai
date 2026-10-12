@@ -55,7 +55,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.android.purebilibili.core.network.NetworkModule
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.AppSpacingTokens
@@ -142,11 +141,8 @@ class LiveListViewModel(application: Application) : AndroidViewModel(application
             loadPage(request, state)
             // 分区详情子标签仍用 web area list 兜底；元数据不依赖当前分类。
             if (_uiState.value.areaList.isEmpty()) {
-                runCatching {
-                    val response = NetworkModule.api.getLiveAreaList()
-                    if (response.code == 0 && response.data != null) {
-                        _uiState.value = _uiState.value.copy(areaList = requireNotNull(response.data))
-                    }
+                LiveRepository.getLiveAreaIndex().onSuccess { areas ->
+                    _uiState.value = _uiState.value.copy(areaList = areas)
                 }
             }
         }

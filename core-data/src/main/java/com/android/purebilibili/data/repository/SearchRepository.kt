@@ -68,20 +68,16 @@ object SearchRepository {
         responsePage: Int,
         totalPages: Int,
         totalResults: Int,
-        fallbackResultCount: Int
-    ): SearchPageInfo {
-        val resolvedPage = resolveSearchLoadedPage(
-            requestedPage = requestedPage,
-            responsePage = responsePage
-        )
-        val resolvedTotalPages = totalPages.takeIf { it > 0 } ?: 1
-        return SearchPageInfo(
-            currentPage = resolvedPage,
-            totalPages = resolvedTotalPages,
-            totalResults = totalResults.takeIf { it > 0 } ?: fallbackResultCount,
-            hasMore = resolvedPage < resolvedTotalPages
-        )
-    }
+        fallbackResultCount: Int,
+        pageSize: Int
+    ): SearchPageInfo = resolveVideoSearchPageInfo(
+        requestedPage = requestedPage,
+        responsePage = responsePage,
+        totalPages = totalPages,
+        totalResults = totalResults,
+        pageSize = pageSize,
+        resultCount = fallbackResultCount
+    )
 
     private fun searchTypeParams(
         keyword: String,
@@ -93,7 +89,7 @@ object SearchRepository {
             "keyword" to keyword,
             "search_type" to searchType,
             "page" to page.toString(),
-            "page_size" to "20",
+            "page_size" to "30",
             "platform" to "pc",
             "web_location" to "1430654"
         ).apply { putAll(extra) }
@@ -116,7 +112,7 @@ object SearchRepository {
                 "order" to order.value,
                 "duration" to duration.value.toString(),
                 "page" to page.toString(),
-                "page_size" to "20",
+                "page_size" to "30",
                 "platform" to "pc",
                 "web_location" to "1430654"
             )
@@ -251,9 +247,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: upList.size,
-                fallbackResultCount = upList.size
+                fallbackResultCount = upList.size,
+                pageSize = response.data?.pagesize ?: 0
             )
             
             com.android.purebilibili.core.network.CoreDataLog.d(
@@ -369,9 +366,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: bangumiList.size,
-                fallbackResultCount = bangumiList.size
+                fallbackResultCount = bangumiList.size,
+                pageSize = response.data?.pageSize ?: 0
             )
             
             com.android.purebilibili.core.network.CoreDataLog.d("SearchRepo", "🔍 Bangumi search result: ${bangumiList.size} items, page ${pageInfo.currentPage}/${pageInfo.totalPages}")
@@ -412,9 +410,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: resultList.size,
-                fallbackResultCount = resultList.size
+                fallbackResultCount = resultList.size,
+                pageSize = response.data?.pageSize ?: 0
             )
 
             com.android.purebilibili.core.network.CoreDataLog.d(
@@ -456,9 +455,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: liveList.size,
-                fallbackResultCount = liveList.size
+                fallbackResultCount = liveList.size,
+                pageSize = response.data?.pagesize ?: 0
             )
             
             com.android.purebilibili.core.network.CoreDataLog.d("SearchRepo", "🔍 Live search result: ${liveList.size} rooms, page ${pageInfo.currentPage}/${pageInfo.totalPages}")
@@ -501,9 +501,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: articleList.size,
-                fallbackResultCount = articleList.size
+                fallbackResultCount = articleList.size,
+                pageSize = response.data?.pagesize ?: 0
             )
 
             Result.success(Pair(articleList, pageInfo))
@@ -528,9 +529,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: items.size,
-                fallbackResultCount = items.size
+                fallbackResultCount = items.size,
+                pageSize = response.data?.pagesize ?: 0
             )
             Result.success(Pair(items, pageInfo))
         } catch (e: Exception) {
@@ -554,9 +556,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: items.size,
-                fallbackResultCount = items.size
+                fallbackResultCount = items.size,
+                pageSize = response.data?.pagesize ?: 0
             )
             Result.success(Pair(items, pageInfo))
         } catch (e: Exception) {
@@ -592,9 +595,10 @@ object SearchRepository {
             val pageInfo = createPageInfo(
                 requestedPage = page,
                 responsePage = response.data?.page ?: page,
-                totalPages = response.data?.numPages ?: 1,
+                totalPages = response.data?.numPages ?: 0,
                 totalResults = response.data?.numResults ?: items.size,
-                fallbackResultCount = items.size
+                fallbackResultCount = items.size,
+                pageSize = response.data?.pagesize ?: 0
             )
             Result.success(Pair(items, pageInfo))
         } catch (e: Exception) {
