@@ -202,6 +202,7 @@ internal fun PortraitInlineVideoPlayerHost(
     fullscreenExtras: ContinuousPlayerFullscreenExtras? = null,
     residentCoverSource: VideoDetailResidentCoverSource? = null,
     suppressTransientOverlaysForTransition: Boolean = false,
+    showPlaybackErrorNotice: Boolean = false,
 ) {
     val successState = uiState as? VideoPlaybackUiState.Success
     // 竖屏全屏由 PortraitVideoPager 接管播放面；内联 section 不得再合成。
@@ -367,5 +368,12 @@ internal fun PortraitInlineVideoPlayerHost(
                 onRecallDanmaku = playbackActions.recallDanmaku,
             ),
         )
+        if (showPlaybackErrorNotice && uiState is VideoPlaybackUiState.Error && !suppressTransientOverlaysForTransition) {
+            VideoDetailPlaybackErrorNotice(
+                state = uiState,
+                onRetry = playbackActions.retryPlayback,
+                modifier = Modifier.matchParentSize()
+            )
+        }
     }
 }

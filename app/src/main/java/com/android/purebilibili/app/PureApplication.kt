@@ -560,6 +560,7 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
             com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.trimToSize(16)
             com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clearCache()
             com.android.purebilibili.core.cache.PlayUrlCache.clear()
+            com.android.purebilibili.data.repository.VideoRepository.clearVideoDetailCaches()
             com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
         } else if (level == ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
             level == ComponentCallbacks2.TRIM_MEMORY_MODERATE ||
@@ -569,6 +570,7 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
             com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.trimToSize(8)
             com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clearCache()
             com.android.purebilibili.core.cache.PlayUrlCache.clear()
+            com.android.purebilibili.data.repository.VideoRepository.clearVideoDetailCaches()
             com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
         }
 
@@ -602,6 +604,7 @@ class PureApplication : Application(), SingletonImageLoader.Factory, ComponentCa
         com.android.purebilibili.feature.home.components.cards.VideoCardCoverColorStore.trimToSize(8)
         com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.clearCache()
         com.android.purebilibili.core.cache.PlayUrlCache.clear()
+        com.android.purebilibili.data.repository.VideoRepository.clearVideoDetailCaches()
         com.android.purebilibili.data.repository.VideoRepository.clearSubtitleCueCache()
         NetworkModule.evictIdleConnections()
         Logger.d(PureApplicationRuntimeConfig.TAG, "🚨 onLowMemory, cleared all caches")

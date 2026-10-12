@@ -3,6 +3,7 @@ package com.android.purebilibili.core.cache
 
 import android.util.LruCache
 import com.android.purebilibili.data.model.response.PlayUrlData
+import com.android.purebilibili.data.repository.videoPlaybackAccountScope
 
 /**
  * 播放地址缓存管理器
@@ -28,9 +29,28 @@ object PlayUrlCache {
         val requestedAudioLang: String?,
         val timestamp: Long = System.currentTimeMillis()
     ) {
-        val expiresAt: Long get() = timestamp + CACHE_DURATION_MS
+        val expiresAt: Long = resolvePlayUrlCacheExpiresAt(
+            timestampMs = timestamp,
+            maxAgeMs = CACHE_DURATION_MS,
+            urls = buildList {
+                data.dash?.video.orEmpty().forEach { track ->
+                    add(track.baseUrl)
+                    addAll(track.backupUrl.orEmpty())
+                }
+                val audios = data.dash?.audio.orEmpty() + data.dash?.dolby?.audio.orEmpty() +
+                    listOfNotNull(data.dash?.flac?.audio)
+                audios.forEach { track ->
+                    add(track.baseUrl)
+                    addAll(track.backupUrl.orEmpty())
+                }
+                data.durl.orEmpty().forEach { stream ->
+                    add(stream.url)
+                    addAll(stream.backupUrl.orEmpty())
+                }
+            }
+        )
         
-        fun isExpired(): Boolean = System.currentTimeMillis() > expiresAt
+        fun isExpired(): Boolean = System.currentTimeMillis() >= expiresAt
     }
     
     /**
@@ -40,14 +60,16 @@ object PlayUrlCache {
         bvid: String,
         cid: Long,
         requestedQuality: Int?,
-        audioLang: String?
+        audioLang: String?,
+        accountScope: String
     ): String {
         val qualityKey = requestedQuality?.toString() ?: "auto"
         val audioKey = audioLang ?: "default"
-        return "$bvid:$cid:q=$qualityKey:a=$audioKey"
+        return "$accountScope:$bvid:$cid:q=$qualityKey:a=$audioKey"
     }
 
-    private fun generateVideoPrefix(bvid: String, cid: Long): String = "$bvid:$cid:"
+    private fun generateVideoPrefix(bvid: String, cid: Long, accountScope: String): String =
+        "$accountScope:$bvid:$cid:"
     
     /**
      * 缓存实例
@@ -68,15 +90,16 @@ object PlayUrlCache {
         bvid: String,
         cid: Long,
         requestedQuality: Int? = null,
-        audioLang: String? = null
+        audioLang: String? = null,
+        accountScope: String = videoPlaybackAccountScope()
     ): PlayUrlData? {
-        val key = generateKey(bvid, cid, requestedQuality, audioLang)
+        val key = generateKey(bvid, cid, requestedQuality, audioLang, accountScope)
         val exact = cache.get(key)
 
         val (matchedKey, cached) = when {
             exact != null -> key to exact
             requestedQuality == null && audioLang == null -> {
-                findNewestValidCacheForVideo(bvid, cid)
+                findNewestValidCacheForVideo(bvid, cid, accountScope)
                     ?: (key to null)
             }
             else -> key to null
@@ -124,9 +147,10 @@ object PlayUrlCache {
         cid: Long,
         data: PlayUrlData,
         quality: Int? = null,
-        audioLang: String? = null
+        audioLang: String? = null,
+        accountScope: String = videoPlaybackAccountScope()
     ) {
-        val key = generateKey(bvid, cid, quality, audioLang)
+        val key = generateKey(bvid, cid, quality, audioLang, accountScope)
         val entry = CachedPlayUrl(
             bvid = bvid,
             cid = cid,
@@ -135,6 +159,10 @@ object PlayUrlCache {
             requestedQuality = quality,
             requestedAudioLang = audioLang
         )
+        if (entry.isExpired()) {
+            cache.remove(key)
+            return
+        }
         cache.put(key, entry)
         com.android.purebilibili.core.util.Logger.d(
             TAG,
@@ -150,10 +178,11 @@ object PlayUrlCache {
         bvid: String,
         cid: Long,
         requestedQuality: Int? = null,
-        audioLang: String? = null
+        audioLang: String? = null,
+        accountScope: String = videoPlaybackAccountScope()
     ) {
         if (requestedQuality == null && audioLang == null) {
-            val prefix = generateVideoPrefix(bvid, cid)
+            val prefix = generateVideoPrefix(bvid, cid, accountScope)
             var removedCount = 0
             val keys = cache.snapshot().keys
             keys.forEach { key ->
@@ -169,7 +198,7 @@ object PlayUrlCache {
             return
         }
 
-        val key = generateKey(bvid, cid, requestedQuality, audioLang)
+        val key = generateKey(bvid, cid, requestedQuality, audioLang, accountScope)
         cache.remove(key)
         com.android.purebilibili.core.util.Logger.d(
             TAG,
@@ -199,8 +228,8 @@ object PlayUrlCache {
                "hitCount=${cache.hitCount()}, missCount=${cache.missCount()}"
     }
 
-    private fun findNewestValidCacheForVideo(bvid: String, cid: Long): Pair<String, CachedPlayUrl>? {
-        val prefix = generateVideoPrefix(bvid, cid)
+    private fun findNewestValidCacheForVideo(bvid: String, cid: Long, accountScope: String): Pair<String, CachedPlayUrl>? {
+        val prefix = generateVideoPrefix(bvid, cid, accountScope)
         var candidate: Pair<String, CachedPlayUrl>? = null
         val snapshot = cache.snapshot()
 

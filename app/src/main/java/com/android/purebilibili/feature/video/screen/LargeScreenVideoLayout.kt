@@ -61,6 +61,7 @@ import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState
 internal fun LargeScreenVideoLayout(
     playerState: VideoPlayerState,
     uiState: VideoPlaybackUiState,
+    detailContentState: VideoPlaybackUiState.Success? = null,
     commentState: CommentUiState,
     engagementState: VideoEngagementUiState,
     subReplyState: SubReplyUiState,
@@ -139,7 +140,7 @@ internal fun LargeScreenVideoLayout(
             defaultTab = secondaryDefaultTab,
         )
         val includeRelatedTab = resolveIncludeRelatedTabInSecondary(metrics.mode)
-        val success = uiState as? VideoPlaybackUiState.Success
+        val success = detailContentState ?: (uiState as? VideoPlaybackUiState.Success)
         val player: @Composable (Modifier) -> Unit = { modifier ->
             LargeScreenPlayerHost(
                 modifier = modifier,
