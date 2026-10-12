@@ -2,8 +2,6 @@
 package com.android.purebilibili.feature.video.screen
 
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.ui.graphics.luminance
-import com.android.purebilibili.feature.video.ui.overlay.playerControlGlassSurface
 
 import com.android.purebilibili.navigation.animatePagerSelection
 import com.android.purebilibili.core.ui.components.AppIcon
@@ -2207,54 +2205,25 @@ private fun VideoContentTabBar(
                         enter = fadeIn() + expandHorizontally(expandFrom = Alignment.Start),
                         exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.Start),
                     ) {
-                        if (liquidGlassEnabledForTabBar) {
-                            com.android.purebilibili.core.ui.components.AppIconButton(
-                                onClick = onDanmakuSendClick,
-                                modifier = Modifier
-                                    .size(AppChromeSizeTokens.MinimumTouchTarget)
-                                    .playerControlGlassSurface(
-                                        backdrop = miuixBackdrop,
-                                        shape = androidx.compose.foundation.shape.CircleShape,
-                                        darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
-                                    ),
-                            ) {
-                                AppIcon(
-                                    imageVector = androidx.compose.material.icons.Icons.Outlined.Edit,
-                                    contentDescription = danmakuActionLayoutPolicy.sendLabel,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        } else {
-                            AppText(
-                                text = danmakuActionLayoutPolicy.sendLabel,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                tapToCopyEnabled = false,
-                                modifier = Modifier
-                                    .sizeIn(
-                                        minWidth = AppChromeSizeTokens.MinimumTouchTarget,
-                                        minHeight = danmakuActionLayoutPolicy.sendMinHeightDp.dp,
-                                    )
-                                    .wrapContentHeight(align = Alignment.CenterVertically)
-                                    .clickable(onClick = onDanmakuSendClick),
-                            )
+                        com.android.purebilibili.core.ui.components.AppIconButton(
+                            onClick = onDanmakuSendClick,
+                            modifier = Modifier
+                                .width(40.dp)
+                                .heightIn(min = AppChromeSizeTokens.MinimumTouchTarget),
+                        ) {
+                            com.android.purebilibili.feature.video.ui.components.PiliPlusDanmakuSendIcon()
                         }
                     }
 
                     NativeDanmakuToggleButton(
                         enabled = danmakuEnabled,
                         onToggle = onDanmakuToggle,
-                        activeTint = MaterialTheme.colorScheme.onSurface,
+                        activeTint = MaterialTheme.colorScheme.primary,
                         inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .padding(end = danmakuActionLayoutPolicy.toggleTrailingPaddingDp.dp)
-                            .size(danmakuActionLayoutPolicy.toggleButtonSizeDp.dp)
-                            .playerControlGlassSurface(
-                                backdrop = miuixBackdrop,
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f,
-                            ),
+                            .width(40.dp)
+                            .height(AppChromeSizeTokens.MinimumTouchTarget),
                         iconSize = danmakuActionLayoutPolicy.toggleIconSizeDp.dp,
                     )
                 }

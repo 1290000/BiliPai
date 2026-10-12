@@ -146,13 +146,14 @@ internal fun Modifier.playerControlGlassSurface(
     backdrop: Backdrop?,
     shape: Shape = RoundedCornerShape(50),
     darkTheme: Boolean = true,
+    containerColor: Color? = null,
 ): Modifier {
     if (!LocalAppThemeConfig.current.liquidGlassEnabled || backdrop == null) return this
     val tuning = LocalLiquidGlassRenderConfig.current.tuning
     return biliPaiFloatingDockShell(
         backdrop = backdrop,
         shape = shape,
-        containerColor = resolveBiliPaiBottomBarContainerColor(
+        containerColor = containerColor ?: resolveBiliPaiBottomBarContainerColor(
             darkTheme = darkTheme,
             liquidGlassTuning = tuning,
         ),

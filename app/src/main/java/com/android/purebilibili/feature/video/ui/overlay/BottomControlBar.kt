@@ -484,6 +484,9 @@ fun BottomControlBar(
     onPlaybackOrderClick: () -> Unit = {},
     progressPlacement: PlayerProgressPlacement = PlayerProgressPlacement.ABOVE_CONTROLS,
     onPipClick: () -> Unit = {},
+    cdnDiagnosticsAvailable: Boolean = false,
+    onCdnDiagnosticsClick: () -> Unit = {},
+    onPlayerSettingsClick: (() -> Unit)? = null,
     onFloatingPanelVisibilityChange: (Boolean) -> Unit = {},
     /** 紧凑布局：控制行更贴左右边缘，并更靠近进度条。 */
     compactPlayerChrome: Boolean = false,
@@ -737,13 +740,27 @@ fun BottomControlBar(
         )
     }
     val glassProgressDock = isFullscreen && com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
+    val showDirectTools = isFullscreen && danmakuSendInTopBar && uiLayoutWidthDp >= 840
+    val dockProgressLayoutPolicy = if (glassProgressDock) {
+        // The track's touch row matches the shell, keeping the track vertically centered.
+        // Chapter chrome stays above that row, as does the separate seek preview area.
+        val trackRowHeightDp = PlayerChromeLayout.CircularButtonSizeDp
+        progressLayoutPolicy.copy(
+            baseHeightWithoutChapterDp = trackRowHeightDp,
+            baseHeightWithChapterDp = trackRowHeightDp +
+                progressLayoutPolicy.baseHeightWithChapterDp - progressLayoutPolicy.touchContainerHeightDp,
+            touchContainerHeightDp = trackRowHeightDp,
+        )
+    } else {
+        progressLayoutPolicy
+    }
     val progressBarContent: @Composable () -> Unit = {
         val renderProgress: @Composable (Modifier) -> Unit = { progressModifier ->
             PlayerControlProgressBar(
                 progressProvider = progressProvider,
                 displayPositionProvider = displayedPositionProvider,
                 isSeekScrubbing = isSeekScrubbing,
-                layoutPolicy = progressLayoutPolicy,
+                layoutPolicy = dockProgressLayoutPolicy,
                 neutralGlassTrack = glassProgressDock,
                 onSeek = onSeek,
                 onSeekStart = onSeekStart,
@@ -779,17 +796,9 @@ fun BottomControlBar(
                 )
                 renderProgress(
                     Modifier
+                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .padding(start = 52.dp, end = 14.dp),
-                )
-                OverlayPlaybackButton(
-                    isPlaying = isPlaying,
-                    onClick = onPlayPauseClick,
-                    outerSize = 48.dp,
-                    glyphSize = 24.dp,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .playerControlGlassCircularButton(),
+                        .padding(horizontal = 14.dp),
                 )
             }
             Spacer(modifier = Modifier.height(6.dp))
@@ -825,7 +834,11 @@ fun BottomControlBar(
         }
 
         // 2. Control Row
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides layoutPolicy.playButtonSizeDp.dp) {
+        CompositionLocalProvider(
+            LocalMinimumInteractiveComponentSize provides layoutPolicy.playButtonSizeDp.dp,
+            com.android.purebilibili.core.ui.components.LocalElasticPressEnabled provides
+                (!isFullscreen && com.android.purebilibili.core.ui.components.LocalElasticPressEnabled.current),
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -855,17 +868,6 @@ fun BottomControlBar(
                             .padding(horizontal = 4.dp) else Modifier,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Left: Play/Pause
-                        if (!glassProgressDock) {
-                            OverlayPlaybackButton(
-                                isPlaying = isPlaying,
-                                onClick = onPlayPauseClick,
-                                outerSize = layoutPolicy.playButtonSizeDp.dp,
-                                glyphSize = layoutPolicy.playIconSizeDp.dp,
-                                modifier = if (!isFullscreen) Modifier.playerControlGlassCircularButton() else Modifier,
-                            )
-                        }
-
                         if (isFullscreen && uiLayoutWidthDp >= 840 && showNextEpisodeButton) {
                             AppIconButton(
                                 onClick = onNextEpisodeClick,
@@ -880,7 +882,6 @@ fun BottomControlBar(
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(layoutPolicy.afterPlaySpacingDp.dp))
 
                         ProgressTimeText(
                             positionProvider = displayedPositionProvider,
@@ -905,11 +906,9 @@ fun BottomControlBar(
                                 onClick = onDanmakuSettingsClick,
                                 modifier = if (isFullscreen) Modifier.size(48.dp) else Modifier,
                             ) {
-                                AppIcon(
-                                    imageVector = Icons.Outlined.Settings,
-                                    contentDescription = "弹幕设置",
+                                com.android.purebilibili.feature.video.ui.components.PiliPlusDanmakuSettingsIcon(
                                     tint = Color.White.copy(alpha = 0.9f),
-                                    modifier = if (isFullscreen) Modifier.size(22.dp) else Modifier,
+                                    size = if (isFullscreen) 22.dp else layoutPolicy.danmakuIconSizeDp.dp,
                                 )
                             }
 
@@ -993,7 +992,6 @@ fun BottomControlBar(
                     Spacer(modifier = Modifier.weight(1f))
                 }
                 if (danmakuSendInTopBar) {
-                    Spacer(modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(PlayerChromeLayout.ActionGapDp.dp))
                 }
 
@@ -1001,18 +999,23 @@ fun BottomControlBar(
                 PlayerControlGlassDock(
                     enabled = true,
                     modifier = if (isFullscreen) Modifier
-                        .widthIn(max = (uiLayoutWidthDp * 0.62f).dp)
+                        .then(
+                            if (danmakuSendInTopBar) Modifier.weight(1f)
+                            else Modifier.widthIn(max = (uiLayoutWidthDp * 0.62f).dp)
+                        )
                         .height(48.dp)
                     else Modifier,
                 ) {
                     Row(
                         modifier = if (isFullscreen) Modifier
                             .fillMaxHeight()
+                            // Keep the scroll viewport away from the dock's rounded ends.
+                            .padding(horizontal = 10.dp)
                             .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 4.dp) else Modifier,
+                            .padding(horizontal = 2.dp) else Modifier,
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(
-                            if (isFullscreen) PlayerChromeLayout.ActionGapDp.dp else layoutPolicy.rightActionSpacingDp.dp,
+                            if (isFullscreen) 4.dp else layoutPolicy.rightActionSpacingDp.dp,
                         )
                     ) {
                         if (showAspectRatioButton) {
@@ -1118,45 +1121,35 @@ fun BottomControlBar(
                                     .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                     .clickable(onClick = onPlaybackOrderClick)
                                     .wrapContentSize(Alignment.Center)
-                                    .padding(horizontal = 6.dp),
+                                    .padding(horizontal = 2.dp),
                             )
                         }
 
                         if (showSubtitleButton) {
-                            AppSurface(
-                                color = if (subtitleEnabled) {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                                } else {
-                                    Color.White.copy(alpha = 0.18f)
-                                },
-                                shape = AppShapes.container(ContainerLevel.Field),
-                                onClick = {
-                                    val nextShowSubtitlePanel = !showSubtitlePanel
-                                    com.android.purebilibili.core.util.Logger.d(
-                                        "BottomControlBar",
-                                        "字幕按钮点击: nextShow=$nextShowSubtitlePanel, fullscreen=$isFullscreen, showMore=$showMoreActionsPanel, subtitleEnabled=$subtitleEnabled"
-                                    )
-                                    showSubtitlePanel = nextShowSubtitlePanel
-                                    if (nextShowSubtitlePanel) {
-                                        showMoreActionsPanel = false
-                                        showVideoEnhancementPanel = false
+                            AppText(
+                                text = "字幕",
+                                color = if (subtitleEnabled) MaterialTheme.colorScheme.primary else Color.White,
+                                fontSize = layoutPolicy.actionTextFontSp.sp,
+                                lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier
+                                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .clickable {
+                                        val nextShowSubtitlePanel = !showSubtitlePanel
+                                        com.android.purebilibili.core.util.Logger.d(
+                                            "BottomControlBar",
+                                            "字幕按钮点击: nextShow=$nextShowSubtitlePanel, fullscreen=$isFullscreen, showMore=$showMoreActionsPanel, subtitleEnabled=$subtitleEnabled"
+                                        )
+                                        showSubtitlePanel = nextShowSubtitlePanel
+                                        if (nextShowSubtitlePanel) {
+                                            showMoreActionsPanel = false
+                                            showVideoEnhancementPanel = false
+                                        }
                                     }
-                                }
-                            ) {
-                                AppText(
-                                    text = "字幕",
-                                    color = if (subtitleEnabled) MaterialTheme.colorScheme.primary else Color.White,
-                                    fontSize = layoutPolicy.actionTextFontSp.sp,
-                                    lineHeight = (layoutPolicy.actionTextFontSp + 2).sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    modifier = Modifier.padding(
-                                        horizontal = layoutPolicy.actionChipHorizontalPaddingDp.dp,
-                                        vertical = layoutPolicy.actionChipVerticalPaddingDp.dp
-                                    )
-                                )
-                            }
+                                    .wrapContentSize(Alignment.Center)
+                            )
                         }
 
                         if (isFullscreen && uiLayoutWidthDp >= 840) {
@@ -1171,6 +1164,32 @@ fun BottomControlBar(
                                     modifier = Modifier.size(22.dp),
                                 )
                             }
+                        }
+
+                        if (showDirectTools) {
+                            FullscreenDockTextAction(
+                                text = "音质",
+                                selected = isSpecialAudioSelected,
+                                fontSp = layoutPolicy.actionTextFontSp,
+                                onClick = onAudioQualityClick,
+                            )
+                            if (anime4kAvailable) {
+                                FullscreenDockTextAction(
+                                    text = "画质增强",
+                                    selected = anime4kEnabled,
+                                    fontSp = layoutPolicy.actionTextFontSp,
+                                    onClick = {
+                                        showSubtitlePanel = false
+                                        showMoreActionsPanel = false
+                                        showVideoEnhancementPanel = true
+                                    },
+                                )
+                            }
+                            FullscreenDockTextAction(
+                                text = "竖屏",
+                                fontSp = layoutPolicy.actionTextFontSp,
+                                onClick = onPortraitFullscreen,
+                            )
                         }
 
                         if (showMoreActionsButton || sponsorContributionAvailable || isFullscreen) {
@@ -1217,7 +1236,7 @@ fun BottomControlBar(
                                                     onPlaybackOrderClick()
                                                 })
                                         } else null,
-                                        AppWindowAction(
+                                        if (!showDirectTools) AppWindowAction(
                                             label = if (currentAudioQualityLabel.isBlank() || currentAudioQualityLabel == "音质") {
                                                 "音质"
                                             } else {
@@ -1228,18 +1247,34 @@ fun BottomControlBar(
                                                 showMoreActionsPanel = false
                                                 onAudioQualityClick()
                                             }
-                                        ),
-                                        if (showPortraitSwitchButton) {
+                                        ) else null,
+                                        if (showPortraitSwitchButton && !showDirectTools) {
                                             AppWindowAction(label = "竖屏", onClick = {
                                                     showMoreActionsPanel = false
                                                     onPortraitFullscreen()
                                                 })
                                         } else null,
-                                        if (anime4kAvailable) {
+                                        if (anime4kAvailable && !showDirectTools) {
                                             AppWindowAction(label = "画质增强", selected = anime4kEnabled, onClick = {
                                                     showMoreActionsPanel = false
                                                     showVideoEnhancementPanel = true
                                                 })
+                                        } else null,
+                                        if (cdnDiagnosticsAvailable) {
+                                            AppWindowAction(label = "CDN 测速与线路", onClick = {
+                                                showMoreActionsPanel = false
+                                                onCdnDiagnosticsClick()
+                                            })
+                                        } else null,
+                                        if (onPlayerSettingsClick != null) AppWindowAction(label = "播放器设置", onClick = {
+                                            showMoreActionsPanel = false
+                                            onPlayerSettingsClick()
+                                        }) else null,
+                                        if (viewPoints.isNotEmpty()) {
+                                            AppWindowAction(label = "章节列表", onClick = {
+                                                showMoreActionsPanel = false
+                                                onChapterClick()
+                                            })
                                         } else null,
                                         if (
                                             !danmakuSendInTopBar && com.android.purebilibili.feature.video.ui.components.shouldShowDanmakuSendInMoreActions(
@@ -1458,6 +1493,30 @@ fun BottomControlBar(
             )
         }
     }
+}
+
+@Composable
+private fun FullscreenDockTextAction(
+    text: String,
+    fontSp: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+) {
+    AppText(
+        text = text,
+        color = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+        fontSize = fontSp.sp,
+        lineHeight = (fontSp + 2).sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .clickable(onClick = onClick)
+            .wrapContentSize(Alignment.Center)
+            .padding(horizontal = 2.dp),
+    )
 }
 
 @Composable

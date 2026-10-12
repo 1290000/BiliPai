@@ -34,6 +34,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -172,6 +174,7 @@ fun TopControlBar(
     onMoreClick: () -> Unit = {},
     isLoggedIn: Boolean = true,
     onDanmakuInputClick: (() -> Unit)? = null,
+    backButtonStartPaddingDp: Int? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -195,8 +198,8 @@ fun TopControlBar(
             iconSizeDp = 24,
             titleFontSp = 15,
             timeFontSp = 12,
-            actionSpacingDp = 8,
-            backToTitleSpacingDp = 12,
+            actionSpacingDp = PlayerChromeLayout.ActionGapDp,
+            backToTitleSpacingDp = PlayerChromeLayout.ActionGapDp,
             onlineCountStartPaddingDp = 60,
         ) else base
     }
@@ -296,7 +299,21 @@ fun TopControlBar(
                 modifier = Modifier.weight(1f) // Text takes remaining space
             ) {
                 // Back Button
-                PlayerControlGlassDock(enabled = isFullscreen, shape = androidx.compose.foundation.shape.CircleShape) {
+                PlayerControlGlassDock(
+                    enabled = isFullscreen,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    modifier = if (isFullscreen && backButtonStartPaddingDp != null) {
+                        val density = LocalDensity.current
+                        val layoutDirection = LocalLayoutDirection.current
+                        val cutoutStart = with(density) {
+                            WindowInsets.displayCutout.getLeft(density, layoutDirection).toDp()
+                        }
+                        // Move only the back target; keep the title's measured slot unchanged.
+                        Modifier.absoluteOffset(
+                            x = backButtonStartPaddingDp.dp - cutoutStart - layoutPolicy.horizontalPaddingDp.dp,
+                        )
+                    } else Modifier,
+                ) {
                     AppIconButton(
                         onClick = onBack,
                         modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
@@ -435,7 +452,7 @@ fun TopControlBar(
                 }
             }
             if (isFullscreen && onDanmakuInputClick != null) {
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(PlayerChromeLayout.ActionGapDp.dp))
                 PlayerControlGlassDock(
                     enabled = isFullscreen,
                     shape = androidx.compose.foundation.shape.CircleShape,
@@ -444,11 +461,9 @@ fun TopControlBar(
                         onClick = onDanmakuInputClick,
                         modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp),
                     ) {
-                        AppIcon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = if (isLoggedIn) "发弹幕" else "登录发弹幕",
+                        com.android.purebilibili.feature.video.ui.components.PiliPlusDanmakuSendIcon(
+                            size = layoutPolicy.iconSizeDp.dp,
                             tint = Color.White,
-                            modifier = Modifier.size(layoutPolicy.iconSizeDp.dp),
                         )
                     }
                 }

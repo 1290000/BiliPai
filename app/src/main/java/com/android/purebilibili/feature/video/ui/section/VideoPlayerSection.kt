@@ -1523,7 +1523,6 @@ private fun VideoPlayerSectionContent(
     val seekSliderMoving by remember(bvid, currentSeekSessionCid) {
         derivedStateOf { sharedSeekSession.isSliderMoving }
     }
-    val latestSeekSliderMoving = rememberUpdatedState(seekSliderMoving)
     val pendingSeekPosition by remember(bvid, currentSeekSessionCid) {
         derivedStateOf { sharedSeekSession.pendingSeekPositionMs }
     }
@@ -2346,16 +2345,8 @@ private fun VideoPlayerSectionContent(
                     return@pointerInput
                 }
                 if (!isInPipMode) {
-                    var delegatedToProgressBar = false
                     detectDragGestures(
                         onDragStart = { offset ->
-                            if (latestSeekSliderMoving.value) {
-                                delegatedToProgressBar = true
-                                isGestureVisible = false
-                                gestureMode = VideoGestureMode.None
-                                dragStartX = -1f
-                                return@detectDragGestures
-                            }
                             // [新增] 如果处于缩放状态，禁用常规拖拽手势，优先处理平移
                             if (scale > 1.01f) {  // 留一点浮点数buffer
                                 return@detectDragGestures
@@ -2447,10 +2438,6 @@ private fun VideoPlayerSectionContent(
                             }
                         },
                         onDragEnd = {
-                            if (delegatedToProgressBar) {
-                                delegatedToProgressBar = false
-                                return@detectDragGestures
-                            }
                             val completedGestureMode = gestureMode
                             if (isLongPressing) {
                                 finishLongPressSpeedGesture(gestureEnded = true)
@@ -2526,10 +2513,6 @@ private fun VideoPlayerSectionContent(
                             dragStartX = -1f
                         },
                         onDragCancel = {
-                            if (delegatedToProgressBar) {
-                                delegatedToProgressBar = false
-                                return@detectDragGestures
-                            }
                             if (isLongPressing) {
                                 finishLongPressSpeedGesture(gestureEnded = true)
                                 isGestureVisible = false
@@ -2551,11 +2534,6 @@ private fun VideoPlayerSectionContent(
                         },
                         //  [修复点] 使用 dragAmount 而不是 change.positionChange()
                         onDrag = { change, dragAmount ->
-                            if (delegatedToProgressBar || latestSeekSliderMoving.value) {
-                                delegatedToProgressBar = true
-                                change.consume()
-                                return@detectDragGestures
-                            }
                             if (shouldConsumeExclusiveLongPressSpeedDrag(
                                     isLongPressing = isLongPressing,
                                     longPressSpeedLocked = longPressSpeedLocked
@@ -3646,9 +3624,9 @@ private fun VideoPlayerSectionContent(
         val autoPlayOnOpenEnabled by SettingsManager
             .getClickToPlay(context)
             .collectAsStateWithLifecycle(initialValue = SettingsManager.getClickToPlaySync(context))
-        var hasManualStartPlaybackIntent by remember(bvid) {
+        var hasManualStartPlaybackIntent by remember(bvid, (uiState as? VideoPlaybackUiState.Success)?.info?.cid) {
             mutableStateOf(
-                playerState.player.mediaItemCount > 0 &&
+                autoPlayOnOpenEnabled && playerState.player.mediaItemCount > 0 &&
                     (observedPlayWhenReady || observedIsPlaying)
             )
         }

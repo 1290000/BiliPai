@@ -176,7 +176,7 @@ fun ActionButtonsRow(
     val itemSpacing = resolveVideoDetailActionRowItemSpacing(actionCount)
     val buttonHorizontalPadding = resolveVideoDetailActionButtonHorizontalPadding(actionCount)
 
-    DetailActionGlassDock(modifier = modifier.animateContentSize()) {
+    Box(modifier = modifier.animateContentSize()) {
         Row(
             modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 2.dp),

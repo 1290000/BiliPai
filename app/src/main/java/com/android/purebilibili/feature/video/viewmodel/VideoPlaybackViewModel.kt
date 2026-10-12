@@ -2376,6 +2376,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
 
                 val behavior = com.android.purebilibili.core.store.SettingsManager
                     .getPlaybackCompletionBehaviorSync(context)
+                val autoPlayNext = SettingsManager.getClickToPlaySync(context)
                 // 与 UI/Flow 同源策略对齐后，再写回 ExoPlayer，避免残留 REPEAT_MODE_ONE。
                 exoPlayer?.repeatMode = resolvePlaybackCompletionRepeatMode(behavior)
                 val (hasNextPage, hasNextSeasonEpisode, _) = resolveCurrentNextAvailability()
@@ -2396,16 +2397,17 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                         exoPlayer?.play()
                     },
                     playNextInOrder = { ignoreSavedProgress ->
-                        playNextInOrder(ignoreSavedProgress = ignoreSavedProgress)
+                        playNextInOrder(ignoreSavedProgress = ignoreSavedProgress, autoPlay = autoPlayNext)
                     },
                     playNextFromPlaylistLoop = { ignoreSavedProgress ->
                         playNextFromPlaylist(
                             loopAtEnd = true,
+                            autoPlay = autoPlayNext,
                             ignoreSavedProgress = ignoreSavedProgress
                         )
                     },
                     autoContinue = { ignoreSavedProgress ->
-                        playNextPageOrRecommended(ignoreSavedProgress = ignoreSavedProgress)
+                        playNextPageOrRecommended(ignoreSavedProgress = ignoreSavedProgress, autoPlay = autoPlayNext)
                     }
                 )
                 if (outcome.shouldHidePlaybackEndedDialog) {
@@ -2606,7 +2608,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
         return true
     }
 
-    fun playNextRecommended(ignoreSavedProgress: Boolean = false): Boolean {
+    fun playNextRecommended(ignoreSavedProgress: Boolean = false, autoPlay: Boolean = true): Boolean {
         // 使用 PlaylistManager 获取下一曲
         val nextItem = PlaylistManager.playNext()
         
@@ -2614,12 +2616,12 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
             viewModelScope.launch {
                 toast("正在播放: ${nextItem.title}")
             }
-            // 加载新视频 (Auto-play next always forces true)
+            // Automatic continuation passes the saved startup preference; user actions can play immediately.
             markInPageInitiatedPlayback(nextItem.bvid, nextItem.cid)
             loadVideo(
                 nextItem.bvid,
                 cid = nextItem.cid,
-                autoPlay = true,
+                autoPlay = autoPlay,
                 ignoreSavedProgress = ignoreSavedProgress
             )
             return true
@@ -2659,7 +2661,8 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
 
     private fun playNextFromPlaylist(
         loopAtEnd: Boolean,
-        ignoreSavedProgress: Boolean = false
+        ignoreSavedProgress: Boolean = false,
+        autoPlay: Boolean = true,
     ): Boolean {
         val items = PlaylistManager.playlist.value
         if (items.isEmpty()) return false
@@ -2677,7 +2680,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
         loadVideo(
             target.bvid,
             cid = target.cid,
-            autoPlay = true,
+            autoPlay = autoPlay,
             ignoreSavedProgress = ignoreSavedProgress
         )
         return true
@@ -2744,7 +2747,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
         return Triple(hasPreviousPage, hasPreviousSeasonEpisode, hasPreviousInPlaylist())
     }
 
-    private fun playNextInOrder(ignoreSavedProgress: Boolean = false): Boolean {
+    private fun playNextInOrder(ignoreSavedProgress: Boolean = false, autoPlay: Boolean = true): Boolean {
         val (hasNextPage, hasNextSeasonEpisode, hasNextPlaylistItem) = resolveCurrentNextAvailability()
         return when (
             resolvePlayInOrderNextSource(
@@ -2754,29 +2757,31 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
             )
         ) {
             PlayInOrderNextSource.PAGE_OR_SEASON ->
-                playNextPageOrSeason(ignoreSavedProgress = ignoreSavedProgress) ||
+                playNextPageOrSeason(ignoreSavedProgress = ignoreSavedProgress, autoPlay = autoPlay) ||
                     playNextFromPlaylist(
                         loopAtEnd = false,
+                        autoPlay = autoPlay,
                         ignoreSavedProgress = ignoreSavedProgress
                     )
             PlayInOrderNextSource.PLAYLIST ->
                 playNextFromPlaylist(
                     loopAtEnd = false,
+                    autoPlay = autoPlay,
                     ignoreSavedProgress = ignoreSavedProgress
                 )
             PlayInOrderNextSource.NONE -> false
         }
     }
 
-    private fun playNextPageOrSeason(ignoreSavedProgress: Boolean = false): Boolean {
+    private fun playNextPageOrSeason(ignoreSavedProgress: Boolean = false, autoPlay: Boolean = true): Boolean {
         val current = _uiState.value as? VideoPlaybackUiState.Success ?: return false
         val target = com.android.purebilibili.feature.video.playback.next.resolveCollectionNextWatch(current.info)
             ?: return false
         if (target.pageIndex != null) {
-            switchPage(target.pageIndex, ignoreSavedProgress = ignoreSavedProgress)
+            switchPage(target.pageIndex, ignoreSavedProgress = ignoreSavedProgress, autoPlay = autoPlay)
         } else {
             markInPageInitiatedPlayback(target.bvid, target.cid)
-            loadVideo(target.bvid, cid = target.cid, autoPlay = true, ignoreSavedProgress = ignoreSavedProgress)
+            loadVideo(target.bvid, cid = target.cid, autoPlay = autoPlay, ignoreSavedProgress = ignoreSavedProgress)
         }
         return true
     }
@@ -2880,7 +2885,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
      * 用于分集视频（如音乐合集）的连续播放
      * 优先级: 分P > 合集下一集 > 推荐视频
      */
-    fun playNextPageOrRecommended(ignoreSavedProgress: Boolean = false): Boolean {
+    fun playNextPageOrRecommended(ignoreSavedProgress: Boolean = false, autoPlay: Boolean = true): Boolean {
         val nextStrategy = resolveAudioNextPlaybackStrategy(
             isExternalPlaylist = PlaylistManager.isExternalPlaylist.value,
             externalPlaylistSource = PlaylistManager.externalPlaylistSource.value
@@ -2899,17 +2904,18 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                 hasPlaylistTarget = hasNextPlaylistItem
             ),
             playPageOrSeason = {
-                playNextPageOrSeason(ignoreSavedProgress = ignoreSavedProgress)
+                playNextPageOrSeason(ignoreSavedProgress = ignoreSavedProgress, autoPlay = autoPlay)
             },
             playPlaylist = {
                 playNextFromPlaylist(
                     loopAtEnd = false,
+                    autoPlay = autoPlay,
                     ignoreSavedProgress = ignoreSavedProgress
                 )
             },
             playDirectQueue = {
                 Logger.d("PlayerVM", "🎵 播放推荐视频")
-                playNextRecommended(ignoreSavedProgress = ignoreSavedProgress)
+                playNextRecommended(ignoreSavedProgress = ignoreSavedProgress, autoPlay = autoPlay)
             }
         )
     }
@@ -7557,6 +7563,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
     fun switchPage(
         pageIndex: Int,
         ignoreSavedProgress: Boolean = false,
+        autoPlay: Boolean = true,
     ) {
         val current = _uiState.value as? VideoPlaybackUiState.Success ?: return
         val page = current.info.pages.getOrNull(pageIndex) ?: return
@@ -7688,6 +7695,7 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                             audioUrl = cdnSelection.audioUrl,
                             adaptiveDashSource = cdnSelection.adaptiveDashSource,
                             startPositionMs = restoredPosition,
+                            playWhenReady = autoPlay,
                             cdnFallbackState = cdnSelection.fallbackState,
                             cdnCacheKeysByUrl = cdnSelection.cdnCacheKeysByUrl
                         )

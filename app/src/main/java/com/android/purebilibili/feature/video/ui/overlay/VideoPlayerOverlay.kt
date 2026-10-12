@@ -97,6 +97,11 @@ import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
 import com.android.purebilibili.core.ui.components.AppTextButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.android.purebilibili.core.ui.AppModalBottomSheet
+import com.android.purebilibili.core.ui.AppModalPresentation
+import com.android.purebilibili.feature.video.ui.components.PlaybackCdnDiagnostics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -479,6 +484,7 @@ fun VideoPlayerOverlay(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun VideoPlayerOverlayContent(
     state: VideoPlayerOverlayState,
     actions: VideoPlayerOverlayActions,
@@ -747,6 +753,7 @@ private fun VideoPlayerOverlayContent(
     var showPlaybackOrderSheet by remember { mutableStateOf(false) }
     var showPageSelectorSheet by remember { mutableStateOf(false) }
     var bottomControlFloatingPanelVisible by remember { mutableStateOf(false) }
+    var showCdnDiagnostics by remember { mutableStateOf(false) }
     // 换集后强制关掉分集/菜单等全屏遮罩，避免 Dialog/Sheet 残留挡触摸。
     LaunchedEffect(bvid, cid) {
         showPageSelectorSheet = false
@@ -758,6 +765,7 @@ private fun VideoPlayerOverlayContent(
         showChapterList = false
         showPlaybackOrderSheet = false
         showCastDialog = false
+        showCdnDiagnostics = false
     }
     var currentSpeed by remember(player) { mutableFloatStateOf(player.playbackParameters.speed) }
     //  使用传入的比例状态
@@ -1191,10 +1199,11 @@ private fun VideoPlayerOverlayContent(
         effectiveIsPlaying,
         isSeekScrubbing,
         bottomControlFloatingPanelVisible,
+        showCdnDiagnostics,
         danmakuComposerVisible,
         levelGestureActive,
     ) {
-        if (!danmakuComposerVisible && !levelGestureActive &&
+        if (!danmakuComposerVisible && !levelGestureActive && !showCdnDiagnostics &&
             shouldAutoHideInlineControlsAfterDelay(
                 controlsVisible = isVisible,
                 isPlaying = effectiveIsPlaying,
@@ -1203,7 +1212,7 @@ private fun VideoPlayerOverlayContent(
             )
         ) {
             delay(4000)
-            if (!danmakuComposerVisible && !levelGestureActive &&
+            if (!danmakuComposerVisible && !levelGestureActive && !showCdnDiagnostics &&
                 shouldAutoHideInlineControlsAfterDelay(
                     controlsVisible = isVisible,
                     isPlaying = effectiveIsPlaying,
@@ -1374,7 +1383,7 @@ private fun VideoPlayerOverlayContent(
         }
 
         // 控件隐藏时保留底部细进度条，便于持续感知当前播放进度
-        if (!danmakuComposerVisible && !levelGestureActive &&
+        if (!danmakuComposerVisible &&
             shouldShowPersistentBottomProgressBar(
                 controlsVisible = isVisible,
                 isFullscreen = isFullscreen,
@@ -1390,7 +1399,7 @@ private fun VideoPlayerOverlayContent(
         }
 
         // --- 3. 控制栏内容 (锁定时隐藏) ---
-        val showPlayerChrome = isVisible && !isScreenLocked && !danmakuComposerVisible && !levelGestureActive
+        val showPlayerChrome = isVisible && !isScreenLocked && !danmakuComposerVisible
         AnimatedVisibility(
             visible = showPlayerChrome,
             enter = fadeIn(OverlayChromeFadeSpec),
@@ -1403,6 +1412,7 @@ private fun VideoPlayerOverlayContent(
                 //  顶部控制栏 - 仅在横屏（全屏）模式显示标题和清晰度
                 if (isFullscreen) {
                     TopControlBar(
+                        backButtonStartPaddingDp = overlayVisualPolicy.lockButtonEndPaddingDp,
                         title = title,
                         onlineCount = displayedOnlineCount,
                         isFullscreen = isFullscreen,
@@ -1551,6 +1561,9 @@ private fun VideoPlayerOverlayContent(
                     onPortraitFullscreen = onPortraitFullscreen,
                     // 📲 [新增] 小窗模式
                     onPipClick = onPipClick,
+                    cdnDiagnosticsAvailable = cdnCount > 0,
+                    onCdnDiagnosticsClick = { showCdnDiagnostics = true },
+                    onPlayerSettingsClick = { showVideoSettings = true },
                     // 🔁 [新增] 播放模式
                     currentPlayMode = currentPlayMode,
                     onPlayModeClick = onPlayModeClick,
@@ -1586,7 +1599,7 @@ private fun VideoPlayerOverlayContent(
         }
 
         CenterPlaybackControl(
-            visible = (isVisible || !effectiveIsPlaying) && !levelGestureActive &&
+            visible = (isVisible || !effectiveIsPlaying) &&
                 (pluginPlaybackStatus.first || player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_ENDED) &&
                 centerLoadingUiState == null &&
                 !isScreenLocked && !isSeekScrubbing && !danmakuComposerVisible &&
@@ -1600,7 +1613,7 @@ private fun VideoPlayerOverlayContent(
         // --- 3.5 🔒 [新增] 屏幕锁定按钮 (仅全屏模式) ---
         if (isFullscreen && showFullscreenLockButton) {
             AnimatedVisibility(
-                visible = isVisible && !danmakuComposerVisible && !levelGestureActive,  // 锁定后按控制栏状态自动隐藏
+                visible = isVisible && !danmakuComposerVisible,  // 锁定后按控制栏状态自动隐藏
                 enter = fadeIn(OverlayControlFadeSpec),
                 exit = fadeOut(OverlayControlFadeSpec),
                 modifier = Modifier
@@ -1636,7 +1649,7 @@ private fun VideoPlayerOverlayContent(
 
         if (isFullscreen && showFullscreenScreenshotButton) {
             AnimatedVisibility(
-                visible = isVisible && !isScreenLocked && !danmakuComposerVisible && !levelGestureActive,
+                visible = isVisible && !isScreenLocked && !danmakuComposerVisible,
                 enter = fadeIn(OverlayControlFadeSpec),
                 exit = fadeOut(OverlayControlFadeSpec),
                 modifier = Modifier
@@ -2085,6 +2098,38 @@ private fun VideoPlayerOverlayContent(
         }
 
         // --- 9.  [新增] 视频设置面板 ---
+        if (showCdnDiagnostics) {
+            AppModalBottomSheet(
+                onDismissRequest = { showCdnDiagnostics = false },
+                presentationOverride = AppModalPresentation.BottomSheet,
+                backgroundBlurBehind = true,
+            ) {
+                AppSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.container(ContainerLevel.Sheet),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = (configuration.screenHeightDp * 0.8f).dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        AppText("CDN 测速与线路", style = MaterialTheme.typography.titleLarge)
+                        PlaybackCdnDiagnostics(
+                            diagnostics = cdnLineDiagnostics,
+                            checking = isCdnProbing,
+                            canCheck = cdnCount > 0 && !isCdnProbing,
+                            onCheck = onProbeCdnCandidates,
+                            onSwitchTo = onSwitchCdnTo,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        AppTextButton(onClick = { showCdnDiagnostics = false }) { AppText("关闭") }
+                    }
+                }
+            }
+        }
+
         if (showVideoSettings) {
             VideoSettingsPanel(
                 sleepTimerMinutes = sleepTimerMinutes,
