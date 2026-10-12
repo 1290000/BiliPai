@@ -208,6 +208,10 @@ class VideoCommentViewModel : ViewModel() {
 
     private var commentLoadJob: Job? = null
     private var commentLoadRequestId = 0L
+
+    // 进程内评论首页缓存（跨 ViewModel 实例）：重进同一个视频的评论区先秒出旧内容，
+    // 再后台静默刷新，避免每次都从白屏骨架开始。
+    private val commentCache = sharedVideoCommentCache
     private var subReplyLoadJob: Job? = null
     private val _subReplyState = MutableStateFlow(SubReplyUiState())
     val subReplyState = _subReplyState.asStateFlow()
@@ -228,6 +232,38 @@ class VideoCommentViewModel : ViewModel() {
     private val _fullSearchReplies = MutableStateFlow<List<ReplyItem>>(emptyList())
     val fullSearchReplies = _fullSearchReplies.asStateFlow()
     private var fullSearchJob: Job? = null
+
+    /**
+     * 把当前评论首页写进进程内缓存，让「退出再进」「切走再回来」不必重新拉取。
+     * 只有在评论主体（oid/type）已确定且列表非空时才写，避免把不完整状态缓存下来。
+     */
+    private fun cacheCurrentComments(
+        replies: List<ReplyItem>,
+        sortModeApiMode: Int = _commentState.value.sortMode.apiMode,
+    ) {
+        val subject = currentSubject
+        if (!subject.isValid || replies.isEmpty()) return
+        val state = _commentState.value
+        commentCache.put(
+            key = videoCommentCacheKey(
+                oid = subject.oid,
+                type = subject.type,
+                sortModeApiMode = sortModeApiMode,
+                viewerMid = state.currentMid,
+            ),
+            snapshot = VideoCommentCacheSnapshot(
+                replies = replies,
+                replyCount = state.replyCount,
+                nextPage = state.nextPage,
+                isEnd = state.isRepliesEnd,
+                grpcNextOffset = state.grpcNextOffset,
+                upMid = state.upMid,
+                pinnedReplyIds = state.pinnedReplyIds,
+                subject = subject,
+                cachedAtMs = System.currentTimeMillis(),
+            ),
+        )
+    }
 
     /**
      * 切换视频时立即废弃旧评论主体和未完成请求，等新页面真正打开评论区后再加载。
@@ -335,12 +371,34 @@ class VideoCommentViewModel : ViewModel() {
 
         commentLoadJob = viewModelScope.launch {
             val pageToLoad = if (refresh) 1 else currentState.nextPage
+            val cacheKey = videoCommentCacheKey(
+                oid = requestSubject.oid,
+                type = requestSubject.type,
+                sortModeApiMode = currentState.sortMode.apiMode,
+                viewerMid = currentState.currentMid,
+            )
+            // stale-while-revalidate：首页命中缓存就先把旧评论铺出来（列表立刻有内容、
+            // 不再白屏），请求照常发出，回来后再整体覆盖。这里刻意保持 isRepliesLoading
+            // 为 true，否则列表底部的自动翻页会在刷新途中把这次请求取消掉。
+            val cached = if (pageToLoad == 1 && !refresh) commentCache.get(cacheKey) else null
+            if (cached != null && shouldApplyCommentSubjectResult(requestSubject, currentSubject)) {
+                allReplies = cached.replies
+                _commentState.value = _commentState.value.copy(
+                    replies = cached.replies.toImmutableList(),
+                    replyCount = maxOf(cached.replyCount, currentState.replyCount),
+                    isRepliesEnd = cached.isEnd,
+                    nextPage = cached.nextPage,
+                    grpcNextOffset = cached.grpcNextOffset,
+                    pinnedReplyIds = cached.pinnedReplyIds.toImmutableSet(),
+                    upMid = if (cached.upMid > 0L) cached.upMid else currentState.upMid,
+                )
+            }
             //  使用当前排序模式
             val result = CommentRepository.getCommentsForSubject(
                 oid = requestSubject.oid,
                 type = requestSubject.type,
                 page = pageToLoad, 
-                ps = 20,
+                ps = VIDEO_COMMENT_PAGE_SIZE,
                 mode = currentState.sortMode.apiMode,
                 paginationOffset = if (refresh) null else currentState.grpcNextOffset,
                 fallbackOnMissingLocation = requestSubject.type == 1,
@@ -412,6 +470,10 @@ class VideoCommentViewModel : ViewModel() {
                     pinnedReplyIds = pinnedReplyIds.toImmutableSet(),
                     grpcNextOffset = data.grpcNextOffset.takeIf { it.isNotBlank() }
                 )
+                // 只缓存首页：后续页没有缓存时也能从首页继续翻，缓存整段会让内存迅速膨胀。
+                if (pageToLoad == 1) {
+                    cacheCurrentComments(combinedReplies)
+                }
             }.onFailure { e ->
                 if (requestId != commentLoadRequestId ||
                     !shouldApplyCommentSubjectResult(requestSubject, currentSubject)
@@ -419,11 +481,17 @@ class VideoCommentViewModel : ViewModel() {
                     return@onFailure
                 }
                 android.util.Log.e("CommentVM", " loadComments error: ${e.message}")
+                // 命中缓存时这次只是「静默刷新」失败：内容还在，就不弹错误条；也不要把
+                // 「还有下一页」错判成已到底，否则用户既看不到错误、又再也拉不到后续评论。
                 _commentState.value = _commentState.value.copy(
                     isRepliesLoading = false,
                     isRepliesRefreshing = false,
-                    repliesError = e.message ?: "加载评论失败",
-                    isRepliesEnd = if (refresh) _commentState.value.isRepliesEnd else true
+                    repliesError = if (cached != null) null else (e.message ?: "加载评论失败"),
+                    isRepliesEnd = if (refresh || cached != null) {
+                        _commentState.value.isRepliesEnd
+                    } else {
+                        true
+                    }
                 )
             }
         }
@@ -449,7 +517,7 @@ class VideoCommentViewModel : ViewModel() {
                     oid = subject.oid,
                     type = subject.type,
                     page = page,
-                    ps = 20,
+                    ps = VIDEO_COMMENT_PAGE_SIZE,
                     mode = CommentGrpcRepository.MODE_TIME,
                     paginationOffset = offset,
                 ).getOrNull()

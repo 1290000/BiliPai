@@ -452,7 +452,10 @@ object CommentRepository {
                     page = page,
                     mode = mode,
                     paginationOffset = paginationOffset
-                )
+                ) &&
+                // gRPC 刚刚失败过（TTL 内）就直接走 REST，省掉一次注定失败的往返。
+                // 只减少请求、不增加并发；成功后记忆立刻清除。
+                !commentReadRouteMemo.shouldSkipGrpcAttempt()
             ) {
                 val grpcResult = CommentGrpcRepository.getMainList(
                     oid = oid,
@@ -461,6 +464,7 @@ object CommentRepository {
                     nextOffset = paginationOffset
                 )
                 if (grpcResult.isSuccess) {
+                    commentReadRouteMemo.recordGrpcSuccess()
                     val grpcData = grpcResult.getOrNull()
                     if (
                         shouldFallbackHotCommentReadOnEmptySuccess(
@@ -488,6 +492,7 @@ object CommentRepository {
                         )
                     }
                 } else {
+                    commentReadRouteMemo.recordGrpcFailure()
                     CoreDataLog.w(
                         "CommentRepo",
                         "getComments gRPC fallback to REST: oid=$oid, type=$type, page=$page, mode=$mode, error=${grpcResult.exceptionOrNull()?.message}"
