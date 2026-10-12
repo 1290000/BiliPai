@@ -179,6 +179,7 @@ fun TopControlBar(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val displayCutoutInsets = WindowInsets.displayCutout
     val configuration = LocalConfiguration.current
     val ambient = LocalAmbientPresentation.current
     var rowOrigin by remember { mutableStateOf<Offset?>(null) }
@@ -275,7 +276,7 @@ fun TopControlBar(
                     val origin = rowOrigin
                     val alignedEndInset = if (isFullscreen && actionEndPaddingDp != null) {
                         (actionEndPaddingDp.dp.roundToPx() -
-                            WindowInsets.displayCutout.getRight(this, layoutDirection) -
+                            displayCutoutInsets.getRight(this, layoutDirection) -
                             layoutPolicy.horizontalPaddingDp.dp.roundToPx()).coerceAtLeast(0)
                     } else 0
                     val videoInset = if (isFullscreen && onDanmakuInputClick == null && bounds != null && origin != null && constraints.hasBoundedWidth) {
