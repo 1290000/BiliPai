@@ -33,3 +33,11 @@ plugins {
     id("com.google.gms.google-services") version "4.4.2" apply false
     id("com.google.firebase.crashlytics") version "3.0.2" apply false
 }
+
+// Custom policies must also run during each library's partial Lint analysis.
+// App-only lintChecks would miss models moved into core-data.
+subprojects {
+    plugins.withId("com.android.library") {
+        dependencies.add("lintChecks", project(":ci-lint"))
+    }
+}

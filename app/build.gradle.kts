@@ -252,6 +252,25 @@ android {
     lint {
         baseline = file("lint-baseline.xml")
         abortOnError = true
+        checkDependencies = true
+        // CI source policies are separate from the full Android Lint run.
+        if (providers.gradleProperty("bili.ciChecks").orNull == "true") {
+            // Legacy platform baselines must not hide new CI policies or checker failures.
+            baseline = null
+            fatal += "ObsoleteLintCustomCheck"
+            checkOnly += setOf(
+                "BiliPaiFrameBlurAllocation",
+                "BiliPaiModelStability",
+                "BiliPaiHardcodedColor",
+                "BiliPaiHardcodedSpacing",
+                "BiliPaiHardcodedTypography",
+                "BiliPaiHardcodedShape",
+                "BiliPaiHardcodedMotion",
+                "BiliPaiHardcodedSurface",
+                "LintError",
+                "ObsoleteLintCustomCheck",
+            )
+        }
     }
 }
 
@@ -335,9 +354,9 @@ tasks.matching { task ->
 }
 
 composeCompiler {
-    // 稳定性配置无条件生效。data/model 下的模型类构造后不再修改（由
-    // ModelImmutabilityGuardTest 守卫），但 List 是接口、编译器无法自行证明——
-    // 不声明的话 VideoCard 永远不是 skippable，首页每次祖先重组都会重建所有可见卡片。
+    // 稳定性配置无条件生效。data/model 的属性约束由 BiliPaiModelStability Lint
+    // 跨模块检查；List 是只读接口，不等于深度不可变，需要调用方保持所有权约定。
+    // 错误的稳定性承诺仍会导致本该发生的重组被跳过。
     // 详细理由见 compose_stability.conf 的文件头。
     stabilityConfigurationFiles.add(
         rootProject.layout.projectDirectory.file("compose_stability.conf")
@@ -357,6 +376,7 @@ composeCompiler {
 }
 
 dependencies {
+    lintChecks(project(":ci-lint"))
     implementation(project(":brand-motion"))
     val material3Version = "1.5.0-alpha29"
     val material3AdaptiveVersion = "1.3.0"
@@ -544,6 +564,7 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     // JUnit 4 兼容层 (允许 JUnit 5 运行 JUnit 4 测试)
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
     // AGP 9 使用内建 Kotlin 2.4；JUnit Platform 下必须使用同版本的 JUnit 5
     // 适配层，否则 kotlin.test.Test 不会落到 JVM 测试注解。
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:2.4.0")

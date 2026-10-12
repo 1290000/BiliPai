@@ -44,22 +44,22 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Run source and policy guards
-        run: |
-          chmod +x gradlew
-          ./gradlew :app:testDebugUnitTest \
-            --tests 'com.android.purebilibili.feature.settings.AppUpdateCheckerTest' \
-            --tests 'com.android.purebilibili.feature.settings.AppVersionPolicyTest' \
-            --tests 'com.android.purebilibili.feature.settings.ApkArtifactNamingPolicyTest' \
-            --tests 'com.android.purebilibili.core.store.PreferenceKeyUniquenessTest' \
-            --tests 'com.android.purebilibili.core.ui.lint.HardcodedColorLintTest' \
-            --tests 'com.android.purebilibili.core.ui.lint.HardcodedSpacingLintTest' \
-            --tests 'com.android.purebilibili.core.ui.lint.HardcodedTypographyLintTest' \
-            --tests 'com.android.purebilibili.core.ui.lint.MigratedFeatureStyleLintTest' \
-            --tests 'com.android.purebilibili.core.ui.lint.StyleLintAllowlistRatchetTest' \
-            --tests 'com.android.purebilibili.core.ui.perf.FrameBudgetLintTest' \
-            --no-daemon \
-            --console=plain
+      - name: Run semantic policies and behavior checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/ci_quality.sh
+
+      - name: Upload quality diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: quality-diagnostics
+          path: |
+            app/build/reports/lint-results-debug.*
+            app/build/reports/tests/testDebugUnitTest
+            design-system/build/reports/tests/testDebugUnitTest
+            ci-lint/build/reports/tests/test
+          retention-days: 7
 
   check-fcm:
     runs-on: ubuntu-latest
