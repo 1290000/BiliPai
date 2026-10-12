@@ -66,4 +66,28 @@ class LyricsDisplayPolicyTest {
         )
         assertEquals(null, romanization)
     }
+
+    @Test
+    fun `romanization visibility follows primary script and display toggle`() {
+        listOf(
+            "光になれ" to "hikari ni nare",
+            "사랑해" to "saranghae",
+        ).forEach { (primaryText, romanization) ->
+            val (_, visibleRomanization) = resolveDisplaySecondaryRows(
+                primaryText = primaryText,
+                translation = "Translation",
+                romanization = romanization,
+                showTranslation = true,
+            )
+            assertEquals(romanization, visibleRomanization)
+
+            val hiddenRows = resolveDisplaySecondaryRows(
+                primaryText = primaryText,
+                translation = "Translation",
+                romanization = romanization,
+                showTranslation = false,
+            )
+            assertEquals(null to null, hiddenRows)
+        }
+    }
 }

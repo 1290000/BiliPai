@@ -21,6 +21,7 @@ import com.android.purebilibili.core.ui.AppSurfaceTokens
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.transition.LocalDynamicImagePreviewTextVisible
+import com.android.purebilibili.core.ui.transition.LocalDynamicCommentPreviewVisible
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -975,6 +976,7 @@ fun DynamicCardV2(
                     Column {
                         RichTextContent(
                             desc = desc,
+                            collapseWebLinks = isDetail,
                             onUserClick = onUserClick,
                             onTopicClick = onTopicClick,
                             onTopicKeywordClick = onTopicKeywordClick,
@@ -1007,7 +1009,10 @@ fun DynamicCardV2(
         }
         
         //  互动条：UP 主觉得很赞 / 相关评论提示
-        val interactionItems = item.modules.module_interaction?.items.orEmpty()
+        val interactionItems = resolveVisibleDynamicInteractionItems(
+            items = item.modules.module_interaction?.items.orEmpty(),
+            commentPreviewVisible = LocalDynamicCommentPreviewVisible.current,
+        )
         if (interactionItems.isNotEmpty()) {
             val interactionBarColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
             Column(
@@ -1042,6 +1047,7 @@ fun DynamicCardV2(
                         Spacer(modifier = Modifier.width(AppSpacingTokens.ExtraSmall))
                         RichTextContent(
                             desc = desc,
+                            collapseWebLinks = isDetail,
                             onUserClick = onUserClick,
                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
                             lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
@@ -1248,6 +1254,7 @@ fun DynamicCardV2(
                                 ) {
                                     RichTextContent(
                                         desc = richBlockDesc,
+                                        collapseWebLinks = isDetail,
                                         onUserClick = onUserClick,
                                         onTopicClick = onTopicClick,
                                         onTopicKeywordClick = onTopicKeywordClick,
@@ -1877,7 +1884,8 @@ fun DynamicCardV2(
                 onLiveClick = onLiveClick,
                 onMusicClick = onMusicClick,
                 gifImageLoader = gifImageLoader,
-                defaultPreviewTextVisible = dynamicPreviewTextVisible
+                defaultPreviewTextVisible = dynamicPreviewTextVisible,
+                collapseWebLinks = isDetail,
             )
             Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
         }
@@ -2313,6 +2321,7 @@ fun RichTextContent(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     extraEmoteUrlMap: Map<String, String> = emptyMap(),
+    collapseWebLinks: Boolean = false,
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -2346,7 +2355,7 @@ fun RichTextContent(
             onLinkClick = onLinkClick,
         )
     }
-    val richText = remember(desc, primaryColor, textColor, catalogEmoteMap, extraEmoteUrlMap, dispatchDynamicLink) {
+    val richText = remember(desc, primaryColor, textColor, catalogEmoteMap, extraEmoteUrlMap, dispatchDynamicLink, collapseWebLinks) {
         buildDynamicRichText(
             desc = desc,
             primaryColor = primaryColor,
@@ -2357,7 +2366,8 @@ fun RichTextContent(
             },
             linkListener = LinkInteractionListener { link ->
                 dispatchDynamicLink((link as LinkAnnotation.Clickable).tag)
-            }
+            },
+            collapseWebLinks = collapseWebLinks,
         )
     }
     val annotatedText = richText.annotatedString

@@ -156,12 +156,15 @@ internal fun resolvePlaybackBootstrapMode(
     bvid: String,
     cid: Long
 ): PlaybackBootstrapMode {
-    return if (bvid.isNotBlank() && cid > 0L) {
+    return if (bvid.trim().startsWith("BV", ignoreCase = true) && cid > 0L) {
         PlaybackBootstrapMode.DETAIL_AND_PLAYURL_PARALLEL
     } else {
         PlaybackBootstrapMode.DETAIL_ONLY
     }
 }
+
+internal fun resolvePlaybackBootstrapCid(requestCid: Long, cachedCid: Long): Long =
+    requestCid.takeIf { it > 0L } ?: cachedCid.coerceAtLeast(0L)
 
 internal fun shouldFetchRelatedVideosAfterVideoDetail(bvid: String): Boolean {
     val normalized = bvid.trim()
@@ -425,7 +428,10 @@ class VideoPlaybackUseCase(
         isAv1SupportedOverride: Boolean? = null,
         isHdrSupportedOverride: Boolean? = null,
         isDolbyVisionSupportedOverride: Boolean? = null,
-        onProgress: (String) -> Unit = {}
+        onProgress: (String) -> Unit = {},
+        onVideoInfo: (ViewInfo) -> Unit = {},
+        videoInfoLoader: (suspend () -> Result<ViewInfo>)? = null,
+        playbackSpeedOverride: Float? = null
     ): VideoLoadResult {
         try {
             //  [风控冷却] 检查是否处于冷却期
@@ -455,12 +461,16 @@ class VideoPlaybackUseCase(
             
             onProgress("Loading video info...")
             
-            // 起播链路仅获取播放所需信息和地址，相关推荐由 ViewModel 在准备播放器后加载。
+            // 起播链路仅获取播放所需信息和地址，相关推荐由 ViewModel 独立加载。
             // 表情映射在首帧链路中跳过，避免自动播放起播被非关键请求阻塞。
             val (detailResult, relatedVideos, emoteMap) = kotlinx.coroutines.coroutineScope {
+                val bootstrapCid = resolvePlaybackBootstrapCid(
+                    requestCid = cid,
+                    cachedCid = VideoRepository.cachedVideoCid(bvid, aid)
+                )
                 val bootstrapMode = resolvePlaybackBootstrapMode(
                     bvid = bvid,
-                    cid = cid
+                    cid = bootstrapCid
                 )
                 val emoteMap = if (com.android.purebilibili.data.repository.shouldFetchCommentEmoteMapOnVideoLoad()) {
                     com.android.purebilibili.data.repository.CommentRepository.getEmoteMap()
@@ -471,7 +481,7 @@ class VideoPlaybackUseCase(
                 val mergedDetailResult = when (bootstrapMode) {
                     PlaybackBootstrapMode.DETAIL_AND_PLAYURL_PARALLEL -> {
                         val infoDeferred = async {
-                            VideoRepository.getVideoInfoOnly(
+                            videoInfoLoader?.invoke() ?: VideoRepository.getVideoInfoOnly(
                                 bvid = bvid,
                                 aid = aid,
                                 requestedCid = cid
@@ -480,7 +490,7 @@ class VideoPlaybackUseCase(
                         val playUrlDeferred = async {
                             VideoRepository.getInitialPlayUrlData(
                                 bvid = bvid,
-                                cid = cid,
+                                cid = bootstrapCid,
                                 targetQuality = defaultQuality,
                                 audioLang = audioLang
                             )
@@ -488,7 +498,18 @@ class VideoPlaybackUseCase(
 
                         infoDeferred.await().fold(
                             onSuccess = { info ->
-                                val playData = playUrlDeferred.await()
+                                onVideoInfo(info)
+                                val playData = if (info.cid == bootstrapCid) {
+                                    playUrlDeferred.await()
+                                } else {
+                                    playUrlDeferred.cancel()
+                                    VideoRepository.getInitialPlayUrlData(
+                                        bvid = info.bvid,
+                                        cid = info.cid,
+                                        targetQuality = defaultQuality,
+                                        audioLang = audioLang
+                                    )
+                                }
                                 if (playData == null) {
                                     Result.failure(Exception("无法获取播放地址"))
                                 } else {
@@ -496,18 +517,30 @@ class VideoPlaybackUseCase(
                                 }
                             },
                             onFailure = { error ->
+                                playUrlDeferred.cancel()
                                 Result.failure(error)
                             }
                         )
                     }
 
                     PlaybackBootstrapMode.DETAIL_ONLY -> {
-                        VideoRepository.getVideoDetails(
+                        (videoInfoLoader?.invoke() ?: VideoRepository.getVideoInfoOnly(
                             bvid = bvid,
                             aid = aid,
-                            requestedCid = cid,
-                            targetQuality = defaultQuality,
-                            audioLang = audioLang
+                            requestedCid = cid
+                        )).fold(
+                            onSuccess = { info ->
+                                onVideoInfo(info)
+                                val playData = VideoRepository.getInitialPlayUrlData(
+                                    bvid = info.bvid,
+                                    cid = info.cid,
+                                    targetQuality = defaultQuality,
+                                    audioLang = audioLang
+                                )
+                                if (playData == null) Result.failure(Exception("无法获取播放地址"))
+                                else Result.success(info to playData)
+                            },
+                            onFailure = { Result.failure(it) }
                         )
                     }
                 }
@@ -568,7 +601,7 @@ class VideoPlaybackUseCase(
                         playUrlData = playData,
                         targetQuality = targetQn,
                         audioQualityPreference = audioQualityPreference,
-                        playbackSpeed = exoPlayer?.playbackParameters?.speed ?: 1.0f,
+                        playbackSpeed = playbackSpeedOverride ?: exoPlayer?.playbackParameters?.speed ?: 1.0f,
                         videoCodecPreference = videoCodecPreference,
                         videoSecondCodecPreference = videoSecondCodecPreference,
                         isHevcSupported = isHevcSupported,
