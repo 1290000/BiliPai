@@ -740,6 +740,8 @@ fun BottomControlBar(
         )
     }
     val glassProgressDock = isFullscreen && com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
+    val expandInlineActionDock = !isFullscreen && uiLayoutWidthDp < 600 &&
+        !showDanmakuInput && !showCompactDanmakuSend
     val showDirectTools = isFullscreen && danmakuSendInTopBar && uiLayoutWidthDp >= 840
     val dockProgressLayoutPolicy = if (glassProgressDock) {
         // The track's touch row matches the shell, keeping the track vertically centered.
@@ -983,13 +985,13 @@ fun BottomControlBar(
                         }
                         Spacer(modifier = Modifier.width(layoutPolicy.afterInputSpacingDp.dp))
                         Spacer(modifier = Modifier.weight(1f))
-                    } else if (!danmakuSendInTopBar) {
+                    } else if (!danmakuSendInTopBar && !expandInlineActionDock) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
-                } else if (!danmakuSendInTopBar) {
+                } else if (!danmakuSendInTopBar && !expandInlineActionDock) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
-                if (danmakuSendInTopBar) {
+                if (danmakuSendInTopBar || expandInlineActionDock) {
                     Spacer(modifier = Modifier.width(PlayerChromeLayout.ActionGapDp.dp))
                 }
 
@@ -1002,7 +1004,7 @@ fun BottomControlBar(
                             else Modifier.widthIn(max = (uiLayoutWidthDp * 0.62f).dp)
                         )
                         .height(48.dp)
-                    else Modifier,
+                    else if (expandInlineActionDock) Modifier.weight(1f) else Modifier,
                 ) {
                     Row(
                         modifier = if (isFullscreen) Modifier
@@ -1010,10 +1012,16 @@ fun BottomControlBar(
                             // Keep the scroll viewport away from the dock's rounded ends.
                             .padding(horizontal = 10.dp)
                             .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 2.dp) else Modifier,
+                            .padding(horizontal = 2.dp)
+                        else if (expandInlineActionDock) Modifier
+                            .heightIn(min = 40.dp)
+                            .padding(horizontal = 8.dp)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 2.dp)
+                        else Modifier,
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(
-                            if (isFullscreen) 4.dp else layoutPolicy.rightActionSpacingDp.dp,
+                            if (isFullscreen || expandInlineActionDock) 4.dp else layoutPolicy.rightActionSpacingDp.dp,
                         )
                     ) {
                         if (showAspectRatioButton) {
