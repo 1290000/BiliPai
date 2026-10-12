@@ -175,6 +175,7 @@ fun TopControlBar(
     isLoggedIn: Boolean = true,
     onDanmakuInputClick: (() -> Unit)? = null,
     backButtonStartPaddingDp: Int? = null,
+    actionEndPaddingDp: Int? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -272,8 +273,12 @@ fun TopControlBar(
                 .layout { measurable, constraints ->
                     val bounds = videoContentBounds.value
                     val origin = rowOrigin
-                    // A trailing send button anchors to the player edge, including letterbox space.
-                    val inset = if (isFullscreen && onDanmakuInputClick == null && bounds != null && origin != null && constraints.hasBoundedWidth) {
+                    val alignedEndInset = if (isFullscreen && actionEndPaddingDp != null) {
+                        (actionEndPaddingDp.dp.roundToPx() -
+                            WindowInsets.displayCutout.getRight(this, layoutDirection) -
+                            layoutPolicy.horizontalPaddingDp.dp.roundToPx()).coerceAtLeast(0)
+                    } else 0
+                    val videoInset = if (isFullscreen && onDanmakuInputClick == null && bounds != null && origin != null && constraints.hasBoundedWidth) {
                         resolveTopActionsVideoInsetPx(
                             rowLeftPx = origin.x,
                             rowWidthPx = constraints.maxWidth,
@@ -281,6 +286,7 @@ fun TopControlBar(
                             clearancePx = 12.dp.roundToPx(),
                         )
                     } else 0
+                    val inset = maxOf(alignedEndInset, videoInset)
                     val width = (constraints.maxWidth - inset).coerceAtLeast(0)
                     val childConstraints = if (inset > 0) constraints.copy(
                         minWidth = (constraints.minWidth - inset).coerceAtLeast(0),

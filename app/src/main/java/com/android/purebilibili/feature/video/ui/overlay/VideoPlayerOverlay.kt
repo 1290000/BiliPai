@@ -1413,6 +1413,7 @@ private fun VideoPlayerOverlayContent(
                 if (isFullscreen) {
                     TopControlBar(
                         backButtonStartPaddingDp = overlayVisualPolicy.lockButtonEndPaddingDp,
+                        actionEndPaddingDp = overlayVisualPolicy.lockButtonEndPaddingDp,
                         title = title,
                         onlineCount = displayedOnlineCount,
                         isFullscreen = isFullscreen,
