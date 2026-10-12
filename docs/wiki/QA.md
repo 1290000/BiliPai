@@ -216,9 +216,73 @@ UI 主题、组件、页面状态和设备宽度的专项矩阵见 [UI 设计规
 
 ## 自动化命令
 
+### CI 质量门的职责
+
+`Build` 与 `PerfGuard` 共用 `bash scripts/ci_quality.sh`，分别执行验证器的 Lint fixture 回归、生产源码的语义检查，以及真实策略行为测试。`--continue` 保留独立任务的报告，不会吞掉失败退出码。这个命令不打包 APK，也不是全量单元测试。
+
+源码策略由 `ci-lint` 模块通过 Android Lint / UAST / Kotlin 类型解析执行，不再放在 JUnit 中读仓库源码做正则断言：
+
+- `BiliPaiFrameBlurAllocation` 检查已解析的 Android `createBlurEffect` 是否位于 Compose `graphicsLayer` 更新回调内；预建效果、外置缓存及能静态建立半径比较/写回/效果存储关系的内联缓存不因变量名不同而报错。这是分配风险定位，不是实际帧耗时测量，也不做跨函数调用图证明。
+- `BiliPaiModelStability` 检查 `compose_stability.conf` 承诺的模型包及子包，涵盖 `core-data` 等依赖模块；区分属性与函数/getter/init 局部变量。只读集合接口仍不证明深度不可变或运行时从未修改。
+- 六类样式规则仍限定 `live/home/dynamic/following/list/watchlater` 包及子包。真正的命名 `Spec/Palette/Policy` 不可变 token 属性 initializer 可豁免；直接返回 `tween/spring` 的具名规格工厂也属于 motion token，支持表达式体、括号及只有一个 return 的函数体，不豁免其他 UI 语句或嵌套回调。同文件 UI 函数不能靠同名测试文件存在而豁免。`dp` 规则描述的是字面尺寸，不把所有尺寸都称为间距。
+- 原审批文件豁免按规则迁入 `app/lint.xml`，不自动收录当前违规、不更新数量上限或集合摘要。新的豁免仍需要解释具体设计理由。
+
+Gradle 将检查器挂到 app 和 Android library 的 `lintChecks`，并启用依赖分析，避免只检查 app 而漏掉拆出的模型。CI 的 `-Pbili.ciChecks=true` 仅选择这些策略及检查器故障诊断，不使用旧平台 Lint baseline；普通 `lintDebug` 仍保留平台检查和原 baseline。`ObsoleteLintCustomCheck` 在 CI 中为 fatal，检查器不兼容而被整体跳过不能再产生假绿。
+
+行为验证从所属模块执行：app 包含更新版本排序、刷新率选择、运行时掉帧窗口与降级恢复、真实 Preferences 映射、主题迁移及缓存写入顺序/取消边界；design-system 执行运行时降级决策和信号合并策略。不能用 app 的 `--tests` 筛选代替 design-system 的测试任务。
+
+版本号、APK 导出实现文本、SettingsManager 物理行数、白名单摘要及 DataStore key 声明数量/所有权快照断言已移除；重复声明不等于跨存储域冲突或缓存分叉，持久化契约应从偏好读取、迁移与写入行为验证。APK 命名由实际构建后的产物收集检查，而非搜索 Gradle/YAML 文本。`composed`、模糊源、离屏合成、无限动画、`Sync` 调用数量也不再作为帧预算门禁；活跃数量、缓存和运行线程不能由这些源码计数推断。设备侧帧耗时仍走实际采集。
+
+### 2026-10-11 原修复分支质量入口验证
+
+以下结果来自迁移前的完整修复分支，不是独立上游 PR 分支的全量 CI 结果。Windows / JDK 21 实际执行 `bash scripts/ci_quality.sh`，不是 dry run；随后用测试任务自己的 `--rerun` 强制重新执行行为用例，不重跑全部编译任务。
+
+| 验证路径 | 结果 |
+| --- | --- |
+| `:ci-lint:test` | 36 个用例通过，0 失败、0 跳过；保留默认的别名、全限定调用等变换模式 |
+| app 定向行为测试 | 56 个用例通过，0 失败、0 跳过 |
+| design-system 运行时策略测试 | 12 个用例通过，0 失败、0 跳过 |
+| 生产源码 CI Lint | 587 项错误诊断；命令退出 1，未生成 baseline 或追加豁免 |
+
+源码诊断包含 4 处绘制回调内直接创建模糊效果和 583 项样式策略命中，不是 587 个 JUnit 测试失败，也不等于已测得掉帧。模型稳定性规则本次没有诊断，检查器故障诊断为零。缓存场景没有被性能规则命中；实际分配位置为 `CommentThreadNavigationBlur.kt:19`、`DynamicCommentSheet.kt:455`、`DynamicDetailScreen.kt:523`、`VideoCommentSheetHost.kt:734`。
+
+报告位于 `app/build/reports/lint-results-debug.html`、同目录 XML / SARIF，以及各模块测试报告目录。样式命中需要按具体设计迁移或由维护者批准有理由的豁免，不能仅为变绿提高上限。此前使用被 Lint API 检查判为不兼容的检查器 jar 做负向 smoke，`ObsoleteLintCustomCheck` 确实使 CI 任务退出 1，没有跳过检查后假绿。本次未重跑全量测试、APK 打包、设备帧耗时或远端 GitHub Actions。
+
+
+### 2026-10-12 独立上游守卫 PR 验证
+
+基于 `upstream/main` 的 `402bc1127` 单独迁移验证器，不包含歌词、动态图文、弹幕业务修复或其他批量测试删改。app / design-system 补齐与 Jupiter 5.10.2 匹配的 JUnit Platform launcher 1.10.2。
+
+使用 Windows、JDK 21 和 gh 认证执行：
+
+```text
+gradlew.bat :ci-lint:test --rerun :app:lintDebug -Pbili.ciChecks=true --continue --no-daemon --console=plain --stacktrace
+```
+
+| 验证路径 | 结果 |
+| --- | --- |
+| 检查器回归 | 性能规则 8 个、模型规则 14 个、样式规则 14 个；全部通过，无失败、错误或跳过 |
+| 生产源码原生 CI Lint | 587 项策略诊断，命令退出 1；其中 4 项模糊分配、583 项样式策略，模型及检查器故障诊断为零 |
+| 配置解析 | 共享质量脚本通过 `bash -n`，Build / PerfGuard YAML 解析成功 |
+
+这是原生 Lint 消费生产源码及自定义检查器 jar 的实际运行，不是源码计数、dry run 或 Gradle 参数模拟。报告已生成到 `app/build/reports/lint-results-debug.html` / SARIF 及 `ci-lint/build/test-results/test`，未生成 baseline 或扩大豁免。策略诊断不等于已测得掉帧或确认产品漏洞。
+
+上游现有 [JVM 守卫运行](https://github.com/jay3-yy/BiliPai/actions/runs/38197022539) 在 `:app:compileDebugUnitTestKotlin` 阶段失败，日志涉及 18 个测试文件：包括过期 API、语法错误以及 app 测试访问 core-data 内部符号。`--tests` 仍编译所属模块全部测试源码，不能靠窄筛选绕过这些阻塞。该日志证明的是既存编译问题，不是歌词 PR 引入的运行期断言失败。
+
+本独立分支没有再次执行已知阻塞的 app / design-system 测试任务，迁移前的 68 个行为用例结果不能作为本分支结果；未执行完整 `scripts/ci_quality.sh`、全量单元测试、APK 打包或设备帧耗时验证。验证器已运行不代表完整质量门已通过，远端状态以 PR checks 为准。
+
 按变更面选择最小验证集：
 
 ```bash
+# 与 GitHub Actions 相同的质量门，不包含 APK 构建
+bash scripts/ci_quality.sh
+
+# 仅检查 CI 源码策略；真实违规会使任务失败
+./gradlew :app:lintDebug -Pbili.ciChecks=true
+
+# 验证解析器的误报、漏报、缓存、模块与豁免边界
+./gradlew :ci-lint:test
+
 # 目标策略/结构测试，优先用于 UI 策略、播放器策略、插件规则等窄改动
 ./gradlew :app:testDebugUnitTest --tests '<ExactTestName>'
 
