@@ -142,7 +142,7 @@ internal fun TabletSecondaryDanmakuActions(
     ) {
         AppText(
             text = layoutPolicy.sendLabel,
-            fontSize = androidx.compose.material3.MaterialTheme.typography.labelLarge.fontSize,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             tapToCopyEnabled = false,
             modifier = Modifier

@@ -104,7 +104,7 @@ fun SearchVideoFilterBar(
             ) {
                 AppText(
                     text = resolveSearchOrderChipLabel(order),
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     color = if (selected) {
                         if (LocalAppUiStyle.current == com.android.purebilibili.core.theme.AppUiStyle.MIUIX) {
                             com.android.purebilibili.core.ui.AppSurfaceTokens.onSurface()
@@ -114,7 +114,7 @@ fun SearchVideoFilterBar(
                     } else {
                         com.android.purebilibili.core.ui.AppSurfaceTokens.onSurfaceVariantSummary()
                     },
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                 )
             }
