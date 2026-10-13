@@ -578,6 +578,32 @@ internal fun AdaptiveSwitchPreferenceContent(
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
+    val intent = remember { LiquidSwitchIntent() }
+    androidx.compose.runtime.CompositionLocalProvider(LocalLiquidSwitchIntent provides intent) {
+        AdaptiveSwitchPreferenceBody(
+            icon = icon, title = title, subtitle = subtitle, checked = checked,
+            onCheckedChange = { next ->
+                intent.requested = next
+                onCheckedChange(next)
+            },
+            enabled = enabled, iconTint = iconTint, textColor = textColor,
+            subtitleColor = subtitleColor,
+        )
+    }
+}
+
+@Composable
+private fun AdaptiveSwitchPreferenceBody(
+    icon: ImageVector? = null,
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
     val uiStyle = LocalAppUiStyle.current
     val visualSpec = rememberAdaptiveListComponentVisualSpec()
     val rowSpec = rememberAdaptiveListRowVisualSpec()

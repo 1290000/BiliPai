@@ -54,10 +54,9 @@ internal fun BindPlayerAmbient(
                 presentation.requiredRefresh = refresh
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    refresh++
-                    presentation.requiredRefresh = refresh
-                }
+                // Capture the final displayed frame on pause as well as on resume.
+                refresh++
+                presentation.requiredRefresh = refresh
             }
             override fun onPlaybackStateChanged(playbackState: Int) { if (playbackState == Player.STATE_READY) refresh++ }
         }
@@ -117,9 +116,11 @@ internal fun BindPlayerAmbient(
         presentation.aspectRatio = width.coerceAtLeast(1).toFloat() / height.coerceAtLeast(1)
     }
     // Navigation progress is deliberately read inside the loop/draw provider, not high-frequency composition.
-    LaunchedEffect(controller, surface, identity, quality, width, height, surfaceGeneration, textureIdentity, settings.enabled || statusBar) {
+    LaunchedEffect(controller, surface, identity, quality, width, height, surfaceGeneration, textureIdentity) {
         controller.invalidate()
-        if ((settings.enabled || statusBar) && (surface is SurfaceView || surface is TextureView)) {
+        // Visibility changes pause the loop through its policy, retaining the source and final
+        // frame. Only a new surface/media session clears captured content.
+        if (surface is SurfaceView || surface is TextureView) {
             controller.run(ViewAmbientFrameSource(surface), width, height) { latestPolicy.value() }
         }
     }

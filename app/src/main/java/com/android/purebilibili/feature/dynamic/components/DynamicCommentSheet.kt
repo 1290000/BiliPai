@@ -19,8 +19,6 @@ import com.android.purebilibili.core.ui.skeleton.CommentListItemSkeleton
 
 import android.content.Context
 import android.net.Uri
-import android.graphics.RenderEffect as AndroidRenderEffect
-import android.graphics.Shader
 import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -29,8 +27,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.ui.graphics.asComposeRenderEffect
 import com.android.purebilibili.core.ui.transition.resolvePredictiveBackBlurFrame
+import com.android.purebilibili.core.ui.transition.BlurRenderEffectCache
 import com.android.purebilibili.feature.video.ui.components.resolveCommentThreadCoveredBlurProgress
 import com.android.purebilibili.feature.video.ui.components.resolveCommentThreadPredictiveBackOffsetY
 import com.android.purebilibili.feature.video.ui.components.rememberCommentThreadDrag
@@ -453,6 +451,7 @@ fun DynamicCommentSheet(
                 } else {
                     0f
                 }
+                val coveredBlurEffectCache = remember { BlurRenderEffectCache() }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -465,11 +464,7 @@ fun DynamicCommentSheet(
                                     progress = coveredBlurProgress,
                                 )
                                 renderEffect = if (blurFrame.blurRadiusPx > 0.5f) {
-                                    AndroidRenderEffect.createBlurEffect(
-                                        blurFrame.blurRadiusPx,
-                                        blurFrame.blurRadiusPx,
-                                        Shader.TileMode.CLAMP,
-                                    ).asComposeRenderEffect()
+                                    coveredBlurEffectCache.resolve(blurFrame.blurRadiusPx)
                                 } else {
                                     null
                                 }

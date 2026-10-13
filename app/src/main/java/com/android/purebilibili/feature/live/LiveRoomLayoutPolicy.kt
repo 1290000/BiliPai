@@ -91,13 +91,31 @@ fun resolveLiveRoomLayoutMode(
     isPortraitLive: Boolean,
     hasObstructingHinge: Boolean = false,
 ): LiveRoomLayoutMode {
-    if (hasObstructingHinge) return if (isFullscreen) LiveRoomLayoutMode.LandscapeOverlay else LiveRoomLayoutMode.LandscapeSplit
-    return when {
-        isFullscreen && isPortraitLive && !isLandscape -> LiveRoomLayoutMode.PortraitVerticalOverlay
-        isFullscreen -> LiveRoomLayoutMode.LandscapeOverlay
-        isLandscape -> LiveRoomLayoutMode.LandscapeSplit
-        isPortraitLive -> LiveRoomLayoutMode.PortraitVerticalOverlay
-        else -> LiveRoomLayoutMode.PortraitPanel
+    // Hinge panes provide the interaction area even when the window is portrait or compact.
+    if (hasObstructingHinge) {
+        return if (isFullscreen) LiveRoomLayoutMode.LandscapeOverlay else LiveRoomLayoutMode.LandscapeSplit
+    }
+    return if (isTablet) {
+        if (isFullscreen) {
+            if (!isLandscape && isPortraitLive) LiveRoomLayoutMode.PortraitVerticalOverlay
+            else LiveRoomLayoutMode.LandscapeOverlay
+        } else if (isLandscape) {
+            LiveRoomLayoutMode.LandscapeSplit
+        } else if (isPortraitLive) {
+            LiveRoomLayoutMode.PortraitVerticalOverlay
+        } else {
+            LiveRoomLayoutMode.PortraitPanel
+        }
+    } else {
+        if (isFullscreen && !isLandscape && isPortraitLive) {
+            LiveRoomLayoutMode.PortraitVerticalOverlay
+        } else if (isLandscape || isFullscreen) {
+            LiveRoomLayoutMode.LandscapeOverlay
+        } else if (isPortraitLive) {
+            LiveRoomLayoutMode.PortraitVerticalOverlay
+        } else {
+            LiveRoomLayoutMode.PortraitPanel
+        }
     }
 }
 
@@ -110,13 +128,13 @@ fun shouldShowLiveChatToggle(
         layoutMode == LiveRoomLayoutMode.LandscapeSplit
 }
 
-fun defaultLiveInteractionPanelVisible(): Boolean = true
+fun defaultLiveInteractionPanelVisible(): Boolean = false
 
 fun shouldShowLiveSplitChatPanel(
     layoutMode: LiveRoomLayoutMode,
     isInteractionPanelVisible: Boolean
 ): Boolean {
-    // 普通横屏默认展示完整聊天列，用户可从更多菜单收起。
+    // 分栏聊天列跟随用户开关，默认收起。
     return layoutMode == LiveRoomLayoutMode.LandscapeSplit && isInteractionPanelVisible
 }
 
@@ -130,11 +148,9 @@ internal const val LIVE_SPLIT_VIDEO_PREFERRED_FRACTION = 0.62f
 internal fun resolveLiveSplitChatPanelWidthDp(
     screenWidthDp: Int,
     contentPaddingDp: Int = 24,
-    screenHeightDp: Int? = null,
 ): Int {
     val available = (screenWidthDp - contentPaddingDp).coerceAtLeast(1)
-    val videoFraction = screenHeightDp?.let { (it.toFloat() / screenWidthDp.coerceAtLeast(1) * 1.08f).coerceIn(LIVE_SPLIT_VIDEO_MIN_FRACTION, LIVE_SPLIT_VIDEO_MAX_FRACTION) } ?: LIVE_SPLIT_VIDEO_PREFERRED_FRACTION
-    val preferredVideo = (available * videoFraction).roundToInt()
+    val preferredVideo = (available * LIVE_SPLIT_VIDEO_PREFERRED_FRACTION).roundToInt()
         .coerceIn(
             (available * LIVE_SPLIT_VIDEO_MIN_FRACTION).roundToInt(),
             (available * LIVE_SPLIT_VIDEO_MAX_FRACTION).roundToInt(),
@@ -148,7 +164,7 @@ fun shouldShowLiveLandscapeChatOverlay(
     layoutMode: LiveRoomLayoutMode,
     isInteractionPanelVisible: Boolean
 ): Boolean {
-    return false // Fullscreen hides ordinary chat, matching PiliPlus.
+    return layoutMode == LiveRoomLayoutMode.LandscapeOverlay && isInteractionPanelVisible
 }
 
 fun shouldReserveLivePortraitInteractionPanel(

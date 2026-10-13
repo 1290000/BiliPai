@@ -284,7 +284,7 @@ private fun VideoCardOwnerMetadata(
             followerCount = upFollowerCount,
             videoCount = upVideoCount
         ),
-        badgeTrailingContent = if (isFollowing) {
+        nameLeadingContent = if (isFollowing) {
             {
                 if (infoBadgeStyle == HomeVideoBadgeStyle.GLASS) {
                     AppSurface(
@@ -345,11 +345,6 @@ private fun VideoCardOwnerMetadata(
         // 名称占满剩余宽度，省略号顶到卡片内边距附近；右侧留 6dp 空隙不与
         // 后续元素贴死，长昵称也不会被提前折叠到卡片一半宽度。
         nameEndPadding = AppSpacingTokens.ExtraSmall + AppSpacingTokens.Micro,
-        // 未关注时不再渲染空的尾部槽位，避免继续占用作者名的可用宽度；
-        // 已关注时由真实的尾部内容自行占位。
-        reserveTrailingSlot = isFollowing,
-        trailingSlotMinWidth = AppSpacingTokens.None,
-        trailingSlotMinHeight = AppSpacingTokens.Large + AppSpacingTokens.ExtraSmall,
         showUpBadge = showUpBadge,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

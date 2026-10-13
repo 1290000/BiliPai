@@ -1421,6 +1421,9 @@ fun FullscreenPlayerOverlay(
             
             DanmakuSettingsPanel(
                 isFullscreen = true,
+                onSliderPreview = { parameter, next ->
+                    com.android.purebilibili.feature.video.ui.components.applyDanmakuSliderPreview(danmakuManager, parameter, next)
+                },
                 settingsScope = danmakuScope,
                 opacity = localOpacity,
                 fontScale = localFontScale,

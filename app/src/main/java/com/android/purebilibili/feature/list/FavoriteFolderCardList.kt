@@ -21,7 +21,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +51,9 @@ import com.android.purebilibili.data.model.response.FavFolder
  * PiliPlus 式收藏夹卡片列表：视频 Tab 下收藏夹以横卡形式罗列，
  * 每张卡展示封面（16:10）、标题、简介、内容数与公开/私密信息，
  * 点击进入收藏夹详情；列表末尾保留订阅收藏夹入口。
+ *
+ * 收藏夹列表接口对部分收藏夹不返回封面，需要逐个额外请求补齐。这里随滚动到可见前沿
+ * 分批回调 [onCoverPrefetch]，交由上层按需补全，避免一次性请求全部收藏夹。
  */
 @Composable
 internal fun FavoriteFolderCardList(
@@ -59,7 +66,26 @@ internal fun FavoriteFolderCardList(
     onSubscribedClick: () -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
+    onCoverPrefetch: (List<FavFolder>) -> Unit = {},
 ) {
+    // 只在列表真正可见时跟踪滚动前沿，避免未挂载时反复回调。
+    val coverPrefetchFrontier by remember(listState) {
+        derivedStateOf {
+            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        }
+    }
+    val latestFolders by rememberUpdatedState(folders)
+    LaunchedEffect(coverPrefetchFrontier, folders.size) {
+        val current = latestFolders
+        if (current.isEmpty()) return@LaunchedEffect
+        val end = resolveFavoriteFolderCoverPrefetchEnd(
+            folderCount = current.size,
+            lastVisibleIndex = coverPrefetchFrontier,
+        )
+        if (end < 0) return@LaunchedEffect
+        onCoverPrefetch(current.take(end + 1))
+    }
+
     if (folders.isEmpty() && subscribedFoldersCount == 0) {
         val message = if (searchQuery.isNotBlank()) "没有找到相关收藏夹" else "暂无收藏夹"
         Box(

@@ -910,6 +910,9 @@ internal fun VideoDetailScreenStateHolder(
         )
     }
 
+    // 导航 lambda 需要读到「点击那刻」的全屏状态，而 isFullscreenMode 在下方才计算，
+    // 用 state 桥接（由 isFullscreenMode 的 LaunchedEffect 同步）。
+    val relatedNavStartInFullscreen = remember { mutableStateOf(false) }
     val navigateToRelatedVideo = remember(
         onVideoClick,
         miniPlayerManager,
@@ -958,11 +961,19 @@ internal fun VideoDetailScreenStateHolder(
                         commentListState = commentListState,
                     )
                     val parentBvid = success?.info?.bvid ?: currentBvid
-                    val navOptions = android.os.Bundle(options ?: android.os.Bundle.EMPTY).apply {
-                        if (resolvedCid > 0L) {
-                            putLong(VIDEO_NAV_TARGET_CID_KEY, resolvedCid)
-                        }
-                    }
+                    // 全屏中跳下一个视频：新详情页继承全屏意图与目标封面，避免中途掉出全屏、
+                    // 也避免首帧前无封面承接。同页切集由上面的分支处理，不受这里影响。
+                    val navOptions = buildVideoNavigationOptions(
+                        base = options,
+                        targetCid = resolvedCid,
+                        coverUrl = resolveNavigationTargetCoverUrl(
+                            targetBvid = targetBvid,
+                            relatedVideos = success?.related.orEmpty(),
+                            ugcSeason = success?.info?.ugc_season,
+                            targetCid = resolvedCid,
+                        ),
+                        startInFullscreen = relatedNavStartInFullscreen.value,
+                    )
 
                     // 先摘掉父详情壳 sharedBounds，再 push，避免相关卡嵌套在父壳内吃不到 morph。
                     // 只保留轻量 UI 位置快照；整屏位图捕获会把导航提交阻塞数百毫秒。
@@ -1295,11 +1306,14 @@ internal fun VideoDetailScreenStateHolder(
     // 🔧 [修复] 追踪用户是否主动请求全屏（点击全屏按钮）
     // 使用 rememberSaveable 确保状态在横竖屏切换时保持
     // 系统小窗 / 分屏也是普通详情入口；窗口模式不代表用户请求了全屏。
-    // 按视频保存手动全屏状态，显式路由请求由下方的入口 effect 处理。
-    var userRequestedFullscreen by rememberSaveable(currentBvid) {
+    // 按详情路由会话（bvid）保存手动全屏意图：同页切集（下一集 / 合集 / 队列）仍属于同一次
+    // 全屏观看，意图必须跨 currentBvid 变化保留——否则方向请求会从「手动全屏」回落到
+    // SCREEN_ORIENTATION_USER，被系统/重力转回竖屏，表现为播放中「退出全屏」。
+    // push 到新的详情路由才重置，保持「每次进入新视频页默认非全屏」的语义。
+    var userRequestedFullscreen by rememberSaveable(bvid) {
         mutableStateOf(false)
     }
-    var hasHandledStartFullscreenRequest by rememberSaveable(currentBvid, startInFullscreen) {
+    var hasHandledStartFullscreenRequest by rememberSaveable(bvid, startInFullscreen) {
         mutableStateOf(false)
     }
     var manualPortraitHoldActive by rememberSaveable { mutableStateOf(false) }
@@ -1347,6 +1361,13 @@ internal fun VideoDetailScreenStateHolder(
         isInMultiWindowMode = isActivityInMultiWindowMode,
         manualPortraitHoldActive = manualPortraitHoldActive,
     )
+
+    // 「下一集 / 相关视频」的导航 lambda 定义在 isFullscreenMode 之前，用 state 桥接，
+    // 让它在点击时刻读到最新全屏状态：全屏中 push 新详情页必须继承全屏意图才不会掉出全屏。
+    LaunchedEffect(isFullscreenMode) {
+        relatedNavStartInFullscreen.value = isFullscreenMode
+    }
+
     var previousDisplayRole by remember {
         mutableStateOf(displayContext.foldableDisplayRole)
     }
@@ -1501,9 +1522,10 @@ internal fun VideoDetailScreenStateHolder(
 
     //  路由请求只负责本次视频入口的初始方向。横屏切回竖屏后不能再次把它当成
     //  新请求，否则 startInFullscreen 会和用户的退出操作互相触发方向切换。
+    //  守卫与 effect 都按详情路由会话（bvid）键控：同页切集不该重放入口的方向请求。
     LaunchedEffect(
         startInFullscreen,
-        currentBvid,
+        bvid,
     ) {
         if (!startInFullscreen || hasHandledStartFullscreenRequest) return@LaunchedEffect
         if (!isOrientationDrivenFullscreen) {
@@ -1511,19 +1533,15 @@ internal fun VideoDetailScreenStateHolder(
             hasHandledStartFullscreenRequest = true
         } else {
             context.findActivity()?.let { activity ->
-                val isInMultiWindowMode = isActivityInMultiWindowOrFloatingMode(
-                    activity = activity,
-                    displayContext = displayContext,
-                )
                 if (!shouldApplyStartFullscreenOrientationRequest(
                         startInFullscreen = startInFullscreen,
                         isOrientationDrivenFullscreen = isOrientationDrivenFullscreen,
                         isLandscape = isLandscape
                     )
                 ) {
-                    if (isInMultiWindowMode) {
-                        userRequestedFullscreen = true
-                    }
+                    // 已经处于横屏（含分屏 / 小窗横屏）：方向无需再请求，但这次全屏意图必须记下来，
+                    // 否则方向策略会回落 SCREEN_ORIENTATION_USER 把页面转回竖屏。
+                    userRequestedFullscreen = true
                     hasHandledStartFullscreenRequest = true
                     return@let
                 }

@@ -84,6 +84,19 @@ private fun AppIconButtonImpl(
     variant: AppIconButtonVariant,
     content: @Composable () -> Unit,
 ) {
+    val decorator = LocalAppTopBarIconDecorator.current.takeIf {
+        LocalAppTopBarIconDecorationEnabled.current &&
+            com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled &&
+            LocalElasticPressEnabled.current
+    }
+    if (decorator != null) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalAppTopBarIconDecorationEnabled provides false) {
+            decorator.Render(modifier, enabled) { innerModifier ->
+                AppIconButtonImpl(onClick, innerModifier, enabled, colors, interactionSource, variant, content)
+            }
+        }
+        return
+    }
     ProvideAppElasticFeedback(enabled = enabled) {
         when (LocalAppUiStyle.current) {
             AppUiStyle.MATERIAL3 -> AppMaterial3IconButton(

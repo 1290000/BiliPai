@@ -10,7 +10,6 @@ package com.android.purebilibili.core.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
@@ -150,6 +149,8 @@ fun Modifier.appElasticPress(
     state: AppElasticPressState? = null,
     transformInBackdrop: Boolean = false,
     highlightShape: Shape = RoundedCornerShape(50),
+    /** Only true while a caller-owned gesture has consumed the movement. */
+    allowConsumedDrag: () -> Boolean = { false },
 ): Modifier {
     if (foldIn(false) { found, element -> found || element === ElasticPressMarker }) return this
     return Modifier.then(ElasticPressMarker).composed {
@@ -165,10 +166,10 @@ fun Modifier.appElasticPress(
             pressJob?.cancel()
             positionJob?.cancel()
             pressJob = scope.launch {
-                press.animateTo(0f, spring(0.5f, 300f, 0.001f))
+                press.animateTo(0f, appPressHighlightPressSpec())
             }
             positionJob = scope.launch {
-                position.animateTo(elasticState.startPosition, spring(0.5f, 300f, Offset.VisibilityThreshold))
+                position.animateTo(elasticState.startPosition, appPressHighlightPositionSpec())
             }
         }
 
@@ -183,7 +184,7 @@ fun Modifier.appElasticPress(
                     elasticState.gestureSize = Size(size.width.toFloat(), size.height.toFloat())
                     elasticState.startPosition = down.position
                     pressJob = scope.launch {
-                        press.animateTo(1f, spring(0.5f, 300f, 0.001f))
+                        press.animateTo(1f, appPressHighlightPressSpec())
                     }
                     positionJob = scope.launch { position.snapTo(down.position) }
                     val pointerId = down.id
@@ -195,7 +196,7 @@ fun Modifier.appElasticPress(
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
                             if (!change.pressed) break
                             if (change.position != change.previousPosition) {
-                                if (change.isConsumed) break
+                                if (change.isConsumed && !allowConsumedDrag()) break
                                 if (dragEnabled) {
                                     positionJob?.cancel()
                                     positionJob = scope.launch { position.snapTo(change.position) }

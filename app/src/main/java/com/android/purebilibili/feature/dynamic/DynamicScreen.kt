@@ -821,6 +821,7 @@ fun DynamicScreen(
                         @Composable
                         fun UpPanelSidebar() {
                             DynamicSidebar(
+                                chromeBackdrop = dynamicDockBackdrop,
                                 users = displayUsers,
                                 selectedUserId = selectedUserId,
                                 selfUid = selfUid,

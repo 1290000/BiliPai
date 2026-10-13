@@ -3,6 +3,9 @@ package com.android.purebilibili.core.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.RowScope
 import com.android.purebilibili.core.ui.components.AppChromeOverflowHost
 import com.android.purebilibili.core.ui.components.AppChromeOverflowSlot
@@ -203,30 +206,44 @@ fun AdaptiveScaffold(
     val scaffoldRenderer = resolveAdaptiveScaffoldRenderer(
         uiStyle = LocalAppUiStyle.current
     )
+    val iconBackdropSource = if (LocalAppThemeConfig.current.liquidGlassEnabled) {
+        com.android.purebilibili.core.ui.blur.rememberChromeBackdropSource()
+    } else null
+    val decoratedTopBar: @Composable () -> Unit = {
+        CompositionLocalProvider(
+            com.android.purebilibili.core.ui.components.LocalAppTopBarIconBackdrop provides
+                iconBackdropSource?.takeIf { it.isReady }?.backdrop,
+        ) { topBar() }
+    }
+    val recordedContent: @Composable (PaddingValues) -> Unit = { padding ->
+        if (iconBackdropSource != null) {
+            Box(Modifier.fillMaxSize().then(iconBackdropSource.modifier)) { content(padding) }
+        } else content(padding)
+    }
     when (scaffoldRenderer) {
         AdaptiveScaffoldRenderer.MIUIX_SCAFFOLD_WITH_POPUP_HOST -> {
         MiuixScaffold(
             modifier = modifier,
-            topBar = topBar,
+            topBar = decoratedTopBar,
             bottomBar = bottomBar,
             floatingActionButton = floatingActionButton,
             snackbarHost = snackbarHost,
             popupHost = { MiuixPopupUtils.MiuixPopupHost() },
             containerColor = effectiveContainerColor,
             contentWindowInsets = contentWindowInsets,
-            content = content
+            content = recordedContent
         )
         }
         AdaptiveScaffoldRenderer.MATERIAL3_SCAFFOLD -> {
         Scaffold(
             modifier = modifier,
-            topBar = topBar,
+            topBar = decoratedTopBar,
             bottomBar = bottomBar,
             floatingActionButton = floatingActionButton,
             snackbarHost = snackbarHost,
             containerColor = effectiveContainerColor,
             contentWindowInsets = contentWindowInsets,
-            content = content
+            content = recordedContent
         )
         }
     }
@@ -251,10 +268,20 @@ fun AdaptiveTopAppBar(
             title = title,
             subtitle = subtitle,
             largeTitle = largeTitle,
-            navigationIcon = { AppChromeOverflowSlot(content = navigationIcon) },
+            navigationIcon = {
+                CompositionLocalProvider(
+                    com.android.purebilibili.core.ui.components.LocalAppTopBarIconDecorationEnabled provides true,
+                ) {
+                    AppChromeOverflowSlot {
+                        Box(Modifier.padding(end = 6.dp)) { navigationIcon() }
+                    }
+                }
+            },
             actions = {
                 AppChromeOverflowSlot {
-                    Row(verticalAlignment = Alignment.CenterVertically, content = actions)
+                    CompositionLocalProvider(
+                        com.android.purebilibili.core.ui.components.LocalAppTopBarIconDecorationEnabled provides true,
+                    ) { Row(verticalAlignment = Alignment.CenterVertically, content = actions) }
                 }
             },
             colors = colors,

@@ -8,6 +8,7 @@ import coil3.imageLoader
 import com.android.purebilibili.core.cache.PlayUrlCache
 import com.android.purebilibili.core.cooldown.PlaybackCooldownManager
 import com.android.purebilibili.core.player.PlaybackMediaCache
+import com.android.purebilibili.core.store.FavoriteFolderCoverCache
 import com.android.purebilibili.core.store.FollowingCacheStore
 import com.android.purebilibili.core.store.SettingsManager
 import com.android.purebilibili.data.repository.DanmakuRepository
@@ -247,6 +248,7 @@ object CacheUtils {
 
             if (CacheClearTarget.APP_METADATA in targets) {
                 FollowingCacheStore.clear(context)
+                FavoriteFolderCoverCache.clear(context)
                 com.android.purebilibili.core.network.WbiKeyManager.invalidateCache()
                 Logger.d(TAG, " App metadata cache cleared")
             }
@@ -378,6 +380,7 @@ object CacheUtils {
         
         // 应用缓存
         FollowingCacheStore.clear(context)
+        FavoriteFolderCoverCache.clear(context)
         com.android.purebilibili.core.network.WbiKeyManager.invalidateCache()
         PlaybackCooldownManager.clearAll()
         Logger.clearPrivateLogArtifacts(context)

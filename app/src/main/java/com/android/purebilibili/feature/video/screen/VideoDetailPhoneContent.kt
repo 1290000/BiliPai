@@ -502,7 +502,7 @@ private fun ExternalPlaylistQueueCollapsedBar(
     isScrollInProgressProvider: () -> Boolean,
     modifier: Modifier = Modifier
 ) {
-    val shape = AppShapes.borderedContainer(ContainerLevel.Dialog)
+    val shape = AppShapes.container(ContainerLevel.Pill)
     if (liquidGlassEnabled) {
         BottomBarMatchedReusableLiquidDock(
             shape = shape,

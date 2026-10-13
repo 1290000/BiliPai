@@ -97,6 +97,11 @@ import com.android.purebilibili.core.ui.components.AppSegmentOption
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppThemeAdaptiveTabRow
 import com.android.purebilibili.core.ui.components.AppTextButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.android.purebilibili.core.ui.AppModalBottomSheet
+import com.android.purebilibili.core.ui.AppModalPresentation
+import com.android.purebilibili.feature.video.ui.components.PlaybackCdnDiagnostics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -454,7 +459,7 @@ private const val SEEK_RESUME_TRANSITION_GRACE_MS = 350L
 
 // 播放器 overlay 色层动效 token：遮罩/控制栏/锁屏按钮/加载指示共用同一节奏与曲线。
 // 曲线取全局 alpha 主曲线 Continuity（AppMotionTokens 体系），时长保持既有节奏。
-private const val OVERLAY_CHROME_FADE_DURATION_MILLIS = 300
+private const val OVERLAY_CHROME_FADE_DURATION_MILLIS = PLAYER_GLASS_VISIBILITY_DURATION_MS
 private const val OVERLAY_CONTROL_FADE_DURATION_MILLIS = 200
 private val OverlayChromeFadeSpec =
     tween<Float>(OVERLAY_CHROME_FADE_DURATION_MILLIS, easing = AppMotionEasing.Continuity)
@@ -468,6 +473,23 @@ fun VideoPlayerOverlay(
     state: VideoPlayerOverlayState,
     actions: VideoPlayerOverlayActions,
 ) {
+    // Keep the non-inline backdrop slot small. Capturing this screen's locals
+    // here exceeds DEX's 255 argument-register limit in synthetic constructors.
+    PlayerControlsBackdropHost(
+        enabled = true,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        VideoPlayerOverlayContent(state, actions)
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun VideoPlayerOverlayContent(
+    state: VideoPlayerOverlayState,
+    actions: VideoPlayerOverlayActions,
+) {
+    val levelGestureActive = LocalPlayerLevelGestureActive.current
     val player = state.player
     val title = state.title
     val isVisible = state.isVisible
@@ -733,6 +755,7 @@ fun VideoPlayerOverlay(
     var showPlaybackOrderSheet by remember { mutableStateOf(false) }
     var showPageSelectorSheet by remember { mutableStateOf(false) }
     var bottomControlFloatingPanelVisible by remember { mutableStateOf(false) }
+    var showCdnDiagnostics by remember { mutableStateOf(false) }
     // 换集后强制关掉分集/菜单等全屏遮罩，避免 Dialog/Sheet 残留挡触摸。
     LaunchedEffect(bvid, cid) {
         showPageSelectorSheet = false
@@ -744,6 +767,7 @@ fun VideoPlayerOverlay(
         showChapterList = false
         showPlaybackOrderSheet = false
         showCastDialog = false
+        showCdnDiagnostics = false
     }
     var currentSpeed by remember(player) { mutableFloatStateOf(player.playbackParameters.speed) }
     //  使用传入的比例状态
@@ -760,7 +784,7 @@ fun VideoPlayerOverlay(
     var seekResumeTransitionGraceActive by remember { mutableStateOf(false) }
     var wasPlayingWhenProgressScrubbingStarted by remember { mutableStateOf(false) }
     var previousSeekScrubbingState by remember { mutableStateOf(isSeekScrubbing) }
-    
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val fullscreenLockButtonState = remember(isScreenLocked) {
@@ -1071,7 +1095,7 @@ fun VideoPlayerOverlay(
         player.addListener(speedListener)
         onDispose { player.removeListener(speedListener) }
     }
-    
+
 
     //  双击检测状态
     var lastTapTime by remember { mutableLongStateOf(0L) }
@@ -1083,7 +1107,7 @@ fun VideoPlayerOverlay(
         resolveVideoPlayerOverlayVisualPolicy(
             widthDp = configuration.screenWidthDp,
             compact = playerControlVisibility.compactPlayerChrome
-        )
+        ).copy(lockButtonSizeDp = 48, lockIconSizeDp = 24)
     }
     val landscapeCommentReservedWidth = if (landscapeCommentPanelVisible && !state.landscapeCommentViewportAlreadyReserved) {
         resolveLandscapeEndDrawerLayoutPolicy(configuration.screenWidthDp).drawerWidthDp.dp
@@ -1176,9 +1200,12 @@ fun VideoPlayerOverlay(
         isVisible,
         effectiveIsPlaying,
         isSeekScrubbing,
-        bottomControlFloatingPanelVisible
+        bottomControlFloatingPanelVisible,
+        showCdnDiagnostics,
+        danmakuComposerVisible,
+        levelGestureActive,
     ) {
-        if (
+        if (!danmakuComposerVisible && !levelGestureActive && !showCdnDiagnostics &&
             shouldAutoHideInlineControlsAfterDelay(
                 controlsVisible = isVisible,
                 isPlaying = effectiveIsPlaying,
@@ -1187,7 +1214,7 @@ fun VideoPlayerOverlay(
             )
         ) {
             delay(4000)
-            if (
+            if (!danmakuComposerVisible && !levelGestureActive && !showCdnDiagnostics &&
                 shouldAutoHideInlineControlsAfterDelay(
                     controlsVisible = isVisible,
                     isPlaying = effectiveIsPlaying,
@@ -1210,7 +1237,7 @@ fun VideoPlayerOverlay(
             onSeekDragCancel()
         }
     }
-    
+
     //  双击点赞动画自动消失
     LaunchedEffect(showLikeAnimation) {
         if (showLikeAnimation) {
@@ -1285,10 +1312,7 @@ fun VideoPlayerOverlay(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         if (!isFullscreen) {
             ImmersiveStatusBarBackdrop(
                 ambientFrame = statusBarAmbientFrame,
@@ -1361,7 +1385,7 @@ fun VideoPlayerOverlay(
         }
 
         // 控件隐藏时保留底部细进度条，便于持续感知当前播放进度
-        if (
+        if (!danmakuComposerVisible &&
             shouldShowPersistentBottomProgressBar(
                 controlsVisible = isVisible,
                 isFullscreen = isFullscreen,
@@ -1377,7 +1401,7 @@ fun VideoPlayerOverlay(
         }
 
         // --- 3. 控制栏内容 (锁定时隐藏) ---
-        val showPlayerChrome = (isVisible && !isScreenLocked) || danmakuComposerVisible
+        val showPlayerChrome = isVisible && !isScreenLocked && !danmakuComposerVisible
         AnimatedVisibility(
             visible = showPlayerChrome,
             enter = fadeIn(OverlayChromeFadeSpec),
@@ -1390,6 +1414,8 @@ fun VideoPlayerOverlay(
                 //  顶部控制栏 - 仅在横屏（全屏）模式显示标题和清晰度
                 if (isFullscreen) {
                     TopControlBar(
+                        backButtonStartPaddingDp = overlayVisualPolicy.lockButtonEndPaddingDp,
+                        actionEndPaddingDp = overlayVisualPolicy.lockButtonEndPaddingDp,
                         title = title,
                         onlineCount = displayedOnlineCount,
                         isFullscreen = isFullscreen,
@@ -1414,6 +1440,8 @@ fun VideoPlayerOverlay(
                             }
                         },
                         onCommentClick = onLandscapeCommentClick,
+                        isLoggedIn = isLoggedIn,
+                        onDanmakuInputClick = onDanmakuInputClick,
                         onCastClick = onCastClickAction,
                         showCastButton = playerControlVisibility.showCastButton,
                         onMoreClick = {
@@ -1446,34 +1474,19 @@ fun VideoPlayerOverlay(
                         modifier = Modifier.align(Alignment.TopStart)
                     )
                 }
-                
+
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .onSizeChanged { onBottomControlsSizeChanged(it.height) }
                 ) {
-                    if (isFullscreen && danmakuComposerVisible) {
-                        LandscapeDanmakuComposer(
-                            visible = true,
-                            onDismiss = onDismissDanmakuComposer,
-                            onSend = onSendDanmakuComposer,
-                            isSending = isSendingDanmakuComposer,
-                            initialColor = danmakuComposerInitialColor,
-                            initialMode = danmakuComposerInitialMode,
-                            initialFontSize = danmakuComposerInitialFontSize,
-                            initialText = danmakuComposerInitialText,
-                            initialAttentionCommand = danmakuComposerInitialAttentionCommand,
-                            onDraftChange = onDanmakuComposerDraftChange,
-                            onSelectionChange = onDanmakuComposerSelectionChange
-                        )
-                    }
-
                     key(player, bvid, cid) {
                     BottomControlBar(
                     viewportWidthDpOverride = viewportWidthDpOverride,
                     isPlaying = effectiveIsPlaying,
                     progressProvider = progressProvider,
                     isFullscreen = isFullscreen,
+                    danmakuSendInTopBar = isFullscreen,
                     compactPlayerChrome = playerControlVisibility.compactPlayerChrome,
                     currentSpeed = currentSpeed,
                     currentRatio = currentAspectRatio,
@@ -1552,6 +1565,9 @@ fun VideoPlayerOverlay(
                     onPortraitFullscreen = onPortraitFullscreen,
                     // 📲 [新增] 小窗模式
                     onPipClick = onPipClick,
+                    cdnDiagnosticsAvailable = cdnCount > 0,
+                    onCdnDiagnosticsClick = { showCdnDiagnostics = true },
+                    onPlayerSettingsClick = { showVideoSettings = true },
                     // 🔁 [新增] 播放模式
                     currentPlayMode = currentPlayMode,
                     onPlayModeClick = onPlayModeClick,
@@ -1569,37 +1585,67 @@ fun VideoPlayerOverlay(
                 }
             }
         }
-        
+
+        if (isFullscreen && danmakuComposerVisible) {
+            LandscapeDanmakuComposer(
+                visible = true,
+                onDismiss = onDismissDanmakuComposer,
+                onSend = onSendDanmakuComposer,
+                isSending = isSendingDanmakuComposer,
+                initialColor = danmakuComposerInitialColor,
+                initialMode = danmakuComposerInitialMode,
+                initialFontSize = danmakuComposerInitialFontSize,
+                initialText = danmakuComposerInitialText,
+                initialAttentionCommand = danmakuComposerInitialAttentionCommand,
+                onDraftChange = onDanmakuComposerDraftChange,
+                onSelectionChange = onDanmakuComposerSelectionChange
+            )
+        }
+
+        CenterPlaybackControl(
+            visible = (isVisible || !effectiveIsPlaying) &&
+                (pluginPlaybackStatus.first || player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_ENDED) &&
+                centerLoadingUiState == null &&
+                !isScreenLocked && !isSeekScrubbing && !danmakuComposerVisible &&
+                !endDrawerVisible && !landscapeCommentPanelVisible && !showInsightDetails,
+            isPlaying = effectiveIsPlaying,
+            onPlayPause = { togglePlayPause() },
+            diameter = if (isFullscreen) 72.dp else 56.dp,
+            modifier = Modifier.align(Alignment.Center),
+        )
+
         // --- 3.5 🔒 [新增] 屏幕锁定按钮 (仅全屏模式) ---
         if (isFullscreen && showFullscreenLockButton) {
             AnimatedVisibility(
-                visible = isVisible,  // 锁定后按控制栏状态自动隐藏
+                visible = isVisible && !danmakuComposerVisible,  // 锁定后按控制栏状态自动隐藏
                 enter = fadeIn(OverlayControlFadeSpec),
                 exit = fadeOut(OverlayControlFadeSpec),
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = overlayVisualPolicy.lockButtonEndPaddingDp.dp)
             ) {
-                AppSurface(
-                    onClick = onLockToggle,
-                    color = Color.Transparent,
-                    shape = RoundedCornerShape(overlayVisualPolicy.lockButtonCornerRadiusDp.dp),
-                    modifier = Modifier.size(overlayVisualPolicy.lockButtonSizeDp.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        AppIcon(
-                            when (fullscreenLockButtonState.icon) {
-                                FullscreenLockButtonIcon.LOCKED -> Icons.Outlined.Lock
-                                FullscreenLockButtonIcon.UNLOCKED -> Icons.Outlined.LockOpen
-                            },
-                            contentDescription = fullscreenLockButtonState.contentDescription,
-                            tint = if (fullscreenLockButtonState.highlighted) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                Color.White
-                            },
-                            modifier = Modifier.size(overlayVisualPolicy.lockIconSizeDp.dp)
-                        )
+                PlayerControlGlassDock(enabled = true, shape = androidx.compose.foundation.shape.CircleShape) {
+                    AppSurface(
+                        onClick = onLockToggle,
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(overlayVisualPolicy.lockButtonCornerRadiusDp.dp),
+                        modifier = Modifier.size(PlayerChromeLayout.CircularButtonSizeDp.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            AppIcon(
+                                when (fullscreenLockButtonState.icon) {
+                                    FullscreenLockButtonIcon.LOCKED -> Icons.Outlined.Lock
+                                    FullscreenLockButtonIcon.UNLOCKED -> Icons.Outlined.LockOpen
+                                },
+                                contentDescription = fullscreenLockButtonState.contentDescription,
+                                tint = if (fullscreenLockButtonState.highlighted) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    Color.White
+                                },
+                                modifier = Modifier.size(overlayVisualPolicy.lockIconSizeDp.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1607,26 +1653,28 @@ fun VideoPlayerOverlay(
 
         if (isFullscreen && showFullscreenScreenshotButton) {
             AnimatedVisibility(
-                visible = isVisible && !isScreenLocked,
+                visible = isVisible && !isScreenLocked && !danmakuComposerVisible,
                 enter = fadeIn(OverlayControlFadeSpec),
                 exit = fadeOut(OverlayControlFadeSpec),
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = overlayVisualPolicy.lockButtonEndPaddingDp.dp)
             ) {
-                AppSurface(
-                    onClick = onCaptureScreenshot,
-                    color = Color.Transparent,
-                    shape = RoundedCornerShape(overlayVisualPolicy.lockButtonCornerRadiusDp.dp),
-                    modifier = Modifier.size(overlayVisualPolicy.lockButtonSizeDp.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        AppIcon(
-                            imageVector = Icons.Outlined.Camera,
-                            contentDescription = "截图",
-                            tint = Color.White,
-                            modifier = Modifier.size(overlayVisualPolicy.lockIconSizeDp.dp)
-                        )
+                PlayerControlGlassDock(enabled = true, shape = androidx.compose.foundation.shape.CircleShape) {
+                    AppSurface(
+                        onClick = onCaptureScreenshot,
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(overlayVisualPolicy.lockButtonCornerRadiusDp.dp),
+                        modifier = Modifier.size(PlayerChromeLayout.CircularButtonSizeDp.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            AppIcon(
+                                imageVector = Icons.Outlined.Camera,
+                                contentDescription = "截图",
+                                tint = Color.White,
+                                modifier = Modifier.size(overlayVisualPolicy.lockIconSizeDp.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1932,7 +1980,7 @@ fun VideoPlayerOverlay(
                 placement = if (isFullscreen) PlayerListPopupPlacement.END_BOTTOM else PlayerListPopupPlacement.CENTER,
             )
         }
-        
+
         // --- 7.  [新增] 倍速选择菜单 ---
         if (showSpeedMenu) {
             SpeedSelectionMenuDialog(
@@ -1953,7 +2001,7 @@ fun VideoPlayerOverlay(
                 }
             )
         }
-        
+
         // --- 7.5  [新增] 视频比例选择菜单 ---
         if (showRatioMenu) {
             Box(
@@ -1976,7 +2024,7 @@ fun VideoPlayerOverlay(
                 )
             }
         }
-        
+
         // --- 8.  [新增] 弹幕设置面板 ---
         if (showDanmakuSettings) {
             DanmakuSettingsPanel(
@@ -2014,6 +2062,7 @@ fun VideoPlayerOverlay(
                 showSyncSection = showDanmakuSyncSection,
                 cloudSyncEnabled = danmakuCloudSyncEnabled,
                 syncUiState = danmakuSyncUiState,
+                onSliderPreview = actions.onDanmakuSliderPreview,
                 onOpacityChange = onDanmakuOpacityChange,
                 onFontScaleChange = onDanmakuFontScaleChange,
                 onFontWeightChange = onDanmakuFontWeightChange,
@@ -2051,8 +2100,40 @@ fun VideoPlayerOverlay(
                 onDismiss = { showDanmakuSettings = false }
             )
         }
-        
+
         // --- 9.  [新增] 视频设置面板 ---
+        if (showCdnDiagnostics) {
+            AppModalBottomSheet(
+                onDismissRequest = { showCdnDiagnostics = false },
+                presentationOverride = AppModalPresentation.BottomSheet,
+                backgroundBlurBehind = true,
+            ) {
+                AppSurface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.container(ContainerLevel.Sheet),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .heightIn(max = (configuration.screenHeightDp * 0.8f).dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        AppText("CDN 测速与线路", style = MaterialTheme.typography.titleLarge)
+                        PlaybackCdnDiagnostics(
+                            diagnostics = cdnLineDiagnostics,
+                            checking = isCdnProbing,
+                            canCheck = cdnCount > 0 && !isCdnProbing,
+                            onCheck = onProbeCdnCandidates,
+                            onSwitchTo = onSwitchCdnTo,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        AppTextButton(onClick = { showCdnDiagnostics = false }) { AppText("关闭") }
+                    }
+                }
+            }
+        }
+
         if (showVideoSettings) {
             VideoSettingsPanel(
                 sleepTimerMinutes = sleepTimerMinutes,
@@ -2168,7 +2249,7 @@ fun VideoPlayerOverlay(
                 onDismiss = { showPlaybackOrderSheet = false }
             )
         }
-        
+
         // --- 10. 📖 [新增] 章节列表面板 ---
         if (showChapterList && viewPoints.isNotEmpty()) {
             OverlayChapterListPanel(
@@ -2254,7 +2335,7 @@ fun VideoPlayerOverlay(
                     }
             )
         }
-        
+
         // --- 11. [新增] 侧边栏抽屉 ---
         LandscapeEndDrawer(
             visible = endDrawerVisible && isFullscreen,
@@ -2276,7 +2357,7 @@ fun VideoPlayerOverlay(
             hazeState = drawerHazeState,
             modifier = Modifier.align(Alignment.CenterEnd)
         )
-        
+
         // --- 12. 📺 投屏对话框 ---
         val currentCastSignature = remember(currentAid, cid, currentQuality, currentVideoUrl, currentAudioUrl) {
             buildCastMediaSourceSignature(currentAid, cid, currentQuality, currentVideoUrl, currentAudioUrl)
@@ -2378,7 +2459,7 @@ fun VideoPlayerOverlay(
 
 /**
  *  竖屏模式顶部控制栏
- * 
+ *
  * 包含返回首页按钮、听视频/投屏与更多菜单；经典布局另有分享按钮
  */
 @Composable
@@ -2440,31 +2521,36 @@ private fun PortraitTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(layoutPolicy.leftSectionSpacingDp.dp)
         ) {
-            // 返回按钮 - 简洁无背景
-            AppIconButton(
-                onClick = onBack,
-                modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
-            ) {
-                AppIcon(
-                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
-                    contentDescription = "返回",
-                    tint = Color.White,
-                    modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
-                )
+            // 独立导航使用圆形玻璃，原生按钮保留点击行为。
+            PlayerControlGlassDock(enabled = true, shape = CircleShape) {
+                AppIconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                ) {
+                    AppIcon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                        contentDescription = "返回",
+                        tint = Color.White,
+                        modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                    )
+                }
             }
 
-            AppIconButton(
-                onClick = onHome,
-                modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
-            ) {
-                AppIcon(
-                    imageVector = Icons.Outlined.Home,
-                    contentDescription = "主界面",
-                    tint = Color.White,
-                    modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
-                )
+            PlayerControlGlassDock(enabled = true, shape = CircleShape) {
+                AppIconButton(
+                    onClick = onHome,
+                    modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                ) {
+                    AppIcon(
+                        imageVector = Icons.Outlined.Home,
+                        contentDescription = "主界面",
+                        tint = Color.White,
+                        modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                    )
+                }
+
             }
-            
+
             // 👀 在线人数
             if (onlineCount.isNotEmpty()) {
                 AppText(
@@ -2475,129 +2561,132 @@ private fun PortraitTopBar(
                 )
             }
         }
-        
-        // 右侧按钮组
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(layoutPolicy.rightSectionSpacingDp.dp)
-        ) {
-            //  听视频模式按钮 - 激活时保留背景色
-            AppIconButton(
-                onClick = onAudioMode,
-                modifier = Modifier
-                    .size(layoutPolicy.buttonSizeDp.dp)
-                    .then(
-                        if (isAudioOnly) Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
-                        else Modifier
-                    )
-            ) {
-                AppIcon(
-                    imageVector = Icons.Outlined.Headphones,
-                    contentDescription = "听视频",
-                    tint = if (isAudioOnly) MaterialTheme.colorScheme.onPrimary else Color.White,
-                    modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
-                )
-            }
 
-            if (showCastButton) {
+        // 相关操作共享一个 Dock。
+        PlayerControlGlassDock(enabled = true) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(layoutPolicy.rightSectionSpacingDp.dp)
+            ) {
+                //  听视频模式按钮 - 激活时保留背景色
                 AppIconButton(
-                    onClick = onCastClick,
+                    onClick = onAudioMode,
+                    modifier = Modifier
+                        .size(layoutPolicy.buttonSizeDp.dp)
+                        .then(
+                            if (isAudioOnly) Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
+                            else Modifier
+                        )
+                ) {
+                    AppIcon(
+                        imageVector = Icons.Outlined.Headphones,
+                        contentDescription = "听视频",
+                        tint = if (isAudioOnly) MaterialTheme.colorScheme.onPrimary else Color.White,
+                        modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                    )
+                }
+
+                if (showCastButton) {
+                    AppIconButton(
+                        onClick = onCastClick,
+                        modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = Icons.Outlined.Tv,
+                            contentDescription = "投屏",
+                            tint = Color.White,
+                            modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                        )
+                    }
+                }
+
+                //  设置按钮 - 无背景
+                AppIconButton(
+                    onClick = { showMoreMenu = true },
                     modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
                 ) {
                     AppIcon(
-                        imageVector = Icons.Outlined.Tv,
-                        contentDescription = "投屏",
+                        imageVector = moreIcon,
+                        contentDescription = "设置",
                         tint = Color.White,
                         modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
                     )
                 }
-            }
-            
-            //  设置按钮 - 无背景
-            AppIconButton(
-                onClick = { showMoreMenu = true },
-                modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
-            ) {
-                AppIcon(
-                    imageVector = moreIcon,
-                    contentDescription = "设置",
-                    tint = Color.White,
-                    modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
-                )
-            }
 
-            if (useMiuixNonGlassChrome) {
-                AppDropdownMenu(
-                    expanded = showMoreMenu,
-                    onDismissRequest = { showMoreMenu = false },
-                ) {
-                    AppDropdownMenuItem(
-                        text = { AppText("播放设置") },
-                        onClick = { showMoreMenu = false; onSettings() },
-                    )
-                    AppDropdownMenuItem(
-                        text = { AppText(if (sleepTimerMinutes == null) "定时关闭" else "取消定时关闭（${sleepTimerMinutes}分钟）") },
-                        onClick = {
-                            showMoreMenu = false
-                            onSleepTimerChange(if (sleepTimerMinutes == null) 30 else null)
-                        },
-                    )
-                    AppDropdownMenuItem(
-                        text = { AppText("不感兴趣") },
-                        onClick = { showMoreMenu = false; onNotInterested() },
-                    )
-                    if (compactPlayerChrome) {
+                if (useMiuixNonGlassChrome) {
+                    AppDropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                    ) {
                         AppDropdownMenuItem(
-                            text = { AppText("分享") },
-                            onClick = { showMoreMenu = false; onShare() },
+                            text = { AppText("播放设置") },
+                            onClick = { showMoreMenu = false; onSettings() },
                         )
-                    }
-                }
-            } else {
-                AppDropdownMenu(
-                    expanded = showMoreMenu,
-                    onDismissRequest = { showMoreMenu = false }
-                ) {
-                    AppDropdownMenuItem(
-                        text = { AppText("播放设置") },
-                        onClick = { showMoreMenu = false; onSettings() }
-                    )
-                    AppDropdownMenuItem(
-                        text = { AppText(if (sleepTimerMinutes == null) "定时关闭" else "取消定时关闭（${sleepTimerMinutes}分钟）") },
-                        onClick = {
-                            showMoreMenu = false
-                            onSleepTimerChange(if (sleepTimerMinutes == null) 30 else null)
+                        AppDropdownMenuItem(
+                            text = { AppText(if (sleepTimerMinutes == null) "定时关闭" else "取消定时关闭（${sleepTimerMinutes}分钟）") },
+                            onClick = {
+                                showMoreMenu = false
+                                onSleepTimerChange(if (sleepTimerMinutes == null) 30 else null)
+                            },
+                        )
+                        AppDropdownMenuItem(
+                            text = { AppText("不感兴趣") },
+                            onClick = { showMoreMenu = false; onNotInterested() },
+                        )
+                        if (compactPlayerChrome) {
+                            AppDropdownMenuItem(
+                                text = { AppText("分享") },
+                                onClick = { showMoreMenu = false; onShare() },
+                            )
                         }
-                    )
-                    AppDropdownMenuItem(
-                        text = { AppText("不感兴趣") },
-                        onClick = { showMoreMenu = false; onNotInterested() }
-                    )
-                    if (compactPlayerChrome) {
+                    }
+                } else {
+                    AppDropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false }
+                    ) {
                         AppDropdownMenuItem(
-                            text = { AppText("分享") },
-                            onClick = { showMoreMenu = false; onShare() }
+                            text = { AppText("播放设置") },
+                            onClick = { showMoreMenu = false; onSettings() }
                         )
+                        AppDropdownMenuItem(
+                            text = { AppText(if (sleepTimerMinutes == null) "定时关闭" else "取消定时关闭（${sleepTimerMinutes}分钟）") },
+                            onClick = {
+                                showMoreMenu = false
+                                onSleepTimerChange(if (sleepTimerMinutes == null) 30 else null)
+                            }
+                        )
+                        AppDropdownMenuItem(
+                            text = { AppText("不感兴趣") },
+                            onClick = { showMoreMenu = false; onNotInterested() }
+                        )
+                        if (compactPlayerChrome) {
+                            AppDropdownMenuItem(
+                                text = { AppText("分享") },
+                                onClick = { showMoreMenu = false; onShare() }
+                            )
+                        }
                     }
                 }
-            }
 
-            if (!compactPlayerChrome) {
-                // 分享按钮 - 无背景
-                AppIconButton(
-                    onClick = onShare,
-                    modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
-                ) {
-                    AppIcon(
-                        imageVector = shareIcon,
-                        contentDescription = "分享",
-                        tint = Color.White,
-                        modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
-                    )
+                if (!compactPlayerChrome) {
+                    // 分享按钮 - 无背景
+                    AppIconButton(
+                        onClick = onShare,
+                        modifier = Modifier.size(layoutPolicy.buttonSizeDp.dp)
+                    ) {
+                        AppIcon(
+                            imageVector = shareIcon,
+                            contentDescription = "分享",
+                            tint = Color.White,
+                            modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
+                        )
+                    }
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun PlaybackInsightPanel(
@@ -2809,7 +2898,7 @@ fun LandscapeEndDrawer(
                         onClick = { requestDrawerDismiss?.invoke() ?: onDismiss() }
                     )
             )
-            
+
             // 抽屉内容：横向拖动会跟手，松开后根据距离和速度回弹或关闭。
             LandscapeSidePanel(
                 visible = true,
@@ -2860,9 +2949,9 @@ fun LandscapeEndDrawer(
                                     .background(Color.Gray),
                                 contentScale = ContentScale.Crop
                             )
-                            
+
                             Spacer(modifier = Modifier.width(layoutPolicy.headerSpacingDp.dp))
-                            
+
                             // 名字
                             AppText(
                                 text = ownerName,
@@ -2873,9 +2962,9 @@ fun LandscapeEndDrawer(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
                             )
-                            
+
                             Spacer(modifier = Modifier.width(layoutPolicy.headerSpacingDp.dp))
-                            
+
                             // 关注按钮 (放在右上角)
                             AppButton(
                                 onClick = onToggleFollow,
@@ -2898,9 +2987,9 @@ fun LandscapeEndDrawer(
                             }
                         }
                     }
-                    
+
                     AppHorizontalDivider(color = dividerColor)
-                    
+
                     // 2. Tab Row
                     val hasSeason = ugcSeason != null && ugcSeason.sections.isNotEmpty()
                     var selectedTab by remember { mutableIntStateOf(0) } // 0: 推荐, 1: 合集
@@ -2909,7 +2998,7 @@ fun LandscapeEndDrawer(
                             selectedTab = if (hasSeason) initialSelectedTab.coerceIn(0, 1) else 0
                         }
                     }
-                    
+
                     if (hasSeason) {
                         AppThemeAdaptiveTabRow(
                             role = com.android.purebilibili.core.ui.components.AppTabRowRole.SECONDARY,
@@ -2934,7 +3023,7 @@ fun LandscapeEndDrawer(
                             modifier = Modifier.padding(layoutPolicy.listContentPaddingDp.dp)
                         )
                     }
-                    
+
                     // 3. 列表内容
                     Box(modifier = Modifier.weight(1f)) {
                         if (selectedTab == 0) {
@@ -3084,11 +3173,11 @@ private fun TripleLikeInteractionButton(
     val coinIcon = rememberAppCoinIcon()
     val likeIcon = rememberAppLikeIcon()
     val likeFilledIcon = rememberAppLikeFilledIcon()
-    
+
     var isLongPressing by remember { mutableStateOf(false) }
     var longPressProgress by remember { mutableFloatStateOf(0f) }
     val progressDuration = 1500
-    
+
     val animatedProgress by animateFloatAsState(
         targetValue = if (isLongPressing) 1f else 0f,
         animationSpec = if (isLongPressing) {
@@ -3105,17 +3194,17 @@ private fun TripleLikeInteractionButton(
             }
         }
     )
-    
+
     LaunchedEffect(animatedProgress) {
         longPressProgress = animatedProgress
     }
-    
+
     LaunchedEffect(isLongPressing) {
         if (isLongPressing) {
             haptic(HapticType.LIGHT)
         }
     }
-    
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(layoutPolicy.tripleActionSpacingDp.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -3130,13 +3219,13 @@ private fun TripleLikeInteractionButton(
             isActive = isLiked,
             onClick = onLikeClick,
             onLongPress = { isLongPressing = true },
-            onRelease = { 
+            onRelease = {
                 if (longPressProgress < 0.1f) onLikeClick()
-                isLongPressing = false 
+                isLongPressing = false
             },
             layoutPolicy = layoutPolicy
         )
-        
+
         // 投币 (显示时带进度)
         LandscapeProgressIcon(
             icon = coinIcon,
@@ -3148,7 +3237,7 @@ private fun TripleLikeInteractionButton(
             showProgress = longPressProgress > 0.05f,
             layoutPolicy = layoutPolicy
         )
-        
+
         // 收藏 (显示时带进度)
         LandscapeProgressIcon(
             icon = favoriteIcon,
@@ -3183,7 +3272,7 @@ private fun LandscapeProgressIcon(
     val iconSize = layoutPolicy.interactionIconSizeDp.dp
     val ringSize = iconSize + layoutPolicy.tripleRingExtraSizeDp.dp
     val strokeWidth = 2.5.dp
-    
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -3217,7 +3306,7 @@ private fun LandscapeProgressIcon(
                     val stroke = strokeWidth.toPx()
                     val diameter = size.minDimension - stroke
                     val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
-                    
+
                     drawArc(
                         color = progressColor.copy(alpha = 0.2f),
                         startAngle = -90f,
@@ -3227,7 +3316,7 @@ private fun LandscapeProgressIcon(
                         size = Size(diameter, diameter),
                         style = Stroke(width = stroke, cap = StrokeCap.Round)
                     )
-                    
+
                     drawArc(
                         color = progressColor,
                         startAngle = -90f,
@@ -3239,7 +3328,7 @@ private fun LandscapeProgressIcon(
                     )
                 }
             }
-            
+
             AppIcon(
                 imageVector = icon,
                 contentDescription = label,
@@ -3247,7 +3336,7 @@ private fun LandscapeProgressIcon(
                 modifier = Modifier.size(iconSize)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(layoutPolicy.interactionLabelTopSpacingDp.dp))
         AppText(
             text = label,
@@ -3294,9 +3383,9 @@ private fun LandscapeVideoItem(
                     .padding(horizontal = 2.dp),
             )
         }
-        
+
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         // 标题和UP
         Column(
             modifier = Modifier.weight(1f),
@@ -3380,7 +3469,7 @@ private fun LandscapeEpisodeItem(
                  Spacer(modifier = Modifier.width(18.dp))
             }
         }
-        
+
         // 2. 信息列
         Column(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -3395,11 +3484,11 @@ private fun LandscapeEpisodeItem(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 lineHeight = (layoutPolicy.itemTitleFontSp + 3).sp
             )
-            
+
             // 底部元数据 (弹幕/观看等，如果有)
             // 目前 UgcEpisodeArc -> Stat (view, danmaku)
             // 我们暂且假设 stat 存在且包含 view
-            /* 
+            /*
                注意：data.model.response.Stat 通常包含 view, danmaku
                这里我们需要安全访问
             */
@@ -3419,12 +3508,12 @@ private fun LandscapeEpisodeItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = layoutPolicy.itemMetaFontSp.sp
                     )
-                    
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     // 弹幕
                     AppIcon(
-                        imageVector = Icons.Filled.ChatBubble, 
+                        imageVector = Icons.Filled.ChatBubble,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(layoutPolicy.metaIconSizeDp.dp)

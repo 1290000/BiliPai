@@ -236,6 +236,8 @@ fun AppearanceSettingsContent(
     onAppLanguageChange: (AppLanguage) -> Unit,
     onAnimationClick: () -> Unit = {},
 ) {
+    val liquidControlsUseThemeColor by SettingsManager.getLiquidControlsUseThemeColor(context)
+        .collectAsStateWithLifecycle(initialValue = false)
     val activity = context as? android.app.Activity
     val supportedDisplayModes = remember(activity) {
         activity?.supportedAppDisplayModes().orEmpty()
@@ -627,6 +629,19 @@ fun AppearanceSettingsContent(
                             }
                         }
 
+                        AppPreferenceDivider()
+
+                        SettingsItemAnchor("appearance.liquid_controls_use_theme_color") {
+                            AppSwitchPreference(
+                                title = "液态控件跟随主题色",
+                                subtitle = "开启后开关和滑块使用主题色；关闭保留默认绿色开关、蓝色滑块",
+                                checked = liquidControlsUseThemeColor,
+                                enabled = effectiveLiquidGlassEnabled && isLiquidGlassAvailable,
+                                onCheckedChange = { enabled ->
+                                    scope.launch { SettingsManager.setLiquidControlsUseThemeColor(context, enabled) }
+                                },
+                            )
+                        }
                         AppPreferenceDivider()
 
                         SettingsItemAnchor("appearance.app_list_item_style") {

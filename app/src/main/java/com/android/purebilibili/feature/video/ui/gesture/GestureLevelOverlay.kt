@@ -18,6 +18,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +46,8 @@ import androidx.compose.foundation.shape.CircleShape
 import com.android.purebilibili.core.ui.components.AppIcon
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -87,6 +92,8 @@ import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SliderDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.blur.Backdrop
+import com.android.purebilibili.feature.video.ui.overlay.playerControlGlassSurface
 
 /**
  * Theme-native volume / brightness feedback:
@@ -99,12 +106,15 @@ fun BoxScope.GestureLevelOverlayHost(
     visible: Boolean,
     mode: VideoGestureMode,
     percent: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    glassBackdrop: Backdrop? = null,
 ) {
     val kind = resolveGestureLevelKind(mode) ?: return
+    val glass = glassBackdrop != null && com.android.purebilibili.core.ui.LocalAppThemeConfig.current.liquidGlassEnabled
     val playerChromeProfile = rememberAppPlayerChromeProfile()
     val style = rememberGestureLevelOverlayStyle(playerChromeProfile.tabPresentation)
     val motionSpec = remember { resolveVideoGestureMotionSpec() }
+    val reduceMotion = rememberSystemReduceMotion()
     val brightnessColor = colorResource(R.color.player_brightness_accent)
     val colorScheme = MaterialTheme.colorScheme
     val miuixColorScheme = MiuixTheme.colorScheme
@@ -136,9 +146,12 @@ fun BoxScope.GestureLevelOverlayHost(
     AnimatedVisibility(
         visible = visible,
         modifier = modifier
-            .align(spec.alignment)
+            .align(if (glass) Alignment.TopCenter else spec.alignment)
             .then(
-                when (style) {
+                if (glass) Modifier
+                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                else when (style) {
                     GestureLevelOverlayStyle.Md3 -> Modifier.fillMaxSize()
                     GestureLevelOverlayStyle.Miuix -> Modifier
                     GestureLevelOverlayStyle.Ios -> Modifier.padding(horizontal = 22.dp)
@@ -156,7 +169,16 @@ fun BoxScope.GestureLevelOverlayHost(
                 initialOffsetY = { if (style == GestureLevelOverlayStyle.Ios) it / 8 else 0 },
                 animationSpec = tween(motionSpec.levelOverlayEnterTransformDurationMillis)
             ),
-        exit = if (style == GestureLevelOverlayStyle.Md3) {
+        exit = if (glass) {
+            if (reduceMotion) {
+                fadeOut(animationSpec = tween(motionSpec.levelOverlayExitDurationMillis))
+            } else {
+                slideOutVertically(
+                    targetOffsetY = { -it },
+                    animationSpec = tween(motionSpec.levelOverlayExitDurationMillis)
+                ) + fadeOut(animationSpec = tween(motionSpec.levelOverlayExitDurationMillis))
+            }
+        } else if (style == GestureLevelOverlayStyle.Md3) {
             fadeOut(animationSpec = tween(motionSpec.levelOverlayExitDurationMillis))
         } else fadeOut(animationSpec = tween(motionSpec.levelOverlayExitDurationMillis)) +
             scaleOut(
@@ -168,7 +190,47 @@ fun BoxScope.GestureLevelOverlayHost(
                 animationSpec = tween(motionSpec.levelOverlayExitDurationMillis)
             )
     ) {
-        when (style) {
+        if (glass) {
+            Row(
+                modifier = Modifier
+                    .width(360.dp)
+                    .heightIn(min = 44.dp)
+                    .playerControlGlassSurface(
+                        glassBackdrop,
+                        containerColor = Color.White.copy(alpha = 0.12f),
+                    )
+                    // Feedback taps must not toggle the player controls underneath.
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) }
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = resolveGestureLevelLabel(kind)
+                        stateDescription = "$percentInt%"
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AppIcon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                GlassGestureLevelRail(
+                    fillColor = spec.fillColor,
+                    progress = { percent.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(24.dp)
+                        .semantics {
+                            contentDescription = resolveGestureLevelLabel(kind)
+                            stateDescription = "$percentInt%"
+                        },
+                )
+                AppText(
+                    text = "$percentInt",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    modifier = Modifier.width(36.dp),
+                )
+            }
+        } else when (style) {
             GestureLevelOverlayStyle.Md3 -> Md3GestureLevelIndicator(
                 spec = spec,
                 icon = icon,
@@ -193,6 +255,34 @@ fun BoxScope.GestureLevelOverlayHost(
                     .width(200.dp)
             )
         }
+    }
+}
+
+/** Read-only feedback keeps full contrast, without disabled slider colors or value tweening. */
+@Composable
+private fun GlassGestureLevelRail(
+    fillColor: Color,
+    progress: () -> Float,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier) {
+        // Keep rounded ends inside the rail even at 0/100%, with room for glass optics.
+        val edgeInset = 3.dp.toPx().coerceAtMost(minOf(size.width, size.height) / 2f)
+        val thumbWidth = 36.dp.toPx().coerceAtMost((size.width - edgeInset * 2f).coerceAtLeast(0f))
+        val thumbHeight = 24.dp.toPx().coerceAtMost((size.height - edgeInset * 2f).coerceAtLeast(0f))
+        val centerY = size.height / 2f
+        val start = Offset(edgeInset + thumbWidth / 2f, centerY)
+        val end = Offset(size.width - edgeInset - thumbWidth / 2f, centerY)
+        val thumbCenter = start + (end - start) * progress().coerceIn(0f, 1f)
+        val trackHeight = 4.dp.toPx()
+        drawLine(Color.White.copy(alpha = 0.28f), start, end, trackHeight, StrokeCap.Round)
+        drawLine(fillColor, start, thumbCenter, trackHeight, StrokeCap.Round)
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.92f),
+            topLeft = Offset(thumbCenter.x - thumbWidth / 2f, centerY - thumbHeight / 2f),
+            size = Size(thumbWidth, thumbHeight),
+            cornerRadius = CornerRadius(thumbHeight / 2f),
+        )
     }
 }
 
@@ -474,11 +564,7 @@ private fun GestureLevelIconSlot(
     }
 }
 
-/**
- * Stepped haptics for all three skins while dragging volume / brightness.
- * MD3: throttled 5% ticks with boundary confirmation. iOS: every 5%.
- * MIUIX: every ~7% (closer to system stream steps).
- */
+/** Theme-independent step feedback: 5% ticks, rate limited, with a latched limit signal. */
 @Composable
 private fun GestureLevelStepHaptics(
     style: GestureLevelOverlayStyle,
@@ -487,44 +573,13 @@ private fun GestureLevelStepHaptics(
     active: Boolean
 ) {
     val haptic = rememberHapticFeedback()
-    if (style == GestureLevelOverlayStyle.Md3) {
-        val policy = remember(kind) { Md3GestureLevelHapticPolicy() }
-        LaunchedEffect(active, percent, policy) {
-            when (policy.update(percent, active, SystemClock.uptimeMillis())) {
-                GestureLevelHapticFeedback.Tick -> haptic(HapticType.SELECTION)
-                GestureLevelHapticFeedback.Boundary -> haptic(HapticType.LIGHT)
-                null -> Unit
-            }
+    val policy = remember(kind, style) { Md3GestureLevelHapticPolicy() }
+    LaunchedEffect(active, percent, policy) {
+        when (policy.update(percent, active, SystemClock.uptimeMillis())) {
+            GestureLevelHapticFeedback.Tick -> haptic(HapticType.GESTURE_STEP)
+            GestureLevelHapticFeedback.Boundary -> haptic(HapticType.LIGHT)
+            null -> Unit
         }
-        return
-    }
-    var previousPercent by remember { mutableIntStateOf(percent) }
-    val stepPercent = when (style) {
-        GestureLevelOverlayStyle.Miuix -> 7
-        GestureLevelOverlayStyle.Md3 -> 5
-        GestureLevelOverlayStyle.Ios -> 5
-    }
-    LaunchedEffect(active, percent, style) {
-        if (!active) {
-            previousPercent = percent
-            return@LaunchedEffect
-        }
-        if (
-            shouldTriggerGesturePercentHaptic(
-                previousPercent = previousPercent,
-                currentPercent = percent,
-                stepPercent = stepPercent
-            )
-        ) {
-            haptic(
-                when (style) {
-                    GestureLevelOverlayStyle.Miuix -> HapticType.LIGHT
-                    GestureLevelOverlayStyle.Md3 -> HapticType.SELECTION
-                    GestureLevelOverlayStyle.Ios -> HapticType.SELECTION
-                }
-            )
-        }
-        previousPercent = percent
     }
 }
 

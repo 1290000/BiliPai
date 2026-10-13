@@ -92,6 +92,7 @@ import com.android.purebilibili.core.ui.components.AppLiquidAwareSearchField
 import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppOutlinedButton
 import com.android.purebilibili.core.ui.components.AppTextButton
+import com.android.purebilibili.core.ui.components.appElasticPress
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.rememberAppPlayIcon
@@ -1015,6 +1016,17 @@ fun WatchLaterScreen(
                         }
                     },
                     actions = {
+                        if (state.items.isNotEmpty() && !isBatchMode) {
+                            AppTextButton(
+                                modifier = Modifier.appElasticPress(),
+                                onClick = { viewModel.updateSortOrder(state.sortOrder.toggled()) },
+                            ) {
+                                AppText(
+                                    if (state.sortOrder == WatchLaterSortOrder.FORWARD) "最近添加" else "最早添加",
+                                    tapToCopyEnabled = false,
+                                )
+                            }
+                        }
                         onOpenSearchDestination?.let { openSearch ->
                             AppIconButton(onClick = { openSearch(searchQuery) }) {
                                 AppIcon(Icons.Rounded.Search, contentDescription = "搜索")
@@ -1022,17 +1034,6 @@ fun WatchLaterScreen(
                         }
                         if (state.items.isNotEmpty()) {
                             if (!isBatchMode) {
-                                AppTextButton(
-                                    onClick = {
-                                        viewModel.updateSortOrder(state.sortOrder.toggled())
-                                    }
-                                ) {
-                                    AppText(
-                                        if (state.sortOrder == WatchLaterSortOrder.FORWARD) "最近添加"
-                                        else "最早添加"
-                                    )
-                                }
-
                                 AppWindowActionMenu(
                                     enabled = !state.isManaging,
                                     groups = listOf(
@@ -1113,6 +1114,41 @@ fun WatchLaterScreen(
                     ),
                     scrollBehavior = scrollBehavior
                 )
+                val watchLaterFilterOptions = remember(state.filter, state.totalCount) {
+                    WatchLaterFilter.entries.map { filter ->
+                        AppSegmentOption(
+                            value = filter,
+                            label = if (filter == state.filter) {
+                                "${filter.label}(${state.totalCount})"
+                            } else {
+                                filter.label
+                            },
+                        )
+                    }
+                }
+                AnimatedVisibility(
+                    visible = watchLaterTabsVisible,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    AppThemeAdaptiveTabRow(
+                        role = com.android.purebilibili.core.ui.components.AppTabRowRole.FILTER,
+                        options = watchLaterFilterOptions,
+                        selectedValue = state.filter,
+                        onSelectionChange = viewModel::selectFilter,
+                        enabled = !isBatchMode,
+                        height = watchLaterFilterChrome.heightDp.dp,
+                        indicatorHeight = watchLaterFilterChrome.indicatorHeightDp.dp,
+                        labelFontSize = com.android.purebilibili.core.ui.appTabLabelFontSize(),
+                        dragSelectionEnabled = !isBatchMode,
+                        tapPressRefractionEnabled = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = watchLaterFilterChrome.horizontalPaddingDp.dp),
+                        miuixBackdrop = watchLaterChromeBackdrop,
+                    )
+                }
+                Spacer(modifier = Modifier.height(AppSpacingTokens.Small))
                 AnimatedVisibility(
                     visible = watchLaterTabsVisible,
                     enter = expandVertically() + fadeIn(),
@@ -1144,41 +1180,6 @@ fun WatchLaterScreen(
                 Spacer(modifier = Modifier.height(AppSpacingTokens.Small))
                     }
                 }
-                val watchLaterFilterOptions = remember(state.filter, state.totalCount) {
-                    WatchLaterFilter.entries.map { filter ->
-                        AppSegmentOption(
-                            value = filter,
-                            label = if (filter == state.filter) {
-                                "${filter.label}(${state.totalCount})"
-                            } else {
-                                filter.label
-                            },
-                        )
-                    }
-                }
-                AnimatedVisibility(
-                    visible = watchLaterTabsVisible,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut(),
-                ) {
-                    AppThemeAdaptiveTabRow(
-                        role = com.android.purebilibili.core.ui.components.AppTabRowRole.FILTER,
-                        options = watchLaterFilterOptions,
-                        selectedValue = state.filter,
-                        onSelectionChange = viewModel::selectFilter,
-                        enabled = !isBatchMode,
-                        height = watchLaterFilterChrome.heightDp.dp,
-                        indicatorHeight = watchLaterFilterChrome.indicatorHeightDp.dp,
-                        labelFontSize = com.android.purebilibili.core.ui.appTabLabelFontSize(),
-                        dragSelectionEnabled = watchLaterFilterChrome.dragSelectionEnabled,
-                        tapPressRefractionEnabled = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = watchLaterFilterChrome.horizontalPaddingDp.dp),
-                        miuixBackdrop = watchLaterChromeBackdrop,
-                    )
-                }
-                Spacer(modifier = Modifier.height(AppSpacingTokens.Small))
                 }
                 // 分割线 (仅在滚动时显示? 这里简化一直显示细线或跟随滚动)
                 // 暂时不加显式分割线，依靠毛玻璃效果

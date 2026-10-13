@@ -440,7 +440,7 @@ fun SpaceScreen(
         hasBackdrop = true,
     ) && !isLowBlurBudgetForced()
     val spaceFadeActive = spaceThemeConfig.progressiveTopFadeEnabled && !spaceThemeConfig.headerBlurEnabled
-    val spaceChromeSource = if (spaceProgressiveBlur) {
+    val spaceChromeSource = if (spaceProgressiveBlur || spaceThemeConfig.liquidGlassEnabled) {
         com.android.purebilibili.core.ui.blur.rememberChromeBackdropSource()
     } else {
         null
@@ -492,11 +492,13 @@ fun SpaceScreen(
                 AppTopBar(
                     title = if (pinnedTopChromeScrim > 0.4f) screenTitle else "",
                     navigationIcon = {
-                        AppIconButton(onClick = onBack) {
-                            AppIcon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = backLabel
-                            )
+                        SpaceTopChromeGlass(spaceChromeBackdrop, spaceThemeConfig.liquidGlassEnabled) {
+                            AppIconButton(onClick = onBack) {
+                                AppIcon(
+                                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                    contentDescription = backLabel
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -512,117 +514,119 @@ fun SpaceScreen(
                                 )
                             }
                         }
-                        AppWindowActionMenu(
-                            groups = buildList {
-                                if (showContributionVideoMenuActions) {
+                        SpaceTopChromeGlass(spaceChromeBackdrop, spaceThemeConfig.liquidGlassEnabled) {
+                            AppWindowActionMenu(
+                                groups = buildList {
+                                    if (showContributionVideoMenuActions) {
+                                        add(
+                                            listOf(
+                                                AppWindowAction(
+                                                    label = "播放全部",
+                                                    icon = Icons.Outlined.PlayCircleOutline,
+                                                    onClick = playAllSpaceVideos,
+                                                ),
+                                                contributionLayoutToggleAction(
+                                                    layoutMode = contributionVideoLayoutMode,
+                                                    onToggle = {
+                                                        contributionVideoLayoutMode =
+                                                            nextContributionVideoLayoutMode
+                                                    },
+                                                ),
+                                                AppWindowAction(
+                                                    label = "排序：${resolveSpaceVideoSortCompactLabel(currentSuccessState?.sortOrder ?: VideoSortOrder.PUBDATE)}",
+                                                    icon = Icons.AutoMirrored.Outlined.Sort,
+                                                    children = VideoSortOrder.entries.map { order ->
+                                                        AppWindowAction(
+                                                            label = order.displayName,
+                                                            selected = currentSuccessState?.sortOrder == order,
+                                                            onClick = { viewModel.selectSortOrder(order) },
+                                                        )
+                                                    },
+                                                ),
+                                            )
+                                        )
+                                    } else if (showContributionLayoutToggle) {
+                                        add(
+                                            listOf(
+                                                contributionLayoutToggleAction(
+                                                    layoutMode = contributionVideoLayoutMode,
+                                                    onToggle = {
+                                                        contributionVideoLayoutMode =
+                                                            nextContributionVideoLayoutMode
+                                                    },
+                                                ),
+                                            )
+                                        )
+                                    }
+                                    if (queryAicu != null && mid > 0) {
+                                        add(listOf(AppWindowAction(
+                                            label = "评论与弹幕查询",
+                                            icon = Icons.Outlined.Search,
+                                            onClick = { queryAicu(mid) },
+                                        )))
+                                    }
                                     add(
                                         listOf(
                                             AppWindowAction(
-                                                label = "播放全部",
-                                                icon = Icons.Outlined.PlayCircleOutline,
-                                                onClick = playAllSpaceVideos,
-                                            ),
-                                            contributionLayoutToggleAction(
-                                                layoutMode = contributionVideoLayoutMode,
-                                                onToggle = {
-                                                    contributionVideoLayoutMode =
-                                                        nextContributionVideoLayoutMode
-                                                },
-                                            ),
-                                            AppWindowAction(
-                                                label = "排序：${resolveSpaceVideoSortCompactLabel(currentSuccessState?.sortOrder ?: VideoSortOrder.PUBDATE)}",
-                                                icon = Icons.AutoMirrored.Outlined.Sort,
-                                                children = VideoSortOrder.entries.map { order ->
-                                                    AppWindowAction(
-                                                        label = order.displayName,
-                                                        selected = currentSuccessState?.sortOrder == order,
-                                                        onClick = { viewModel.selectSortOrder(order) },
+                                                label = "复制空间链接",
+                                                icon = Icons.Outlined.ContentCopy,
+                                                onClick = {
+                                                    copyToClipboard(
+                                                        "https://space.bilibili.com/$mid",
+                                                        "空间链接",
                                                     )
                                                 },
                                             ),
-                                        )
-                                    )
-                                } else if (showContributionLayoutToggle) {
-                                    add(
-                                        listOf(
-                                            contributionLayoutToggleAction(
-                                                layoutMode = contributionVideoLayoutMode,
-                                                onToggle = {
-                                                    contributionVideoLayoutMode =
-                                                        nextContributionVideoLayoutMode
+                                            AppWindowAction(
+                                                label = "复制 UID",
+                                                icon = Icons.Outlined.ContentCopy,
+                                                onClick = { copyToClipboard(mid.toString(), "UID") },
+                                            ),
+                                            AppWindowAction(
+                                                label = "分享",
+                                                icon = Icons.Outlined.Share,
+                                                onClick = {
+                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "text/plain"
+                                                        putExtra(Intent.EXTRA_TEXT, "https://space.bilibili.com/$mid")
+                                                    }
+                                                    context.startActivity(Intent.createChooser(shareIntent, "分享空间"))
                                                 },
                                             ),
                                         )
                                     )
-                                }
-                                if (queryAicu != null && mid > 0) {
-                                    add(listOf(AppWindowAction(
-                                        label = "评论与弹幕查询",
-                                        icon = Icons.Outlined.Search,
-                                        onClick = { queryAicu(mid) },
-                                    )))
-                                }
-                                add(
-                                    listOf(
-                                        AppWindowAction(
-                                            label = "复制空间链接",
-                                            icon = Icons.Outlined.ContentCopy,
-                                            onClick = {
-                                                copyToClipboard(
-                                                    "https://space.bilibili.com/$mid",
-                                                    "空间链接",
-                                                )
-                                            },
-                                        ),
-                                        AppWindowAction(
-                                            label = "复制 UID",
-                                            icon = Icons.Outlined.ContentCopy,
-                                            onClick = { copyToClipboard(mid.toString(), "UID") },
-                                        ),
-                                        AppWindowAction(
-                                            label = "分享",
-                                            icon = Icons.Outlined.Share,
-                                            onClick = {
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(Intent.EXTRA_TEXT, "https://space.bilibili.com/$mid")
-                                                }
-                                                context.startActivity(Intent.createChooser(shareIntent, "分享空间"))
-                                            },
-                                        ),
+                                    add(
+                                        listOf(
+                                            AppWindowAction(
+                                                label = "举报",
+                                                icon = Icons.Outlined.VisibilityOff,
+                                                iconTint = MaterialTheme.colorScheme.error,
+                                                onClick = {
+                                                    onWebClick(
+                                                        "https://www.bilibili.com/appeal/?prefid=0&mid=$mid",
+                                                        "举报",
+                                                    )
+                                                },
+                                            ),
+                                            AppWindowAction(
+                                                label = if (isBlocked) unblockUserLabel else blockUserLabel,
+                                                icon = if (isBlocked) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                                                iconTint = if (isBlocked) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.error
+                                                },
+                                                onClick = { showBlockConfirmDialog = true },
+                                            ),
+                                        )
                                     )
+                                },
+                            ) {
+                                AppIcon(
+                                    imageVector = Icons.Outlined.MoreVert,
+                                    contentDescription = moreLabel,
                                 )
-                                add(
-                                    listOf(
-                                        AppWindowAction(
-                                            label = "举报",
-                                            icon = Icons.Outlined.VisibilityOff,
-                                            iconTint = MaterialTheme.colorScheme.error,
-                                            onClick = {
-                                                onWebClick(
-                                                    "https://www.bilibili.com/appeal/?prefid=0&mid=$mid",
-                                                    "举报",
-                                                )
-                                            },
-                                        ),
-                                        AppWindowAction(
-                                            label = if (isBlocked) unblockUserLabel else blockUserLabel,
-                                            icon = if (isBlocked) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                                            iconTint = if (isBlocked) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.error
-                                            },
-                                            onClick = { showBlockConfirmDialog = true },
-                                        ),
-                                    )
-                                )
-                            },
-                        ) {
-                            AppIcon(
-                                imageVector = Icons.Outlined.MoreVert,
-                                contentDescription = moreLabel,
-                            )
+                            }
                         }
                     }
                 )
@@ -5604,3 +5608,25 @@ private fun handleAggregateArchiveClick(
 }
 
 // [重构] 空间页 header 折叠滚动范围约 320dp（具体像素在 SpaceContent 内按 density 换算）
+
+/** Each space header action owns a circular glass surface and one shared elastic transform. */
+@Composable
+private fun SpaceTopChromeGlass(
+    backdrop: top.yukonga.miuix.kmp.blur.Backdrop?,
+    glassEnabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    if (!glassEnabled) {
+        content()
+        return
+    }
+    com.android.purebilibili.feature.home.components.BottomBarMatchedReusableLiquidDock(
+        shape = CircleShape,
+        backdrop = backdrop,
+        reuseEnabled = true,
+        elasticFeedbackEnabled = true,
+        useNeutralLiquidContainer = true,
+        shellLensIntensity = com.android.purebilibili.feature.home.components.resolveFloatingDockGeometryScale(48f),
+        modifier = Modifier.size(48.dp),
+    ) { _ -> content() }
+}

@@ -119,7 +119,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.core.animate
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.Job
@@ -473,11 +472,11 @@ internal enum class SearchFilterControl {
 
 internal val defaultSearchFilterTabOrder: List<SearchType> = listOf(
     SearchType.VIDEO,
+    SearchType.UP,
     SearchType.BANGUMI,
     SearchType.MEDIA_FT,
     SearchType.LIVE,
     SearchType.LIVE_USER,
-    SearchType.UP,
     SearchType.ARTICLE,
     SearchType.TOPIC,
     SearchType.PHOTO
@@ -683,7 +682,8 @@ fun SearchScreen(
     val windowSizeClass = LocalWindowSizeClass.current
     var startupSettled by remember { mutableStateOf(false) }
     var searchFieldFocused by remember { mutableStateOf(false) }
-    var restoreFocusAfterClear by remember { mutableStateOf(false) }
+    var retainSearchImeAfterClear by remember { mutableStateOf(false) }
+    var searchQueryClearedAtElapsedMs by remember { mutableLongStateOf(-1L) }
     // One-shot autofocus for empty landing only; never re-open keyboard after results.
     var autoFocusConsumed by rememberSaveable { mutableStateOf(false) }
     var previousShowResults by rememberSaveable { mutableStateOf(false) }
@@ -1093,22 +1093,29 @@ fun SearchScreen(
         autoFocusConsumed = true
     }
     val updateSearchQuery: (String) -> Unit = { query ->
-        // Clearing results replaces the top bar with the landing field.
-        if (state.showResults && query.isEmpty()) restoreFocusAfterClear = true
+        if (
+            shouldRetainSearchImeWhenQueryCleared(
+                fieldFocused = searchFieldFocused,
+                previousQuery = state.query,
+                newQuery = query,
+            )
+        ) {
+            retainSearchImeAfterClear = true
+            searchQueryClearedAtElapsedMs = android.os.SystemClock.elapsedRealtime()
+        }
         viewModel.onQueryChange(query)
     }
+    // No in-field clear icon. Leaving results through this path must not reopen the IME.
     val clearSearchQuery = {
-        restoreFocusAfterClear = true
         viewModel.onQueryChange("")
         viewModel.exitResultsToLanding()
     }
-    LaunchedEffect(state.showResults, restoreFocusAfterClear) {
-        if (!state.showResults && restoreFocusAfterClear) {
-            androidx.compose.runtime.withFrameNanos { }
-            searchFocusRequester.requestFocus()
-            keyboardController?.show()
-            restoreFocusAfterClear = false
-        }
+    LaunchedEffect(retainSearchImeAfterClear) {
+        if (!retainSearchImeAfterClear) return@LaunchedEffect
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { searchFocusRequester.requestFocus() }
+        keyboardController?.show()
+        retainSearchImeAfterClear = false
     }
     val submitSearch: (String) -> Unit = { keyword ->
         when (val action = resolveSearchSubmitAction(keyword)) {
@@ -1210,6 +1217,63 @@ fun SearchScreen(
         }
     }
 
+    val searchTopBarCallbacks = SearchTopBarCallbacks(
+        onBack = handleSearchBack,
+        onQueryChange = updateSearchQuery,
+        onSearch = submitSearch,
+        onClearQuery = clearSearchQuery,
+        onFocusChanged = { focused ->
+            searchFieldFocused = focused
+            if (focused) {
+                autoFocusConsumed = true
+            }
+        },
+        onEntryMotionFinished = onEntryMotionConsumed,
+        onExitMotionFinished = { completedKey ->
+            if (exitMotionInProgress && completedKey == exitMotionKey) {
+                onBack()
+            }
+        },
+        isScrollInProgressProvider = { isSearchResultsScrolling },
+    )
+    // One BasicTextField moves between the results scaffold and the landing overlay.
+    // Call sites pass the current query, placement, trailing actions, and callbacks so
+    // this remembered content does not close over the first composition's state.
+    val searchTopBarContent = remember {
+        movableContentOf<
+            String,
+            SearchTopBarPlacement,
+            (@Composable RowScope.() -> Unit)?,
+            SearchTopBarCallbacks,
+        > { query, placement, trailingActions, callbacks ->
+            SearchTopBar(
+                query = query,
+                onBack = callbacks.onBack,
+                onQueryChange = callbacks.onQueryChange,
+                onSearch = callbacks.onSearch,
+                onClearQuery = callbacks.onClearQuery,
+                onFocusChanged = callbacks.onFocusChanged,
+                focusRequester = placement.focusRequester,
+                placeholder = placement.placeholder,
+                suggestedKeyword = placement.suggestedKeyword,
+                autoFocusEnabled = placement.autoFocusEnabled,
+                reducedMotionBudget = placement.reducedMotionBudget,
+                entryMotionSpec = placement.entryMotionSpec,
+                entryMotionKey = placement.entryMotionKey,
+                onEntryMotionFinished = callbacks.onEntryMotionFinished,
+                exitMotionSpec = placement.exitMotionSpec,
+                exitMotionKey = placement.exitMotionKey,
+                onExitMotionFinished = callbacks.onExitMotionFinished,
+                isScrollInProgressProvider = callbacks.isScrollInProgressProvider,
+                liquidGlassEnabled = placement.liquidGlassEnabled,
+                miuixBackdrop = placement.miuixBackdrop,
+                includeStatusBarPadding = placement.includeStatusBarPadding,
+                trailingActions = trailingActions,
+                modifier = placement.modifier,
+            )
+        }
+    }
+
     val resultBottomPadding = resolveBottomSafeAreaPadding(
         navigationBarsBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
         extraBottomPadding = 16.dp
@@ -1300,12 +1364,18 @@ fun SearchScreen(
                             }
                             Layout(
                                 modifier = if (searchCollapseFraction > 0f) {
-                                    // Only collapsing controls need a viewport clip. Expanded
-                                    // chrome must let the whole capsule's spring overflow.
-                                    Modifier.clipToBounds().drawWithContent {
+                                    // Hide chrome above the status-bar boundary, but retain
+                                    // a halo below/alongside the header for elastic controls.
+                                    Modifier.drawWithContent {
                                         val top = searchStatusBarHeightPx.coerceIn(0f, size.height)
                                         if (size.height > top) {
-                                            clipRect(top = top) { this@drawWithContent.drawContent() }
+                                            val overflow = AppChromeSizeTokens.MinimumTouchTarget.toPx()
+                                            clipRect(
+                                                left = -overflow,
+                                                top = top,
+                                                right = size.width + overflow,
+                                                bottom = size.height + overflow,
+                                            ) { this@drawWithContent.drawContent() }
                                         }
                                     }
                                 } else Modifier,
@@ -1320,29 +1390,25 @@ fun SearchScreen(
                                                     }
                                                 }
                                         ) {
-                                            SearchTopBar(
-                                                query = state.query,
-                                                onBack = handleSearchBack,
-                                                onQueryChange = updateSearchQuery,
-                                                onSearch = submitSearch,
-                                                onClearQuery = clearSearchQuery,
-                                                onFocusChanged = { focused ->
-                                                    searchFieldFocused = focused
-                                                    if (focused) {
-                                                        autoFocusConsumed = true
-                                                    }
-                                                },
-                                                focusRequester = searchFocusRequester,
-                                                placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
-                                                suggestedKeyword = displayedSearchHint,
-                                                autoFocusEnabled = false,
-                                                reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
-                                                isScrollInProgressProvider = { isSearchResultsScrolling },
-                                                liquidGlassEnabled = effectiveLiquidGlassEnabled,
-                                                miuixBackdrop = searchChromeBackdrop,
-                                                includeStatusBarPadding = false,
-                                                trailingActions = if (state.searchType == SearchType.VIDEO) {
-                                                    {
+                                            searchTopBarContent(
+                                                state.query,
+                                                SearchTopBarPlacement(
+                                                    focusRequester = searchFocusRequester,
+                                                    placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
+                                                    suggestedKeyword = displayedSearchHint,
+                                                    autoFocusEnabled = false,
+                                                    reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
+                                                    entryMotionSpec = entryMotionSpec,
+                                                    entryMotionKey = entryMotionKey,
+                                                    exitMotionSpec = exitMotionSpec,
+                                                    exitMotionKey = exitMotionKey,
+                                                    liquidGlassEnabled = effectiveLiquidGlassEnabled,
+                                                    miuixBackdrop = searchChromeBackdrop,
+                                                    includeStatusBarPadding = false,
+                                                    modifier = Modifier,
+                                                ),
+                                                if (state.searchType == SearchType.VIDEO) {
+                                                    val videoFilters: @Composable RowScope.() -> Unit = {
                                                         SearchVideoFilterActions(
                                                             singleColumn = listLayout.singleColumn,
                                                             onLayoutToggle = listLayout.toggle,
@@ -1360,7 +1426,11 @@ fun SearchScreen(
                                                             }
                                                         )
                                                     }
-                                                } else null,
+                                                    videoFilters
+                                                } else {
+                                                    null
+                                                },
+                                                searchTopBarCallbacks,
                                             )
                                             //  搜索彩蛋消息横幅
                                             val easterEggMsg = state.easterEggMessage
@@ -2416,7 +2486,16 @@ fun SearchScreen(
                     onRefreshHot = viewModel::refreshHotSearch,
                     onOpenTrending = onOpenTrending,
                     onRefreshDiscover = viewModel::refreshDiscover,
-                    onKeywordClick = submitSearch,
+                    onKeywordClick = { keyword ->
+                        if (
+                            shouldAcceptSearchLandingKeywordClick(
+                                clearedAtElapsedMs = searchQueryClearedAtElapsedMs,
+                                nowElapsedMs = android.os.SystemClock.elapsedRealtime(),
+                            )
+                        ) {
+                            submitSearch(keyword)
+                        }
+                    },
                     onClearHistory = viewModel::clearHistory,
                     onDeleteHistory = viewModel::deleteHistory,
                     modifier = Modifier
@@ -2439,61 +2518,49 @@ fun SearchScreen(
                 extendBelowBounds = false,
                 modifier = Modifier.align(Alignment.TopCenter),
             ) {
-            SearchTopBar(
-                query = state.query,
-                onBack = handleSearchBack,
-                onQueryChange = updateSearchQuery,
-                onSearch = submitSearch,
-                onClearQuery = clearSearchQuery,
-                onFocusChanged = { focused ->
-                    searchFieldFocused = focused
-                    if (focused) {
-                        autoFocusConsumed = true
-                    }
-                },
-                focusRequester = searchFocusRequester,
-                placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
-                suggestedKeyword = displayedSearchHint,
-                autoFocusEnabled = shouldAutoFocusSearchField(
-                    startupSettled = startupSettled,
-                    query = state.query,
-                    showResults = state.showResults,
-                    autoFocusConsumed = autoFocusConsumed
+            searchTopBarContent(
+                state.query,
+                SearchTopBarPlacement(
+                    focusRequester = searchFocusRequester,
+                    placeholder = displayedSearchHint.ifBlank { resolveSearchDefaultPlaceholder() },
+                    suggestedKeyword = displayedSearchHint,
+                    autoFocusEnabled = shouldAutoFocusSearchField(
+                        startupSettled = startupSettled,
+                        query = state.query,
+                        showResults = state.showResults,
+                        autoFocusConsumed = autoFocusConsumed
+                    ),
+                    reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
+                    entryMotionSpec = entryMotionSpec,
+                    entryMotionKey = entryMotionKey,
+                    exitMotionSpec = exitMotionSpec,
+                    exitMotionKey = exitMotionKey,
+                    liquidGlassEnabled = effectiveLiquidGlassEnabled,
+                    miuixBackdrop = searchChromeBackdrop,
+                    includeStatusBarPadding = true,
+                    modifier = Modifier
+                        .then(
+                            if (!immersiveSearchChrome && shouldUseSearchTopBarBlur) {
+                                Modifier.unifiedBlur(
+                                    hazeState = hazeState,
+                                    surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
+                                    isScrolling = isSearchResultsScrolling,
+                                    forceLowBudget = forceLowBudgetSearchHeaderBlur
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .background(
+                            if (immersiveSearchChrome || shouldUseSearchTopBarBlur) {
+                                Color.Transparent
+                            } else {
+                                searchTopBarHeaderColor
+                            }
+                        ),
                 ),
-                reducedMotionBudget = effectiveSearchMotionBudget == SearchMotionBudget.REDUCED,
-                entryMotionSpec = entryMotionSpec,
-                entryMotionKey = entryMotionKey,
-                onEntryMotionFinished = onEntryMotionConsumed,
-                exitMotionSpec = exitMotionSpec,
-                exitMotionKey = exitMotionKey,
-                onExitMotionFinished = { completedKey ->
-                    if (exitMotionInProgress && completedKey == exitMotionKey) {
-                        onBack()
-                    }
-                },
-                isScrollInProgressProvider = { isSearchResultsScrolling },
-                liquidGlassEnabled = effectiveLiquidGlassEnabled,
-                miuixBackdrop = searchChromeBackdrop,
-                modifier = Modifier
-                    .then(
-                        if (!immersiveSearchChrome && shouldUseSearchTopBarBlur) {
-                            Modifier.unifiedBlur(
-                                hazeState = hazeState,
-                                surfaceType = com.android.purebilibili.core.ui.blur.BlurSurfaceType.HEADER,
-                                isScrolling = isSearchResultsScrolling,
-                                forceLowBudget = forceLowBudgetSearchHeaderBlur
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .background(
-                        if (immersiveSearchChrome || shouldUseSearchTopBarBlur) {
-                            Color.Transparent
-                        } else {
-                            searchTopBarHeaderColor
-                        }
-                    )
+                null,
+                searchTopBarCallbacks,
             )
 
             }
@@ -2536,6 +2603,33 @@ fun SearchScreen(
         }
     }
 }
+
+private class SearchTopBarPlacement(
+    val focusRequester: androidx.compose.ui.focus.FocusRequester,
+    val placeholder: String,
+    val suggestedKeyword: String,
+    val autoFocusEnabled: Boolean,
+    val reducedMotionBudget: Boolean,
+    val entryMotionSpec: SearchEntryMotionSpec?,
+    val entryMotionKey: Int,
+    val exitMotionSpec: SearchEntryMotionSpec?,
+    val exitMotionKey: Int,
+    val liquidGlassEnabled: Boolean,
+    val miuixBackdrop: MiuixBackdrop?,
+    val includeStatusBarPadding: Boolean,
+    val modifier: Modifier,
+)
+
+private class SearchTopBarCallbacks(
+    val onBack: () -> Unit,
+    val onQueryChange: (String) -> Unit,
+    val onSearch: (String) -> Unit,
+    val onClearQuery: () -> Unit,
+    val onFocusChanged: (Boolean) -> Unit,
+    val onEntryMotionFinished: (Int) -> Unit,
+    val onExitMotionFinished: (Int) -> Unit,
+    val isScrollInProgressProvider: () -> Boolean,
+)
 
 // 顶部搜索栏：中性 TextFieldValue 实现，保光标
 @Composable
@@ -2778,6 +2872,46 @@ fun SearchTopBar(
                 if (trailingActions != null) {
                     Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
                     trailingActions()
+                } else {
+                    val submitElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
+                    val clearElasticState = com.android.purebilibili.core.ui.components.rememberAppElasticPressState()
+                    Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
+                    SearchTopBarIconButton(
+                        onClick = { onSearch(resolvedSubmitKeyword) },
+                        elasticState = submitElasticState,
+                        shape = actionShape,
+                        transformInBackdrop = glassActive,
+                        enabled = canSubmit,
+                        modifier = Modifier
+                            .size(chromeSpec.submitActionSizeDp.dp)
+                            .searchTopChromeGlass(actionShape, chromeSpec.submitActionSizeDp, submitElasticState),
+                    ) {
+                        AppIcon(
+                            imageVector = rememberAppSearchIcon(),
+                            contentDescription = stringResource(R.string.common_search),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (canSubmit) 1f else 0.35f),
+                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(chromeSpec.horizontalGapDp.dp))
+                    SearchTopBarIconButton(
+                        onClick = onClearQuery,
+                        elasticState = clearElasticState,
+                        shape = actionShape,
+                        transformInBackdrop = glassActive,
+                        enabled = query.isNotEmpty(),
+                        elasticFeedbackEnabled = true,
+                        modifier = Modifier
+                            .size(chromeSpec.clearActionSizeDp.dp)
+                            .searchTopChromeGlass(actionShape, chromeSpec.clearActionSizeDp, clearElasticState),
+                    ) {
+                        AppIcon(
+                            imageVector = rememberAppClearIcon(),
+                            contentDescription = stringResource(R.string.common_clear),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (query.isNotEmpty()) 1f else 0.35f),
+                            modifier = Modifier.size(chromeSpec.actionIconSizeDp.dp),
+                        )
+                    }
                 }
             }
         }
@@ -2792,6 +2926,7 @@ private fun SearchTopBarIconButton(
     transformInBackdrop: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    elasticFeedbackEnabled: Boolean = enabled,
     content: @Composable () -> Unit
 ) {
     Box(
@@ -2804,7 +2939,7 @@ private fun SearchTopBarIconButton(
         // The surface owns motion; never move only the glyph inside a fixed clipping shell.
         Box(
             modifier = modifier.appElasticPress(
-                enabled = enabled,
+                enabled = elasticFeedbackEnabled,
                 state = elasticState,
                 transformInBackdrop = transformInBackdrop,
                 highlightShape = shape,

@@ -31,10 +31,20 @@ import kotlin.coroutines.suspendCoroutine
 internal interface AmbientFrameSource {
     suspend fun capture(width: Int, height: Int): Bitmap?
     fun release()
+    fun boundsInWindow(): androidx.compose.ui.geometry.Rect? = null
 }
 
 internal class ViewAmbientFrameSource(private val view: View) : AmbientFrameSource {
     private var scratch: Bitmap? = null
+    private val location = IntArray(2)
+    override fun boundsInWindow(): androidx.compose.ui.geometry.Rect? {
+        if (!view.isAttachedToWindow || view.width <= 0 || view.height <= 0) return null
+        view.getLocationInWindow(location)
+        return androidx.compose.ui.geometry.Rect(
+            location[0].toFloat(), location[1].toFloat(),
+            (location[0] + view.width).toFloat(), (location[1] + view.height).toFloat(),
+        )
+    }
     override suspend fun capture(width: Int, height: Int): Bitmap? = withContext(Dispatchers.Main.immediate) {
         if (!view.isAttachedToWindow || view.width <= 0 || view.height <= 0) return@withContext null
         val destination = scratch?.takeIf { it.width == width && it.height == height }
@@ -69,6 +79,8 @@ internal data class AmbientRenderFrame(
     val atMs: Long,
     val transitionMs: Long = 120L,
     val refreshGeneration: Int = 0,
+    val videoBoundsInWindow: androidx.compose.ui.geometry.Rect? = null,
+    val contentBoundsInWindow: androidx.compose.ui.geometry.Rect? = videoBoundsInWindow,
 )
 
 @Stable
@@ -121,11 +133,14 @@ internal class AmbientFrameController(
                     if (!config.active) { delay(100); continue }
                     if (!shouldSampleAmbientFrame(config.playing, config.refreshGeneration, lastRefresh)) { delay(100); continue }
                     val started = clock()
+                    val capturedBounds = source.boundsInWindow()
                     val sample = try { source.capture(w, h) }
                     catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                     catch (_: Exception) { null }
                     currentCoroutineContext().ensureActive()
                     if (generation != session || !policy().active || policy().refreshGeneration != config.refreshGeneration) continue
+                    // Discard a copy taken while the video surface moved/resized.
+                    if (capturedBounds != source.boundsInWindow()) { delay(16); continue }
                     if (sample == null) {
                         failures++
                         if (failures >= 3) {
@@ -143,10 +158,21 @@ internal class AmbientFrameController(
                     } else {
                         sample.getPixels(pixels, 0, w, 0, 0, w, h)
                         val raw = sample.copy(Bitmap.Config.ARGB_8888, false) ?: continue
-                        val result = withContext(Dispatchers.Default) {
+                        val analyzed = withContext(Dispatchers.Default) {
                             val crop = analyzer.analyze(pixels, w, h, started)
-                            if (config.glow) Bitmap.createBitmap(analyzer.blur(pixels, w, h, crop), w, h, Bitmap.Config.ARGB_8888)
-                            else raw
+                            val glow = if (config.glow) Bitmap.createBitmap(analyzer.blur(pixels, w, h, crop), w, h, Bitmap.Config.ARGB_8888)
+                                else raw
+                            crop to glow
+                        }
+                        val result = analyzed.second
+                        val contentBounds = capturedBounds?.let { bounds ->
+                            val crop = analyzed.first
+                            androidx.compose.ui.geometry.Rect(
+                                bounds.left + bounds.width * crop.left / w,
+                                bounds.top + bounds.height * crop.top / h,
+                                bounds.left + bounds.width * crop.right / w,
+                                bounds.top + bounds.height * crop.bottom / h,
+                            )
                         }
                         currentCoroutineContext().ensureActive()
                         if (generation != session || !policy().active || policy().refreshGeneration != config.refreshGeneration) continue
@@ -155,7 +181,7 @@ internal class AmbientFrameController(
                         val oldPrevious = presentation.previous
                         val publishAt = clock()
                         val elapsed = publishAt - (oldCurrent?.atMs ?: 0)
-                        presentation.previous = if (oldCurrent != null && oldPrevious != null && elapsed < oldCurrent.transitionMs) {
+                        presentation.previous = if (config.glow && oldCurrent != null && oldPrevious != null && elapsed < oldCurrent.transitionMs) {
                             val blended = withContext(Dispatchers.Default) {
                                 val a = oldPrevious.glow.asAndroidBitmap()
                                 val b = oldCurrent.glow.asAndroidBitmap()
@@ -183,7 +209,9 @@ internal class AmbientFrameController(
                             oldCurrent.copy(glow = blended.asImageBitmap())
                         } else oldCurrent
                         presentation.current = AmbientRenderFrame(raw.asImageBitmap(), result.asImageBitmap(), clock(),
-                            if (config.refreshGeneration != lastRefresh) 48L else analyzer.transitionMs, config.refreshGeneration)
+                            if (config.refreshGeneration != lastRefresh) 48L else analyzer.transitionMs,
+                            config.refreshGeneration, capturedBounds,
+                            contentBoundsInWindow = contentBounds)
                         presentation.failureFadeAt = null
                         failures = 0; frames++
                         lastRefresh = config.refreshGeneration

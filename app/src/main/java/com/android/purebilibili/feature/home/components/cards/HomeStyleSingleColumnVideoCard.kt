@@ -309,7 +309,7 @@ internal fun HomeStyleSingleColumnVideoCard(
                 } else {
                     null
                 },
-                inlineTrailingContent = if (isFollowing) {
+                nameLeadingContent = if (isFollowing) {
                     {
                         AppText(
                             text = "已关注",

@@ -38,6 +38,7 @@ internal fun PlayerControlProgressBar(
     currentChapterProvider: () -> String?,
     onChapterClick: () -> Unit,
     modifier: Modifier = Modifier,
+    neutralGlassTrack: Boolean = false,
 ) {
     val progress = progressProvider()
     VideoProgressBar(
@@ -60,6 +61,7 @@ internal fun PlayerControlProgressBar(
         currentChapter = currentChapterProvider(),
         onChapterClick = onChapterClick,
         modifier = modifier,
+        neutralGlassTrack = neutralGlassTrack,
     )
 }
 

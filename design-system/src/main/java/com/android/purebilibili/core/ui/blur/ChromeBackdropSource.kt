@@ -17,7 +17,7 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 
 /** A source and its recording modifier; attach [modifier] to exactly one content container. */
 @Stable
-internal class ChromeBackdropSource(
+class ChromeBackdropSource internal constructor(
     val backdrop: LayerBackdrop,
     val modifier: Modifier,
     private val recorded: State<Boolean>,
@@ -36,7 +36,7 @@ internal class ChromeBackdropSource(
  * another offscreen raster pass. Miuix still owns coordinates and backdrop lifecycle.
  */
 @Composable
-internal fun rememberChromeBackdropSource(): ChromeBackdropSource {
+fun rememberChromeBackdropSource(): ChromeBackdropSource {
     val contentLayer = rememberGraphicsLayer()
     val recorded = remember(contentLayer) { mutableStateOf(false) }
     val firstRecording = remember(contentLayer) { CompletableDeferred<Unit>() }
