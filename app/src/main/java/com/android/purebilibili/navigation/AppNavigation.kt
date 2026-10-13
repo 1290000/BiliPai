@@ -700,8 +700,12 @@ fun AppNavigation(
         )
         val bottomPagerSaveableStateHolder = rememberSaveableStateHolder()
         val mainBottomPagerState = rememberMainBottomPagerState(bottomPagerState)
-        var bottomPagerContentReady by remember { mutableStateOf(false) }
-        var preloadedBottomPagerItems by remember { mutableStateOf(emptySet<BottomNavItem>()) }
+        // 跨 Activity 重建保留：进程仍然热（配置变更 / 系统回收 Activity）时，重新挂载这些页
+        // 既便宜又必要；冷启动时没有可恢复内容，轻量首帧策略照旧生效。
+        var bottomPagerContentReady by rememberSaveable { mutableStateOf(false) }
+        var preloadedBottomPagerItems by rememberSaveable(
+            stateSaver = BottomPagerPreloadedItemsSaver
+        ) { mutableStateOf(emptySet<BottomNavItem>()) }
         LaunchedEffect(Unit) {
             withFrameNanos { }
             bottomPagerContentReady = true
