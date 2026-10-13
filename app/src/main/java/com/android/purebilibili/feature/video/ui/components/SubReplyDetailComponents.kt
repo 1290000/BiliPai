@@ -576,7 +576,7 @@ internal fun SubReplyDetailContent(
     var targetReplyHandled by remember(rootReply.rpid, targetReplyId) { mutableStateOf(false) }
     LaunchedEffect(highlightedTargetId) {
         if (highlightedTargetId <= 0L) return@LaunchedEffect
-        delay(1_400)
+        delay(com.android.purebilibili.feature.settings.SettingsHighlightTokens.HOLD_MILLIS)
         highlightedTargetId = 0L
     }
     var conversationAnchor by remember(rootReply.rpid) { mutableStateOf<ReplyItem?>(null) }
@@ -1063,7 +1063,7 @@ private fun SubReplyDetailItem(
         } else {
             appearance.panelColor
         },
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = com.android.purebilibili.feature.settings.SettingsHighlightTokens.FADE_MILLIS),
         label = "subReplyTargetHighlight"
     )
     val displayLocation = remember(item.replyControl?.location) {
