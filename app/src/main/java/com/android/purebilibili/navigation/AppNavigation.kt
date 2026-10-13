@@ -639,8 +639,14 @@ fun AppNavigation(
                     com.android.purebilibili.core.ui.transition.VideoCardTransitionBackgroundPhase.IDLE
             }
         }
-        LaunchedEffect(globalHomeWallpaperUri, deferGlobalWallpaperPalette) {
+        val foregroundSettling by com.android.purebilibili.core.lifecycle.ForegroundSettleBudget
+            .isSettling
+            .collectAsStateWithLifecycle()
+        LaunchedEffect(globalHomeWallpaperUri, deferGlobalWallpaperPalette, foregroundSettling) {
             if (deferGlobalWallpaperPalette) return@LaunchedEffect
+            // 回前台的安定窗口内先不重建调色板：它要解一张 256×512 位图并做 5 次 Palette
+            // 切片，正好会和用户此刻的首次切页抢主线程。窗口结束后本效应会重新触发。
+            if (foregroundSettling) return@LaunchedEffect
             com.android.purebilibili.feature.home.components.cards.WallpaperPaletteStore.loadWallpaperPalette(
                 context = context,
                 uri = globalHomeWallpaperUri,
