@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import com.android.purebilibili.core.ui.components.AppLazyColumn as LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -60,7 +59,7 @@ import com.android.purebilibili.core.ui.components.AppSurface
 import com.android.purebilibili.core.ui.components.AppText
 import com.android.purebilibili.core.ui.globalWallpaperAwareBackground
 import com.android.purebilibili.core.ui.skeleton.ContentSkeletonBlock
-import com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonBlockColor
+import com.android.purebilibili.core.ui.skeleton.rememberStaticSkeletonBlockColor
 import com.android.purebilibili.core.ui.rememberAppBackIcon
 import com.android.purebilibili.core.ui.resolveBottomSafeAreaPadding
 import com.android.purebilibili.core.util.FormatUtils
@@ -71,7 +70,6 @@ import com.android.purebilibili.feature.dynamic.components.DynamicCardActions
 import com.android.purebilibili.feature.dynamic.components.DynamicCardInteractionActions
 import com.android.purebilibili.feature.dynamic.components.DynamicCardNavigationActions
 import com.android.purebilibili.feature.dynamic.components.DynamicFeedSkeletonCard
-import com.android.purebilibili.feature.dynamic.components.rememberDynamicFeedSkeletonPulseState
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
 import com.android.purebilibili.R
@@ -115,6 +113,9 @@ fun TopicDetailScreen(
         hasDetails = state.details != null,
         itemCount = state.items.size,
     )
+    // 骨架与真实卡片共用同一个 LazyColumn、同一个 contentType，色块因此用固定色：
+    // 呼吸中的灰块叠在卡片淡入之下，观感上就是「闪」。
+    val skeletonBlockColor = rememberStaticSkeletonBlockColor()
     val topicBackdrop = if (liquidGlassEnabled && !showInitialSkeleton) rememberLayerBackdrop() else null
     var showPublishComposer by remember { mutableStateOf(false) }
 
@@ -152,35 +153,59 @@ fun TopicDetailScreen(
                 .then(if (topicBackdrop != null) Modifier.layerBackdrop(topicBackdrop) else Modifier)
                 .globalWallpaperAwareBackground()
         ) {
-            when {
-                showInitialSkeleton -> {
-                    TopicDetailLoadingSkeleton(modifier = Modifier.fillMaxSize())
-                }
-                state.error != null && state.details == null && state.items.isEmpty() -> {
-                    AppText(
-                        text = state.error ?: "话题加载失败",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            // 骨架与真实内容共用同一个 LazyColumn 与同一个 contentType：数据到达时
+            // LazyList 在原地替换 item（配合 animateItem 交叉淡入），不再整棵子树重建。
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(
+                    start = 12.dp,
+                    end = 12.dp,
+                    top = padding.calculateTopPadding() + 12.dp,
+                    bottom = resolveBottomSafeAreaPadding(
+                        navigationBarsBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                        extraBottomPadding = 16.dp
                     )
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(
-                            start = 12.dp,
-                            end = 12.dp,
-                            top = padding.calculateTopPadding() + 12.dp,
-                            bottom = resolveBottomSafeAreaPadding(
-                                navigationBarsBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
-                                extraBottomPadding = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .responsiveContentWidth(maxWidth = 960.dp)
+                    .fillMaxSize()
+            ) {
+                when {
+                    showInitialSkeleton -> {
+                        item(key = "topic_header_skeleton") {
+                            TopicHeaderCardSkeleton(modifier = Modifier.animateItem())
+                        }
+                        items(
+                            count = TOPIC_DETAIL_SKELETON_ITEM_COUNT,
+                            key = { index -> "topic_dynamic_skeleton_$index" },
+                            contentType = { TOPIC_DYNAMIC_CARD_CONTENT_TYPE }
+                        ) { _ ->
+                            DynamicFeedSkeletonCard(
+                                modifier = Modifier.animateItem(),
+                                blockColor = skeletonBlockColor,
                             )
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier
-                            .responsiveContentWidth(maxWidth = 960.dp)
-                            .fillMaxSize()
-                    ) {
-                        item {
+                        }
+                    }
+
+                    state.error != null && state.details == null && state.items.isEmpty() -> {
+                        item(key = "topic_error") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillParentMaxHeight(0.6f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AppText(
+                                    text = state.error ?: "话题加载失败",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        item(key = "topic_header") {
                             TopicHeaderCard(
                                 details = state.details,
                                 onUserClick = onUserClick,
@@ -203,29 +228,35 @@ fun TopicDetailScreen(
                                 )
                             }
                         }
-                        itemsIndexed(state.items, key = { _, item -> item.id_str }) { index, item ->
-                            DynamicCardV2(
-                                item = item,
-                                gifImageLoader = context.imageLoader,
-                                actions = DynamicCardActions(
-                                    navigation = DynamicCardNavigationActions(
-                                        onVideoClick = onVideoClick,
-                                        onBangumiClick = onBangumiClick,
-                                        onUserClick = onUserClick,
-                                        onTopicClick = onTopicClick,
-                                        onTopicKeywordClick = onTopicKeywordClick,
-                                        onLiveClick = onLiveClick,
-                                        onMusicClick = onMusicClick,
-                                        onCollectionClick = onCollectionClick,
-                                        onCourseClick = onCourseClick,
-                                        onArticleClick = onArticleClick,
-                                        onDynamicDetailClick = onDynamicDetailClick,
+                        itemsIndexed(
+                            state.items,
+                            key = { _, item -> item.id_str },
+                            contentType = { _, _ -> TOPIC_DYNAMIC_CARD_CONTENT_TYPE }
+                        ) { index, item ->
+                            Box(modifier = Modifier.animateItem()) {
+                                DynamicCardV2(
+                                    item = item,
+                                    gifImageLoader = context.imageLoader,
+                                    actions = DynamicCardActions(
+                                        navigation = DynamicCardNavigationActions(
+                                            onVideoClick = onVideoClick,
+                                            onBangumiClick = onBangumiClick,
+                                            onUserClick = onUserClick,
+                                            onTopicClick = onTopicClick,
+                                            onTopicKeywordClick = onTopicKeywordClick,
+                                            onLiveClick = onLiveClick,
+                                            onMusicClick = onMusicClick,
+                                            onCollectionClick = onCollectionClick,
+                                            onCourseClick = onCourseClick,
+                                            onArticleClick = onArticleClick,
+                                            onDynamicDetailClick = onDynamicDetailClick,
+                                        ),
+                                        interaction = DynamicCardInteractionActions(
+                                            onCommentClick = onDynamicDetailClick,
+                                        ),
                                     ),
-                                    interaction = DynamicCardInteractionActions(
-                                        onCommentClick = onDynamicDetailClick,
-                                    ),
-                                ),
-                            )
+                                )
+                            }
                             if (index == state.items.size - 3 && state.hasMore && !state.isLoadingMore) {
                                 LaunchedEffect(state.offset) {
                                     viewModel.loadMore()
@@ -233,7 +264,7 @@ fun TopicDetailScreen(
                             }
                         }
                         if (state.isLoadingMore) {
-                            item {
+                            item(key = "topic_loading_more") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -280,68 +311,65 @@ fun TopicDetailScreen(
     }
 }
 
+/** 话题动态卡的 lazy item 身份。骨架卡与真实卡片共用同一个 contentType，才能原地替换。 */
+private const val TOPIC_DYNAMIC_CARD_CONTENT_TYPE = "topic_dynamic_card"
+
+/** 话题详情首屏骨架卡片数量。 */
+private const val TOPIC_DETAIL_SKELETON_ITEM_COUNT = 6
+
+/**
+ * 话题头卡骨架：对齐真实 [TopicHeaderCard] 的封面块 + 三行文字 + 圆形操作位。
+ *
+ * 色块用固定色（不参与呼吸脉冲）：骨架与真实头卡在同一个 LazyColumn 内原地替换，
+ * 切换时只应看到「内容淡入」。
+ */
 @Composable
-private fun TopicDetailLoadingSkeleton(modifier: Modifier = Modifier) {
-    val dynamicPulseState = rememberDynamicFeedSkeletonPulseState()
-    // provider 保持稳定实例,骨架卡的脉冲值在 draw 阶段读取,卡片内容不逐帧重组。
-    val dynamicPulseProvider = remember(dynamicPulseState) { { dynamicPulseState.value } }
-    val headerBlockColor = rememberContentSkeletonBlockColor(dynamicPulseProvider())
-    LazyColumn(
-        contentPadding = PaddingValues(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        userScrollEnabled = false,
-        modifier = modifier,
+private fun TopicHeaderCardSkeleton(modifier: Modifier = Modifier) {
+    val blockColor = rememberStaticSkeletonBlockColor()
+    AppSurface(
+        shape = AppShapes.container(ContainerLevel.Chip),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        modifier = modifier.fillMaxWidth(),
     ) {
-        item {
-            AppSurface(
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ContentSkeletonBlock(
+                color = blockColor,
                 shape = AppShapes.container(ContainerLevel.Chip),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.size(58.dp),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ContentSkeletonBlock(
-                        color = headerBlockColor,
-                        shape = AppShapes.container(ContainerLevel.Chip),
-                        modifier = Modifier.size(58.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ContentSkeletonBlock(
-                            color = headerBlockColor,
-                            modifier = Modifier
-                                .fillMaxWidth(0.62f)
-                                .height(18.dp),
-                        )
-                        ContentSkeletonBlock(
-                            color = headerBlockColor,
-                            modifier = Modifier
-                                .fillMaxWidth(0.88f)
-                                .height(13.dp),
-                        )
-                        ContentSkeletonBlock(
-                            color = headerBlockColor,
-                            modifier = Modifier
-                                .fillMaxWidth(0.56f)
-                                .height(12.dp),
-                        )
-                    }
-                    ContentSkeletonBlock(
-                        color = headerBlockColor,
-                        shape = CircleShape,
-                        modifier = Modifier.size(34.dp),
-                    )
-                }
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    modifier = Modifier
+                        .fillMaxWidth(0.62f)
+                        .height(18.dp),
+                )
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    modifier = Modifier
+                        .fillMaxWidth(0.88f)
+                        .height(13.dp),
+                )
+                ContentSkeletonBlock(
+                    color = blockColor,
+                    modifier = Modifier
+                        .fillMaxWidth(0.56f)
+                        .height(12.dp),
+                )
             }
-        }
-        items(6) {
-            DynamicFeedSkeletonCard(pulse = dynamicPulseProvider)
+            ContentSkeletonBlock(
+                color = blockColor,
+                shape = CircleShape,
+                modifier = Modifier.size(34.dp),
+            )
         }
     }
 }

@@ -132,6 +132,8 @@ import com.android.purebilibili.feature.video.ui.components.VideoInlineSubReplyD
 import com.android.purebilibili.feature.video.ui.components.rememberVideoCommentAppearance
 import com.android.purebilibili.feature.video.ui.components.resolveReplyItemContentType
 import com.android.purebilibili.feature.video.ui.components.shouldShowReplyTopAction
+import com.android.purebilibili.feature.video.ui.components.videoCommentItemModifier
+import com.android.purebilibili.feature.video.ui.components.videoCommentSkeletonItems
 import com.android.purebilibili.feature.video.ui.section.ActionButtonsRow
 import com.android.purebilibili.feature.video.ui.section.resolveDisplayBgmList
 import com.android.purebilibili.feature.video.ui.section.UpInfoSection
@@ -150,7 +152,9 @@ import com.android.purebilibili.feature.video.viewmodel.SponsorContributionUiSta
 import com.android.purebilibili.feature.video.viewmodel.VideoEngagementUiState
 import com.android.purebilibili.feature.video.viewmodel.withEngagementUiState
 import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
+import com.android.purebilibili.feature.video.viewmodel.resolveVideoCommentSkeletonSlotCount
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
+import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.launch
 import com.android.purebilibili.core.ui.AppShapes
 import com.android.purebilibili.core.ui.ContainerLevel
@@ -571,7 +575,9 @@ private fun CinemaStagePlayer(
                         forceCoverOnly = forceCoverOnlyOnReturn,
                         ugcSeason = success?.info?.ugc_season,
                         isFollowed = engagementState.isFollowing,
+                        followStatusKnown = engagementState.followStatusKnown,
                         isLiked = engagementState.isLiked,
+                        likeStatusKnown = engagementState.likeStatusKnown,
                         isCoined = engagementState.coinCount > 0,
                         isFavorited = engagementState.isFavorited,
                         sponsorContributionState = sponsorContributionState,
@@ -759,6 +765,7 @@ private fun CinemaMetaPanel(
                                             CinemaMetaUpInfo(
                                                 success = success,
                                                 isFollowing = engagement.isFollowing,
+                                                followStatusKnown = engagement.followStatusKnown,
                                                 onFollowClick = onFollowClick,
                                                 onUpClick = onUpClick,
                                                 danmakuEnabled = danmakuEnabled,
@@ -769,6 +776,7 @@ private fun CinemaMetaPanel(
                                             CinemaMetaActions(
                                                 success = success,
                                                 engagement = engagement,
+                                                likeStatusKnown = engagement.likeStatusKnown,
                                                 downloadProgress = downloadProgress,
                                                 context = context,
                                                 onFavoriteClick = onFavoriteClick,
@@ -790,6 +798,7 @@ private fun CinemaMetaPanel(
                                             CinemaMetaUpInfo(
                                                 success = success,
                                                 isFollowing = engagement.isFollowing,
+                                                followStatusKnown = engagement.followStatusKnown,
                                                 onFollowClick = onFollowClick,
                                                 onUpClick = onUpClick,
                                                 danmakuEnabled = danmakuEnabled,
@@ -800,6 +809,7 @@ private fun CinemaMetaPanel(
                                             CinemaMetaActions(
                                                 success = success,
                                                 engagement = engagement,
+                                                likeStatusKnown = engagement.likeStatusKnown,
                                                 downloadProgress = downloadProgress,
                                                 context = context,
                                                 onFavoriteClick = onFavoriteClick,
@@ -822,6 +832,7 @@ private fun CinemaMetaPanel(
                             CinemaMetaActions(
                                 success = success,
                                 engagement = engagement,
+                                likeStatusKnown = engagement.likeStatusKnown,
                                 downloadProgress = downloadProgress,
                                 context = context,
                                 onFavoriteClick = onFavoriteClick,
@@ -915,6 +926,7 @@ private fun CinemaMetaActions(
     onFavoriteLongClick: () -> Unit = {},
     onLikeClick: () -> Unit,
     onDislikeClick: () -> Unit = {},
+    likeStatusKnown: Boolean = false,
     onCoinClick: () -> Unit,
     onTripleClick: () -> Unit,
     onDownloadClick: () -> Unit,
@@ -927,6 +939,7 @@ private fun CinemaMetaActions(
         info = success.info,
         isFavorited = engagement.isFavorited,
         isLiked = engagement.isLiked,
+        likeStatusKnown = likeStatusKnown,
         isDisliked = engagement.isDisliked,
         coinCount = engagement.coinCount,
         downloadProgress = downloadProgress,
@@ -950,6 +963,7 @@ private fun CinemaMetaActions(
 private fun CinemaMetaUpInfo(
     success: VideoPlaybackUiState.Success,
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
     onFollowClick: () -> Unit,
     onUpClick: (Long) -> Unit,
     danmakuEnabled: Boolean,
@@ -960,6 +974,7 @@ private fun CinemaMetaUpInfo(
     UpInfoSection(
         info = success.info,
         isFollowing = isFollowing,
+        followStatusKnown = followStatusKnown,
         onFollowClick = onFollowClick,
         onUpClick = onUpClick,
         followerCount = success.ownerFollowerCount,
@@ -1274,6 +1289,10 @@ private fun CinemaCommentsPane(
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
     val listState = rememberLazyListState()
+    // 首屏骨架按视口高度铺够槽位：少铺会让列表在数据到达时被撑长、整体跳一下。
+    val commentSkeletonSlotCount = resolveVideoCommentSkeletonSlotCount(
+        LocalConfiguration.current.screenHeightDp
+    )
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val openCommentUrl: (String) -> Unit = openCommentUrl@{ rawUrl ->
@@ -1452,6 +1471,7 @@ private fun CinemaCommentsPane(
                 contentType = { resolveReplyItemContentType(it) }
             ) { reply ->
                 ReplyItemView(
+                    modifier = videoCommentItemModifier(),
                     item = reply,
                     upMid = success.info.owner.mid,
                     showUpFlag = commentState.showUpFlag,
@@ -1501,9 +1521,12 @@ private fun CinemaCommentsPane(
                 !commentState.isRepliesRefreshing &&
                 commentState.replies.isEmpty()
             ) {
-                item(key = "cinema_comment_skeleton") {
-                    com.android.purebilibili.core.ui.skeleton.CommentListColumnSkeleton()
-                }
+                // 骨架拆成多个独立 lazy item（而不是 1 个 item 里塞 5 行）：数据到达时是
+                // 一个槽位换一个槽位，列表锚点不失效，不会整体跳一下。
+                videoCommentSkeletonItems(
+                    slotCount = commentSkeletonSlotCount,
+                    keyPrefix = "cinema_comment_skeleton_",
+                )
             } else if (commentState.isRepliesLoading && !commentState.isRepliesRefreshing) {
                 item {
                     Box(
@@ -1543,6 +1566,7 @@ private fun CinemaCommentsPane(
             BottomInputBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 isLiked = engagementState.isLiked,
+                likeStatusKnown = engagementState.likeStatusKnown,
                 isFavorited = engagementState.isFavorited,
                 isCoined = engagementState.coinCount > 0,
                 onLikeClick = engagementActions.toggleLike,

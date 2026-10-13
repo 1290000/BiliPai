@@ -162,6 +162,7 @@ fun TopControlBar(
     onBack: () -> Unit,
     // Interactions
     isLiked: Boolean = false,
+    likeStatusKnown: Boolean,
     isCoined: Boolean = false,
     allowDislikeAction: Boolean = true,
     onLikeClick: () -> Unit = {},
@@ -382,9 +383,10 @@ fun TopControlBar(
                         // Like
                         Box(modifier = Modifier.likeBurstAnchor()) {
                             ActionIcon(
-                                icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
-                                contentDescription = "点赞",
-                                isActive = isLiked,
+                                icon = if (likeStatusKnown && isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
+                                contentDescription = if (likeStatusKnown) "点赞" else "点赞状态尚未确认",
+                                isActive = likeStatusKnown && isLiked,
+                                enabled = likeStatusKnown,
                                 onClick = onLikeClick,
                                 buttonSizeDp = layoutPolicy.buttonSizeDp,
                                 iconSizeDp = layoutPolicy.iconSizeDp
@@ -681,16 +683,18 @@ private fun ActionIcon(
     isActive: Boolean,
     onClick: () -> Unit,
     buttonSizeDp: Int = 32,
-    iconSizeDp: Int = 24
+    iconSizeDp: Int = 24,
+    enabled: Boolean = true
 ) {
     AppIconButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.size(buttonSizeDp.dp)
     ) {
         AppIcon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (isActive) MaterialTheme.colorScheme.primary else Color.White,
+            tint = if (!enabled) Color.White.copy(alpha = 0.38f) else if (isActive) MaterialTheme.colorScheme.primary else Color.White,
             modifier = Modifier.size(iconSizeDp.dp)
         )
     }

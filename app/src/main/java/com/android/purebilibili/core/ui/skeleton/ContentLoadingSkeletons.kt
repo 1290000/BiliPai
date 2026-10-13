@@ -291,53 +291,106 @@ fun UserListRowSkeleton(
     }
 }
 
-/** 评论行：头像、昵称、正文和操作区，供评论区首次加载使用。 */
+/**
+ * 通用静态骨架色块（不参与呼吸动画）。
+ *
+ * 与 [rememberContentSkeletonPulse] 的脉冲色不同：凡是「骨架与真实内容共用同一个 LazyList、
+ * 靠 item 身份原地替换」的页面，都应该用固定色。呼吸中的灰块与随后的内容淡入叠加，观感上
+ * 就是「闪」；固定色只负责占位，切换时只剩「内容淡入」这一件事。
+ */
+@Composable
+fun rememberStaticSkeletonBlockColor(): Color {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    return remember(isDark, onSurface) {
+        onSurface.copy(
+            alpha = if (isDark) STATIC_SKELETON_DARK_ALPHA else STATIC_SKELETON_LIGHT_ALPHA
+        )
+    }
+}
+
+/** 评论区专用静态骨架色，语义等同 [rememberStaticSkeletonBlockColor]。 */
+@Composable
+fun rememberCommentSkeletonBlockColor(): Color = rememberStaticSkeletonBlockColor()
+
+/** 单条评论骨架的正文行数：按槽位错落，避免整屏等高方块显得机械。 */
+internal fun resolveCommentSkeletonBodyLineCount(slotIndex: Int): Int =
+    when (slotIndex % 3) {
+        0 -> 2
+        1 -> 1
+        else -> 3
+    }
+
+/**
+ * 评论行骨架。
+ *
+ * 尺寸严格对齐真实评论项 `ReplyItemView` 的布局策略（水平内边距 12dp、头像 36dp、
+ * 头像与内容间距 8dp、操作行 32dp），单槽总高约 130dp。骨架换成真实评论时行高基本一致，
+ * 列表不会被突然撑长或缩短——这是消除「跳动」的关键。
+ */
 @Composable
 fun CommentListItemSkeleton(
     modifier: Modifier = Modifier,
     blockColor: Color? = null,
+    slotIndex: Int = 0,
 ) {
-    val pulse = if (blockColor == null) rememberContentSkeletonPulse() else 0f
-    val color = blockColor ?: rememberContentSkeletonBlockColor(pulse)
-    Row(
+    val color = blockColor ?: rememberCommentSkeletonBlockColor()
+    val bodyLineCount = resolveCommentSkeletonBodyLineCount(slotIndex)
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.Top,
+            .padding(
+                start = COMMENT_SKELETON_HORIZONTAL_PADDING_DP.dp,
+                end = COMMENT_SKELETON_HORIZONTAL_PADDING_DP.dp,
+                top = COMMENT_SKELETON_TOP_PADDING_DP.dp,
+                bottom = COMMENT_SKELETON_BOTTOM_PADDING_DP.dp,
+            ),
     ) {
-        ContentSkeletonBlock(
-            color = color,
-            shape = CircleShape,
-            modifier = Modifier.size(40.dp),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Row(verticalAlignment = Alignment.Top) {
+            ContentSkeletonBlock(
+                color = color,
+                shape = CircleShape,
+                modifier = Modifier.size(COMMENT_SKELETON_AVATAR_SIZE_DP.dp),
+            )
+            Spacer(modifier = Modifier.width(COMMENT_SKELETON_AVATAR_GAP_DP.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                ContentSkeletonBlock(
+                    color = color,
+                    modifier = Modifier
+                        .fillMaxWidth(0.34f)
+                        .height(COMMENT_SKELETON_NAME_HEIGHT_DP.dp),
+                )
+                Spacer(modifier = Modifier.height(COMMENT_SKELETON_NAME_GAP_DP.dp))
+                ContentSkeletonBlock(
+                    color = color,
+                    modifier = Modifier
+                        .fillMaxWidth(0.46f)
+                        .height(COMMENT_SKELETON_META_HEIGHT_DP.dp),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(COMMENT_SKELETON_BODY_GAP_DP.dp))
+        repeat(bodyLineCount) { line ->
             ContentSkeletonBlock(
                 color = color,
                 modifier = Modifier
-                    .fillMaxWidth(0.34f)
-                    .height(14.dp),
+                    .fillMaxWidth(if (line == bodyLineCount - 1) 0.72f else 0.96f)
+                    .height(COMMENT_SKELETON_BODY_HEIGHT_DP.dp),
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            ContentSkeletonBlock(
-                color = color,
-                modifier = Modifier
-                    .fillMaxWidth(0.96f)
-                    .height(14.dp),
-            )
-            Spacer(modifier = Modifier.height(7.dp))
-            ContentSkeletonBlock(
-                color = color,
-                modifier = Modifier
-                    .fillMaxWidth(0.72f)
-                    .height(14.dp),
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            if (line != bodyLineCount - 1) {
+                Spacer(modifier = Modifier.height(COMMENT_SKELETON_BODY_LINE_GAP_DP.dp))
+            }
+        }
+        Spacer(modifier = Modifier.height(COMMENT_SKELETON_ACTION_GAP_DP.dp))
+        Box(
+            modifier = Modifier.height(COMMENT_SKELETON_ACTION_HEIGHT_DP.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
             ContentSkeletonBlock(
                 color = color,
                 modifier = Modifier
                     .fillMaxWidth(0.42f)
-                    .height(12.dp),
+                    .height(COMMENT_SKELETON_ACTION_BAR_HEIGHT_DP.dp),
             )
         }
     }
@@ -349,8 +402,7 @@ fun CommentListSkeleton(
     itemCount: Int = 6,
     contentPadding: PaddingValues = PaddingValues(vertical = 4.dp),
 ) {
-    val pulse = rememberContentSkeletonPulse()
-    val blockColor = rememberContentSkeletonBlockColor(pulse)
+    val blockColor = rememberCommentSkeletonBlockColor()
     val skeletonKeys = List(itemCount.coerceAtLeast(0)) { it }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -361,23 +413,27 @@ fun CommentListSkeleton(
             items = skeletonKeys,
             key = { "comment_list_skeleton_$it" },
             contentType = { "comment_list_skeleton" },
-        ) {
-            CommentListItemSkeleton(blockColor = blockColor)
+        ) { slotIndex ->
+            CommentListItemSkeleton(blockColor = blockColor, slotIndex = slotIndex)
         }
     }
 }
 
-/** 可嵌入现有 LazyColumn 的评论骨架组，整组只使用一个脉冲时钟。 */
+/**
+ * 可嵌入现有 LazyColumn 的评论骨架组。
+ *
+ * 只负责铺出与真实评论同高、同间距的静态占位行；真正「稳定槽位」由调用方按
+ * slot 拆成多个 lazy item 实现，避免骨架到内容切换时 item 结构整体替换。
+ */
 @Composable
 fun CommentListColumnSkeleton(
     modifier: Modifier = Modifier,
     itemCount: Int = 5,
 ) {
-    val pulse = rememberContentSkeletonPulse()
-    val blockColor = rememberContentSkeletonBlockColor(pulse)
+    val blockColor = rememberCommentSkeletonBlockColor()
     Column(modifier = modifier.fillMaxWidth()) {
-        repeat(itemCount.coerceAtLeast(0)) {
-            CommentListItemSkeleton(blockColor = blockColor)
+        repeat(itemCount.coerceAtLeast(0)) { slotIndex ->
+            CommentListItemSkeleton(blockColor = blockColor, slotIndex = slotIndex)
         }
     }
 }
@@ -585,3 +641,24 @@ private const val CONTENT_SKELETON_LIGHT_MIN_ALPHA = 0.06f
 private const val CONTENT_SKELETON_LIGHT_MAX_ALPHA = 0.11f
 private const val CONTENT_SKELETON_DARK_MIN_ALPHA = 0.10f
 private const val CONTENT_SKELETON_DARK_MAX_ALPHA = 0.16f
+
+// 静态骨架色块（取原脉冲区间的中值），用于「同列表原地替换」的骨架。
+private const val STATIC_SKELETON_LIGHT_ALPHA = 0.10f
+private const val STATIC_SKELETON_DARK_ALPHA = 0.14f
+
+// 评论骨架尺寸：严格对齐真实评论项布局策略。
+
+private const val COMMENT_SKELETON_HORIZONTAL_PADDING_DP = 12
+private const val COMMENT_SKELETON_TOP_PADDING_DP = 10
+private const val COMMENT_SKELETON_BOTTOM_PADDING_DP = 2
+private const val COMMENT_SKELETON_AVATAR_SIZE_DP = 36
+private const val COMMENT_SKELETON_AVATAR_GAP_DP = 8
+private const val COMMENT_SKELETON_NAME_HEIGHT_DP = 14
+private const val COMMENT_SKELETON_NAME_GAP_DP = 6
+private const val COMMENT_SKELETON_META_HEIGHT_DP = 12
+private const val COMMENT_SKELETON_BODY_GAP_DP = 6
+private const val COMMENT_SKELETON_BODY_HEIGHT_DP = 16
+private const val COMMENT_SKELETON_BODY_LINE_GAP_DP = 4
+private const val COMMENT_SKELETON_ACTION_GAP_DP = 8
+private const val COMMENT_SKELETON_ACTION_HEIGHT_DP = 32
+private const val COMMENT_SKELETON_ACTION_BAR_HEIGHT_DP = 14

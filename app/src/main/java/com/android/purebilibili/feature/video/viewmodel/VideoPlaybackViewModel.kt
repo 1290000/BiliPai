@@ -586,6 +586,8 @@ sealed class VideoPlaybackUiState {
         val isFollowing: Boolean = false,
         val isFavorited: Boolean = false,
         val isLiked: Boolean = false,
+        val likeStatusKnown: Boolean = false,
+        val followStatusKnown: Boolean = false,
         val isDisliked: Boolean = false,
         val coinCount: Int = 0,
         val emoteMap: Map<String, String> = emptyMap(),
@@ -1785,6 +1787,9 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
     @Volatile
     private var isCommentInteractionActive = false
     private val followStatusCheckInFlight = mutableSetOf<Long>()
+    private var cachedFollowingSession: Any? = null
+    private var cachedFollowingRevision: Long = -1L
+    private var followingMidsRequest: Pair<Any, Long>? = null
     private var cachedFollowingOwnerMid: Long = 0L
     private var cachedFollowingMids: Set<Long> = emptySet()
     private var cachedFollowingLoadedAtMs: Long = 0L
@@ -3582,6 +3587,8 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                             isFollowing = result.isFollowing,
                             isFavorited = result.isFavorited,
                             isLiked = result.isLiked,
+                            likeStatusKnown = result.likeStatusKnown,
+                            followStatusKnown = result.followStatusKnown,
                             coinCount = result.coinCount,
                             //  CDN 线路
                             currentCdnIndex = 0,
@@ -5407,16 +5414,43 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
     private fun refreshDeferredPlaybackSignals(
         bvid: String,
         aid: Long,
-        ownerMid: Long
+        ownerMid: Long,
+        requestToken: Long
     ) {
+        if (currentLoadRequestToken != requestToken) return
+        val repository = com.android.purebilibili.data.repository.ActionRepository
+        val session = repository.interactionSession()
+        val followVersion = repository.followStatusVersion(ownerMid)
+        val likeVersion = repository.likeStatusVersion(aid)
         viewModelScope.launch(Dispatchers.IO) {
-            val followDeferred = async {
-                if (ownerMid > 0L) com.android.purebilibili.data.repository.ActionRepository.checkFollowStatus(ownerMid)
-                else false
+            launch {
+                repository.queryFollowStatus(ownerMid).onSuccess { following ->
+                    withContext(Dispatchers.Main.immediate) {
+                        if (currentLoadRequestToken != requestToken || repository.interactionSession() != session ||
+                            repository.followStatusVersion(ownerMid) != followVersion) return@withContext
+                        _uiState.update { state ->
+                            val success = state as? VideoPlaybackUiState.Success ?: return@update state
+                            if (success.info.bvid != bvid || success.info.aid != aid || success.info.owner.mid != ownerMid) return@update state
+                            success.copy(isFollowing = following, followStatusKnown = true,
+                                followingMids = if (following) success.followingMids + ownerMid else success.followingMids - ownerMid)
+                        }
+                    }
+                }
+            }
+            launch {
+                repository.queryLikeStatus(aid).onSuccess { liked ->
+                    withContext(Dispatchers.Main.immediate) {
+                        if (currentLoadRequestToken != requestToken || repository.interactionSession() != session ||
+                            repository.likeStatusVersion(aid) != likeVersion) return@withContext
+                        _uiState.update { state ->
+                            val success = state as? VideoPlaybackUiState.Success ?: return@update state
+                            if (success.info.bvid != bvid || success.info.aid != aid || success.info.owner.mid != ownerMid) state else success.copy(isLiked = liked, likeStatusKnown = true)
+                        }
+                    }
+                }
             }
             val favoriteDeferred = async { com.android.purebilibili.data.repository.ActionRepository.checkFavoriteStatus(aid) }
             val watchLaterDeferred = async { com.android.purebilibili.data.repository.ActionRepository.checkWatchLaterStatus(aid) }
-            val likeDeferred = async { com.android.purebilibili.data.repository.ActionRepository.checkLikeStatus(aid) }
             val dislikeDeferred = async { com.android.purebilibili.data.repository.ActionRepository.checkDislikeStatus(aid) }
             val coinDeferred = async { com.android.purebilibili.data.repository.ActionRepository.checkCoinStatus(aid) }
             val vipDeferred = async {
@@ -5430,10 +5464,8 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                 }
             }
 
-            val fetchedFollow = followDeferred.await()
             val fetchedFavorite = favoriteDeferred.await()
             val fetchedWatchLater = watchLaterDeferred.await()
-            val fetchedLike = likeDeferred.await()
             val fetchedDislike = dislikeDeferred.await()
             val fetchedCoinCount = coinDeferred.await()
             val fetchedVip = vipDeferred.await()
@@ -5445,23 +5477,16 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
             withContext(Dispatchers.Main.immediate) {
                 _uiState.update { state ->
                     val success = state as? VideoPlaybackUiState.Success ?: return@update state
-                    if (success.info.bvid != bvid) return@update state
+                    if (success.info.bvid != bvid || success.info.aid != aid || success.info.owner.mid != ownerMid) return@update state
 
-                    val mergedFollowingMids = success.followingMids.toMutableSet()
-                    val resolvedFollow = success.isFollowing || fetchedFollow
-                    if (ownerMid > 0L) {
-                        if (resolvedFollow) mergedFollowingMids.add(ownerMid) else mergedFollowingMids.remove(ownerMid)
-                    }
+                    if (currentLoadRequestToken != requestToken || repository.interactionSession() != session) return@update state
 
                     success.copy(
                         isVip = success.isVip || fetchedVip,
-                        isFollowing = resolvedFollow,
                         isFavorited = success.isFavorited || fetchedFavorite,
                         isInWatchLater = success.isInWatchLater || fetchedWatchLater,
-                        isLiked = success.isLiked || fetchedLike,
                         isDisliked = success.isDisliked || fetchedDislike,
-                        coinCount = maxOf(success.coinCount, fetchedCoinCount),
-                        followingMids = mergedFollowingMids
+                        coinCount = maxOf(success.coinCount, fetchedCoinCount)
                     )
                 }
             }
@@ -5476,36 +5501,40 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
         if (mid == 0L) return
 
         val current = _uiState.value as? VideoPlaybackUiState.Success ?: return
-        if (!current.isLoggedIn) return
-        if (!force && current.followingMids.contains(mid)) return
+        if (com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty()) return
+        if (!force && mid == current.info.owner.mid && current.followStatusKnown) return
 
         synchronized(followStatusCheckInFlight) {
             if (!force && followStatusCheckInFlight.contains(mid)) return
             followStatusCheckInFlight.add(mid)
         }
 
-        val currentApi = com.android.purebilibili.core.network.NetworkModule.api
+        val repository = com.android.purebilibili.data.repository.ActionRepository
+        val requestToken = currentLoadRequestToken
+        val session = repository.interactionSession()
+        val version = repository.followStatusVersion(mid)
+        val bvid = current.info.bvid
         viewModelScope.launch {
             try {
-                // 使用 Relation 接口精准查询
-                val response = currentApi.getRelation(mid)
-                if (response.code == 0 && response.data != null) {
-                    val checkedResponseData = requireNotNull(response.data)
-                    val isFollowing = checkedResponseData.attribute == 2 || checkedResponseData.attribute == 6
-
+                repository.queryFollowStatus(mid).onSuccess { following ->
                     _uiState.update { state ->
-                        if (state is VideoPlaybackUiState.Success) {
-                            val newSet = state.followingMids.toMutableSet()
-                            if (isFollowing) newSet.add(mid) else newSet.remove(mid)
-                            // 刷新当前状态
-                            val newIsFollowing = if (state.info.owner.mid == mid) isFollowing else state.isFollowing
-                            state.copy(followingMids = newSet, isFollowing = newIsFollowing)
-                        } else state
+                        val success = state as? VideoPlaybackUiState.Success ?: return@update state
+                        if (currentLoadRequestToken != requestToken || success.info.bvid != bvid ||
+                            success.info.aid != current.info.aid || success.info.owner.mid != current.info.owner.mid ||
+                            repository.interactionSession() != session ||
+                            repository.followStatusVersion(mid) != version) return@update state
+                        val isOwner = success.info.owner.mid == mid
+                        success.copy(
+                            followingMids = if (following) success.followingMids + mid else success.followingMids - mid,
+                            isFollowing = if (isOwner) following else success.isFollowing,
+                            followStatusKnown = if (isOwner) true else success.followStatusKnown
+                        )
                     }
-                    Logger.d("PlayerVM", "Checked relation for mid=$mid: isFollowing=$isFollowing")
+                }.onFailure { error ->
+                    Logger.e("PlayerVM", "Failed to check relation for mid=$mid", error)
                 }
-            } catch (e: Exception) {
-                Logger.e("PlayerVM", "Failed to check relation for mid=$mid", e)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } finally {
                 synchronized(followStatusCheckInFlight) {
                     followStatusCheckInFlight.remove(mid)
@@ -5516,64 +5545,71 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
 
     //  异步加载关注列表（用于推荐视频的已关注标签）
     private fun loadFollowingMids() {
-        if (isFollowingMidsLoading) return
-
+        val repository = com.android.purebilibili.data.repository.ActionRepository
         val loginMid = com.android.purebilibili.core.store.TokenManager.midCache ?: return
+        if (com.android.purebilibili.core.store.TokenManager.sessDataCache.isNullOrEmpty()) return
+        val session = repository.interactionSession()
+        val requestToken = currentLoadRequestToken
+        val request = session to requestToken
+        val followingRevision = repository.followingStatusRevision(session) ?: return
+        if (followingMidsRequest == request) return
         val now = System.currentTimeMillis()
-        val cacheValid = hasFollowingCache &&
+        val cacheValid = hasFollowingCache && cachedFollowingSession == session &&
+            cachedFollowingRevision == followingRevision &&
             cachedFollowingOwnerMid == loginMid &&
-            (now - cachedFollowingLoadedAtMs) in 0..followingMidsCacheTtlMs
+            (now - cachedFollowingLoadedAtMs) in 0 until followingMidsCacheTtlMs
 
-        if (cacheValid) {
-            _uiState.update { state ->
-                if (state is VideoPlaybackUiState.Success && state.followingMids != cachedFollowingMids) {
-                    state.copy(followingMids = cachedFollowingMids)
-                } else {
-                    state
+        fun applyMids(mids: Set<Long>) {
+            repository.acceptFollowingSnapshot(session, followingRevision) {
+                _uiState.update { state ->
+                    if (state !is VideoPlaybackUiState.Success || currentLoadRequestToken != requestToken ||
+                        repository.interactionSession() != session) state
+                    else state.copy(followingMids = repository.mergeKnownFollowingMids(session, mids))
                 }
             }
+        }
+        if (cacheValid) {
+            applyMids(cachedFollowingMids)
             return
         }
 
+        followingMidsRequest = request
         isFollowingMidsLoading = true
         viewModelScope.launch {
             try {
                 val allMids = mutableSetOf<Long>()
-                var page = 1
                 val pageSize = 50
-                
-                // 只加载前 200 个关注（4页），避免请求过多
-                while (page <= 4) {
-                    try {
-                        val result = com.android.purebilibili.core.network.NetworkModule.api.getFollowings(loginMid, page, pageSize)
-                        if (result.code == 0 && result.data != null) {
-                            val checkedResultData = requireNotNull(result.data)
-                            val list = checkedResultData.list ?: break
-                            if (list.isEmpty()) break
-                            allMids.addAll(list.map { it.mid })
-                            if (list.size < pageSize) break
-                            page++
-                        } else {
-                            break
-                        }
-                    } catch (e: Exception) {
-                        break
+                for (page in 1..4) {
+                    if (currentLoadRequestToken != requestToken || repository.interactionSession() != session ||
+                        repository.followingStatusRevision(session) != followingRevision) return@launch
+                    val result = com.android.purebilibili.core.network.NetworkModule.api.getFollowings(loginMid, page, pageSize)
+                    if (result.code != 0 || result.data == null) return@launch
+                    val list = requireNotNull(result.data).list.orEmpty()
+                    allMids.addAll(list.map { it.mid })
+                    if (list.size < pageSize) break
+                }
+                if (currentLoadRequestToken != requestToken || repository.interactionSession() != session ||
+                    repository.followingStatusRevision(session) != followingRevision) return@launch
+                repository.acceptFollowingSnapshot(session, followingRevision) {
+                    if (currentLoadRequestToken == requestToken && repository.interactionSession() == session) {
+                        cachedFollowingOwnerMid = loginMid
+                        cachedFollowingRevision = followingRevision
+                        cachedFollowingSession = session
+                        cachedFollowingMids = allMids.toSet()
+                        cachedFollowingLoadedAtMs = System.currentTimeMillis()
+                        hasFollowingCache = true
+                        applyMids(allMids)
                     }
                 }
-
-                cachedFollowingOwnerMid = loginMid
-                cachedFollowingMids = allMids
-                cachedFollowingLoadedAtMs = System.currentTimeMillis()
-                hasFollowingCache = true
-                
-                // 更新 UI 状态
-                val current = _uiState.value as? VideoPlaybackUiState.Success ?: return@launch
-                _uiState.value = current.copy(followingMids = allMids)
-                Logger.d("PlayerVM", " Loaded ${allMids.size} following mids")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.d("PlayerVM", " Failed to load following mids: ${e.message}")
             } finally {
-                isFollowingMidsLoading = false
+                if (followingMidsRequest == request) {
+                    followingMidsRequest = null
+                    isFollowingMidsLoading = false
+                }
             }
         }
     }
@@ -5643,10 +5679,12 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
         ownerMid: Long
     ) {
         if (ownerMid <= 0L) return
+        val requestToken = currentLoadRequestToken
         viewModelScope.launch {
             VideoRepository.getCreatorCardStats(ownerMid).onSuccess { stats ->
                 _uiState.update { current ->
-                    if (current is VideoPlaybackUiState.Success && current.info.bvid == bvid) {
+                    if (current is VideoPlaybackUiState.Success && current.info.bvid == bvid &&
+                        current.info.owner.mid == ownerMid && currentLoadRequestToken == requestToken) {
                         current.copy(
                             ownerFollowerCount = stats.followerCount,
                             ownerVideoCount = stats.videoCount
@@ -8035,7 +8073,8 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                 viewModelScope.launch {
                     delay(delayMs)
                     val currentSuccess = _uiState.value as? VideoPlaybackUiState.Success ?: return@launch
-                    if (currentSuccess.info.bvid != loadedBvid || currentSuccess.info.cid != loadedCid) {
+                    if (currentLoadRequestToken != requestToken ||
+                        currentSuccess.info.bvid != loadedBvid || currentSuccess.info.cid != loadedCid) {
                         return@launch
                     }
                     tasks.forEach { spec ->
@@ -8049,7 +8088,8 @@ class VideoPlaybackViewModel(application: Application) : AndroidViewModel(applic
                             PlaybackPostLoadTask.REFRESH_DEFERRED_SIGNALS -> refreshDeferredPlaybackSignals(
                                 bvid = loadedBvid,
                                 aid = loadedAid,
-                                ownerMid = loadedOwnerMid
+                                ownerMid = loadedOwnerMid,
+                                requestToken = requestToken
                             )
                             PlaybackPostLoadTask.LOAD_FOLLOWING_MIDS -> loadFollowingMids()
                             PlaybackPostLoadTask.OWNER_STATS -> loadOwnerStats(

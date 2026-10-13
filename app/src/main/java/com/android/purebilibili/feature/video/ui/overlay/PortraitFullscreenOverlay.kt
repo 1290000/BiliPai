@@ -109,6 +109,7 @@ fun PortraitFullscreenOverlay(
     
     // 互动状态
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     isCoined: Boolean,
     isFavorited: Boolean,
     onLikeClick: () -> Unit,
@@ -121,6 +122,7 @@ fun PortraitFullscreenOverlay(
     
     // 关注状态 (Follow status)
     isFollowing: Boolean = false,
+    followStatusKnown: Boolean,
     onFollowClick: () -> Unit = {},
     
     // [新增] 详情点击
@@ -234,6 +236,7 @@ fun PortraitFullscreenOverlay(
                 // 2. 右侧互动栏 (不再包含头像)
                 PortraitInteractionBar(
                     isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                     likeCount = statLike,
                     isCoined = isCoined,
                     coinCount = statCoin,
@@ -282,6 +285,7 @@ fun PortraitFullscreenOverlay(
                         isPlaying = isPlaying,
                         onCollectionClick = onDetailClick,
                         isFollowing = isFollowing,
+                        followStatusKnown = followStatusKnown,
                         onFollowClick = onFollowClick,
                         onTitleClick = onTitleClick,
                         onAuthorClick = onAuthorClick,
@@ -660,6 +664,7 @@ private fun PortraitVideoInfo(
     isPlaying: Boolean = false,
     onCollectionClick: () -> Unit = {},
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
     onFollowClick: () -> Unit,
     onTitleClick: () -> Unit,
     onAuthorClick: () -> Unit,
@@ -740,11 +745,11 @@ private fun PortraitVideoInfo(
             Spacer(modifier = Modifier.width(layoutPolicy.avatarNameSpacingDp.dp))
             
             // 关注按钮
-            val isFollowed = isFollowing
-            val buttonColor = if (isFollowed) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary
-            val contentColor = if (isFollowed) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onPrimary
-            val buttonText = if (isFollowed) "已关注" else "关注"
-            val iconVisible = !isFollowed
+            val isFollowed = followStatusKnown && isFollowing
+            val buttonColor = if (!followStatusKnown || isFollowed) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary
+            val contentColor = if (!followStatusKnown || isFollowed) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onPrimary
+            val buttonText = if (!followStatusKnown) "待确认" else if (isFollowed) "已关注" else "关注"
+            val iconVisible = followStatusKnown && !isFollowed
 
             AppSurface(
                 shape = RoundedCornerShape(layoutPolicy.followButtonCornerRadiusDp.dp),
@@ -752,7 +757,7 @@ private fun PortraitVideoInfo(
                 modifier = Modifier
                     .height(layoutPolicy.followButtonHeightDp.dp)
                     .followActionAnchor()
-                    .clickable { onFollowClick() }
+                    .clickable(enabled = followStatusKnown) { onFollowClick() }
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

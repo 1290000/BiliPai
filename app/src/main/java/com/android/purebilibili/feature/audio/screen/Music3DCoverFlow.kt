@@ -94,6 +94,7 @@ internal fun Music3DCoverFlow(
     onNext: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
+    isLikeStatusKnown: Boolean = true,
     onLikeClick: (() -> Unit)? = null,
     cardSizeDp: Int = 155,
     controlsWidthDp: Int = 440,
@@ -433,9 +434,9 @@ internal fun Music3DCoverFlow(
                         Spacer(Modifier.width(10.dp))
 
                         // 点赞按钮（未点赞薄线心，已点赞红粉心）
-                        onLikeClick?.let { like ->
+                        if (onLikeClick != null && isLikeStatusKnown) {
                             AppIconButton(
-                                onClick = like,
+                                onClick = onLikeClick,
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 AppIcon(
@@ -443,6 +444,18 @@ internal fun Music3DCoverFlow(
                                     contentDescription = if (isLiked) "取消喜欢" else "喜欢",
                                     tint = if (isLiked) MusicLikeColor else pillContentColor.copy(alpha = 0.82f),
                                     modifier = Modifier.size(17.dp)
+                                )
+                            }
+                        } else {
+                            // 交互状态未知时保留同尺寸中性占位，避免图标翻转，也不提供会写错状态的入口。
+                            Box(modifier = Modifier.size(48.dp)) {
+                                AppIcon(
+                                    imageVector = Icons.Outlined.FavoriteBorder,
+                                    contentDescription = null,
+                                    tint = pillContentColor.copy(alpha = 0.28f),
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(17.dp)
                                 )
                             }
                         }
@@ -487,7 +500,7 @@ internal fun Music3DCoverFlow(
                                 modifier = Modifier.size(19.dp)
                             )
                         }
-                    } else if (onLikeClick != null) {
+                    } else if (onLikeClick != null && isLikeStatusKnown) {
                         // 在大屏分屏下已由左侧主控切歌，此处仅保留单手快速点赞
                         Spacer(Modifier.width(8.dp))
                         AppIconButton(

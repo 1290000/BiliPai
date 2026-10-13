@@ -1335,10 +1335,9 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
         if (index < 0 || index >= allFolderIds.size) return
         
         val pagination = folderPaginationStates.getOrPut(index) { PaginationState() }
-        if (!pagination.hasMore || isLoadingMore) return
-        
+        if (!pagination.hasMore || isLoadingMore || _fetchingIndices.contains(index)) return
+        isLoadingMore = true
         viewModelScope.launch {
-            isLoadingMore = true
             val nextPage = pagination.currentPage + 1
             val mediaId = allFolderIds[index]
             val requestedOrder = _favoriteOrderState.value.apiValue
@@ -1362,6 +1361,7 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (!isCurrentFolderRequest(index, requestGeneration, mediaId, requestedOrder)) return@launch
                 _folderStates[index]?.let { stateFlow ->
                     stateFlow.value = stateFlow.value.copy(
                         error = e.message?.takeIf(String::isNotBlank) ?: "加载更多失败，请稍后重试"
@@ -1416,6 +1416,7 @@ class FavoriteViewModel(application: Application) : BaseListViewModel(applicatio
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (!isCurrentFolderRequest(index, requestGeneration, mediaId, requestedOrder)) return@launch
                 _folderStates[index]?.let { stateFlow ->
                     stateFlow.value = stateFlow.value.copy(
                         error = e.message?.takeIf(String::isNotBlank) ?: "加载收藏夹失败"

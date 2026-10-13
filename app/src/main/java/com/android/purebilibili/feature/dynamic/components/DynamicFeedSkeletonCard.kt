@@ -64,17 +64,32 @@ internal fun rememberDynamicFeedSkeletonPulseState(): State<Float> {
     )
 }
 
+/**
+ * 动态 feed 首屏骨架卡，对齐 BiliPai 的 DynamicCardSkeleton：
+ * 头像 + 双行文字 + 正文条 + 封面块 + 底部操作占位。
+ *
+ * [blockColor] 传固定色时用固定色——骨架与真实卡片共用同一个瀑布流、靠 item 身份原地
+ * 替换时，呼吸中的灰块叠在卡片淡入之下，观感上就是「闪」；固定色只负责占位，切换时
+ * 只剩「卡片淡入」这一件事。留空则退回 [pulse] 驱动的脉冲色，供独立骨架列表使用。
+ */
 @Composable
 internal fun DynamicFeedSkeletonCard(
-    pulse: () -> Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pulse: () -> Float = { 0f },
+    blockColor: Color? = null,
 ) {
     val cardShape = AppShapes.container(ContainerLevel.Card)
     val textPlaceholderShape = AppShapes.container(ContainerLevel.Tag)
     val actionPlaceholderShape = AppShapes.container(ContainerLevel.Tag)
     val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val blockColor = { lerp(surfaceVariant, onSurfaceVariant.copy(alpha = 0.22f), pulse()) }
+    // 传入固定色时用固定色（「骨架与真实卡片共用同一列表、靠 item 身份原地替换」的页面）；
+    // 否则退回脉冲色，供独立骨架列表使用。
+    val resolvedBlockColor: () -> Color = if (blockColor != null) {
+        { blockColor }
+    } else {
+        { lerp(surfaceVariant, onSurfaceVariant.copy(alpha = 0.22f), pulse()) }
+    }
 
     Column(
         modifier = modifier
@@ -89,7 +104,7 @@ internal fun DynamicFeedSkeletonCard(
                 modifier = Modifier
                     .size(AppSpacingTokens.TripleExtraLarge)
                     .clip(CircleShape)
-                    .dynamicSkeletonBlockBackground(blockColor)
+                    .dynamicSkeletonBlockBackground(resolvedBlockColor)
             )
             Spacer(modifier = Modifier.width(AppSpacingTokens.Medium))
             Column {
@@ -98,7 +113,7 @@ internal fun DynamicFeedSkeletonCard(
                         .width(96.dp)
                         .height(AppSpacingTokens.Small + AppSpacingTokens.Micro)
                         .clip(textPlaceholderShape)
-                        .dynamicSkeletonBlockBackground(blockColor)
+                        .dynamicSkeletonBlockBackground(resolvedBlockColor)
                 )
                 Spacer(modifier = Modifier.height(AppSpacingTokens.ExtraSmall))
                 Box(
@@ -106,7 +121,7 @@ internal fun DynamicFeedSkeletonCard(
                         .width(64.dp)
                         .height(AppSpacingTokens.ExtraSmall)
                         .clip(textPlaceholderShape)
-                        .dynamicSkeletonBlockBackground(blockColor)
+                        .dynamicSkeletonBlockBackground(resolvedBlockColor)
                 )
             }
         }
@@ -118,7 +133,7 @@ internal fun DynamicFeedSkeletonCard(
                 .fillMaxWidth()
                 .height(AppSpacingTokens.Small + AppSpacingTokens.Micro)
                 .clip(textPlaceholderShape)
-                .dynamicSkeletonBlockBackground(blockColor)
+                .dynamicSkeletonBlockBackground(resolvedBlockColor)
         )
         Spacer(modifier = Modifier.height(AppSpacingTokens.ExtraSmall))
         Box(
@@ -126,7 +141,7 @@ internal fun DynamicFeedSkeletonCard(
                 .fillMaxWidth(0.72f)
                 .height(AppSpacingTokens.Small + AppSpacingTokens.Micro)
                 .clip(textPlaceholderShape)
-                .dynamicSkeletonBlockBackground(blockColor)
+                .dynamicSkeletonBlockBackground(resolvedBlockColor)
         )
 
         Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
@@ -136,7 +151,7 @@ internal fun DynamicFeedSkeletonCard(
                 .fillMaxWidth()
                 .aspectRatio(16f / 10f)
                 .clip(cardShape)
-                .dynamicSkeletonBlockBackground(blockColor)
+                .dynamicSkeletonBlockBackground(resolvedBlockColor)
         )
 
         Spacer(modifier = Modifier.height(AppSpacingTokens.Medium))
@@ -151,7 +166,7 @@ internal fun DynamicFeedSkeletonCard(
                         .weight(1f)
                         .height(AppSpacingTokens.DoubleExtraLarge + AppSpacingTokens.Micro)
                         .clip(actionPlaceholderShape)
-                        .dynamicSkeletonBlockBackground(blockColor)
+                        .dynamicSkeletonBlockBackground(resolvedBlockColor)
                 )
             }
         }

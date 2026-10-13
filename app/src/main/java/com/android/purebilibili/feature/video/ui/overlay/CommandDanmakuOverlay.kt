@@ -107,6 +107,8 @@ internal fun CommandDanmakuOverlay(
     onVoteSubmit: (CommandDanmakuItem, VoteOption, Int) -> Unit,
     onLinkClick: (CommandDanmakuItem) -> Unit = {},
     isFollowing: Boolean = false,
+    followStatusKnown: Boolean,
+    likeStatusKnown: Boolean,
     modifier: Modifier = Modifier,
     renderingPaused: Boolean = false,
 ) {
@@ -138,6 +140,8 @@ internal fun CommandDanmakuOverlay(
                     onVoteSubmit = onVoteSubmit,
                     onLinkClick = onLinkClick,
                     isFollowing = isFollowing,
+                    followStatusKnown = followStatusKnown,
+                    likeStatusKnown = likeStatusKnown,
                     onDismiss = { state.dismiss(item.id) }
                 )
             }
@@ -157,6 +161,8 @@ private fun CommandDanmakuCard(
     onVoteSubmit: (CommandDanmakuItem, VoteOption, Int) -> Unit,
     onLinkClick: (CommandDanmakuItem) -> Unit,
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
+    likeStatusKnown: Boolean,
     onDismiss: () -> Unit
 ) {
     val isVote = item.type == CommandDanmakuType.VOTE && item.voteKind != VoteDanmakuKind.GRADE
@@ -268,6 +274,8 @@ private fun CommandDanmakuCard(
                 AttentionCommandCard(
                     item = item,
                     isFollowing = isFollowing,
+                    followStatusKnown = followStatusKnown,
+                    likeStatusKnown = likeStatusKnown,
                     onFollowClick = onFollowClick,
                     onTripleClick = onTripleClick,
                     onDismiss = onDismiss,
@@ -353,6 +361,8 @@ private const val GRADE_CARD_BODY_WIDTH_DP = 180
 private fun AttentionCommandCard(
     item: CommandDanmakuItem,
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
+    likeStatusKnown: Boolean,
     onFollowClick: () -> Unit,
     onTripleClick: () -> Unit,
     onDismiss: () -> Unit,
@@ -365,8 +375,8 @@ private fun AttentionCommandCard(
             action = target,
             isFollowing = isFollowing,
         )
-        if (action.shouldFollow) onFollowClick()
-        if (action.shouldTriple) onTripleClick()
+        if (action.shouldFollow && followStatusKnown) onFollowClick()
+        if (action.shouldTriple && likeStatusKnown) onTripleClick()
     }
 
     AppSurface(
@@ -384,6 +394,7 @@ private fun AttentionCommandCard(
         ) {
             if (showTriple) {
                 AttentionCommandTripleButton(
+                    enabled = likeStatusKnown,
                     onClick = { dispatchAction(AttentionCommandAction.TRIPLE) },
                 )
             } else {
@@ -406,6 +417,7 @@ private fun AttentionCommandCard(
                 Spacer(Modifier.width(ATTENTION_ACTION_SPACING_DP.dp))
                 AttentionCommandFollowButton(
                     isFollowing = isFollowing,
+                    followStatusKnown = followStatusKnown,
                     onClick = { dispatchAction(AttentionCommandAction.FOLLOW) },
                 )
             }
@@ -442,16 +454,16 @@ private fun CommandDanmakuCloseButton(
 }
 
 @Composable
-private fun AttentionCommandTripleButton(onClick: () -> Unit) {
-    var pulseKey by remember { mutableIntStateOf(0) }
-    var pressed by remember { mutableStateOf(false) }
+private fun AttentionCommandTripleButton(enabled: Boolean, onClick: () -> Unit) {
+    var pulseKey by remember(enabled) { mutableIntStateOf(0) }
+    var pressed by remember(enabled) { mutableStateOf(false) }
     val scale = animateFloatAsState(
         targetValue = if (pressed) 1.1f else 1f,
         animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
         label = "attentionTriplePressScale",
     )
-    LaunchedEffect(pulseKey) {
-        if (pulseKey > 0) {
+    LaunchedEffect(pulseKey, enabled) {
+        if (enabled && pulseKey > 0) {
             pressed = true
             delay(420)
             pressed = false
@@ -461,7 +473,7 @@ private fun AttentionCommandTripleButton(onClick: () -> Unit) {
         modifier = Modifier
             .width((ATTENTION_ICON_SLOT_DP * 3).dp)
             .height(28.dp)
-            .clickable(role = Role.Button) {
+            .clickable(enabled = enabled, role = Role.Button) {
                 pulseKey += 1
                 onClick()
             }
@@ -478,6 +490,7 @@ private fun AttentionCommandTripleButton(onClick: () -> Unit) {
 @Composable
 private fun AttentionCommandFollowButton(
     isFollowing: Boolean,
+    followStatusKnown: Boolean,
     onClick: () -> Unit,
 ) {
     val baseTextStyle = MaterialTheme.typography.labelMedium
@@ -489,13 +502,13 @@ private fun AttentionCommandFollowButton(
             .widthIn(min = ATTENTION_FOLLOW_TARGET_DP.dp)
             .heightIn(min = 24.dp)
             .clip(RoundedCornerShape(4.dp))
-            .background(if (isFollowing) Color.White.copy(alpha = 0.16f) else attentionFollowColor)
-            .clickable(enabled = !isFollowing, role = Role.Button, onClick = onClick)
+            .background(if (!followStatusKnown || isFollowing) Color.White.copy(alpha = 0.16f) else attentionFollowColor)
+            .clickable(enabled = followStatusKnown && !isFollowing, role = Role.Button, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (!isFollowing) {
+        if (followStatusKnown && !isFollowing) {
             AppIcon(
                 Icons.Rounded.Add,
                 contentDescription = null,
@@ -504,7 +517,7 @@ private fun AttentionCommandFollowButton(
             )
         }
         AppText(
-            text = if (isFollowing) "已关注" else "关注",
+            text = if (!followStatusKnown) "—" else if (isFollowing) "已关注" else "关注",
             style = textStyle,
             fontWeight = FontWeight.Medium,
             color = Color.White,

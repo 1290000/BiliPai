@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -98,6 +99,7 @@ import com.android.purebilibili.feature.video.ui.pager.shouldOpenPortraitComment
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode
 import com.android.purebilibili.feature.video.viewmodel.FullCommentSearchUiState
 import com.android.purebilibili.feature.video.viewmodel.VideoCommentViewModel
+import com.android.purebilibili.feature.video.viewmodel.resolveVideoCommentSkeletonSlotCount
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -907,6 +909,10 @@ internal fun VideoCommentMainList(
     val scope = rememberCoroutineScope()
     val appearance = rememberVideoCommentAppearance()
     val commentChromeBackdrop = rememberLayerBackdrop()
+    // 首屏骨架按视口高度铺够槽位：少铺会让列表在数据到达时被撑长、整体跳一下。
+    val commentSkeletonSlotCount = resolveVideoCommentSkeletonSlotCount(
+        LocalConfiguration.current.screenHeightDp
+    )
     var showCommentSearchSheet by remember { mutableStateOf(false) }
     val latestOnBackToTop by rememberUpdatedState(onBackToTop)
     val shouldShowBackToTop by remember(listState) {
@@ -1008,9 +1014,12 @@ internal fun VideoCommentMainList(
                         !state.isRepliesRefreshing &&
                         state.replies.isEmpty()
                     ) {
-                        item(key = "comment_skeleton") {
-                            com.android.purebilibili.core.ui.skeleton.CommentListColumnSkeleton()
-                        }
+                        // 骨架拆成多个独立 lazy item（而不是 1 个 item 里塞 5 行）：数据到达时
+                        // 是一个槽位换一个槽位，列表锚点不失效，不会整体跳一下。
+                        videoCommentSkeletonItems(
+                            slotCount = commentSkeletonSlotCount,
+                            keyPrefix = "comment_skeleton_",
+                        )
                     }
 
                     items(
@@ -1019,6 +1028,7 @@ internal fun VideoCommentMainList(
                         contentType = { resolveReplyItemContentType(it) }
                     ) { reply ->
                         ReplyItemView(
+                            modifier = videoCommentItemModifier(),
                             item = reply,
                             upMid = state.upMid,
                             showUpFlag = state.showUpFlag,

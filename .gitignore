@@ -133,3 +133,6 @@ app/src/test/java/com/android/purebilibili/docs/UiDesignDocumentationStructureTe
 .reasonix/
 reasonix.toml
 .zcodeignore
+
+# WorkBuddy AI local workspace metadata
+.workbuddy-ai/

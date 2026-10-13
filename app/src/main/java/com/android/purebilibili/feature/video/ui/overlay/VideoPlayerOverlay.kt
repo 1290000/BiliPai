@@ -689,7 +689,9 @@ private fun VideoPlayerOverlayContent(
     val relatedVideos = state.relatedVideos
     val ugcSeason = state.ugcSeason
     val isFollowed = state.isFollowed
+    val followStatusKnown = state.followStatusKnown
     val isLiked = state.isLiked
+    val likeStatusKnown = state.likeStatusKnown
     val isCoined = state.isCoined
     val isFavorited = state.isFavorited
     val likeCount = state.likeCount
@@ -1424,6 +1426,7 @@ private fun VideoPlayerOverlayContent(
                         onBack = onBack,
                         // Interactions
                         isLiked = isLiked,
+                        likeStatusKnown = likeStatusKnown,
                         isCoined = isCoined,
                         allowDislikeAction = showDislikeAction,
                         onLikeClick = onToggleLike,
@@ -2345,6 +2348,7 @@ private fun VideoPlayerOverlayContent(
             ownerName = videoOwnerName,
             ownerFace = videoOwnerFace,
             isFollowed = isFollowed,
+            followStatusKnown = followStatusKnown,
             onToggleFollow = onToggleFollow,
             onVideoClick = { vid, options ->
                 onDismissEndDrawer()
@@ -2830,6 +2834,7 @@ fun LandscapeEndDrawer(
     ownerFace: String,
     // Interaction States
     isFollowed: Boolean,
+    followStatusKnown: Boolean,
     // Callbacks
     onToggleFollow: () -> Unit,
     onVideoClick: (String, android.os.Bundle?) -> Unit,
@@ -2963,6 +2968,7 @@ fun LandscapeEndDrawer(
                             // 关注按钮 (放在右上角)
                             AppButton(
                                 onClick = onToggleFollow,
+                                enabled = followStatusKnown,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (isFollowed) MaterialTheme.colorScheme.onSurface.copy(0.2f) else MaterialTheme.colorScheme.primary,
                                     contentColor = if (isFollowed) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary,
@@ -2975,7 +2981,7 @@ fun LandscapeEndDrawer(
                                 shape = AppShapes.container(ContainerLevel.Card)
                             ) {
                                 AppText(
-                                    if (isFollowed) "已关注" else "+ 关注",
+                                    if (!followStatusKnown) "—" else if (isFollowed) "已关注" else "+ 关注",
                                     fontSize = layoutPolicy.followButtonFontSp.sp
                                 )
                             }

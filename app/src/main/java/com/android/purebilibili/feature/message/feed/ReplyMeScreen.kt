@@ -170,57 +170,90 @@ fun ReplyMeScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            when {
-                uiState.isLoading -> com.android.purebilibili.core.ui.skeleton.ContentMediaListSkeleton(
+            // 骨架与真实卡片共用同一个 LazyColumn 与同一个 contentType：数据到达时
+            // LazyList 在原地替换 item（配合 animateItem 交叉淡入），不再整棵子树重建。
+            AdaptivePullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::refresh,
+                indicatorTopInset = paddingValues.calculateTopPadding(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    useUserRow = true,
-                    itemCount = 8,
-                )
-                uiState.error != null -> MessageFeedError(
-                    text = uiState.error ?: "加载失败",
-                    onRetry = viewModel::loadInitial,
-                    modifier = Modifier.fillMaxSize()
-                )
-                uiState.items.isEmpty() -> MessageFeedEmpty(
-                    text = "暂无回复消息",
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Scaffold body already below topBar.
-                else -> AdaptivePullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = viewModel::refresh,
-                    indicatorTopInset = paddingValues.calculateTopPadding(),
-                    modifier = Modifier.fillMaxSize()
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = paddingValues.calculateTopPadding() + 12.dp, bottom = paddingValues.calculateBottomPadding() + 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = paddingValues.calculateTopPadding() + 12.dp, bottom = paddingValues.calculateBottomPadding() + 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(uiState.items, key = { it.id }) { item ->
-                            ReplyMeCard(
-                                item = item,
-                                onClick = {
-                                    item.item?.let { content ->
-                                        buildMessageFeedCommentNavigationLink(
-                                            nativeUri = content.nativeUri,
-                                            uri = content.uri,
-                                            businessId = content.businessId,
-                                            subjectId = content.subjectId,
-                                            rootId = content.rootId,
-                                            sourceId = content.sourceId,
-                                            targetId = content.targetId,
-                                            business = content.business
-                                        )?.let(onOpenLink)
-                                    }
-                                },
-                                onUserClick = {
-                                    item.user?.mid?.takeIf { it > 0 }?.let(onOpenSpace)
-                                },
-                                onRemove = { viewModel.remove(item.id) }
-                            )
+                    when {
+                        uiState.isLoading -> {
+                            items(
+                                count = MESSAGE_FEED_SKELETON_ITEM_COUNT,
+                                key = { index -> "reply_me_skeleton_$index" },
+                                contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                            ) { index ->
+                                MessageFeedCardSkeleton(
+                                    slotIndex = index,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
-                        item {
+
+                        uiState.error != null -> {
+                            item(key = "reply_me_error") {
+                                MessageFeedError(
+                                    text = uiState.error ?: "加载失败",
+                                    onRetry = viewModel::loadInitial,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f)
+                                )
+                            }
+                        }
+
+                        uiState.items.isEmpty() -> {
+                            item(key = "reply_me_empty") {
+                                MessageFeedEmpty(
+                                    text = "暂无回复消息",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f)
+                                )
+                            }
+                        }
+
+                        else -> {
+                            items(
+                                items = uiState.items,
+                                key = { it.id },
+                                contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                            ) { item ->
+                                ReplyMeCard(
+                                    modifier = Modifier.animateItem(),
+                                    item = item,
+                                    onClick = {
+                                        item.item?.let { content ->
+                                            buildMessageFeedCommentNavigationLink(
+                                                nativeUri = content.nativeUri,
+                                                uri = content.uri,
+                                                businessId = content.businessId,
+                                                subjectId = content.subjectId,
+                                                rootId = content.rootId,
+                                                sourceId = content.sourceId,
+                                                targetId = content.targetId,
+                                                business = content.business
+                                            )?.let(onOpenLink)
+                                        }
+                                    },
+                                    onUserClick = {
+                                        item.user?.mid?.takeIf { it > 0 }?.let(onOpenSpace)
+                                    },
+                                    onRemove = { viewModel.remove(item.id) }
+                                )
+                            }
+                        }
+                    }
+
+                    if (uiState.hasMore || uiState.isLoadingMore) {
+                        item(key = "reply_me_load_more") {
                             MessageFeedLoadMore(
                                 isLoadingMore = uiState.isLoadingMore,
                                 hasMore = uiState.hasMore,
@@ -239,10 +272,11 @@ private fun ReplyMeCard(
     item: MessageFeedReplyItem,
     onClick: () -> Unit,
     onUserClick: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     MessageFeedCard(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {

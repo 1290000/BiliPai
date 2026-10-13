@@ -582,6 +582,7 @@ class PortraitVideoPagerPolicyTest {
         val resolved = resolvePortraitTripleActionOverride(
             currentState = PortraitVideoInteractionUiState(
                 isLiked = false,
+                likeStatusKnown = true,
                 isFavorited = false,
                 likeCount = 8,
                 favoriteCount = 3
@@ -594,6 +595,53 @@ class PortraitVideoPagerPolicyTest {
         assertTrue(resolved.isFavorited == true)
         assertEquals(9, resolved.likeCount)
         assertEquals(4, resolved.favoriteCount)
+    }
+
+    @Test
+    fun portraitInteractionUi_keepsUnmatchedVideoUnknown() {
+        val resolved = resolvePortraitVideoInteractionUiState(
+            targetBvid = "BV_NEXT",
+            fallbackStat = Stat(like = 8),
+            sharedState = null
+        )
+        assertFalse(resolved.likeStatusKnown)
+        assertFalse(resolved.isLiked)
+        assertEquals(8, resolved.likeCount)
+    }
+
+    @Test
+    fun portraitInteractionUi_preservesExplicitUnknownAndKnownFalse() {
+        val shared = VideoPlaybackUiState.Success(
+            info = ViewInfo(bvid = "BV_CUR", aid = 2002L, stat = Stat(like = 8)),
+            playUrl = "",
+            isLiked = false,
+            likeStatusKnown = false
+        )
+        val unknown = resolvePortraitVideoInteractionUiState("BV_CUR", Stat(), shared)
+        val known = resolvePortraitVideoInteractionUiState(
+            "BV_CUR", Stat(), shared.copy(likeStatusKnown = true)
+        )
+        assertFalse(unknown.likeStatusKnown)
+        assertTrue(known.likeStatusKnown)
+        assertFalse(known.isLiked)
+    }
+
+    @Test
+    fun portraitTripleFailure_doesNotTurnUnknownIntoKnownFalse() {
+        val override = resolvePortraitTripleActionOverride(
+            currentState = PortraitVideoInteractionUiState(
+                isLiked = false,
+                likeStatusKnown = false,
+                isFavorited = false,
+                likeCount = 8,
+                favoriteCount = 3
+            ),
+            likeSuccess = false,
+            favoriteSuccess = false
+        )
+        assertTrue(override.isLiked == null)
+        val resolved = resolvePortraitVideoInteractionUiState("BV_CUR", Stat(like = 8), null, override)
+        assertFalse(resolved.likeStatusKnown)
     }
 
     @Test

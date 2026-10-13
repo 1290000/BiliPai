@@ -2697,42 +2697,18 @@ private fun CommonListContent(
     val emptyViewportModifier = Modifier
         .fillMaxSize()
         .padding(top = fixedHeaderInset, bottom = padding.calculateBottomPadding())
-    if (isLoading && items.isEmpty()) {
-        val historySkeletonBlockColor = if (isPersonalList) {
-            com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonBlockColor(
-                com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonPulse()
-            )
-        } else {
-            null
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            contentPadding = PaddingValues(
-                start = gridOuterPaddingDp.dp,
-                end = gridOuterPaddingDp.dp,
-                top = scrollableHeaderInset + gridOuterPaddingDp.dp,
-                bottom = padding.calculateBottomPadding() + gridOuterPaddingDp.dp
-            ),
-            horizontalArrangement = Arrangement.spacedBy(gridItemSpacingDp.dp),
-            verticalArrangement = Arrangement.spacedBy(gridItemSpacingDp.dp),
-            modifier = viewportModifier
-        ) {
-            if (headerContent != null) {
-                item(key = "personal_recap", span = { GridItemSpan(maxLineSpan) }) {
-                    headerContent()
-                }
-            }
-            items(columns * 4, key = { it }) {
-                if (isHistoryPersonalList) {
-                    HistoryPersonalCardSkeleton(blockColor = historySkeletonBlockColor)
-                } else if (isFavoritePersonalList) {
-                    FavoritePersonalCardSkeleton(stacked = columns > 1, blockColor = requireNotNull(historySkeletonBlockColor))
-                } else {
-                    VideoGridItemSkeleton(coverAspectRatio = skeletonCoverAspectRatio)
-                }
-            }
-        }
-    } else if (error != null && items.isEmpty()) {
+    // 首屏骨架不再自建独立网格：它与真实内容网格不是同一个 LazyLayout 实例，切换时
+    // 整屏重建、滚动锚点丢失。改为把骨架铺进内容网格（同一个 resolvedGridState），
+    // 数据到达时是 item 原地替换。
+    val showInitialSkeleton = isLoading && items.isEmpty()
+    val historySkeletonBlockColor = if (showInitialSkeleton && isPersonalList) {
+        com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonBlockColor(
+            com.android.purebilibili.core.ui.skeleton.rememberContentSkeletonPulse()
+        )
+    } else {
+        null
+    }
+    if (error != null && items.isEmpty() && !showInitialSkeleton) {
         Column(
             modifier = emptyViewportModifier,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -2751,7 +2727,7 @@ private fun CommonListContent(
                 }
             }
         }
-    } else if (items.isEmpty() && loadMoreError != null && onRetryLoadMore != null) {
+    } else if (items.isEmpty() && loadMoreError != null && onRetryLoadMore != null && !showInitialSkeleton) {
         Box(modifier = emptyViewportModifier, contentAlignment = Alignment.Center) {
             ListLoadError(
                 message = "加载更多失败：$loadMoreError",
@@ -2759,7 +2735,7 @@ private fun CommonListContent(
                 modifier = Modifier.fillMaxWidth().padding(AppSpacingTokens.Medium),
             )
         }
-    } else if (items.isEmpty()) {
+    } else if (items.isEmpty() && !showInitialSkeleton) {
         if (headerContent != null) {
             Column(
                 modifier = emptyViewportModifier
@@ -2867,7 +2843,41 @@ private fun CommonListContent(
                         onColumnsChange = onPinchColumnsChange,
                         onGestureEnd = onPinchColumnsEnd,
                     )
-            ) {
+            ) LazyVerticalGrid@{
+                // 首屏骨架直接铺在内容网格里：与真实卡片共用同一个 gridState 与同一种
+                // contentPadding / 列数，数据到达时是 item 原地替换，网格本身不重建。
+                // （显式标签：LazyVerticalGrid 是 AppLazyVerticalGrid 的导入别名，避免隐式
+                // 标签名与别名不一致导致 return@ 解析到别处。）
+                if (showInitialSkeleton) {
+                    if (headerContent != null) {
+                        item(key = "personal_recap", span = { GridItemSpan(maxLineSpan) }) {
+                            headerContent()
+                        }
+                    }
+                    items(
+                        count = columns * 4,
+                        key = { index -> "common_list_skeleton_$index" },
+                        contentType = { "common_list_skeleton_card" }
+                    ) { _ ->
+                        if (isHistoryPersonalList) {
+                            HistoryPersonalCardSkeleton(
+                                modifier = Modifier.animateItem(),
+                                blockColor = historySkeletonBlockColor,
+                            )
+                        } else if (isFavoritePersonalList) {
+                            FavoritePersonalCardSkeleton(
+                                stacked = columns > 1,
+                                blockColor = requireNotNull(historySkeletonBlockColor),
+                                modifier = Modifier.animateItem(),
+                            )
+                        } else {
+                            Box(modifier = Modifier.animateItem()) {
+                                VideoGridItemSkeleton(coverAspectRatio = skeletonCoverAspectRatio)
+                            }
+                        }
+                    }
+                    return@LazyVerticalGrid
+                }
                 if (isHistoryPersonalList && error != null && onRetry != null && !isLoading) {
                     item(key = "refresh_error", span = { GridItemSpan(maxLineSpan) }) {
                         ListLoadError(

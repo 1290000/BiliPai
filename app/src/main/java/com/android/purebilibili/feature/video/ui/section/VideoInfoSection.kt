@@ -1006,6 +1006,7 @@ private fun VideoHonorChip(
 fun UpInfoSection(
     info: ViewInfo,
     isFollowing: Boolean = false,
+    followStatusKnown: Boolean = false,
     onFollowClick: () -> Unit = {},
     onUpClick: (Long) -> Unit = {},
     showOwnerAvatar: Boolean = true,
@@ -1210,7 +1211,9 @@ fun UpInfoSection(
         }
 
         val followButtonContent: @Composable () -> Unit = {
-            var followActionModifier = Modifier.heightIn(min = if (isCompact) 26.dp else 28.dp)
+            var followActionModifier = Modifier
+                .heightIn(min = if (isCompact) 26.dp else 28.dp)
+                .width(if (isCompact) 56.dp else 68.dp)
             if (metadataSharedEnabled) {
                 with(requireNotNull(sharedTransitionScope)) {
                     followActionModifier = followActionModifier.sharedBounds(
@@ -1242,9 +1245,14 @@ fun UpInfoSection(
             }
             AppSurface(
                 onClick = onFollowClick,
-                color = when (followVisualPolicy.detailButtonTone) {
-                    FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
-                    FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
+                enabled = followStatusKnown,
+                color = if (followStatusKnown) {
+                    when (followVisualPolicy.detailButtonTone) {
+                        FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
+                        FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
+                    }
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
                 },
                 shape = VideoDetailShapes.action(),
                 modifier = followActionModifier.followActionAnchor()
@@ -1254,11 +1262,19 @@ fun UpInfoSection(
                     modifier = Modifier.padding(horizontal = if (isCompact) 8.dp else 12.dp)
                 ) {
                     AppText(
-                        text = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
+                        text = if (followStatusKnown) {
+                            if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8"
+                        } else {
+                            " "
+                        },
                         style = MaterialTheme.typography.labelMedium,
-                        color = when (followVisualPolicy.detailTextTone) {
-                            FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
-                            FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
+                        color = if (followStatusKnown) {
+                            when (followVisualPolicy.detailTextTone) {
+                                FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
+                                FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
+                            }
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                         },
                         fontWeight = FontWeight.Medium
                     )

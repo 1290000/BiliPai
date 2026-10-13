@@ -89,6 +89,7 @@ import com.android.purebilibili.feature.video.viewmodel.CommentUiState
 import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
 import com.android.purebilibili.feature.video.viewmodel.VideoEngagementUiState
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState
+import com.android.purebilibili.feature.video.viewmodel.resolveVideoCommentSkeletonSlotCount
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
@@ -398,6 +399,10 @@ internal fun TabletVideoLayout(
                                 state = VideoPlayerSectionState(
                                     playerState = playerState,
                                     uiState = uiState,
+                                    isLiked = engagementState.isLiked,
+                                    likeStatusKnown = engagementState.likeStatusKnown,
+                                    isFollowed = engagementState.isFollowing,
+                                    followStatusKnown = engagementState.followStatusKnown,
                                     isFullscreen = false,
                                     isInPipMode = isInPipMode,
                                     useTextureSurfaceForNavigation = resolveNavigationLiveSurfaceTextureEnabled(
@@ -657,8 +662,10 @@ internal fun TabletVideoInfoPane(
     ScrollableVideoInfoSection(
         info = engagementSuccess.info,
         isFollowing = engagementState.isFollowing,
+        followStatusKnown = engagementState.followStatusKnown,
         isFavorited = engagementState.isFavorited,
         isLiked = engagementState.isLiked,
+        likeStatusKnown = engagementState.likeStatusKnown,
         isDisliked = engagementState.isDisliked,
         coinCount = engagementState.coinCount,
         currentPageIndex = currentPageIndex,
@@ -773,6 +780,10 @@ internal fun TabletSecondaryContent(
     onDanmakuToggle: () -> Unit = {},
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
+    // 首屏骨架按视口高度铺够槽位：少铺会让列表在数据到达时被撑长、整体跳一下。
+    val commentSkeletonSlotCount = resolveVideoCommentSkeletonSlotCount(
+        LocalConfiguration.current.screenHeightDp
+    )
     var pendingVideoShare by remember { mutableStateOf<VideoSharePayload?>(null) }
     val tabs = remember(
         success.info.ugc_season,
@@ -1149,7 +1160,8 @@ internal fun TabletSecondaryContent(
                                     isDissolving = reply.rpid in commentState.dissolvingIds,
                                     onDissolveComplete = { commentActions.deleteComment(reply.rpid) },
                                     cardId = "comment_${reply.rpid}",
-                                    modifier = Modifier.padding(bottom = 1.dp)
+                                    // 小间距防止裁剪；animateItem 放在最前，作用于整个槽位。
+                                    modifier = videoCommentItemModifier().padding(bottom = 1.dp)
                                 ) {
                                     ReplyItemView(
                                         item = reply,
@@ -1199,9 +1211,12 @@ internal fun TabletSecondaryContent(
                                 !commentState.isRepliesRefreshing &&
                                 commentState.replies.isEmpty()
                             ) {
-                                item(key = "tablet_comment_skeleton") {
-                                    com.android.purebilibili.core.ui.skeleton.CommentListColumnSkeleton()
-                                }
+                                // 骨架拆成多个独立 lazy item（而不是 1 个 item 里塞 5 行）：
+                                // 数据到达时是一个槽位换一个槽位，列表锚点不失效，不会整体跳一下。
+                                videoCommentSkeletonItems(
+                                    slotCount = commentSkeletonSlotCount,
+                                    keyPrefix = "tablet_comment_skeleton_",
+                                )
                             } else if (
                                 commentState.isRepliesLoading &&
                                 !commentState.isRepliesRefreshing
@@ -1259,6 +1274,7 @@ internal fun TabletSecondaryContent(
                         BottomInputBar(
                             modifier = Modifier.align(Alignment.BottomCenter),
                             isLiked = engagementState.isLiked,
+                            likeStatusKnown = engagementState.likeStatusKnown,
                             isFavorited = engagementState.isFavorited,
                             isCoined = engagementState.coinCount > 0,
                             onLikeClick = engagementActions.toggleLike,
@@ -1474,8 +1490,10 @@ private fun TabletCollectionPane(
 private fun ScrollableVideoInfoSection(
     info: com.android.purebilibili.data.model.response.ViewInfo,
     isFollowing: Boolean,
+    followStatusKnown: Boolean = false,
     isFavorited: Boolean,
     isLiked: Boolean,
+    likeStatusKnown: Boolean = false,
     isDisliked: Boolean = false,
     coinCount: Int,
     currentPageIndex: Int,
@@ -1595,6 +1613,7 @@ private fun ScrollableVideoInfoSection(
                 UpInfoSection(
                     info = info,
                     isFollowing = isFollowing,
+                    followStatusKnown = followStatusKnown,
                     onFollowClick = onFollowClick,
                     onUpClick = onUpClick,
                     followerCount = ownerFollowerCount,
@@ -1616,6 +1635,7 @@ private fun ScrollableVideoInfoSection(
                 ActionButtonsRow(
                     info = info,
                     isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                     isDisliked = isDisliked,
                     isFavorited = isFavorited,
                     coinCount = coinCount,

@@ -7,6 +7,8 @@ import com.android.purebilibili.data.model.response.MessageFeedUnreadData
 import com.android.purebilibili.data.model.response.MessageUnreadData
 import com.android.purebilibili.data.model.response.SessionItem
 import com.android.purebilibili.data.repository.MessageRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,16 +63,29 @@ class InboxViewModel : ViewModel() {
         viewModelScope.launch {
             val category = _uiState.value.selectedCategory
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
-            // 并行加载未读数和会话列表
-            val unreadResult = MessageRepository.getUnreadCount()
-            val feedUnreadResult = MessageRepository.getFeedUnread()
-            // 初始加载，endTs = 0
-            val sessionsResult = MessageRepository.getSessions(
-                sessionType = category.apiSessionType,
-                size = 100,
-                endTs = 0
-            )
+
+            // 并行加载未读数和会话列表：三个请求互不依赖，而且都是首屏必需的
+            // （会话列表 + 两个 tab 未读角标）。之前写成三个连续的 suspend 调用，
+            // 实际是串行等待三个完整网络往返，首屏凭空多了两段延迟。
+            // 并行度固定为 3，且 OkHttp 对单 host 默认 5 并发，天然兜住上限，
+            // 不需要再加信号量。
+            val (unreadResult, feedUnreadResult, sessionsResult) = coroutineScope {
+                val unreadDeferred = async { MessageRepository.getUnreadCount() }
+                val feedUnreadDeferred = async { MessageRepository.getFeedUnread() }
+                // 初始加载，endTs = 0
+                val sessionsDeferred = async {
+                    MessageRepository.getSessions(
+                        sessionType = category.apiSessionType,
+                        size = 100,
+                        endTs = 0
+                    )
+                }
+                Triple(
+                    unreadDeferred.await(),
+                    feedUnreadDeferred.await(),
+                    sessionsDeferred.await(),
+                )
+            }
             
             unreadResult.onSuccess { data ->
                 _uiState.value = _uiState.value.copy(unreadData = data)
@@ -231,15 +246,25 @@ class InboxViewModel : ViewModel() {
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
-            
-            val unreadResult = MessageRepository.getUnreadCount()
-            val feedUnreadResult = MessageRepository.getFeedUnread()
-            // 刷新时重置游标
-            val sessionsResult = MessageRepository.getSessions(
-                sessionType = _uiState.value.selectedCategory.apiSessionType,
-                size = 100,
-                endTs = 0
-            )
+
+            // 与首屏同理：三个请求真并行，避免串行等待三段网络往返。
+            val (unreadResult, feedUnreadResult, sessionsResult) = coroutineScope {
+                val unreadDeferred = async { MessageRepository.getUnreadCount() }
+                val feedUnreadDeferred = async { MessageRepository.getFeedUnread() }
+                // 刷新时重置游标
+                val sessionsDeferred = async {
+                    MessageRepository.getSessions(
+                        sessionType = _uiState.value.selectedCategory.apiSessionType,
+                        size = 100,
+                        endTs = 0
+                    )
+                }
+                Triple(
+                    unreadDeferred.await(),
+                    feedUnreadDeferred.await(),
+                    sessionsDeferred.await(),
+                )
+            }
             
             unreadResult.onSuccess { data ->
                 _uiState.value = _uiState.value.copy(unreadData = data)

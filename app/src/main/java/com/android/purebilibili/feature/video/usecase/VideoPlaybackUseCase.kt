@@ -75,6 +75,8 @@ sealed class VideoLoadResult {
         val isFavorited: Boolean,
         val isLiked: Boolean,
         val coinCount: Int,
+        val likeStatusKnown: Boolean = false,
+        val followStatusKnown: Boolean = false,
         // 播放时长（毫秒）：优先播放地址，缺失时回退详情页分集时长。
         val duration: Long = 0,
         // [New] Codec Info for UI display
@@ -662,25 +664,13 @@ class VideoPlaybackUseCase(
                         )
                     )
                     
-                    // 首帧优先：交互状态默认值先返回，延后到 ViewModel 后台刷新。
-                    val (isFollowing, isFavorited, isLiked, coinCount) = if (
-                        isLogin && com.android.purebilibili.data.repository.shouldFetchInteractionStatusOnVideoLoad()
-                    ) {
-                        coroutineScope {
-                            val followingDeferred = async { ActionRepository.checkFollowStatus(info.owner.mid) }
-                            val favoritedDeferred = async { ActionRepository.checkFavoriteStatus(info.aid) }
-                            val likedDeferred = async { ActionRepository.checkLikeStatus(info.aid) }
-                            val coinDeferred = async { ActionRepository.checkCoinStatus(info.aid) }
-                            Quadruple(
-                                followingDeferred.await(),
-                                favoritedDeferred.await(),
-                                likedDeferred.await(),
-                                coinDeferred.await()
-                            )
-                        }
-                    } else {
-                        Quadruple(false, false, false, 0)
-                    }
+                    // 首屏只同步读取主账号会话缓存，不等待交互网络请求。
+                    val cachedFollow = if (isLogin) ActionRepository.cachedFollowStatus(info.owner.mid) else false
+                    val cachedLike = if (isLogin) ActionRepository.cachedLikeStatus(info.aid) else false
+                    val isFollowing = cachedFollow ?: false
+                    val isLiked = cachedLike ?: false
+                    val isFavorited = false
+                    val coinCount = 0
                     
                     VideoLoadResult.Success(
                         info = info,
@@ -705,6 +695,8 @@ class VideoPlaybackUseCase(
                         isFollowing = isFollowing,
                         isFavorited = isFavorited,
                         isLiked = isLiked,
+                        likeStatusKnown = cachedLike != null,
+                        followStatusKnown = cachedFollow != null,
 
                         coinCount = coinCount,
                         duration = resolveVideoLoadDurationMs(

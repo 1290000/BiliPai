@@ -240,6 +240,7 @@ internal data class PortraitVideoInteractionOverride(
 
 internal data class PortraitVideoInteractionUiState(
     val isLiked: Boolean,
+    val likeStatusKnown: Boolean,
     val isFavorited: Boolean,
     val likeCount: Int,
     val favoriteCount: Int
@@ -3407,18 +3408,11 @@ private fun VideoPageItem(
 
         // Overlay & Interaction
     val isCurrentModelVideo = (currentUiState as? VideoPlaybackUiState.Success)?.info?.bvid == bvid
-    var portraitInteractionOverride by remember(bvid) {
-        mutableStateOf(PortraitVideoInteractionOverride())
-    }
+    val interactionAccount by TokenManager.accountIdentity.collectAsStateWithLifecycle()
+    val interactionSession = interactionAccount to TokenManager.sessDataCache
     val favoriteSaveEvent by viewModel.favoriteFolderSaveEvent.collectAsStateWithLifecycle()
     var consumedFavoriteSaveEventVersion by remember(bvid) { mutableLongStateOf(0L) }
     val stat = if (item is ViewInfo) item.stat else (item as RelatedVideo).stat
-    val resolvedInteractionState = resolvePortraitVideoInteractionUiState(
-        targetBvid = bvid,
-        fallbackStat = stat,
-        sharedState = currentSuccess,
-        localOverride = portraitInteractionOverride
-    )
     val fallbackDetailInfo = when (item) {
         is ViewInfo -> item
         is RelatedVideo -> toViewInfoForPortraitDetail(item)
@@ -3443,11 +3437,24 @@ private fun VideoPageItem(
     val authorName = portraitDetailInfo?.owner?.name?.takeIf { it.isNotBlank() } ?: seedAuthorName
     val authorFace = portraitDetailInfo?.owner?.face?.takeIf { it.isNotBlank() } ?: seedAuthorFace
     val authorMid = portraitDetailInfo?.owner?.mid?.takeIf { it > 0L } ?: seedAuthorMid
+    var portraitInteractionOverride by remember(bvid, activeAid, authorMid, interactionSession) {
+        mutableStateOf(PortraitVideoInteractionOverride())
+    }
+    val interactionSuccess = currentSuccess?.takeIf {
+        it.info.bvid == bvid && it.info.aid == activeAid && it.info.owner.mid == authorMid
+    }
+    val resolvedInteractionState = resolvePortraitVideoInteractionUiState(
+        targetBvid = bvid,
+        fallbackStat = stat,
+        sharedState = interactionSuccess,
+        localOverride = portraitInteractionOverride
+    )
     // UP 主弹幕徽章：详情就绪后绑定 owner.mid（seed 进场无 owner 时会在详情回填后重新绑定）
     LaunchedEffect(danmakuManager, authorMid) {
         danmakuManager.bindUpOwnerMid(authorMid)
     }
-    val isFollowing = (currentUiState as? VideoPlaybackUiState.Success)?.followingMids?.contains(authorMid) == true
+    val followStatusKnown = interactionSuccess?.followStatusKnown == true
+    val isFollowing = followStatusKnown && interactionSuccess?.isFollowing == true
     val detailVideoList = remember(bvid, watchLaterVideos, recommendationVideos) {
         buildPortraitDetailVideoList(
             currentBvid = bvid,
@@ -3546,12 +3553,14 @@ private fun VideoPageItem(
             statShare = if(isCurrentModelVideo && currentSuccess != null) currentSuccess.info.stat.share else stat.share,
             
             isLiked = resolvedInteractionState.isLiked,
+            likeStatusKnown = resolvedInteractionState.likeStatusKnown,
             isCoined = isCurrentModelVideo && engagementState.coinCount > 0,
             isFavorited = resolvedInteractionState.isFavorited,
             
             isFollowing = isFollowing,
-            onFollowClick = { 
-                onToggleFollow(authorMid, isFollowing)
+            followStatusKnown = followStatusKnown,
+            onFollowClick = {
+                if (canHandlePortraitInteraction && followStatusKnown) onToggleFollow(authorMid, isFollowing)
             },
             
             onDetailClick = {
@@ -3572,31 +3581,12 @@ private fun VideoPageItem(
                 }
             },
             onLikeClick = {
-                if (canHandlePortraitInteraction) {
-                    val currentLikeState = resolvedInteractionState.isLiked
-                    val currentLikeCount = resolvedInteractionState.likeCount
-                    onToggleLike(
-                        activeAid,
-                        bvid,
-                        currentLikeState
-                    ) { liked ->
-                        val nextLikeCount = (
-                            currentLikeCount +
-                                when {
-                                    liked == currentLikeState -> 0
-                                    liked -> 1
-                                    else -> -1
-                                }
-                            ).coerceAtLeast(0)
-                        portraitInteractionOverride = portraitInteractionOverride.copy(
-                            isLiked = liked,
-                            likeCount = nextLikeCount
-                        )
-                    }
+                if (canHandlePortraitInteraction && resolvedInteractionState.likeStatusKnown) {
+                    onToggleLike(activeAid, bvid, resolvedInteractionState.isLiked) { }
                 }
             },
             onLikeLongClick = {
-                if (canHandlePortraitInteraction) {
+                if (canHandlePortraitInteraction && resolvedInteractionState.likeStatusKnown) {
                     val currentInteractionState = resolvedInteractionState
                     onTripleAction(
                         activeAid,
@@ -3604,13 +3594,7 @@ private fun VideoPageItem(
                         currentInteractionState.isLiked,
                         currentSuccess?.coinCount ?: 0,
                         currentInteractionState.isFavorited
-                    ) { result ->
-                        portraitInteractionOverride = resolvePortraitTripleActionOverride(
-                            currentState = currentInteractionState,
-                            likeSuccess = result.likeSuccess,
-                            favoriteSuccess = result.favoriteSuccess
-                        )
-                    }
+                    ) { }
                 }
             },
             onCoinClick = {
@@ -4021,6 +4005,7 @@ private fun VideoPageItem(
                 visible = showUpPreview,
                 owner = info.owner,
                 isFollowing = isFollowing,
+                followStatusKnown = followStatusKnown,
                 followerCount = currentSuccess?.ownerFollowerCount,
                 videoCount = currentSuccess?.ownerVideoCount,
                 seedVideos = upPreviewSeedVideos,
@@ -4028,7 +4013,9 @@ private fun VideoPageItem(
                     showUpPreview = false
                     onUpPreviewActiveChange(false)
                 },
-                onFollowClick = { onToggleFollow(authorMid, isFollowing) },
+                onFollowClick = {
+                    if (canHandlePortraitInteraction && followStatusKnown) onToggleFollow(authorMid, isFollowing)
+                },
                 onEnterSpace = { mid ->
                     showUpPreview = false
                     onUpPreviewActiveChange(false)
@@ -4107,6 +4094,7 @@ internal fun resolvePortraitVideoInteractionUiState(
     val base = if (currentSharedState != null) {
         PortraitVideoInteractionUiState(
             isLiked = currentSharedState.isLiked,
+            likeStatusKnown = currentSharedState.likeStatusKnown,
             isFavorited = currentSharedState.isFavorited,
             likeCount = currentSharedState.info.stat.like,
             favoriteCount = currentSharedState.info.stat.favorite
@@ -4114,6 +4102,7 @@ internal fun resolvePortraitVideoInteractionUiState(
     } else {
         PortraitVideoInteractionUiState(
             isLiked = false,
+            likeStatusKnown = false,
             isFavorited = false,
             likeCount = fallbackStat.like,
             favoriteCount = fallbackStat.favorite
@@ -4124,6 +4113,7 @@ internal fun resolvePortraitVideoInteractionUiState(
     }
     return PortraitVideoInteractionUiState(
         isLiked = localOverride.isLiked ?: base.isLiked,
+        likeStatusKnown = localOverride.isLiked != null || base.likeStatusKnown,
         isFavorited = localOverride.isFavorited ?: base.isFavorited,
         likeCount = localOverride.likeCount ?: base.likeCount,
         favoriteCount = localOverride.favoriteCount ?: base.favoriteCount
@@ -4140,7 +4130,7 @@ internal fun resolvePortraitTripleActionOverride(
     val likeDelta = if (!currentState.isLiked && nextLiked) 1 else 0
     val favoriteDelta = if (!currentState.isFavorited && nextFavorited) 1 else 0
     return PortraitVideoInteractionOverride(
-        isLiked = nextLiked,
+        isLiked = nextLiked.takeIf { currentState.likeStatusKnown || likeSuccess },
         isFavorited = nextFavorited,
         likeCount = (currentState.likeCount + likeDelta).coerceAtLeast(0),
         favoriteCount = (currentState.favoriteCount + favoriteDelta).coerceAtLeast(0)

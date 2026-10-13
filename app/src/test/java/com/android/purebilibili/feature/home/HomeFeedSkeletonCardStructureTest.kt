@@ -14,10 +14,14 @@ class HomeFeedSkeletonCardStructureTest {
             .substringAfter("Loading Skeleton per page")
             .substringBefore("} else if (categoryState.error")
 
-        assertTrue(loadingGridSource.contains("val skeletonPulseState = rememberHomeFeedSkeletonPulseState()"))
+        assertTrue(loadingGridSource.contains("rememberHomeFeedSkeletonPulseState()"))
         assertTrue(loadingGridSource.contains("pulse = { skeletonPulseState.value }"))
         assertTrue(loadingGridSource.contains("HomeFeedSkeletonCard("))
         assertTrue(loadingGridSource.contains("contentType = { \"home_feed_skeleton_card\" }"))
+        // 骨架不再自建独立网格：改为交给内容网格，在同一 LazyLayout 内原地铺占位卡，
+        // 数据到达时是 item 原地替换而不是整屏重建。
+        assertTrue(loadingGridSource.contains("initialSkeletonContent = initialSkeletonContent"))
+        assertFalse(loadingGridSource.contains("LazyVerticalStaggeredGrid("))
         assertFalse(loadingGridSource.contains("VideoCardSkeleton("))
         assertFalse(loadingGridSource.contains("index % 10"))
     }

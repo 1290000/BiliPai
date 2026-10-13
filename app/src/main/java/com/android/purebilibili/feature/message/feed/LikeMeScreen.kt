@@ -199,92 +199,134 @@ fun LikeMeScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            when {
-                uiState.isLoading -> com.android.purebilibili.core.ui.skeleton.ContentMediaListSkeleton(
+            // 骨架与真实卡片共用同一个 LazyColumn 与同一个 contentType：数据到达时
+            // LazyList 在原地替换 item（配合 animateItem 交叉淡入），不再整棵子树重建。
+            // Scaffold already pads out the top bar — indicator at box top (inset 0).
+            AdaptivePullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::refresh,
+                indicatorTopInset = paddingValues.calculateTopPadding(),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    useUserRow = true,
-                    itemCount = 8,
-                )
-                uiState.error != null -> MessageFeedError(
-                    text = uiState.error ?: "加载失败",
-                    onRetry = viewModel::loadInitial,
-                    modifier = Modifier.fillMaxSize()
-                )
-                uiState.latestItems.isEmpty() && uiState.totalItems.isEmpty() -> MessageFeedEmpty(
-                    text = "暂无点赞消息",
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Scaffold already pads out the top bar — indicator at box top (inset 0).
-                else -> AdaptivePullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = viewModel::refresh,
-                    indicatorTopInset = paddingValues.calculateTopPadding(),
-                    modifier = Modifier.fillMaxSize()
+                    contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 10.dp, bottom = paddingValues.calculateBottomPadding() + 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 10.dp, bottom = paddingValues.calculateBottomPadding() + 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        if (uiState.latestItems.isNotEmpty()) {
-                            item { MessageFeedSectionHeader("最新") }
-                            items(uiState.latestItems, key = { "latest_${it.id}" }) { item ->
-                                LikeMeCard(
-                                    item = item,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    onClick = {
-                                        item.item?.let { content ->
-                                            buildMessageFeedCommentNavigationLink(
-                                                nativeUri = content.nativeUri,
-                                                uri = content.uri,
-                                                businessId = content.businessId,
-                                                subjectId = content.subjectId,
-                                                rootId = content.rootId,
-                                                sourceId = content.sourceId,
-                                                targetId = content.targetId,
-                                                business = content.business
-                                            )?.let(onOpenLink)
-                                        }
-                                    },
-                                    onUserClick = {
-                                        item.users?.firstOrNull()?.mid?.takeIf { it > 0 }?.let(onOpenSpace)
-                                    },
-                                    onToggleNotice = { viewModel.toggleNotice(item) },
-                                    onRemove = { viewModel.remove(item.id, latest = true) }
+                    when {
+                        uiState.isLoading -> {
+                            items(
+                                count = MESSAGE_FEED_SKELETON_ITEM_COUNT,
+                                key = { index -> "like_me_skeleton_$index" },
+                                contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                            ) { index ->
+                                MessageFeedCardSkeleton(
+                                    slotIndex = index,
+                                    modifier = Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .animateItem(),
                                 )
                             }
                         }
 
-                        if (uiState.totalItems.isNotEmpty()) {
-                            item { MessageFeedSectionHeader("累计") }
-                            items(uiState.totalItems, key = { "total_${it.id}" }) { item ->
-                                LikeMeCard(
-                                    item = item,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    onClick = {
-                                        item.item?.let { content ->
-                                            buildMessageFeedCommentNavigationLink(
-                                                nativeUri = content.nativeUri,
-                                                uri = content.uri,
-                                                businessId = content.businessId,
-                                                subjectId = content.subjectId,
-                                                rootId = content.rootId,
-                                                sourceId = content.sourceId,
-                                                targetId = content.targetId,
-                                                business = content.business
-                                            )?.let(onOpenLink)
-                                        }
-                                    },
-                                    onUserClick = {
-                                        item.users?.firstOrNull()?.mid?.takeIf { it > 0 }?.let(onOpenSpace)
-                                    },
-                                    onToggleNotice = { viewModel.toggleNotice(item) },
-                                    onRemove = { viewModel.remove(item.id, latest = false) }
+                        uiState.error != null -> {
+                            item(key = "like_me_error") {
+                                MessageFeedError(
+                                    text = uiState.error ?: "加载失败",
+                                    onRetry = viewModel::loadInitial,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f)
                                 )
                             }
                         }
 
-                        item {
+                        uiState.latestItems.isEmpty() && uiState.totalItems.isEmpty() -> {
+                            item(key = "like_me_empty") {
+                                MessageFeedEmpty(
+                                    text = "暂无点赞消息",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillParentMaxHeight(0.6f)
+                                )
+                            }
+                        }
+
+                        else -> {
+                            if (uiState.latestItems.isNotEmpty()) {
+                                item(key = "like_me_latest_header") { MessageFeedSectionHeader("最新") }
+                                items(
+                                    items = uiState.latestItems,
+                                    key = { "latest_${it.id}" },
+                                    contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                                ) { item ->
+                                    LikeMeCard(
+                                        item = item,
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp)
+                                            .animateItem(),
+                                        onClick = {
+                                            item.item?.let { content ->
+                                                buildMessageFeedCommentNavigationLink(
+                                                    nativeUri = content.nativeUri,
+                                                    uri = content.uri,
+                                                    businessId = content.businessId,
+                                                    subjectId = content.subjectId,
+                                                    rootId = content.rootId,
+                                                    sourceId = content.sourceId,
+                                                    targetId = content.targetId,
+                                                    business = content.business
+                                                )?.let(onOpenLink)
+                                            }
+                                        },
+                                        onUserClick = {
+                                            item.users?.firstOrNull()?.mid?.takeIf { it > 0 }?.let(onOpenSpace)
+                                        },
+                                        onToggleNotice = { viewModel.toggleNotice(item) },
+                                        onRemove = { viewModel.remove(item.id, latest = true) }
+                                    )
+                                }
+                            }
+
+                            if (uiState.totalItems.isNotEmpty()) {
+                                item(key = "like_me_total_header") { MessageFeedSectionHeader("累计") }
+                                items(
+                                    items = uiState.totalItems,
+                                    key = { "total_${it.id}" },
+                                    contentType = { MESSAGE_FEED_CARD_CONTENT_TYPE }
+                                ) { item ->
+                                    LikeMeCard(
+                                        item = item,
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp)
+                                            .animateItem(),
+                                        onClick = {
+                                            item.item?.let { content ->
+                                                buildMessageFeedCommentNavigationLink(
+                                                    nativeUri = content.nativeUri,
+                                                    uri = content.uri,
+                                                    businessId = content.businessId,
+                                                    subjectId = content.subjectId,
+                                                    rootId = content.rootId,
+                                                    sourceId = content.sourceId,
+                                                    targetId = content.targetId,
+                                                    business = content.business
+                                                )?.let(onOpenLink)
+                                            }
+                                        },
+                                        onUserClick = {
+                                            item.users?.firstOrNull()?.mid?.takeIf { it > 0 }?.let(onOpenSpace)
+                                        },
+                                        onToggleNotice = { viewModel.toggleNotice(item) },
+                                        onRemove = { viewModel.remove(item.id, latest = false) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (uiState.hasMore || uiState.isLoadingMore) {
+                        item(key = "like_me_load_more") {
                             MessageFeedLoadMore(
                                 isLoadingMore = uiState.isLoadingMore,
                                 hasMore = uiState.hasMore,

@@ -106,9 +106,12 @@ import com.android.purebilibili.feature.video.ui.components.shouldShowReplyTopAc
 import com.android.purebilibili.feature.video.ui.components.shouldShowVideoCommentBackToTop
 import com.android.purebilibili.feature.video.ui.components.LandscapeSidePanel
 import com.android.purebilibili.feature.video.ui.components.LandscapeSidePanelEdge
+import com.android.purebilibili.feature.video.ui.components.videoCommentItemModifier
+import com.android.purebilibili.feature.video.ui.components.videoCommentSkeletonItems
 import com.android.purebilibili.core.ui.transition.LocalVideoCardSharedElementSourceRoute
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode
 import com.android.purebilibili.feature.video.viewmodel.VideoPlaybackUiState
+import com.android.purebilibili.feature.video.viewmodel.resolveVideoCommentSkeletonSlotCount
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewDialog
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewTextContent
 import com.android.purebilibili.feature.dynamic.components.ImagePreviewSourceAnchor
@@ -433,8 +436,10 @@ internal class VideoContentData(
 internal class VideoContentEngagementState(
     val isLoggedIn: Boolean,
     val isFollowing: Boolean,
+    val followStatusKnown: Boolean = false,
     val isFavorited: Boolean,
     val isLiked: Boolean,
+    val likeStatusKnown: Boolean = false,
     val isDisliked: Boolean = false,
     val coinCount: Int,
     val currentPageIndex: Int,
@@ -566,8 +571,10 @@ internal fun VideoContentSection(
     val bgmInfoList = data.bgmInfoList
     val isLoggedIn = engagementState.isLoggedIn
     val isFollowing = engagementState.isFollowing
+    val followStatusKnown = engagementState.followStatusKnown
     val isFavorited = engagementState.isFavorited
     val isLiked = engagementState.isLiked
+    val likeStatusKnown = engagementState.likeStatusKnown
     val isDisliked = engagementState.isDisliked
     val coinCount = engagementState.coinCount
     val currentPageIndex = engagementState.currentPageIndex
@@ -955,8 +962,10 @@ internal fun VideoContentSection(
                         followingMids = followingMids,
                         videoTags = videoTags,
                         isFollowing = isFollowing,
+                        followStatusKnown = followStatusKnown,
                         isFavorited = isFavorited,
                         isLiked = isLiked,
+                        likeStatusKnown = likeStatusKnown,
                         isDisliked = isDisliked,
                         coinCount = coinCount,
                         downloadProgress = downloadProgress,
@@ -1335,8 +1344,10 @@ private fun VideoIntroTab(
     followingMids: Set<Long>,
     videoTags: List<VideoTag>,
     isFollowing: Boolean,
+    followStatusKnown: Boolean = false,
     isFavorited: Boolean,
     isLiked: Boolean,
+    likeStatusKnown: Boolean = false,
     isDisliked: Boolean = false,
     coinCount: Int,
     downloadProgress: Float,
@@ -1402,8 +1413,10 @@ private fun VideoIntroTab(
                 currentPageIndex = currentPageIndex,
                 onPageSelect = onPageSelect,
                 isFollowing = isFollowing,
+                followStatusKnown = followStatusKnown,
                 isFavorited = isFavorited,
                 isLiked = isLiked,
+                likeStatusKnown = likeStatusKnown,
                 isDisliked = isDisliked,
                 coinCount = coinCount,
                 downloadProgress = downloadProgress,
@@ -1556,6 +1569,10 @@ internal fun VideoCommentTab(
     pullToRefreshEnabled: Boolean = true,
 ) {
     val commentAppearance = rememberVideoCommentAppearance()
+    // 首屏骨架按视口高度铺够槽位：少铺会让列表在数据到达时被撑长、整体跳一下。
+    val commentSkeletonSlotCount = resolveVideoCommentSkeletonSlotCount(
+        LocalConfiguration.current.screenHeightDp
+    )
     val shouldLoadMore by remember(
         listState,
         replies.size,
@@ -1646,9 +1663,12 @@ internal fun VideoCommentTab(
                 }
             }
             if (isRepliesLoading && !isRepliesRefreshing && replies.isEmpty()) {
-                item(key = "video_comment_skeleton", contentType = "video_comment_skeleton") {
-                    com.android.purebilibili.core.ui.skeleton.CommentListColumnSkeleton()
-                }
+                // 骨架拆成多个独立 lazy item（而不是 1 个 item 里塞 5 行）：数据到达时是
+                // 一个槽位换一个槽位，列表锚点不失效，不会整体跳一下。
+                videoCommentSkeletonItems(
+                    slotCount = commentSkeletonSlotCount,
+                    keyPrefix = "video_comment_skeleton_",
+                )
             } else if (replies.isEmpty() && voteCard == null && repliesError == null) {
                 item(key = "video_comment_empty", contentType = "video_comment_empty") {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -1674,7 +1694,8 @@ internal fun VideoCommentTab(
                         isDissolving = reply.rpid in dissolvingIds,
                         onDissolveComplete = { onDeleteComment(reply.rpid) },
                         cardId = "comment_${reply.rpid}",
-                        modifier = Modifier.padding(bottom = 1.dp) // 小间距防止裁剪
+                        // 小间距防止裁剪；animateItem 放在最前，保证位移/淡入淡出作用于整个槽位。
+                        modifier = videoCommentItemModifier().padding(bottom = 1.dp)
                     ) {
                         ReplyItemView(
                             showUpFlag = showUpFlag,
@@ -1952,8 +1973,10 @@ private fun VideoHeaderContent(
     currentPageIndex: Int,
     onPageSelect: (Int) -> Unit,
     isFollowing: Boolean,
+    followStatusKnown: Boolean = false,
     isFavorited: Boolean,
     isLiked: Boolean,
+    likeStatusKnown: Boolean = false,
     isDisliked: Boolean = false,
     coinCount: Int,
     downloadProgress: Float,
@@ -2020,6 +2043,7 @@ private fun VideoHeaderContent(
         UpInfoSection(
             info = info,
             isFollowing = isFollowing,
+            followStatusKnown = followStatusKnown,
             onFollowClick = onFollowClick,
             onUpClick = onUpClick,
             showOwnerAvatar = true,
@@ -2065,6 +2089,7 @@ private fun VideoHeaderContent(
                 info = info,
                 isFavorited = isFavorited,
                 isLiked = isLiked,
+                likeStatusKnown = likeStatusKnown,
                 isDisliked = isDisliked,
                 coinCount = coinCount,
                 downloadProgress = downloadProgress,

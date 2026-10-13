@@ -395,6 +395,7 @@ internal fun MusicPlayerContent(
     onToggleOrientation: (() -> Unit)? = null,
     orientationActionLabel: String = "横屏",
     isLiked: Boolean = false,
+    isLikeStatusKnown: Boolean = true,
     onLikeClick: (() -> Unit)? = null,
     onCommentsClick: (() -> Unit)? = null,
     isFavorited: Boolean = false,
@@ -771,6 +772,7 @@ internal fun MusicPlayerContent(
                                 onPlayModeChange = onPlayModeChange,
                                 onShuffleEnabledChange = onShuffleEnabledChange,
                                 isLiked = isLiked,
+                                isLikeStatusKnown = isLikeStatusKnown,
                                 onLikeClick = onLikeClick,
                                 onCommentsClick = onCommentsClick,
                                 onQueueClick = { showQueue = !showQueue },
@@ -846,6 +848,7 @@ internal fun MusicPlayerContent(
                                 onPlayModeChange = onPlayModeChange,
                                 onShuffleEnabledChange = onShuffleEnabledChange,
                                 isLiked = isLiked,
+                                isLikeStatusKnown = isLikeStatusKnown,
                                 onLikeClick = onLikeClick,
                                 onCommentsClick = onCommentsClick,
                                 onQueueClick = { showQueue = !showQueue },
@@ -1086,6 +1089,7 @@ internal fun MusicPlayerContent(
                 liquidGlassTuning = liquidGlassTuning,
                 progressSeekRevision = progressSeekRevision,
                 isLiked = isLiked,
+                isLikeStatusKnown = isLikeStatusKnown,
                 onPlayPause = onPlayPause,
                 onSeek = { positionMs ->
                     progressSeekRevision += 1
@@ -1183,6 +1187,7 @@ internal fun MusicPlayerContent(
                                 onPlayModeChange = onPlayModeChange,
                                 onShuffleEnabledChange = onShuffleEnabledChange,
                                 isLiked = isLiked,
+                                isLikeStatusKnown = isLikeStatusKnown,
                                 onLikeClick = onLikeClick,
                                 onCommentsClick = onCommentsClick,
                                 onQueueClick = {
@@ -1255,6 +1260,7 @@ internal fun MusicPlayerContent(
                                                 onPrevious = onPrevious,
                                                 onNext = onNext,
                                                 isLiked = isLiked,
+                                                isLikeStatusKnown = isLikeStatusKnown,
                                                 onLikeClick = onLikeClick,
                                                 modifier = Modifier.fillMaxSize()
                                             )
@@ -1307,6 +1313,7 @@ internal fun MusicPlayerContent(
                     currentIndex = effectiveCurrentIndex,
                     isPlaying = state.isPlaying,
                     isLiked = isLiked,
+                    isLikeStatusKnown = isLikeStatusKnown,
                     onPlayPause = onPlayPause,
                     onPrevious = onPrevious,
                     onNext = onNext,
@@ -1720,6 +1727,7 @@ private fun ImmersiveBottomQueueShelf(
     currentIndex: Int,
     isPlaying: Boolean,
     isLiked: Boolean,
+    isLikeStatusKnown: Boolean = true,
     onPlayPause: () -> Unit,
     onPrevious: (() -> Unit)?,
     onNext: (() -> Unit)?,
@@ -1920,6 +1928,7 @@ private fun ImmersiveBottomQueueShelf(
                     onPrevious = onPrevious,
                     onNext = onNext,
                     isLiked = isLiked,
+                    isLikeStatusKnown = isLikeStatusKnown,
                     onLikeClick = onLikeClick,
                     cardSizeDp = 150,
                     showTransportControls = true,
@@ -2046,6 +2055,7 @@ private fun PlayerPage(
     onPlayModeChange: (PlayMode) -> Unit,
     onShuffleEnabledChange: (Boolean) -> Unit,
     isLiked: Boolean,
+    isLikeStatusKnown: Boolean = true,
     onLikeClick: (() -> Unit)?,
     onCommentsClick: (() -> Unit)?,
     onQueueClick: () -> Unit,
@@ -2243,9 +2253,9 @@ private fun PlayerPage(
                     }
                     }
                 }
-                onLikeClick?.let { like ->
+                if (onLikeClick != null && isLikeStatusKnown) {
                     AppIconButton(
-                        onClick = like,
+                        onClick = onLikeClick,
                         modifier = Modifier
                             .size(48.dp)
                     ) {
@@ -2253,6 +2263,19 @@ private fun PlayerPage(
                             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = if (isLiked) "取消点赞" else "点赞",
                             tint = if (isLiked) MusicLikeColor else MusicContentColor.copy(alpha = 0.72f)
+                        )
+                    }
+                } else {
+                    // 交互状态未知时保留同尺寸占位，避免图标从“未点赞”翻转为“已点赞”，
+                    // 同时不给用户一个会写入错误状态的入口。
+                    Box(modifier = Modifier.size(48.dp)) {
+                        AppIcon(
+                            imageVector = Icons.Outlined.FavoriteBorder,
+                            contentDescription = null,
+                            tint = MusicContentColor.copy(alpha = 0.28f),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(24.dp)
                         )
                     }
                 }
@@ -3950,6 +3973,7 @@ private fun TabletopPlayerLayout(
     liquidGlassTuning: LiquidGlassTuning,
     progressSeekRevision: Int,
     isLiked: Boolean,
+    isLikeStatusKnown: Boolean = true,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onPrevious: (() -> Unit)?,
@@ -4083,6 +4107,7 @@ private fun TabletopPlayerLayout(
                 onPrevious = onPrevious,
                 onNext = onNext,
                 isLiked = isLiked,
+                isLikeStatusKnown = isLikeStatusKnown,
                 onLikeClick = onLikeClick,
                 cardSizeDp = cardSizeDp,
                 // 让细进度轨道接近截图中的内容宽度，同时给左右保留呼吸空间。
@@ -4132,6 +4157,7 @@ private fun ExpandedQueuePane(
     onPrevious: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     isLiked: Boolean = false,
+    isLikeStatusKnown: Boolean = true,
     onLikeClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -4236,6 +4262,7 @@ private fun ExpandedQueuePane(
                         onPrevious = onPrevious,
                         onNext = onNext,
                         isLiked = isLiked,
+                        isLikeStatusKnown = isLikeStatusKnown,
                         onLikeClick = onLikeClick,
                         cardSizeDp = adaptiveCardSizeDp,
                         showTransportControls = false,

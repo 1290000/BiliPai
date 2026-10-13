@@ -48,6 +48,7 @@ import com.android.purebilibili.feature.video.viewmodel.resolveSubReplyRemoteTot
 import com.android.purebilibili.feature.video.viewmodel.CommentSortMode
 import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -1105,9 +1106,9 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             initialValue = null
         )
     
-    // 评论列表
-    private val _comments = MutableStateFlow<List<com.android.purebilibili.data.model.response.ReplyItem>>(emptyList())
-    val comments: StateFlow<List<com.android.purebilibili.data.model.response.ReplyItem>> = _comments.asStateFlow()
+    // 评论区单一状态源：所有字段一次发射，避免「评论已到但 loading 还没关」这类中间帧。
+    private val _commentUiState = MutableStateFlow(DynamicCommentUiState())
+    internal val commentUiState: StateFlow<DynamicCommentUiState> = _commentUiState.asStateFlow()
 
     private val _dynamicCommentSortMode = MutableStateFlow(CommentSortMode.HOT)
     val dynamicCommentSortMode: StateFlow<CommentSortMode> = _dynamicCommentSortMode.asStateFlow()
@@ -1119,27 +1120,59 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
     private val _commentReplyTarget = MutableStateFlow<DynamicCommentComposerTarget?>(null)
     internal val commentReplyTarget: StateFlow<DynamicCommentComposerTarget?> = _commentReplyTarget.asStateFlow()
-    
-    // [新增] 动态评论总数 (从评论接口获取实时数据)
-    private val _commentTotalCount = MutableStateFlow(0)
-    val commentTotalCount: StateFlow<Int> = _commentTotalCount.asStateFlow()
-    
-    private val _commentsLoading = MutableStateFlow(false)
-    val commentsLoading: StateFlow<Boolean> = _commentsLoading.asStateFlow()
 
-    private val _commentsRefreshing = MutableStateFlow(false)
-    val commentsRefreshing: StateFlow<Boolean> = _commentsRefreshing.asStateFlow()
-    private val _commentsRefreshError = MutableStateFlow<String?>(null)
-    internal val commentsRefreshError: StateFlow<String?> = _commentsRefreshError.asStateFlow()
-
-    private val _commentsLoadingMore = MutableStateFlow(false)
-    val commentsLoadingMore: StateFlow<Boolean> = _commentsLoadingMore.asStateFlow()
+    // 进程内首页评论缓存：重进同一条动态先秒出旧内容，再后台静默刷新。
+    private val commentCache = DynamicCommentCache()
 
     private var commentNextPage = 1
     private var commentsEnd = true
     private var commentGrpcNextOffset: String? = null
     private var commentLoadJob: Job? = null
     private var commentLoadRequestId = 0L
+
+    private fun updateCommentUiState(
+        transform: (DynamicCommentUiState) -> DynamicCommentUiState
+    ) {
+        _commentUiState.update(transform)
+    }
+
+    /**
+     * 把当前评论列表同步进内存缓存，让「返回再进」不必重新拉取。
+     * 只有在已经确定评论目标（oid/type）时才写，避免把不完整状态缓存下来。
+     */
+    private fun cacheCurrentComments(
+        replies: List<ReplyItem>,
+        sortModeApiMode: Int = _dynamicCommentSortMode.value.apiMode,
+    ) {
+        val dynamicId = _selectedDynamic.value?.id_str ?: return
+        val target = _selectedCommentTarget.value ?: return
+        if (replies.isEmpty()) return
+        commentCache.put(
+            dynamicId = dynamicId,
+            sortModeApiMode = sortModeApiMode,
+            snapshot = DynamicCommentCacheSnapshot(
+                replies = replies,
+                totalCount = _commentUiState.value.totalCount,
+                nextPage = commentNextPage,
+                isEnd = commentsEnd,
+                grpcNextOffset = commentGrpcNextOffset,
+                target = target,
+                cachedAtMs = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    /** 评论列表的所有变更都走这里，保证状态与缓存一起更新。 */
+    private fun updateCurrentComments(
+        transform: (List<ReplyItem>) -> List<ReplyItem>
+    ) {
+        var updated: List<ReplyItem> = emptyList()
+        updateCommentUiState { state ->
+            updated = transform(state.comments)
+            state.copy(comments = updated)
+        }
+        cacheCurrentComments(updated)
+    }
     
     // 点赞状态缓存 (dynamicId -> isLiked)
     private val _likedDynamics = MutableStateFlow<Set<String>>(emptySet())
@@ -1188,12 +1221,10 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
     }
     
     fun refreshComments() {
-        if (_commentsRefreshing.value ||
-            (_commentsLoading.value && _comments.value.isEmpty())
-        ) return
+        val state = _commentUiState.value
+        if (state.isRefreshing || (state.isLoading && state.comments.isEmpty())) return
         val item = _selectedDynamic.value ?: return
-        _commentsRefreshing.value = true
-        _commentsRefreshError.value = null
+        updateCommentUiState { it.copy(isRefreshing = true, refreshError = null) }
         loadCommentsForDynamic(item = item, isRefresh = true)
     }
 
@@ -1207,21 +1238,17 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         commentLoadJob = null
         _selectedDynamic.value = null
         _selectedCommentTarget.value = null
-        _comments.value = emptyList()
-        _commentsLoading.value = false
-        _commentsRefreshing.value = false
-        _commentsRefreshError.value = null
         subReplyLoadRequestId++
         subReplyLoadJob?.cancel()
         _subReplyState.value = SubReplyUiState()
         _commentReplyTarget.value = null
-        _commentsLoadingMore.value = false
         commentNextPage = 1
         commentsEnd = true
         commentGrpcNextOffset = null
         _dynamicCommentSortMode.value = CommentSortMode.HOT
-        // [新增] 清空计数
-        _commentTotalCount.value = 0
+        // 一次发射清空，避免评论 / 计数 / loading 分多次生效留下中间帧。
+        // 刻意保留 commentCache：返回再进同一条动态仍能秒出旧评论。
+        _commentUiState.value = DynamicCommentUiState()
     }
 
     fun setDynamicCommentSortMode(mode: CommentSortMode) {
@@ -1229,8 +1256,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         if (_dynamicCommentSortMode.value == mode) return
         _dynamicCommentSortMode.value = mode
         val item = _selectedDynamic.value ?: return
-        _comments.value = emptyList()
-        _commentsLoadingMore.value = false
+        updateCommentUiState { it.copy(comments = emptyList(), isLoadingMore = false) }
         commentNextPage = 1
         commentsEnd = true
         commentGrpcNextOffset = null
@@ -1251,21 +1277,45 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
         commentLoadJob = launchAccount {
             val sortMode = _dynamicCommentSortMode.value
             val fallbackCount = item.modules.module_stat?.comment?.count ?: 0
-            if (isRefresh) {
-                _commentsLoading.value = false
-                _commentsRefreshing.value = true
-                _commentsRefreshError.value = null
+            val dynamicId = item.id_str
+            // 命中缓存先秒出旧评论，再后台静默刷新（stale-while-revalidate）。
+            val cached = if (isRefresh) null else commentCache.get(dynamicId, sortMode.apiMode)
+
+            if (cached != null) {
+                _selectedCommentTarget.value = cached.target
+                commentNextPage = cached.nextPage
+                commentsEnd = cached.isEnd
+                commentGrpcNextOffset = cached.grpcNextOffset
+                updateCommentUiState {
+                    it.copy(
+                        comments = cached.replies,
+                        totalCount = maxOf(cached.totalCount, fallbackCount),
+                        isLoading = false,
+                        isRefreshing = false,
+                        isLoadingMore = false,
+                        refreshError = null,
+                        dynamicId = dynamicId,
+                    )
+                }
             } else {
-                _commentsLoading.value = true
-                _commentsRefreshing.value = false
-                _commentsRefreshError.value = null
+                // 一次发射同时完成「切到新动态」和「进入加载态」。
+                // 以前只重置分页、不清空 comments，切到另一条动态时会先闪一下上一条的评论。
+                updateCommentUiState {
+                    it.copy(
+                        comments = emptyList(),
+                        totalCount = if (isRefresh) it.totalCount else fallbackCount,
+                        isLoading = !isRefresh,
+                        isRefreshing = isRefresh,
+                        isLoadingMore = false,
+                        refreshError = null,
+                        dynamicId = dynamicId,
+                    )
+                }
                 _selectedCommentTarget.value = null
                 commentNextPage = 1
                 commentsEnd = true
                 commentGrpcNextOffset = null
-                _commentTotalCount.value = fallbackCount
             }
-            _commentsLoadingMore.value = false
 
             var firstFailureMessage: String? = null
             try {
@@ -1277,9 +1327,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                         "未获取到评论参数，对齐 PiliPlus 动态详情拉取 basic 补全: dynamicId=${effectiveItem.id_str}"
                     )
                     DynamicRepository.getDynamicDetail(effectiveItem.id_str).getOrNull()?.let { fullDetail ->
-                        if (requestId != commentLoadRequestId || _selectedDynamic.value?.id_str != item.id_str) {
-                            return@launchAccount
-                        }
+                        if (requestId != commentLoadRequestId) return@launchAccount
+                        if (_selectedDynamic.value?.id_str != item.id_str) return@launchAccount
                         effectiveItem = fullDetail
                         _selectedDynamic.value = fullDetail
                         targets = resolveDynamicCommentTargets(fullDetail)
@@ -1290,84 +1339,35 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                     if (isRefresh && requestId == commentLoadRequestId &&
                         _selectedDynamic.value?.id_str == item.id_str
                     ) {
-                        _commentsRefreshError.value = "无法获取评论参数"
+                        updateCommentUiState { it.copy(refreshError = "无法获取评论参数") }
                     }
                     return@launchAccount
                 }
 
-                val attempts = mutableListOf<DynamicCommentLoadAttempt>()
-                targets.forEachIndexed { index, target ->
-                    com.android.purebilibili.core.util.Logger.d(
-                        "DynamicVM",
-                        "加载动态评论候选: oid=${target.oid}, type=${target.type}, dynamicId=${effectiveItem.id_str}, dynamicType=${effectiveItem.type}"
-                    )
-                    val exactCount = CommentRepository.getCommentCountForSubject(
-                        oid = target.oid,
-                        type = target.type
-                    ).getOrNull()
-                    val result = CommentRepository.getCommentsForSubject(
-                        oid = target.oid,
-                        type = target.type,
-                        page = 1,
-                        ps = 20,
-                        mode = sortMode.apiMode,
-                        fallbackOnMissingLocation = target.type != 11
-                    )
-                    result.onSuccess { data ->
-                        val payload = resolveDynamicCommentPayload(
-                            data = data,
-                            fallbackCount = exactCount ?: 0,
-                            includeHotReplies = sortMode == CommentSortMode.HOT
-                        )
-                        attempts += DynamicCommentLoadAttempt(
-                            target = target,
-                            replies = payload.replies,
-                            totalCount = payload.totalCount,
-                            candidateIndex = index,
-                            nextPage = 2,
-                            isEnd = resolveDynamicMainCommentPageEnd(
-                                cursorIsEnd = data.cursor.isEnd,
-                                fetchedReplyCount = data.replies.orEmpty().size,
-                                loadedReplyCount = payload.replies.size,
-                                totalCount = payload.totalCount
-                            ),
-                            grpcNextOffset = data.grpcNextOffset.takeIf { it.isNotBlank() }
-                        )
-                    }.onFailure { error ->
-                        firstFailureMessage = firstFailureMessage ?: error.message
-                        com.android.purebilibili.core.util.Logger.w(
-                            "DynamicVM",
-                            "动态评论候选失败: oid=${target.oid}, type=${target.type}, count=$exactCount, error=${error.message}"
-                        )
-                        if (!isRefresh && (exactCount ?: 0) > 0) {
-                            attempts += DynamicCommentLoadAttempt(
-                                target = target,
-                                replies = emptyList(),
-                                totalCount = exactCount ?: 0,
-                                candidateIndex = index,
-                                nextPage = 2,
-                                isEnd = true,
-                                grpcNextOffset = null
-                            )
-                        }
-                    }
-                }
+                val candidateResults = loadDynamicCommentCandidates(
+                    targets = targets,
+                    dynamicId = effectiveItem.id_str,
+                    dynamicType = effectiveItem.type,
+                    sortMode = sortMode,
+                    fallbackCount = fallbackCount,
+                    isRefresh = isRefresh,
+                )
+                val attempts = candidateResults.mapNotNull { it.attempt }
+                firstFailureMessage = candidateResults.firstNotNullOfOrNull { it.failureMessage }
 
-                if (requestId != commentLoadRequestId || _selectedDynamic.value?.id_str != item.id_str) {
-                    return@launchAccount
-                }
+                if (requestId != commentLoadRequestId) return@launchAccount
+                if (_selectedDynamic.value?.id_str != item.id_str) return@launchAccount
                 val selected = selectPreferredDynamicCommentAttempt(
                     attempts = attempts,
                     expectedCount = fallbackCount
                 )
                 if (selected != null) {
                     if (_dynamicCommentSortMode.value != sortMode) return@launchAccount
-                    _selectedCommentTarget.value = selected.target
-                    _comments.value = selected.replies
-                    _commentTotalCount.value = selected.totalCount
-                    commentNextPage = selected.nextPage
-                    commentsEnd = selected.isEnd
-                    commentGrpcNextOffset = selected.grpcNextOffset
+                    applyLoadedDynamicComments(
+                        dynamicId = dynamicId,
+                        sortMode = sortMode,
+                        attempt = selected,
+                    )
                     if (routedRootReplyId > 0L) {
                         openSubReplyFromRoute(
                             rootReplyId = routedRootReplyId,
@@ -1375,10 +1375,18 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                         )
                     }
                 } else if (isRefresh) {
-                    _commentsRefreshError.value = firstFailureMessage ?: "评论刷新失败"
-                } else {
-                    _comments.value = emptyList()
-                    _commentTotalCount.value = fallbackCount
+                    updateCommentUiState {
+                        it.copy(refreshError = firstFailureMessage ?: "评论刷新失败")
+                    }
+                } else if (cached == null) {
+                    // 缓存命中的静默刷新失败时保留旧内容，不要退化成空列表。
+                    updateCommentUiState {
+                        it.copy(
+                            comments = emptyList(),
+                            totalCount = fallbackCount,
+                            dynamicId = dynamicId,
+                        )
+                    }
                     commentNextPage = 1
                     commentsEnd = true
                     commentGrpcNextOffset = null
@@ -1391,33 +1399,206 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 if (isRefresh && requestId == commentLoadRequestId &&
                     _selectedDynamic.value?.id_str == item.id_str
                 ) {
-                    _commentsRefreshError.value = e.message ?: "评论刷新失败"
+                    updateCommentUiState { it.copy(refreshError = e.message ?: "评论刷新失败") }
                 }
             } finally {
                 if (requestId == commentLoadRequestId) {
-                    _commentsLoading.value = false
-                    _commentsRefreshing.value = false
+                    updateCommentUiState { it.copy(isLoading = false, isRefreshing = false) }
                 }
             }
         }
     }
 
+    private data class DynamicCommentCandidateResult(
+        val attempt: DynamicCommentLoadAttempt?,
+        val failureMessage: String? = null,
+    )
+
+    /**
+     * 并行拉取所有候选目标的评论首页。
+     *
+     * 两点关键改动：
+     * 1. 候选之间并行，不再让 N 个候选串行排队；
+     * 2. 单个候选内部，计数请求与列表请求并发，计数不再串行占用关键路径耗时。
+     *
+     * 首选目标（index 0）先返回且带回了可用评论时立即采用并取消其余候选——这是真正的
+     * 「先到先用」，同时避免候选陆续返回造成二次内容替换。首选目标不可用时才回退到
+     * [selectPreferredDynamicCommentAttempt] 的全量择优。
+     */
+    private suspend fun loadDynamicCommentCandidates(
+        targets: List<DynamicCommentTarget>,
+        dynamicId: String,
+        dynamicType: String,
+        sortMode: CommentSortMode,
+        fallbackCount: Int,
+        isRefresh: Boolean,
+    ): List<DynamicCommentCandidateResult> = coroutineScope {
+        val jobs = targets.mapIndexed { index, target ->
+            async {
+                loadDynamicCommentCandidate(
+                    index = index,
+                    target = target,
+                    dynamicId = dynamicId,
+                    dynamicType = dynamicType,
+                    sortMode = sortMode,
+                    fallbackCount = fallbackCount,
+                    isRefresh = isRefresh,
+                )
+            }
+        }
+        val collected = mutableListOf<DynamicCommentCandidateResult>()
+        val primary = jobs.firstOrNull()
+        if (primary != null) {
+            val first = primary.await()
+            if (first != null) {
+                if (first.attempt?.replies?.isNotEmpty() == true) {
+                    jobs.drop(1).forEach { it.cancel() }
+                    return@coroutineScope listOf(first)
+                }
+                collected += first
+            }
+        }
+        collected += jobs.drop(1).awaitAll()
+        collected
+    }
+
+    private suspend fun loadDynamicCommentCandidate(
+        index: Int,
+        target: DynamicCommentTarget,
+        dynamicId: String,
+        dynamicType: String,
+        sortMode: CommentSortMode,
+        fallbackCount: Int,
+        isRefresh: Boolean,
+    ): DynamicCommentCandidateResult = coroutineScope {
+        com.android.purebilibili.core.util.Logger.d(
+            "DynamicVM",
+            "加载动态评论候选: oid=${target.oid}, type=${target.type}, dynamicId=$dynamicId, dynamicType=$dynamicType"
+        )
+        // 计数与列表并发发出，关键路径耗时从「计数 + 列表」降到 max(计数, 列表)。
+        val exactCountDeferred = async {
+            CommentRepository.getCommentCountForSubject(
+                oid = target.oid,
+                type = target.type
+            ).getOrNull()
+        }
+        val result = CommentRepository.getCommentsForSubject(
+            oid = target.oid,
+            type = target.type,
+            page = 1,
+            ps = DYNAMIC_COMMENT_PAGE_SIZE,
+            mode = sortMode.apiMode,
+            fallbackOnMissingLocation = target.type != 11
+        )
+        val exactCount = exactCountDeferred.await()
+        result.fold(
+            onSuccess = { data ->
+                val payload = resolveDynamicCommentPayload(
+                    data = data,
+                    // 计数接口失败时回退到动态自带的评论数，而不是把总数归零。
+                    fallbackCount = exactCount ?: fallbackCount,
+                    includeHotReplies = sortMode == CommentSortMode.HOT
+                )
+                DynamicCommentCandidateResult(
+                    attempt = DynamicCommentLoadAttempt(
+                        target = target,
+                        replies = payload.replies,
+                        totalCount = payload.totalCount,
+                        candidateIndex = index,
+                        nextPage = 2,
+                        isEnd = resolveDynamicMainCommentPageEnd(
+                            cursorIsEnd = data.cursor.isEnd,
+                            fetchedReplyCount = data.replies.orEmpty().size,
+                            loadedReplyCount = payload.replies.size,
+                            totalCount = payload.totalCount
+                        ),
+                        grpcNextOffset = data.grpcNextOffset.takeIf { it.isNotBlank() }
+                    )
+                )
+            },
+            onFailure = { error ->
+                com.android.purebilibili.core.util.Logger.w(
+                    "DynamicVM",
+                    "动态评论候选失败: oid=${target.oid}, type=${target.type}, count=$exactCount, error=${error.message}"
+                )
+                val fallbackTotal = exactCount ?: fallbackCount
+                DynamicCommentCandidateResult(
+                    attempt = if (!isRefresh && fallbackTotal > 0) {
+                        DynamicCommentLoadAttempt(
+                            target = target,
+                            replies = emptyList(),
+                            totalCount = fallbackTotal,
+                            candidateIndex = index,
+                            nextPage = 2,
+                            isEnd = true,
+                            grpcNextOffset = null
+                        )
+                    } else {
+                        null
+                    },
+                    failureMessage = error.message
+                )
+            }
+        )
+    }
+
+    /**
+     * 应用一次成功加载的首页评论。
+     *
+     * 状态一次发射；如果新内容与当前内容完全一致（StateFlow 按 equals 去重），
+     * 则不会产生多余重组——这正是「静默刷新」不闪的原因。
+     */
+    private fun applyLoadedDynamicComments(
+        dynamicId: String,
+        sortMode: CommentSortMode,
+        attempt: DynamicCommentLoadAttempt,
+    ) {
+        val previousState = _commentUiState.value
+        // 缓存命中后的静默刷新可能晚于用户翻页返回：这时只把首页结果并回列表，
+        // 不要把已经加载的第 2、3 页覆盖掉。
+        val alreadyPagedFurther = previousState.dynamicId == dynamicId &&
+            commentNextPage > attempt.nextPage
+        val appliedReplies = if (alreadyPagedFurther) {
+            (attempt.replies + previousState.comments).distinctBy { it.rpid }
+        } else {
+            attempt.replies
+        }
+        _selectedCommentTarget.value = attempt.target
+        if (!alreadyPagedFurther) {
+            commentNextPage = attempt.nextPage
+            commentsEnd = attempt.isEnd
+            commentGrpcNextOffset = attempt.grpcNextOffset
+        }
+        updateCommentUiState {
+            it.copy(
+                comments = appliedReplies,
+                totalCount = attempt.totalCount,
+                isLoading = false,
+                isRefreshing = false,
+                refreshError = null,
+                dynamicId = dynamicId,
+            )
+        }
+        cacheCurrentComments(appliedReplies, sortMode.apiMode)
+    }
+
     fun loadMoreComments() {
         val target = _selectedCommentTarget.value ?: return
-        if (_commentsLoading.value || _commentsRefreshing.value || _commentsLoadingMore.value || commentsEnd) return
+        val state = _commentUiState.value
+        if (state.isLoading || state.isRefreshing || state.isLoadingMore || commentsEnd) return
 
         val pageToLoad = commentNextPage
         val sortMode = _dynamicCommentSortMode.value
         val requestId = commentLoadRequestId
         val paginationOffset = commentGrpcNextOffset
-        _commentsLoadingMore.value = true
+        updateCommentUiState { it.copy(isLoadingMore = true) }
         launchAccount {
             try {
                 CommentRepository.getCommentsForSubject(
                     oid = target.oid,
                     type = target.type,
                     page = pageToLoad,
-                    ps = 20,
+                    ps = DYNAMIC_COMMENT_PAGE_SIZE,
                     mode = sortMode.apiMode,
                     paginationOffset = paginationOffset,
                     fallbackOnMissingLocation = target.type != 11
@@ -1432,17 +1613,15 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                         )
                     ) return@onSuccess
 
-                    val currentReplies = _comments.value
+                    val currentReplies = _commentUiState.value.comments
                     val newReplies = data.replies.orEmpty()
                     val mergedReplies = (currentReplies + newReplies).distinctBy { it.rpid }
                     val addedReplyCount = mergedReplies.size - currentReplies.size
                     val totalCount = maxOf(
                         data.getAllCount(),
-                        _commentTotalCount.value,
+                        _commentUiState.value.totalCount,
                         mergedReplies.size
                     )
-                    _comments.value = mergedReplies
-                    _commentTotalCount.value = totalCount
                     commentNextPage = pageToLoad + 1
                     commentGrpcNextOffset = data.grpcNextOffset.takeIf { it.isNotBlank() }
                     commentsEnd = resolveDynamicMainCommentPageEnd(
@@ -1451,6 +1630,10 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                         loadedReplyCount = mergedReplies.size,
                         totalCount = totalCount
                     )
+                    updateCommentUiState {
+                        it.copy(comments = mergedReplies, totalCount = totalCount)
+                    }
+                    cacheCurrentComments(mergedReplies)
                 }.onFailure { error ->
                     com.android.purebilibili.core.util.Logger.w(
                         "DynamicVM",
@@ -1459,7 +1642,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 }
             } finally {
                 if (requestId == commentLoadRequestId) {
-                    _commentsLoadingMore.value = false
+                    updateCommentUiState { it.copy(isLoadingMore = false) }
                 }
             }
         }
@@ -1512,7 +1695,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
     private fun openLoadedRoutedSubReply(rootReplyId: Long, targetReplyId: Long): Boolean {
         resolveRoutedCommentRootReply(
-            loadedReplies = _comments.value,
+            loadedReplies = _commentUiState.value.comments,
             remoteData = null,
             rootReplyId = rootReplyId
         )?.let { rootReply ->
@@ -1844,8 +2027,8 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
     fun likeComment(rpid: Long, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
         if (rpid <= 0L) return
-        val current = _comments.value.firstOrNull { it.rpid == rpid }
-            ?: _comments.value.firstNotNullOfOrNull { parent ->
+        val current = _commentUiState.value.comments.firstOrNull { it.rpid == rpid }
+            ?: _commentUiState.value.comments.firstNotNullOfOrNull { parent ->
                 parent.replies.orEmpty().firstOrNull { it.rpid == rpid }
             }
             ?: _subReplyState.value.items.firstOrNull { it.rpid == rpid }
@@ -1857,7 +2040,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             onResult(false, "无法确定评论参数")
             return
         }
-        _comments.value = applyDynamicCommentLikeInList(_comments.value, rpid, toLiked)
+        updateCurrentComments { applyDynamicCommentLikeInList(it, rpid, toLiked) }
         val subState = _subReplyState.value
         _subReplyState.value = subState.copy(
             rootReply = subState.rootReply?.let { root ->
@@ -1872,7 +2055,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 rpid = rpid,
                 like = toLiked
             ).onFailure { error ->
-                _comments.value = applyDynamicCommentLikeInList(_comments.value, rpid, !toLiked)
+                updateCurrentComments { applyDynamicCommentLikeInList(it, rpid, !toLiked) }
                 val rollback = _subReplyState.value
                 _subReplyState.value = rollback.copy(
                     rootReply = rollback.rootReply?.let { root ->
@@ -1889,7 +2072,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
 
     fun hateComment(rpid: Long, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
         if (rpid <= 0L) return
-        val current = _comments.value.firstNotNullOfOrNull { reply ->
+        val current = _commentUiState.value.comments.firstNotNullOfOrNull { reply ->
             findDynamicComment(reply, rpid)
         } ?: _subReplyState.value.items.firstOrNull { it.rpid == rpid }
             ?: _subReplyState.value.rootReply?.takeIf { it.rpid == rpid }
@@ -1900,7 +2083,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             return
         }
         val toHated = !isDynamicCommentHated(current)
-        _comments.value = applyDynamicCommentHateInList(_comments.value, rpid, toHated)
+        updateCurrentComments { applyDynamicCommentHateInList(it, rpid, toHated) }
         val subState = _subReplyState.value
         _subReplyState.value = subState.copy(
             rootReply = subState.rootReply?.let { root ->
@@ -1917,7 +2100,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
             ).fold(
                 onSuccess = { onResult(true, if (toHated) "点踩成功" else "已取消点踩") },
                 onFailure = { error ->
-                    _comments.value = replaceDynamicCommentInList(_comments.value, current)
+                    updateCurrentComments { replaceDynamicCommentInList(it, current) }
                     val rollback = _subReplyState.value
                     _subReplyState.value = rollback.copy(
                         rootReply = rollback.rootReply?.let { root ->
@@ -1952,7 +2135,7 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                 rpid = rpid,
             ).fold(
                 onSuccess = {
-                    _comments.value = removeDynamicCommentFromList(_comments.value, rpid)
+                    updateCurrentComments { removeDynamicCommentFromList(it, rpid) }
                     val subState = _subReplyState.value
                     _subReplyState.value = if (subState.rootReply?.rpid == rpid) {
                         SubReplyUiState()
@@ -1962,7 +2145,9 @@ class DynamicViewModel(application: Application) : AndroidViewModel(application)
                             totalCount = (subState.totalCount - 1).coerceAtLeast(0),
                         )
                     }
-                    _commentTotalCount.value = (_commentTotalCount.value - 1).coerceAtLeast(0)
+                    updateCommentUiState {
+                        it.copy(totalCount = (it.totalCount - 1).coerceAtLeast(0))
+                    }
                     onResult(true, "评论已删除")
                 },
                 onFailure = { onResult(false, it.message ?: "删除失败") },

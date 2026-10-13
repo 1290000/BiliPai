@@ -74,6 +74,7 @@ internal fun shouldCancelPortraitTriplePressOnRelease(
 @Composable
 fun PortraitInteractionBar(
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     likeCount: Int,
     isCoined: Boolean = false,
     coinCount: Int = 0,
@@ -111,7 +112,7 @@ fun PortraitInteractionBar(
         label = "portraitTripleProgress",
         finishedListener = { progress ->
             tripleProgress = progress
-            if (progress >= 1f && isTriplePressing && !tripleCompleted) {
+            if (likeStatusKnown && progress >= 1f && isTriplePressing && !tripleCompleted) {
                 tripleCompleted = true
                 haptic(HapticType.MEDIUM)
                 onLikeLongClick()
@@ -119,6 +120,13 @@ fun PortraitInteractionBar(
             }
         }
     )
+
+    LaunchedEffect(likeStatusKnown) {
+        if (!likeStatusKnown) {
+            isTriplePressing = false
+            tripleProgress = 0f
+        }
+    }
 
     LaunchedEffect(animatedTripleProgress) {
         tripleProgress = animatedTripleProgress
@@ -142,9 +150,11 @@ fun PortraitInteractionBar(
         
         // 点赞
         InteractionButton(
-            icon = if (isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
-            countText = if (likeCount > 0) FormatUtils.formatStat(likeCount.toLong()) else "点赞",
-            isActive = isLiked,
+            icon = if (likeStatusKnown && isLiked) Icons.Rounded.ThumbUp else Icons.Outlined.ThumbUp,
+            countText = if (!likeStatusKnown) "待确认" else if (likeCount > 0) FormatUtils.formatStat(likeCount.toLong()) else "点赞",
+            isActive = likeStatusKnown && isLiked,
+            enabled = likeStatusKnown,
+            contentDescription = if (likeStatusKnown) "点赞" else "点赞状态待确认",
             activeColor = MaterialTheme.colorScheme.primary,
             layoutPolicy = layoutPolicy,
             progress = tripleProgress,
@@ -221,6 +231,8 @@ private fun InteractionButton(
     icon: ImageVector,
     countText: String,
     isActive: Boolean,
+    enabled: Boolean = true,
+    contentDescription: String? = null,
     activeColor: Color = MaterialTheme.colorScheme.primary,
     layoutPolicy: PortraitInteractionBarLayoutPolicy,
     progress: Float = 0f,
@@ -232,9 +244,9 @@ private fun InteractionButton(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .appElasticPress(dragEnabled = onLongClick == null)
+            .then(if (enabled) Modifier.appElasticPress(dragEnabled = onLongClick == null) else Modifier)
             .then(
-                if (onLongClick != null) {
+                if (enabled && onLongClick != null) {
                     Modifier.pointerInput(onClick, onLongClick, onPressRelease) {
                         detectTapGestures(
                             onTap = { onClick() },
@@ -247,6 +259,7 @@ private fun InteractionButton(
                     }
                 } else {
                     Modifier.clickable(
+                        enabled = enabled,
                         indication = null,
                         interactionSource = interactionSource,
                     ) { onClick() }
@@ -289,8 +302,8 @@ private fun InteractionButton(
             }
             AppIcon(
                 imageVector = icon,
-                contentDescription = null,
-                tint = if (isActive) activeColor else Color.White,
+                contentDescription = contentDescription,
+                tint = if (!enabled) Color.White.copy(alpha = 0.45f) else if (isActive) activeColor else Color.White,
                 modifier = Modifier.size(layoutPolicy.iconSizeDp.dp)
             )
         }

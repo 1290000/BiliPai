@@ -134,6 +134,7 @@ internal fun shouldShowBottomInputBarActionButtons(
 fun BottomInputBar(
     modifier: Modifier = Modifier,
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     isFavorited: Boolean,
     isCoined: Boolean,
     onLikeClick: () -> Unit,
@@ -210,6 +211,7 @@ fun BottomInputBar(
                     modifier = Modifier,
                     backdrop = backdrop,
                     isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                     isFavorited = isFavorited,
                     isCoined = isCoined,
                     onLikeClick = onLikeClick,
@@ -227,6 +229,7 @@ fun BottomInputBar(
                     hazeState = hazeState,
                     frostedBottomBar = frostedBottomBar,
                     isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                     isFavorited = isFavorited,
                     isCoined = isCoined,
                     onLikeClick = onLikeClick,
@@ -248,6 +251,7 @@ private fun DockedSolidBottomInputBar(
     hazeState: HazeState?,
     frostedBottomBar: Boolean,
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     isFavorited: Boolean,
     isCoined: Boolean,
     onLikeClick: () -> Unit,
@@ -295,6 +299,7 @@ private fun DockedSolidBottomInputBar(
             inputContainerColor = inputContainerColor,
             inputTextColor = inputTextColor,
             isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
             isFavorited = isFavorited,
             isCoined = isCoined,
             onLikeClick = onLikeClick,
@@ -313,6 +318,7 @@ private fun FloatingLiquidBottomInputBar(
     modifier: Modifier,
     backdrop: Backdrop?,
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     isFavorited: Boolean,
     isCoined: Boolean,
     onLikeClick: () -> Unit,
@@ -424,6 +430,7 @@ private fun FloatingLiquidBottomInputBar(
                             likeFilledIcon = rememberAppLikeFilledIcon(),
                             shareIcon = rememberAppShareIcon(),
                             isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                             isFavorited = isFavorited,
                             isCoined = isCoined,
                             onLikeClick = onLikeClick,
@@ -445,6 +452,7 @@ private fun BottomInputBarContentRow(
     inputContainerColor: Color,
     inputTextColor: Color,
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     isFavorited: Boolean,
     isCoined: Boolean,
     onLikeClick: () -> Unit,
@@ -507,6 +515,7 @@ private fun BottomInputBarContentRow(
                     likeFilledIcon = likeFilledIcon,
                     shareIcon = shareIcon,
                     isLiked = isLiked,
+                    likeStatusKnown = likeStatusKnown,
                     isFavorited = isFavorited,
                     isCoined = isCoined,
                     onLikeClick = onLikeClick,
@@ -534,6 +543,7 @@ private fun BottomInputBarActionButtons(
     likeFilledIcon: ImageVector,
     shareIcon: ImageVector,
     isLiked: Boolean,
+    likeStatusKnown: Boolean,
     isFavorited: Boolean,
     isCoined: Boolean,
     onLikeClick: () -> Unit,
@@ -552,9 +562,11 @@ private fun BottomInputBarActionButtons(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconActionButton(
-            icon = if (isLiked) likeFilledIcon else likeIcon,
-            label = "点赞",
-            tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            icon = if (likeStatusKnown && isLiked) likeFilledIcon else likeIcon,
+            label = if (likeStatusKnown) "点赞" else "点赞状态待确认",
+            enabled = likeStatusKnown,
+            tint = if (!likeStatusKnown) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                else if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             onClick = onLikeClick,
             itemSize = itemSize,
             elasticFeedbackEnabled = elasticFeedbackEnabled,
@@ -606,6 +618,7 @@ private fun IconActionButton(
     iconSize: Dp,
     showLabel: Boolean = false,
     elasticFeedbackEnabled: Boolean = true,
+    enabled: Boolean = true,
     onLongClick: (() -> Unit)? = null,
 ) {
     com.android.purebilibili.core.ui.components.ProvideAppElasticFeedback {
@@ -615,18 +628,19 @@ private fun IconActionButton(
             modifier = Modifier
                 .sizeIn(minWidth = itemSize, minHeight = itemSize)
                 .appElasticPress(
-                    enabled = elasticFeedbackEnabled,
+                    enabled = elasticFeedbackEnabled && enabled,
                     dragEnabled = onLongClick == null,
                 )
                 .then(
                     if (onLongClick != null) {
                         Modifier.combinedClickable(
+                            enabled = enabled,
                             role = Role.Button,
                             onClick = onClick,
                             onLongClick = onLongClick,
                         )
                     } else {
-                        Modifier.clickable(role = Role.Button, onClick = onClick)
+                        Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                     }
                 )
                 .padding(4.dp)

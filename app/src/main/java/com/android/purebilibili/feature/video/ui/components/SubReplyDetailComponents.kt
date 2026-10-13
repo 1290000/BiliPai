@@ -102,6 +102,8 @@ import com.android.purebilibili.core.ui.rememberAppLikeFilledIcon
 import com.android.purebilibili.feature.video.viewmodel.CommentUiState
 import com.android.purebilibili.feature.video.viewmodel.SubReplySortMode
 import com.android.purebilibili.feature.video.viewmodel.SubReplyUiState
+import com.android.purebilibili.feature.video.viewmodel.resolveVideoCommentSkeletonSlotCount
+import androidx.compose.ui.platform.LocalConfiguration
 import com.android.purebilibili.core.ui.AdaptiveLoadingIndicator
 import com.android.purebilibili.core.ui.AdaptivePullToRefreshBox
 import com.android.purebilibili.core.ui.AppShapes
@@ -553,6 +555,10 @@ internal fun SubReplyDetailContent(
         resolveSubReplyDetailLayoutPolicy(showRootCommentEntry = false)
     }
     val appearance = rememberVideoCommentAppearance()
+    // 首屏骨架按视口高度铺够槽位：少铺会让列表在数据到达时被撑长、整体跳一下。
+    val commentSkeletonSlotCount = resolveVideoCommentSkeletonSlotCount(
+        LocalConfiguration.current.screenHeightDp
+    )
     val context = LocalContext.current
     val showLoadedReplyCount by com.android.purebilibili.core.store.SettingsManager
         .getSubReplyLoadedCountEnabled(context)
@@ -917,7 +923,8 @@ internal fun SubReplyDetailContent(
                     isDissolving = item.rpid in dissolvingIds,
                     onDissolveComplete = { onDeleteComment?.invoke(item.rpid) },
                     cardId = "subreply_detail_${item.rpid}",
-                    modifier = Modifier.padding(bottom = 1.dp)
+                    // 小间距防止裁剪；animateItem 放在最前，作用于整个槽位。
+                    modifier = videoCommentItemModifier().padding(bottom = 1.dp)
                 ) {
                     SubReplyDetailItem(
                             layoutPolicy = layoutPolicy,
@@ -970,9 +977,12 @@ internal fun SubReplyDetailContent(
             }
 
             if (isLoading && visibleReplies.isEmpty()) {
-                item(key = "subreply_skeleton") {
-                    com.android.purebilibili.core.ui.skeleton.CommentListColumnSkeleton(itemCount = 4)
-                }
+                // 骨架拆成多个独立 lazy item（而不是 1 个 item 里塞 4 行）：数据到达时是
+                // 一个槽位换一个槽位，列表锚点不失效，不会整体跳一下。
+                videoCommentSkeletonItems(
+                    slotCount = commentSkeletonSlotCount,
+                    keyPrefix = "subreply_skeleton_",
+                )
             }
 
             item(key = "footer") {

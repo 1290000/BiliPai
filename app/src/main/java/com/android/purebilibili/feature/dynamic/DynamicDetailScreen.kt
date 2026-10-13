@@ -54,6 +54,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -182,12 +183,18 @@ fun DynamicDetailScreen(
     }
     val likedDynamics by interactionViewModel.likedDynamics.collectAsStateWithLifecycle()
     val likeOverrides by interactionViewModel.likeOverrides.collectAsStateWithLifecycle()
-    val comments by interactionViewModel.comments.collectAsStateWithLifecycle()
-    val commentsLoading by interactionViewModel.commentsLoading.collectAsStateWithLifecycle()
-    val commentsRefreshing by interactionViewModel.commentsRefreshing.collectAsStateWithLifecycle()
-    val commentsRefreshError by interactionViewModel.commentsRefreshError.collectAsStateWithLifecycle()
-    val commentsLoadingMore by interactionViewModel.commentsLoadingMore.collectAsStateWithLifecycle()
-    val commentTotalCount by interactionViewModel.commentTotalCount.collectAsStateWithLifecycle()
+    // 评论区一次性读取单一状态：以前 5 个 flow 分别发射，加载完成时会出现中间帧。
+    val commentUiState by interactionViewModel.commentUiState.collectAsStateWithLifecycle()
+    val comments = commentUiState.comments
+    val commentsLoading = commentUiState.isLoading
+    val commentsRefreshing = commentUiState.isRefreshing
+    val commentsRefreshError = commentUiState.refreshError
+    val commentsLoadingMore = commentUiState.isLoadingMore
+    val commentTotalCount = commentUiState.totalCount
+    // 骨架槽位数按可视高度估算：铺满首屏，数据到达时列表不会被撑长或缩短。
+    val commentSkeletonSlotCount = resolveDynamicCommentSkeletonSlotCount(
+        viewportHeightDp = LocalConfiguration.current.screenHeightDp,
+    )
     val commentSortMode by interactionViewModel.dynamicCommentSortMode.collectAsStateWithLifecycle()
     val subReplyState by interactionViewModel.subReplyState.collectAsStateWithLifecycle()
     val commentReplyTarget by interactionViewModel.commentReplyTarget.collectAsStateWithLifecycle()
@@ -479,6 +486,7 @@ fun DynamicDetailScreen(
                             previewTextContent = textContent
                             showImagePreview = true
                         },
+                        skeletonSlotCount = commentSkeletonSlotCount,
                     )
                 }
                 val commentComposer: @Composable (Modifier) -> Unit = { modifier ->
