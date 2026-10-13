@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -66,6 +67,24 @@ internal fun SettingsHomeSearchEntry(
         modifier = modifier
             .padding(horizontal = visualSpec.screenHorizontalPadding),
     )
+}
+
+private fun buildSettingsSearchHighlight(
+    title: String,
+    matchRange: IntRange?,
+    highlightColor: androidx.compose.ui.graphics.Color,
+): androidx.compose.ui.text.AnnotatedString? {
+    if (matchRange == null || matchRange.isEmpty()) return null
+    val start = matchRange.first.coerceIn(0, title.length)
+    val end = (matchRange.last + 1).coerceIn(start, title.length)
+    if (start >= end) return null
+    return androidx.compose.ui.text.buildAnnotatedString {
+        append(title.substring(0, start))
+        withStyle(androidx.compose.ui.text.SpanStyle(color = highlightColor)) {
+            append(title.substring(start, end))
+        }
+        append(title.substring(end))
+    }
 }
 
 @Composable
@@ -133,10 +152,18 @@ internal fun SettingsSearchResultsSection(
                     } else if (settingsState != null) item?.readState?.invoke(settingsState)
                         ?: playbackSettingStateValue(result.settingId, settingsState) else result.currentValue
                     val visual = rememberSettingsEntryVisual(result.target)
+                    val titleHighlightColor = MaterialTheme.colorScheme.primary
                     AppPreference(
                         icon = visual.icon,
                         iconPainter = visual.iconResId?.let { painterResource(id = it) },
                         title = result.title,
+                        titleAnnotated = remember(result.title, result.titleMatchRange, titleHighlightColor) {
+                            buildSettingsSearchHighlight(
+                                title = result.title,
+                                matchRange = result.titleMatchRange,
+                                highlightColor = titleHighlightColor,
+                            )
+                        },
                         subtitle = result.path,
                         value = currentValue,
                         onClick = { onResultClick(result) },

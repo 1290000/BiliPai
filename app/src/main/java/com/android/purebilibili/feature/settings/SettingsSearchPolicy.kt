@@ -50,6 +50,12 @@ data class SettingsSearchResult(
     val path: String = section,
     val currentValue: String = "",
     val page: SettingsRootCategory? = null,
+    /**
+     * Character range inside [title] that matched the query, so the search list can tint the hit.
+     * Null when the match came from an alias, subtitle or pinyin and therefore has no visible
+     * counterpart in the displayed title.
+     */
+    val titleMatchRange: IntRange? = null,
 )
 
 internal data class SettingsSearchEntry(
@@ -1009,7 +1015,7 @@ internal fun resolveSettingsSearchResults(
             .thenBy { it.second.settingId })
         .distinctBy { it.second.settingId }
         .take(maxResults)
-        .map { (_, entry) ->
+        .map { (match, entry) ->
             val category = entry.page ?: resolveSettingsRootCategoryForSearchTarget(entry.target)
             SettingsSearchResult(
                 target = entry.target,
@@ -1038,21 +1044,29 @@ internal fun resolveSettingsSearchResults(
                     listOfNotNull("设置", owner, group).joinToString(" / ")
                 } else listOfNotNull("设置", category?.title, entry.section.takeIf { it != category?.title && it != "设置" }).joinToString(" / "),
                 page = entry.page,
+                titleMatchRange = match.titleRange,
             )
         }
 }
 
-private data class SettingsMatch(val tier: Int, val coverage: Int)
+private data class SettingsMatch(val tier: Int, val coverage: Int, val titleRange: IntRange? = null)
 
 private fun scoreSettingsSearchMatch(entry: SettingsSearchEntry, query: String): SettingsMatch? {
     val title = normalizeSettingsSearchText(entry.title)
     val aliases = entry.aliases.map(::normalizeSettingsSearchText).filter(String::isNotBlank)
-    if (title == query) return SettingsMatch(7, query.length)
+    if (title == query) return SettingsMatch(7, query.length, entry.title.indices)
     if (query in aliases) return SettingsMatch(6, query.length)
     val fullTerms = (aliases + title).filter { it.length >= 2 && query.contains(it) }
-    if (fullTerms.isNotEmpty()) return SettingsMatch(5, fullTerms.maxOf(String::length))
-    if (title.startsWith(query) || aliases.any { it.startsWith(query) }) return SettingsMatch(4, query.length)
-    if (title.contains(query) || aliases.any { it.contains(query) }) return SettingsMatch(3, query.length)
+    if (fullTerms.isNotEmpty()) {
+        val visibleHit = fullTerms.filter { it == title }.maxByOrNull(String::length)
+        return SettingsMatch(
+            tier = 5,
+            coverage = fullTerms.maxOf(String::length),
+            titleRange = visibleHit?.let { resolveTitleMatchRange(entry.title, it) },
+        )
+    }
+    if (title.startsWith(query)) return SettingsMatch(4, query.length, resolveTitleMatchRange(entry.title, query))
+    if (title.contains(query)) return SettingsMatch(3, query.length, resolveTitleMatchRange(entry.title, query))
     if (matchesSettingsSearchPinyin(entry.title, query) || entry.aliases.any { matchesSettingsSearchPinyin(it, query) }) {
         return SettingsMatch(2, query.length)
     }
@@ -1060,6 +1074,36 @@ private fun scoreSettingsSearchMatch(entry: SettingsSearchEntry, query: String):
         normalizeSettingsSearchText(entry.section).contains(query)) return SettingsMatch(1, query.length)
     return null
 }
+
+/**
+ * Maps a normalized match back onto the original, un-normalized title.
+ *
+ * [normalizeSettingsSearchText] lowercases and strips spaces/punctuation, so a normalized index
+ * does not line up with the raw string. We re-walk the raw title, applying the same drops, and
+ * remember which raw index each surviving character came from. The match is then lifted back to
+ * the first..last surviving raw index it covers.
+ */
+private fun resolveTitleMatchRange(rawTitle: String, normalizedQuery: String): IntRange? {
+    if (normalizedQuery.isEmpty()) return null
+    val normalizedTitle = normalizeSettingsSearchText(rawTitle)
+    val normalizedStart = normalizedTitle.indexOf(normalizedQuery)
+    if (normalizedStart < 0) return null
+    val normalizedEnd = normalizedStart + normalizedQuery.length
+
+    // Re-derive the same normalization while tracking raw offsets.
+    val rawIndices = ArrayList<Int>(normalizedTitle.length)
+    rawTitle.forEachIndexed { rawIndex, char ->
+        val lowered = char.lowercaseChar()
+        if (lowered.isWhitespace() || lowered in NORMALIZED_DROPPED_CHARS) return@forEachIndexed
+        rawIndices.add(rawIndex)
+    }
+    if (rawIndices.size != normalizedTitle.length) return null
+    val rawStart = rawIndices.getOrNull(normalizedStart) ?: return null
+    val rawEnd = rawIndices.getOrNull(normalizedEnd - 1) ?: return null
+    return rawStart..rawEnd
+}
+
+private val NORMALIZED_DROPPED_CHARS: Set<Char> = setOf('/', '&', '+', '-', '_', ':', '：', '·', '(', ')', '（', '）')
 
 private fun normalizeSettingsSearchText(value: String): String =
     value.trim().lowercase().replace(Regex("[\\s/&+\\-_:：·()（）]+"), "")
