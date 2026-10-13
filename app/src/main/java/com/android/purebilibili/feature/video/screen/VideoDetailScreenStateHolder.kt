@@ -2236,6 +2236,7 @@ internal fun VideoDetailScreenStateHolder(
     val videoCardDetailChromeAlphaProvider = remember(
         videoCardDepthBackgroundState,
         entryOwnsMiuixCardTransition,
+        isCommittedCardReturn,
     ) {
         {
             if (!entryOwnsMiuixCardTransition) {
@@ -2247,6 +2248,7 @@ internal fun VideoDetailScreenStateHolder(
                     isReturnGestureInProgress =
                         videoCardDepthBackgroundState.isReturnGestureInProgressProvider() ||
                             videoCardDepthBackgroundState.isGestureRestoreInProgressProvider(),
+                    isCommittedCardReturn = isCommittedCardReturn,
                 )
             }
         }
@@ -2290,6 +2292,7 @@ internal fun VideoDetailScreenStateHolder(
                         sourceLayout = currentLandingState.sourceLayout,
                         followProgressEnabled = videoCardDepthBackgroundState
                             .returnContentFollowProgressEnabledProvider(),
+                        isCommittedCardReturn = isCommittedCardReturn,
                     ).alpha
                 } else {
                     resolveVideoDetailReturnContentAlpha(
@@ -5200,6 +5203,7 @@ internal fun VideoDetailScreenStateHolder(
                                             sourceLayout = miuixLandingState.sourceLayout,
                                             followProgressEnabled = videoCardDepthBackgroundState
                                                 .returnContentFollowProgressEnabledProvider(),
+                                            isCommittedCardReturn = isCommittedCardReturn,
                                         )
                                         alpha = frame.alpha
                                         // Shrink toward card-info size so type size meets source chrome
