@@ -154,9 +154,19 @@ fun PlaybackSettingsContent(
             PlaybackSettingsPage.DECODER -> listOf(SettingsSearchFocusIds.PLAYBACK_DECODER)
             PlaybackSettingsPage.DIAGNOSTICS -> listOf(SettingsSearchFocusIds.PLAYBACK_DEBUG)
         }.flatMap { listOf(it + "_title", it) }
-        val key = if (playbackFocusId == SettingsSearchFocusIds.PLAYBACK_GESTURE) SettingsSearchFocusIds.PLAYBACK_FULLSCREEN else playbackFocusId
+        // A concrete row was requested: target the card that owns it so the row lands on screen,
+        // then [SettingsItemAnchor] nudges the row itself into view and shows the highlight.
+        val itemKey = resolveSettingsItemScrollKey(request.settingId)
+        val key = itemKey
+            ?: if (playbackFocusId == SettingsSearchFocusIds.PLAYBACK_GESTURE) SettingsSearchFocusIds.PLAYBACK_FULLSCREEN
+            else playbackFocusId
         val index = keys.indexOf(key)
-        if (index < 0) return@LaunchedEffect
+        if (index < 0) {
+            // The row's card is not present on this page. Do not leave the request pending, or
+            // later taps would silently do nothing.
+            if (request.settingId != null) SettingsSearchFocusController.clear(request.token)
+            return@LaunchedEffect
+        }
         if (request.settingId != null) listState.scrollToItem(index) else listState.animateScrollToItem(index)
         if (request.settingId == null) SettingsSearchFocusController.clear(request.token)
     }

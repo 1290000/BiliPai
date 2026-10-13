@@ -17,9 +17,17 @@ internal fun SettingsSectionFocusEffect(
     LaunchedEffect(request?.token, target, sectionKeys) {
         val current = request ?: return@LaunchedEffect
         if (current.target != target) return@LaunchedEffect
-        val sectionKey = legacyKeys[current.focusId] ?: current.focusId
+        // A concrete row was requested: scroll to the card that owns it so the row lands on
+        // screen, then [SettingsItemAnchor] performs the pixel-level nudge and the highlight.
+        val itemKey = resolveSettingsItemScrollKey(current.settingId)
+        val sectionKey = itemKey ?: legacyKeys[current.focusId] ?: current.focusId
         val index = sectionKeys.indexOf(sectionKey)
-        if (index < 0) return@LaunchedEffect
+        if (index < 0) {
+            // The row's card is not present on this page (wrong page or hidden section). Do not
+            // leave the request pending, or later taps would silently do nothing.
+            if (current.settingId != null) SettingsSearchFocusController.clear(current.token)
+            return@LaunchedEffect
+        }
         if (current.settingId == null) {
             listState.animateScrollToItem(index)
             SettingsSearchFocusController.clear(current.token)

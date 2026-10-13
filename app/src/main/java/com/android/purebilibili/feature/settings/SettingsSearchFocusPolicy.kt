@@ -47,6 +47,23 @@ data class SettingsSceneDetailFocus(
     val focusId: String
 )
 
+/**
+ * Resolves the LazyColumn item key that owns a concrete setting row.
+ *
+ * Search results carry a `settingId` (a concrete row) plus a `focusId` (its group heading).
+ * Scrolling to the group heading leaves the user hunting for the row inside a long card, so
+ * when a `settingId` is present we scroll to the group *item* instead and let
+ * [SettingsItemAnchor] nudge the row itself into view.
+ *
+ * `PlaybackSettingItem.sectionKey` is exactly the LazyColumn `item(key = ...)` of the card that
+ * wraps the row, and page `sectionKeys` lists already include those card keys (they are built by
+ * `.flatMap { listOf(it + "_title", it) }`). So the row's scroll target is simply its section key.
+ */
+internal fun resolveSettingsItemScrollKey(settingId: String?): String? {
+    if (settingId.isNullOrBlank()) return null
+    return settingsItemDirectory.firstOrNull { it.settingId == settingId }?.sectionKey
+}
+
 object SettingsSearchFocusController {
     private val _request = MutableStateFlow<SettingsSearchFocusRequest?>(null)
     val request = _request.asStateFlow()

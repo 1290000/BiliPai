@@ -917,6 +917,7 @@ private fun Md3NativeListItemContent(
     icon: ImageVector? = null,
     iconPainter: androidx.compose.ui.graphics.painter.Painter? = null,
     title: String,
+    titleAnnotated: androidx.compose.ui.text.AnnotatedString? = null,
     subtitle: String? = null,
     value: String? = null,
     onClick: (() -> Unit)?,
@@ -938,9 +939,9 @@ private fun Md3NativeListItemContent(
     androidx.compose.material3.SegmentedListItem(
         shapes = androidx.compose.material3.ListItemDefaults.segmentedShapes(index = 0, count = 1),
         content = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
+            PreferenceTitleText(
+                title = title,
+                titleAnnotated = titleAnnotated,
                 color = textColor,
             )
         },
@@ -1023,10 +1024,32 @@ private fun Md3NativeListItemContent(
 }
 
 @Composable
+private fun PreferenceTitleText(
+    title: String,
+    titleAnnotated: androidx.compose.ui.text.AnnotatedString?,
+    color: Color,
+) {
+    if (titleAnnotated != null) {
+        Text(
+            text = titleAnnotated,
+            style = MaterialTheme.typography.bodyLarge,
+            color = color,
+        )
+    } else {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = color,
+        )
+    }
+}
+
+@Composable
 internal fun AdaptivePreferenceContent(
     icon: ImageVector? = null,
     iconPainter: androidx.compose.ui.graphics.painter.Painter? = null,
     title: String,
+    titleAnnotated: androidx.compose.ui.text.AnnotatedString? = null,
     subtitle: String? = null,
     value: String? = null,
     copyValue: String? = null,
@@ -1074,6 +1097,7 @@ internal fun AdaptivePreferenceContent(
             icon = icon,
             iconPainter = iconPainter,
             title = title,
+            titleAnnotated = titleAnnotated,
             subtitle = subtitle,
             value = value,
             onClick = onClick,
@@ -1224,11 +1248,19 @@ internal fun AdaptivePreferenceContent(
                 Spacer(modifier = Modifier.width(14.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = textColor,
-                )
+                if (titleAnnotated != null) {
+                    Text(
+                        text = titleAnnotated,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = textColor,
+                    )
+                } else {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = textColor,
+                    )
+                }
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -1426,22 +1458,31 @@ internal fun AdaptivePreferenceContent(
         }
         
         if (centered) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = textColor,
-                modifier = Modifier,
-                maxLines = 1,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-        } else {
-            Column(modifier = Modifier.weight(1f)) {
+            if (titleAnnotated != null) {
+                Text(
+                    text = titleAnnotated,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = textColor,
+                    modifier = Modifier,
+                    maxLines = 1,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            } else {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     color = textColor,
-                    softWrap = true,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                    modifier = Modifier,
+                    maxLines = 1,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        } else {
+            Column(modifier = Modifier.weight(1f)) {
+                PreferenceTitleText(
+                    title = title,
+                    titleAnnotated = titleAnnotated,
+                    color = textColor,
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
