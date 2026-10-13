@@ -7,6 +7,7 @@ import com.android.purebilibili.core.ui.motion.folmeExpandEnterTransition
 import com.android.purebilibili.core.ui.motion.folmeExpandExitTransition
 import com.android.purebilibili.core.ui.components.AppText
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -466,15 +467,15 @@ fun VideoTitleWithDesc(
     val argueMsgShown by com.android.purebilibili.core.store.SettingsManager
         .getVideoArgueMsgShown(context)
         .collectAsStateWithLifecycle(initialValue = true)
-    var expanded by remember(info.bvid, info.desc, videoTags.size, defaultExpanded) {
-        mutableStateOf(
-            resolveVideoInfoInitialExpandedState(
-                hasDescription = info.desc.isNotBlank(),
-                hasTags = videoTags.isNotEmpty(),
-                defaultExpanded = defaultExpanded
-            )
-        )
-    }
+    // 展开状态改为“用户意图优先”：用户手动切换过之后，晚到的描述/标签数据不再重置它。
+    // 原实现把 videoTags.size 放进 remember 的 key，标签异步回填时会重算初始值，
+    // 既会覆盖用户的手动收起，也会让标签区重新播放展开动画并下推下方内容。
+    var expandedOverride by remember(info.bvid) { mutableStateOf<Boolean?>(null) }
+    val expanded = expandedOverride ?: resolveVideoInfoInitialExpandedState(
+        hasDescription = info.desc.isNotBlank(),
+        hasTags = videoTags.isNotEmpty(),
+        defaultExpanded = defaultExpanded
+    )
     val publishTimeRowText = remember(info.pubdate, info.tname, info.title) {
         resolvePublishTimeRowText(
             pubdate = info.pubdate,
@@ -549,7 +550,7 @@ fun VideoTitleWithDesc(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(role = Role.Button) { expanded = !expanded },
+                .clickable(role = Role.Button) { expandedOverride = !expanded },
             verticalAlignment = Alignment.Top
         ) {
             //  共享元素过渡 - 标题
@@ -1243,16 +1244,14 @@ fun UpInfoSection(
                     darkTheme = followDarkTheme,
                 )
             }
+            // 关注状态未确认时不再用空格+灰底占位：直接按“未关注”的主题配色渲染完整按钮，
+            // 状态回填后仅用 Crossfade 切换文案，避免灰胶囊→蓝色按钮的硬跳与闪烁。
             AppSurface(
                 onClick = onFollowClick,
                 enabled = followStatusKnown,
-                color = if (followStatusKnown) {
-                    when (followVisualPolicy.detailButtonTone) {
-                        FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
-                        FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
-                    }
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
+                color = when (followVisualPolicy.detailButtonTone) {
+                    FollowButtonTone.PRIMARY -> MaterialTheme.colorScheme.primary
+                    FollowButtonTone.PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
                 },
                 shape = VideoDetailShapes.action(),
                 modifier = followActionModifier.followActionAnchor()
@@ -1264,23 +1263,21 @@ fun UpInfoSection(
                         .fillMaxWidth()
                         .padding(horizontal = if (isCompact) 8.dp else 12.dp),
                 ) {
-                    AppText(
-                        text = if (followStatusKnown) {
-                            if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8"
-                        } else {
-                            " "
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (followStatusKnown) {
-                            when (followVisualPolicy.detailTextTone) {
+                    Crossfade(
+                        targetState = if (isFollowing) "\u5df2\u5173\u6ce8" else "\u5173\u6ce8",
+                        animationSpec = tween(durationMillis = 180),
+                        label = "videoDetailFollowLabel"
+                    ) { followLabel ->
+                        AppText(
+                            text = followLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = when (followVisualPolicy.detailTextTone) {
                                 FollowTextTone.ON_PRIMARY -> MaterialTheme.colorScheme.onPrimary
                                 FollowTextTone.ON_PRIMARY_CONTAINER -> MaterialTheme.colorScheme.onPrimaryContainer
-                            }
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-                        },
-                        fontWeight = FontWeight.Medium
-                    )
+                            },
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
