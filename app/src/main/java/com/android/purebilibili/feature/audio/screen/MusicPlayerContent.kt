@@ -90,6 +90,8 @@ import com.android.purebilibili.core.ui.components.appElasticPress
 import com.android.purebilibili.core.ui.components.rememberAppElasticPressState
 import com.android.purebilibili.core.ui.components.AppIconButton
 import com.android.purebilibili.core.ui.components.AppIconButtonDefaults
+import com.android.purebilibili.core.ui.components.LocalAppTopBarIconDecorationEnabled
+import com.android.purebilibili.feature.home.components.resolveBiliPaiBottomBarContainerColor
 import com.android.purebilibili.core.ui.components.AppLinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import com.android.purebilibili.core.ui.AppModalBottomSheet
@@ -702,8 +704,10 @@ internal fun MusicPlayerContent(
                                     state = state,
                                     onPlayPause = onPlayPause,
                                     sizeDp = 56,
+                                    glassEnabled = glassEnabled,
+                                    miuixBackdrop = musicBackdrop,
+                                    liquidGlassTuning = liquidGlassTuning,
                                     isDarkEnvironment = isDarkEnvironment,
-                                    glassTintColor = backgroundColor,
                                 )
                             }
                         }
@@ -752,6 +756,7 @@ internal fun MusicPlayerContent(
                             )
                             } else {
                             PlayerPage(
+                                liquidGlassTuning = liquidGlassTuning,
                                 state = state,
                                 artworkBitmap = artworkBitmap,
                                 artworkSizeDp = resolveMusicArtworkSizeDp(
@@ -828,6 +833,7 @@ internal fun MusicPlayerContent(
                         ) {
                         if (page == 0) {
                             PlayerPage(
+                                liquidGlassTuning = liquidGlassTuning,
                                 state = state,
                                 artworkBitmap = artworkBitmap,
                                 artworkSizeDp = resolveMusicArtworkSizeDp(
@@ -952,9 +958,11 @@ internal fun MusicPlayerContent(
                                         onPrevious = onPrevious,
                                         onNext = onNext,
                                         playButtonSizeDp = 56,
+                                        glassEnabled = glassEnabled,
+                                        miuixBackdrop = musicBackdrop,
+                                        liquidGlassTuning = liquidGlassTuning,
                                         skipButtonSizeDp = 48,
                                         isDarkEnvironment = isDarkEnvironment,
-                                        glassTintColor = backgroundColor,
                                         modifier = Modifier.graphicsLayer { alpha = 0.72f },
                                     )
                                     Spacer(Modifier.height(12.dp))
@@ -1003,8 +1011,10 @@ internal fun MusicPlayerContent(
                                                     state = state,
                                                     onPlayPause = onPlayPause,
                                                     sizeDp = 52,
+                                                    glassEnabled = glassEnabled,
+                                                    miuixBackdrop = musicBackdrop,
+                                                    liquidGlassTuning = liquidGlassTuning,
                                                     isDarkEnvironment = isDarkEnvironment,
-                                                    glassTintColor = backgroundColor,
                                                 )
                                                 PlaybackIconButton(
                                                     icon = Icons.Filled.SkipNext,
@@ -1167,6 +1177,7 @@ internal fun MusicPlayerContent(
                             horizontalArrangement = Arrangement.spacedBy(gutter)
                         ) {
                             PlayerPage(
+                                liquidGlassTuning = liquidGlassTuning,
                                 state = state,
                                 artworkBitmap = artworkBitmap,
                                 artworkSizeDp = resolveMusicArtworkSizeDp(
@@ -2042,6 +2053,7 @@ private fun ImageBitmap.toAndroidBitmapOrNull(): android.graphics.Bitmap? {
 
 @Composable
 private fun PlayerPage(
+    liquidGlassTuning: LiquidGlassTuning,
     state: MusicPlayerUiState,
     artworkBitmap: ImageBitmap?,
     artworkSizeDp: Int,
@@ -2302,12 +2314,14 @@ private fun PlayerPage(
             PlaybackControls(
                 state = state,
                 playButtonSizeDp = if (compactLandscape) 56 else chromeSpec.playButtonSizeDp,
+                glassEnabled = glassEnabled,
+                miuixBackdrop = miuixBackdrop,
+                liquidGlassTuning = liquidGlassTuning,
                 skipButtonSizeDp = if (compactLandscape) 48 else chromeSpec.skipButtonSizeDp,
                 onPlayPause = onPlayPause,
                 onPrevious = onPrevious,
                 onNext = onNext,
                 isDarkEnvironment = isDarkEnvironment,
-                glassTintColor = glassTintColor
             )
             androidx.compose.animation.AnimatedVisibility(
                 visible = !chromeHidden && !compactLandscape,
@@ -2754,11 +2768,13 @@ private fun PlaybackControls(
     onPlayPause: () -> Unit,
     onPrevious: (() -> Unit)?,
     onNext: (() -> Unit)?,
+    glassEnabled: Boolean,
+    miuixBackdrop: MiuixBackdrop?,
+    liquidGlassTuning: LiquidGlassTuning,
     modifier: Modifier = Modifier,
     playButtonSizeDp: Int = 72,
     skipButtonSizeDp: Int = 56,
     isDarkEnvironment: Boolean = true,
-    glassTintColor: Color = Color.Unspecified
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -2776,8 +2792,10 @@ private fun PlaybackControls(
             state = state,
             onPlayPause = onPlayPause,
             sizeDp = playButtonSizeDp,
+            glassEnabled = glassEnabled,
+            miuixBackdrop = miuixBackdrop,
+            liquidGlassTuning = liquidGlassTuning,
             isDarkEnvironment = isDarkEnvironment,
-            glassTintColor = glassTintColor,
         )
         PlaybackIconButton(
             icon = Icons.Filled.SkipNext,
@@ -3391,9 +3409,11 @@ private fun LyricsPrimaryControls(
                         onNext = onNext,
                         modifier = Modifier.weight(1f),
                         playButtonSizeDp = chromeSpec.playButtonSizeDp,
+                        glassEnabled = glassEnabled,
+                        miuixBackdrop = miuixBackdrop,
+                        liquidGlassTuning = liquidGlassTuning,
                         skipButtonSizeDp = chromeSpec.skipButtonSizeDp,
                         isDarkEnvironment = isDarkEnvironment,
-                        glassTintColor = glassTintColor
                     )
                     AppTextButton(onClick = onOpenSettings, modifier = Modifier.height(48.dp)) {
                         AppText("歌词设置", color = MusicContentColor, style = MaterialTheme.typography.labelMedium)
@@ -3517,19 +3537,33 @@ private fun MusicPlayPauseButton(
     state: MusicPlayerUiState,
     onPlayPause: () -> Unit,
     sizeDp: Int,
+    glassEnabled: Boolean,
+    miuixBackdrop: MiuixBackdrop?,
+    liquidGlassTuning: LiquidGlassTuning,
     isDarkEnvironment: Boolean,
-    glassTintColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    // 实心亮面主按钮：白底深色图标，与动态封面背景解耦，任何色板下都干净醒目。
+    val useLiquidGlass = glassEnabled && miuixBackdrop != null
+    val elasticState = rememberAppElasticPressState(visualSize = sizeDp.dp)
     val playButtonBg = Color.White.copy(alpha = 0.94f)
-    val playButtonFg = Color(0xFF1C1B1F)
+    val playButtonFg = if (useLiquidGlass) MusicContentColor else Color(0xFF1C1B1F)
     val playButtonBorder = Color.Black.copy(alpha = 0.10f)
     Box(
         modifier = modifier
             .size(sizeDp.dp)
-            .appElasticPress()
-            .shadow(
+            .appElasticPress(state = elasticState, transformInBackdrop = useLiquidGlass)
+            .then(if (useLiquidGlass) Modifier.biliPaiFloatingDockShell(
+                backdrop = miuixBackdrop,
+                interactionLayerBlock = elasticState.layerBlock,
+                interactionState = elasticState,
+                containerColor = resolveBiliPaiBottomBarContainerColor(
+                    darkTheme = isDarkEnvironment,
+                    liquidGlassTuning = liquidGlassTuning,
+                ),
+                pressProgress = 0f,
+                shape = CircleShape,
+                liquidGlassTuning = liquidGlassTuning,
+            ) else Modifier.shadow(
                 elevation = 10.dp,
                 shape = CircleShape,
                 ambientColor = Color.Black.copy(alpha = 0.35f),
@@ -3543,7 +3577,7 @@ private fun MusicPlayPauseButton(
                     radius = radius - 0.8.dp.toPx(),
                     style = Stroke(width = 1.dp.toPx())
                 )
-            }
+            })
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -3825,34 +3859,47 @@ private fun GlassIconButton(
 ) {
     val elasticState = rememberAppElasticPressState(visualSize = 48.dp)
     val useLiquidGlass = glassEnabled && miuixBackdrop != null
-    AppIconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(48.dp)
-            .appElasticPress(state = elasticState, transformInBackdrop = useLiquidGlass)
-            .biliPaiFloatingDockShell(
-                backdrop = miuixBackdrop,
-                interactionLayerBlock = elasticState.layerBlock.takeIf { useLiquidGlass },
-                interactionState = elasticState.takeIf { useLiquidGlass },
-                tint = glassTintColor,
-                containerColor = resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
-                pressProgress = 0f,
-                shape = CircleShape,
-                enabled = glassEnabled,
-                blurEnabled = !glassEnabled,
-                liquidGlassTuning = liquidGlassTuning,
-            )
-            .border(
-                width = 0.5.dp,
-                color = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment),
-                shape = CircleShape
-            )
+    // This control owns its backdrop and press transform; native chrome must stay transparent.
+    CompositionLocalProvider(
+        LocalAppTopBarIconDecorationEnabled provides false,
     ) {
-        AppIcon(
-            icon,
-            contentDescription = description,
-            tint = MusicContentColor,
-        )
+        AppIconButton(
+            onClick = onClick,
+            colors = AppIconButtonDefaults.colors(
+                containerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+            ),
+            modifier = Modifier
+                .size(48.dp)
+                .appElasticPress(state = elasticState, transformInBackdrop = useLiquidGlass)
+                .biliPaiFloatingDockShell(
+                    backdrop = miuixBackdrop,
+                    interactionLayerBlock = elasticState.layerBlock.takeIf { useLiquidGlass },
+                    interactionState = elasticState.takeIf { useLiquidGlass },
+                    containerColor = if (useLiquidGlass) {
+                        resolveBiliPaiBottomBarContainerColor(
+                            darkTheme = isDarkEnvironment,
+                            liquidGlassTuning = liquidGlassTuning,
+                        )
+                    } else resolveMusicGlassContainerColor(glassTintColor, isDarkEnvironment),
+                    pressProgress = 0f,
+                    shape = CircleShape,
+                    enabled = glassEnabled,
+                    blurEnabled = !glassEnabled,
+                    liquidGlassTuning = liquidGlassTuning,
+                )
+                .then(if (useLiquidGlass) Modifier else Modifier.border(
+                    width = 0.5.dp,
+                    color = resolveMusicGlassBorderColor(glassTintColor, isDarkEnvironment),
+                    shape = CircleShape
+                ))
+        ) {
+            AppIcon(
+                icon,
+                contentDescription = description,
+                tint = MusicContentColor,
+            )
+        }
     }
 }
 

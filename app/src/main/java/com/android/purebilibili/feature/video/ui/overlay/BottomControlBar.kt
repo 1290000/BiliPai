@@ -45,6 +45,9 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -1006,23 +1009,19 @@ fun BottomControlBar(
                         .height(48.dp)
                     else if (expandInlineActionDock) Modifier.weight(1f) else Modifier,
                 ) {
-                    Row(
+                    PlayerDockActionRow(
+                        fillAvailableWidth = isFullscreen || expandInlineActionDock,
                         modifier = if (isFullscreen) Modifier
                             .fillMaxHeight()
                             // Keep the scroll viewport away from the dock's rounded ends.
                             .padding(horizontal = 10.dp)
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 2.dp)
                         else if (expandInlineActionDock) Modifier
                             .heightIn(min = 40.dp)
                             .padding(horizontal = 8.dp)
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 2.dp)
                         else Modifier,
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(
-                            if (isFullscreen || expandInlineActionDock) 4.dp else layoutPolicy.rightActionSpacingDp.dp,
-                        )
+                        minimumSpacing = if (isFullscreen || expandInlineActionDock) {
+                            4.dp
+                        } else layoutPolicy.rightActionSpacingDp.dp,
                     ) {
                         if (showAspectRatioButton) {
                             Box(
@@ -1492,6 +1491,52 @@ fun BottomControlBar(
                 onFsrSharpnessChange = onFsrSharpnessChange
             )
         }
+    }
+}
+
+@Composable
+private fun PlayerDockActionRow(
+    fillAvailableWidth: Boolean,
+    minimumSpacing: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val arrangement = remember(fillAvailableWidth, minimumSpacing) {
+        if (fillAvailableWidth) {
+            object : Arrangement.Horizontal {
+                // Reserve the minimum gap when measuring overflowing content, then
+                // distribute any remaining viewport width between the actions.
+                override val spacing: Dp = minimumSpacing
+
+                override fun Density.arrange(
+                    totalSize: Int,
+                    sizes: IntArray,
+                    layoutDirection: LayoutDirection,
+                    outPositions: IntArray,
+                ) {
+                    with(Arrangement.SpaceBetween) {
+                        arrange(totalSize, sizes, layoutDirection, outPositions)
+                    }
+                }
+            }
+        } else Arrangement.spacedBy(minimumSpacing)
+    }
+    BoxWithConstraints(
+        modifier = modifier
+            .then(if (fillAvailableWidth) Modifier.fillMaxWidth() else Modifier)
+            .then(if (fillAvailableWidth) Modifier.padding(horizontal = 2.dp) else Modifier),
+    ) {
+        Row(
+            modifier = if (fillAvailableWidth) Modifier
+                .horizontalScroll(rememberScrollState())
+                // Scrolling removes the child's maximum width. Restore only the
+                // viewport minimum so short rows fill it and long rows still scroll.
+                .widthIn(min = maxWidth)
+            else Modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = arrangement,
+            content = content,
+        )
     }
 }
 
