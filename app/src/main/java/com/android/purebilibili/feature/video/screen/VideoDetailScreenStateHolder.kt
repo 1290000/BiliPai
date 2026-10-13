@@ -4042,6 +4042,7 @@ internal fun VideoDetailScreenStateHolder(
                                 viewPoints = viewPoints,
                                 pbpProgressData = visiblePbpProgressData,
                                 bvid = bvid,
+                                danmakuManager = sharedDanmakuManager,
                                 coverUrl = coverUrl,
                                 onBack = { handleBack() },
                                 onUpClick = navigateToUserSpaceFromVideo,
@@ -4110,6 +4111,7 @@ internal fun VideoDetailScreenStateHolder(
                             viewPoints = viewPoints,
                             pbpProgressData = visiblePbpProgressData,
                             bvid = bvid,
+                            danmakuManager = sharedDanmakuManager,
                             coverUrl = coverUrl,
                             onBack = {
                                 com.android.purebilibili.core.util.Logger.d(
@@ -5301,6 +5303,8 @@ internal fun VideoDetailScreenStateHolder(
                                         showFavoriteFolderDialog = showFavoriteFolderDialog,
                                         downloadProgress = downloadProgress,
                                         danmakuEnabledForDetail = effectiveDanmakuEnabledForDetail,
+                                        // 与播放器/Overlay 共用同一弹幕会话：正文层不再自行 acquire。
+                                        danmakuManager = sharedDanmakuManager,
                                         isQuickReturnLimitedForSharedElements =
                                             isReturningFromDetail && isQuickReturningFromDetail,
                                         transitionEnabled = detailChildTransitionEnabled,
