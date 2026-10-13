@@ -647,6 +647,7 @@ internal fun BiliPaiNavDisplayHost(
         videoCardLayoutHeightProvider,
         sourceMetadata.sourceBounds,
         sourceMetadata.sourceCoverBounds,
+        sourceMetadata.sourceInfoBounds,
         sourceMetadata.sourceLayout,
         sourceMetadata.sourceChromeSnapshot,
     ) {
@@ -659,6 +660,7 @@ internal fun BiliPaiNavDisplayHost(
             layoutHeightProvider = videoCardLayoutHeightProvider,
             sourceBoundsProvider = { sourceMetadata.sourceBounds },
             sourceCoverBoundsProvider = { sourceMetadata.sourceCoverBounds },
+            sourceInfoBoundsProvider = { sourceMetadata.sourceInfoBounds },
             sourceLayout = sourceMetadata.sourceLayout,
             sourceChromeSnapshot = sourceMetadata.sourceChromeSnapshot,
         )

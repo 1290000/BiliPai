@@ -826,6 +826,7 @@ fun AppNavigation(
             coverIdentity = navigation3ReturnSession.transitionSession?.coverIdentity,
             sourceBounds = navigation3ReturnSession.transitionSession?.cardBounds,
             sourceCoverBounds = navigation3ReturnSession.transitionSession?.coverBounds,
+            sourceInfoBounds = navigation3ReturnSession.transitionSession?.infoBounds,
             sourceLayout = navigation3ReturnSession.transitionSession?.sourceLayout
                 ?: com.android.purebilibili.core.ui.transition.VideoCardSourceLayout.COVER_ONLY,
             sourceChromeSnapshot = navigation3ReturnSession.transitionSession?.sourceChromeSnapshot,
@@ -850,6 +851,7 @@ fun AppNavigation(
                 .takeIf { useRecordedCardSource },
             cardBounds = CardPositionManager.lastClickedCardBounds,
             coverBounds = CardPositionManager.lastClickedCoverBounds,
+            infoBounds = CardPositionManager.lastClickedInfoBounds,
             sourceCornerDp = CardPositionManager.lastClickedVideoSourceCornerDp,
             cardSourceDirection = captureCardSourceDirectionForSession(),
             coverIdentity = coverIdentity,

@@ -4844,6 +4844,7 @@ internal fun VideoDetailScreenStateHolder(
                                 detailContentLoading = uiState is VideoPlaybackUiState.Loading,
                                 isNowPlayingBar =
                                     miuixLandingState.sourceChromeSnapshot?.isNowPlayingBar == true,
+                                isCommittedCardReturn = isCommittedCardReturn,
                             )
                         }
                         val returnMediaHandoffProgressProvider: () -> Float = {
@@ -5489,6 +5490,9 @@ internal fun VideoDetailScreenStateHolder(
                             isGestureRestoreInProgress =
                                 videoCardDepthBackgroundState
                                     .isGestureRestoreInProgressProvider(),
+                            // 串行化：正文/覆盖层 chrome 让位完成后才画重建板，
+                            // 避免两层在同一块信息槽里叠画。
+                            detailBodyChromeAlpha = videoCardDetailChromeAlphaProvider(),
                         ) &&
                         (sourceCardInfo != null ||
                             miuixCardTransitionState.sourceChromeSnapshot != null)
@@ -5502,6 +5506,8 @@ internal fun VideoDetailScreenStateHolder(
                             sourceBounds = miuixCardTransitionState.sourceBoundsProvider(),
                             sourceCoverBounds =
                                 miuixCardTransitionState.sourceCoverBoundsProvider(),
+                            sourceInfoBounds =
+                                miuixCardTransitionState.sourceInfoBoundsProvider(),
                             morphDepthProgressProvider =
                                 miuixCardTransitionState.progressProvider,
                             phaseProvider = videoCardDepthBackgroundState.phaseProvider,
@@ -5513,6 +5519,7 @@ internal fun VideoDetailScreenStateHolder(
                                     videoCardDepthBackgroundState
                                         .isGestureRestoreInProgressProvider()
                             },
+                            isCommittedCardReturn = isCommittedCardReturn,
                             modifier = Modifier.align(Alignment.TopStart),
                         )
                     }
